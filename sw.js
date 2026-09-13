@@ -1,6 +1,6 @@
 /* Outfit Creator — офлайн-кэш оболочки.
    Меняйте VERSION при обновлении index.html, чтобы телефон забрал новую версию. */
-const VERSION = "outfit-v5";
+const VERSION = "outfit-v6";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {
