@@ -174,10 +174,75 @@ dialog::backdrop{background:rgba(20,17,13,.62)}
   .rack{flex-wrap:wrap;overflow-y:auto;align-content:flex-start}
   .gallery{max-width:760px;margin:0 auto;width:100%}
 }
+
+/* ---------- жизнь: общие блоки ---------- */
+:root{ --ok:#8AB07A; }
+.views{flex:1;display:flex;flex-direction:column;min-height:0}
+.tabbar{display:flex;flex:0 0 auto;border-top:1px solid var(--line);background:var(--ink);
+  padding-bottom:env(safe-area-inset-bottom)}
+.tabbar button{flex:1;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;color:var(--text-dim);font-size:10.5px}
+.tabbar button .ic{font-size:18px;line-height:1}
+.tabbar button[aria-pressed="true"]{color:var(--brass)}
+.pane{flex:1;overflow-y:auto;padding:10px 10px calc(20px + env(safe-area-inset-bottom))}
+.sub{display:flex;padding:0 10px;gap:2px;border-bottom:1px solid var(--line);flex:0 0 auto;overflow-x:auto;scrollbar-width:none}
+.sub::-webkit-scrollbar{display:none}
+.sub button{flex:0 0 auto;min-height:var(--tap);padding:0 12px;font-size:13.5px;color:var(--text-dim);
+  border-bottom:2px solid transparent;white-space:nowrap}
+.sub button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--brass)}
+.stats{display:flex;gap:8px;padding:10px;flex:0 0 auto;flex-wrap:wrap}
+.stat{flex:1 1 90px;background:var(--ink-2);border-radius:14px;padding:11px;text-align:center}
+.stat b{display:block;font-size:18px;font-family:var(--serif);font-weight:400}
+.stat span{font-size:10.5px;color:var(--text-dim)}
+.item{display:flex;gap:10px;padding:10px 12px;border-radius:14px;background:var(--ink-2);margin-bottom:8px;align-items:center}
+.item .meta{flex:1;min-width:0;text-align:left}
+.item .meta strong{font-weight:600;font-size:14.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .meta span{color:var(--text-dim);font-size:12px}
+.item .amt{font-weight:700;font-size:15px;white-space:nowrap}
+.item .amt.in{color:var(--ok)}
+.item .amt.out{color:var(--danger)}
+.item .rm{flex:0 0 auto;min-width:34px;min-height:34px;border-radius:10px;color:var(--text-dim);font-size:16px}
+.item .pin{flex:0 0 auto;min-width:34px;min-height:34px;border-radius:10px;color:var(--text-dim);font-size:15px}
+.item .pin[aria-pressed="true"]{color:var(--brass)}
+.item .chk{flex:0 0 auto;width:26px;height:26px;border-radius:50%;border:2px solid var(--line);
+  display:flex;align-items:center;justify-content:center;color:transparent;font-size:14px}
+.item .chk[aria-pressed="true"]{background:var(--ok);border-color:var(--ok);color:#1B2A16}
+.item.done .meta strong{color:var(--text-dim);text-decoration:line-through}
+.fab{position:absolute;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));width:52px;height:52px;
+  border-radius:50%;background:var(--brass);color:#241C0D;font-size:26px;display:flex;align-items:center;
+  justify-content:center;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+.head{position:relative;flex:1;display:flex;flex-direction:column;min-height:0}
+.field{margin-bottom:12px;text-align:left}
+.field label{display:block;font-size:12px;color:var(--text-dim);margin-bottom:4px}
+.field .row input,.field .row select{margin-bottom:0}
+.sheet input[type=number],.sheet input[type=date],.sheet input[type=time],.sheet select{
+  width:100%;min-height:var(--tap);border-radius:12px;border:1px solid var(--line);
+  background:var(--ink);color:var(--text);padding:0 14px;font-size:16px;margin-bottom:0}
+.sheet textarea.note-body{height:120px}
+.sheet.wide{width:min(460px,calc(100vw - 24px))}
+.sheet.tall{max-height:80vh;display:flex;flex-direction:column}
+.sheet.tall .scroll{flex:1;overflow-y:auto;margin:0 -18px;padding:0 18px}
+.top-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+.top-item b.rank{flex:0 0 22px;color:var(--brass);font-size:13px}
+.top-item span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.top-item .mv{flex:0 0 auto;width:30px;height:30px;border-radius:8px;color:var(--text-dim)}
+.top-item .mv:disabled{opacity:.3}
+.top-item .rm{width:30px;height:30px;min-width:30px;min-height:30px}
+.top-card{display:flex;gap:10px;padding:12px;border-radius:14px;background:var(--ink-2);margin-bottom:10px;align-items:center;width:100%;text-align:left}
+.top-card strong{font-family:var(--serif);font-size:16px;font-weight:400;display:block}
+.top-card span{color:var(--text-dim);font-size:12px}
+.pct{font-size:11px;padding:1px 7px;border-radius:8px;font-weight:600}
+.pct.g{background:rgba(138,176,122,.22);color:var(--ok)}
+.pct.y{background:rgba(199,146,70,.22);color:var(--brass)}
+.pct.r{background:rgba(180,85,63,.22);color:var(--danger)}
+.search{margin:10px 10px 0}
+.search input{width:100%;min-height:var(--tap);border-radius:12px;border:1px solid var(--line);
+  background:var(--ink-2);color:var(--text);padding:0 14px;font-size:15px}
 </style>
 </head>
 <body>
 <div class="app">
+<div class="views" id="views">
   <section class="screen" id="screen-editor">
     <header class="bar">
       <div class="mark">Outfit Creator <span>v0.5</span></div>
@@ -274,6 +339,71 @@ dialog::backdrop{background:rgba(20,17,13,.62)}
     </header>
     <div class="gallery" id="gallery"></div>
   </section>
+
+  <section class="screen" id="screen-finance" hidden>
+    <header class="bar">
+      <div class="mark">Финансы</div>
+      <button id="btn-fin-add" type="button">+ Запись</button>
+    </header>
+    <div class="sub" role="tablist" aria-label="Месяц">
+      <button id="fin-prev" type="button">‹</button>
+      <span id="fin-month" style="flex:1;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--text-dim)"></span>
+      <button id="fin-next" type="button">›</button>
+    </div>
+    <div class="stats" id="fin-stats"></div>
+    <div class="pane" id="fin-list"></div>
+  </section>
+
+  <section class="screen" id="screen-workouts" hidden>
+    <header class="bar"><div class="mark">Тренировки</div></header>
+    <div class="sub" role="tablist" aria-label="Раздел тренировок" id="wk-tabs">
+      <button data-wk="calc" type="button" role="tab">Калькулятор</button>
+      <button data-wk="weight" type="button" role="tab">Вес</button>
+      <button data-wk="measure" type="button" role="tab">Замеры</button>
+      <button data-wk="food" type="button" role="tab">КБЖУ</button>
+      <button data-wk="progress" type="button" role="tab">Прогресс</button>
+    </div>
+    <div class="pane" id="wk-pane"></div>
+  </section>
+
+  <section class="screen" id="screen-calendar" hidden>
+    <header class="bar"><div class="mark">Календарь</div></header>
+    <div class="sub" role="tablist" aria-label="Раздел календаря" id="cal-tabs">
+      <button data-cal="events" type="button" role="tab">События</button>
+      <button data-cal="reminders" type="button" role="tab">Напоминалки</button>
+    </div>
+    <div class="head">
+      <div class="pane" id="cal-pane"></div>
+      <button class="fab" id="btn-cal-add" type="button" aria-label="Добавить">+</button>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-tops" hidden>
+    <header class="bar"><div class="mark">Топы</div></header>
+    <div class="head">
+      <div class="pane" id="top-pane"></div>
+      <button class="fab" id="btn-top-add" type="button" aria-label="Новый топ">+</button>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-notes" hidden>
+    <header class="bar"><div class="mark">Заметки</div></header>
+    <div class="search"><input id="note-search" type="text" placeholder="Искать по заметкам…"></div>
+    <div class="head">
+      <div class="pane" id="note-pane"></div>
+      <button class="fab" id="btn-note-add" type="button" aria-label="Новая заметка">+</button>
+    </div>
+  </section>
+</div>
+
+<nav class="tabbar" id="tabbar">
+  <button data-view="wardrobe" type="button" aria-pressed="true"><span class="ic">👗</span>Образы</button>
+  <button data-view="finance" type="button" aria-pressed="false"><span class="ic">💰</span>Финансы</button>
+  <button data-view="workouts" type="button" aria-pressed="false"><span class="ic">💪</span>Тренировки</button>
+  <button data-view="calendar" type="button" aria-pressed="false"><span class="ic">🗓️</span>Календарь</button>
+  <button data-view="tops" type="button" aria-pressed="false"><span class="ic">🏆</span>Топы</button>
+  <button data-view="notes" type="button" aria-pressed="false"><span class="ic">📝</span>Заметки</button>
+</nav>
 </div>
 
 <input id="file-in" type="file" accept="image/*" multiple hidden>
@@ -343,6 +473,111 @@ dialog::backdrop{background:rgba(20,17,13,.62)}
   <div class="row"><button class="btn primary" id="btn-copy" type="button">Скопировать</button>
   <button class="btn ghost" id="btn-export-close" type="button">Закрыть</button></div>
 </div></dialog>
+
+<dialog id="dlg-confirm"><form method="dialog" class="sheet">
+  <h2 id="confirm-title">Удалить?</h2><p id="confirm-text"></p>
+  <div class="row"><button class="btn primary" value="ok" type="submit" style="background:var(--danger);color:#fff">Удалить</button>
+  <button class="btn ghost" value="cancel" type="submit">Отмена</button></div>
+</form></dialog>
+
+<dialog id="dlg-fin-add"><form method="dialog" class="sheet">
+  <h2>Новая запись</h2>
+  <div class="seaspick" id="fin-type">
+    <button type="button" data-t="out" aria-pressed="true">Расход</button>
+    <button type="button" data-t="in" aria-pressed="false">Доход</button>
+  </div>
+  <div class="field"><label>Сумма, ₽</label><input id="fin-amount" type="number" min="0" step="0.01" inputmode="decimal"></div>
+  <div class="field"><label>Категория</label><select id="fin-cat"></select></div>
+  <div class="field"><label>Дата</label><input id="fin-date" type="date"></div>
+  <div class="field"><label>Заметка</label><input id="fin-note" type="text" maxlength="60" placeholder="Необязательно"></div>
+  <div class="row"><button class="btn primary" value="ok" type="submit">Сохранить</button>
+  <button class="btn ghost" value="cancel" type="submit">Отмена</button></div>
+</form></dialog>
+
+<dialog id="dlg-wk-weight"><form method="dialog" class="sheet">
+  <h2>Взвешивание</h2>
+  <div class="field"><label>Дата</label><input id="wkw-date" type="date"></div>
+  <div class="field"><label>Вес, кг</label><input id="wkw-value" type="number" min="0" step="0.1"></div>
+  <div class="row"><button class="btn primary" value="ok" type="submit">Сохранить</button>
+  <button class="btn ghost" value="cancel" type="submit">Отмена</button></div>
+</form></dialog>
+
+<dialog id="dlg-wk-measure"><form method="dialog" class="sheet">
+  <h2>Замеры тела</h2>
+  <div class="field"><label>Дата</label><input id="wkm-date" type="date"></div>
+  <div class="field"><label>Грудь, см</label><input id="wkm-chest" type="number" min="0" step="0.1"></div>
+  <div class="field"><label>Талия, см</label><input id="wkm-waist" type="number" min="0" step="0.1"></div>
+  <div class="field"><label>Низ живота, см</label><input id="wkm-belly" type="number" min="0" step="0.1"></div>
+  <div class="field"><label>Бёдра, см</label><input id="wkm-hips" type="number" min="0" step="0.1"></div>
+  <div class="field"><label>Плечо (бицепс), см</label><input id="wkm-arm" type="number" min="0" step="0.1"></div>
+  <div class="row"><button class="btn primary" value="ok" type="submit">Сохранить</button>
+  <button class="btn ghost" value="cancel" type="submit">Отмена</button></div>
+</form></dialog>
+
+<dialog id="dlg-wk-food"><form method="dialog" class="sheet">
+  <h2>КБЖУ и активность за день</h2>
+  <div class="field"><label>Дата</label><input id="wkf-date" type="date"></div>
+  <div class="field"><label>Калории, ккал</label><input id="wkf-kcal" type="number" min="0" step="1"></div>
+  <div class="field"><label>Белки, г</label><input id="wkf-p" type="number" min="0" step="1"></div>
+  <div class="field"><label>Жиры, г</label><input id="wkf-f" type="number" min="0" step="1"></div>
+  <div class="field"><label>Углеводы, г</label><input id="wkf-c" type="number" min="0" step="1"></div>
+  <div class="field"><label>Шаги</label><input id="wkf-steps" type="number" min="0" step="1"></div>
+  <div class="field"><label>Доп. активность</label><input id="wkf-act" type="text" maxlength="60" placeholder="Например: зал 40 мин"></div>
+  <div class="row"><button class="btn primary" value="ok" type="submit">Сохранить</button>
+  <button class="btn ghost" value="cancel" type="submit">Отмена</button></div>
+</form></dialog>
+
+<dialog id="dlg-cal-event"><form method="dialog" class="sheet">
+  <h2>Событие</h2>
+  <div class="field"><label>Название</label><input id="ev-title" type="text" maxlength="60"></div>
+  <div class="field"><label>Дата</label><input id="ev-date" type="date"></div>
+  <div class="field"><label>Время</label><input id="ev-time" type="time"></div>
+  <div class="field"><label>Заметка</label><input id="ev-note" type="text" maxlength="80" placeholder="Необязательно"></div>
+  <div class="row"><button class="btn primary" value="ok" type="submit">Сохранить</button>
+  <button class="btn ghost" value="cancel" type="submit">Отмена</button></div>
+</form></dialog>
+
+<dialog id="dlg-cal-reminder"><form method="dialog" class="sheet">
+  <h2>Напоминалка</h2>
+  <div class="field"><label>Текст</label><input id="rem-title" type="text" maxlength="60"></div>
+  <div class="field"><label>Дата</label><input id="rem-date" type="date"></div>
+  <div class="field"><label>Время</label><input id="rem-time" type="time"></div>
+  <div class="field"><label>Повтор</label><select id="rem-repeat">
+    <option value="none">Без повтора</option><option value="daily">Каждый день</option>
+    <option value="weekly">Каждую неделю</option><option value="monthly">Каждый месяц</option>
+  </select></div>
+  <div class="row"><button class="btn primary" value="ok" type="submit">Сохранить</button>
+  <button class="btn ghost" value="cancel" type="submit">Отмена</button></div>
+</form></dialog>
+
+<dialog id="dlg-top-new"><form method="dialog" class="sheet">
+  <h2>Новый топ</h2>
+  <input id="top-new-title" type="text" maxlength="40" placeholder="Например: Топ фильмов">
+  <div class="row"><button class="btn primary" value="ok" type="submit">Создать</button>
+  <button class="btn ghost" value="cancel" type="submit">Отмена</button></div>
+</form></dialog>
+
+<dialog id="dlg-top-detail"><div class="sheet tall">
+  <h2 id="top-detail-title">Топ</h2>
+  <div class="scroll" id="top-detail-list"></div>
+  <div class="row" style="margin-top:12px">
+    <input id="top-item-input" type="text" maxlength="60" placeholder="Добавить пункт…" style="margin-bottom:0">
+    <button class="btn primary" id="top-item-add" type="button">+</button>
+  </div>
+  <div style="height:10px"></div>
+  <div class="row">
+    <button class="btn ghost" id="top-detail-del" type="button" style="color:var(--danger)">Удалить топ</button>
+    <button class="btn quiet" id="top-detail-close" type="button">Закрыть</button>
+  </div>
+</div></dialog>
+
+<dialog id="dlg-note-edit"><form method="dialog" class="sheet">
+  <h2 id="note-edit-title">Заметка</h2>
+  <input id="note-title" type="text" maxlength="60" placeholder="Заголовок">
+  <textarea id="note-body" class="note-body" placeholder="Текст заметки…"></textarea>
+  <div class="row"><button class="btn primary" value="ok" type="submit">Сохранить</button>
+  <button class="btn ghost" value="cancel" type="submit">Отмена</button></div>
+</form></dialog>
 
 <script>
 /* ==========================================================================
@@ -434,6 +669,7 @@ function hitMap(img){
 const state={ season:"все", category:"верх", layers:{}, model:{strokes:[]},
               sel:null, mode:"transform", brush:18 };
 const $=s=>document.querySelector(s);
+const $$=s=>document.querySelectorAll(s);
 const stageEl=$("#stage"), board=$("#board"), selEl=$("#sel");
 const ctx=board.getContext("2d");
 const view={zoom:1, px:0, py:0, fit:1, scale:1, ox:0, oy:0, dpr:1};
@@ -1147,8 +1383,399 @@ const fmt=iso=>{ const d=new Date(iso);
   return d.toLocaleDateString("ru-RU",{day:"numeric",month:"long"})+", "+d.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"}); };
 let tt; function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show");
   clearTimeout(tt); tt=setTimeout(()=>t.classList.remove("show"),1900); }
-function showEditor(){ $("#screen-gallery").hidden=true; $("#screen-editor").hidden=false; requestAnimationFrame(resize); }
-function showGallery(){ renderOutfits(); $("#screen-editor").hidden=true; $("#screen-gallery").hidden=false; }
+
+/* ==========================================================================
+   Жизнь: финансы, тренировки, календарь, топы, заметки
+   ========================================================================== */
+const uid=p=>p+"_"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const pad2=n=>String(n).padStart(2,"0");
+const toISODate=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+const todayISO=()=>toISODate(new Date());
+const fmtDate=iso=>{ if(!iso) return ""; const d=new Date(iso+"T00:00:00"); return d.toLocaleDateString("ru-RU",{day:"numeric",month:"short"}); };
+const fmtDateLong=iso=>{ const d=new Date(iso+"T00:00:00"); return d.toLocaleDateString("ru-RU",{day:"numeric",month:"long",year:"numeric"}); };
+const monthKey=iso=>iso.slice(0,7);
+const money=n=>(Math.round((n||0)*100)/100).toLocaleString("ru-RU",{minimumFractionDigits:0,maximumFractionDigits:2});
+
+let confirmCb=null;
+function confirmDialog(title,text,cb){ $("#confirm-title").textContent=title; $("#confirm-text").textContent=text; confirmCb=cb; $("#dlg-confirm").showModal(); }
+$("#dlg-confirm").addEventListener("close",()=>{ const cb=confirmCb; confirmCb=null; if($("#dlg-confirm").returnValue==="ok"&&cb) cb(); });
+
+/* ---------- финансы ---------- */
+const KEY_FIN="finance_tx";
+const readTx=()=>readJSON(KEY_FIN,[]);
+const writeTx=l=>writeJSON(KEY_FIN,l);
+const FIN_CATS={out:["Еда","Транспорт","Жильё","Здоровье","Одежда","Развлечения","Другое"],
+  in:["Зарплата","Подарок","Подработка","Другое"]};
+let finMonth=todayISO().slice(0,7);
+const FIN_MONTHS=["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
+function finFillCats(){ const type=$('#fin-type button[aria-pressed="true"]').dataset.t;
+  $("#fin-cat").innerHTML=FIN_CATS[type].map(c=>`<option>${esc(c)}</option>`).join(""); }
+$$("#fin-type button").forEach(b=>b.onclick=()=>{ $$("#fin-type button").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); finFillCats(); });
+$("#btn-fin-add").onclick=()=>{ $$("#fin-type button").forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.t==="out"))); finFillCats();
+  $("#fin-amount").value=""; $("#fin-date").value=todayISO(); $("#fin-note").value=""; $("#dlg-fin-add").showModal(); };
+$("#dlg-fin-add").addEventListener("close",()=>{
+  if($("#dlg-fin-add").returnValue!=="ok") return;
+  const amount=parseFloat($("#fin-amount").value); if(!amount||amount<=0){ toast("Укажите сумму"); return; }
+  const type=$('#fin-type button[aria-pressed="true"]').dataset.t;
+  const tx={id:uid("tx"),type,amount,cat:$("#fin-cat").value,note:$("#fin-note").value.trim(),date:$("#fin-date").value||todayISO()};
+  const l=readTx(); l.unshift(tx); writeTx(l); finMonth=monthKey(tx.date); renderFinance(); toast("Запись добавлена");
+});
+function finShiftMonth(d){ const [y,m]=finMonth.split("-").map(Number); const dt=new Date(y,m-1+d,1); finMonth=`${dt.getFullYear()}-${pad2(dt.getMonth()+1)}`; renderFinance(); }
+$("#fin-prev").onclick=()=>finShiftMonth(-1); $("#fin-next").onclick=()=>finShiftMonth(1);
+function renderFinance(){
+  const [y,m]=finMonth.split("-").map(Number);
+  $("#fin-month").textContent=`${FIN_MONTHS[m-1]} ${y}`;
+  const all=readTx(), list=all.filter(t=>monthKey(t.date)===finMonth).sort((a,b)=>b.date.localeCompare(a.date));
+  const inSum=list.filter(t=>t.type==="in").reduce((s,t)=>s+t.amount,0);
+  const outSum=list.filter(t=>t.type==="out").reduce((s,t)=>s+t.amount,0);
+  const balance=all.reduce((s,t)=>s+(t.type==="in"?t.amount:-t.amount),0);
+  $("#fin-stats").innerHTML=`<div class="stat"><b>${money(inSum)}</b><span>доход за месяц</span></div>
+    <div class="stat"><b>${money(outSum)}</b><span>расход за месяц</span></div>
+    <div class="stat"><b>${money(balance)}</b><span>баланс всего</span></div>`;
+  const box=$("#fin-list"); box.innerHTML="";
+  if(!list.length){ box.innerHTML='<div class="blank"><p>Пока пусто</p>Добавьте первую запись за этот месяц.</div>'; return; }
+  list.forEach(t=>{
+    const row=document.createElement("div"); row.className="item";
+    row.innerHTML=`<div class="meta"><strong>${esc(t.cat)}</strong><span>${fmtDate(t.date)}${t.note?" · "+esc(t.note):""}</span></div>
+      <div class="amt ${t.type}">${t.type==="in"?"+":"−"}${money(t.amount)}</div>`;
+    const rm=document.createElement("button"); rm.className="rm"; rm.type="button"; rm.textContent="🗑";
+    rm.setAttribute("aria-label","Удалить запись");
+    rm.onclick=()=>confirmDialog("Удалить запись?",`«${t.cat}», ${money(t.amount)} ₽`,()=>{ writeTx(readTx().filter(x=>x.id!==t.id)); renderFinance(); toast("Удалено"); });
+    row.appendChild(rm); box.appendChild(row);
+  });
+}
+
+/* ---------- тренировки ---------- */
+const KEY_WK_CALC="wk_calc", KEY_WK_WEIGHT="wk_weight", KEY_WK_MEASURE="wk_measure", KEY_WK_FOOD="wk_food";
+const WK_CALC_DEFAULT={sex:"Ж",height:168,age:28,startWeight:70,activity:1.375,goal:"Дефицит",
+  intensity:"Стандартно",changeKg:5,proteinPerKg:1.8,fatPerKg:0.9};
+const GOAL_PCT={"Дефицит":{"Мягко":.15,"Стандартно":.20,"Жёстко":.25},
+  "Профицит":{"Мягко":.08,"Стандартно":.12,"Жёстко":.16},
+  "Поддержание":{"Мягко":0,"Стандартно":0,"Жёстко":0}};
+function bmrOf(sex,h,a,w){ return sex==="М"?10*w+6.25*h-5*a+5:10*w+6.25*h-5*a-161; }
+function calcAll(){
+  const c=readJSON(KEY_WK_CALC,WK_CALC_DEFAULT);
+  const weights=readJSON(KEY_WK_WEIGHT,[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
+  const current=weights.length?weights[weights.length-1].weight:c.startWeight;
+  const bmrVal=bmrOf(c.sex,c.height,c.age,current);
+  const tdee=bmrVal*c.activity;
+  const pct=(GOAL_PCT[c.goal]||{})[c.intensity]||0;
+  const sign=c.goal==="Дефицит"?-1:(c.goal==="Профицит"?1:0);
+  const deltaKcal=tdee*pct*sign;
+  const target=tdee+deltaKcal;
+  const proteinG=Math.round(current*c.proteinPerKg), proteinK=proteinG*4;
+  const fatG=Math.round(current*c.fatPerKg), fatK=fatG*9;
+  const carbsG=Math.max(0,Math.round((target-proteinK-fatK)/4));
+  const realisticKg=Math.abs(deltaKcal)*84/7700;
+  return {c,current,bmr:bmrVal,tdee,target,proteinG,fatG,carbsG,deltaKcal,realisticKg};
+}
+let wkTab="calc";
+$$("#wk-tabs button").forEach(b=>b.onclick=()=>{ wkTab=b.dataset.wk; renderWorkouts(); });
+function wkSetTab(){ $$("#wk-tabs button").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.wk===wkTab))); }
+function wkShowResult(){
+  const r=calcAll();
+  $("#c-result").innerHTML=`<div class="stats">
+    <div class="stat"><b>${Math.round(r.tdee)}</b><span>расход, ккал/день</span></div>
+    <div class="stat"><b>${Math.round(r.target)}</b><span>цель, ккал/день</span></div>
+    <div class="stat"><b>${r.proteinG} / ${r.fatG} / ${r.carbsG} г</b><span>белки / жиры / углеводы</span></div>
+    <div class="stat"><b>${r.realisticKg.toFixed(1)} кг</b><span>реалистично за 3 мес.</span></div>
+  </div>`;
+}
+function wkRenderCalc(){
+  const c=readJSON(KEY_WK_CALC,WK_CALC_DEFAULT);
+  $("#wk-pane").innerHTML=`
+    <div class="field"><label>Пол</label><select id="c-sex"><option value="Ж">Женский</option><option value="М">Мужской</option></select></div>
+    <div class="row">
+      <div class="field" style="flex:1"><label>Рост, см</label><input id="c-height" type="number" min="100" max="230"></div>
+      <div class="field" style="flex:1"><label>Возраст, лет</label><input id="c-age" type="number" min="10" max="100"></div>
+    </div>
+    <div class="field"><label>Стартовый вес, кг</label><input id="c-start" type="number" min="30" max="300" step="0.1"></div>
+    <div class="field"><label>Активность</label><select id="c-activity">
+      <option value="1.2">Сидячий образ жизни</option>
+      <option value="1.375">Лёгкая активность, 1–3 трен./нед</option>
+      <option value="1.55">Средняя активность, 3–5 трен./нед</option>
+      <option value="1.725">Высокая активность, 6–7 трен./нед</option>
+      <option value="1.9">Очень высокая активность</option>
+    </select></div>
+    <div class="field"><label>Цель по калориям</label><select id="c-goal"><option>Дефицит</option><option>Поддержание</option><option>Профицит</option></select></div>
+    <div class="field"><label>Насколько жёстко</label><select id="c-intensity"><option>Мягко</option><option>Стандартно</option><option>Жёстко</option></select></div>
+    <div class="field"><label>Изменить за 3 месяца, кг</label><input id="c-change" type="number" min="0" max="30" step="0.1"></div>
+    <div class="row">
+      <div class="field" style="flex:1"><label>Белок, г/кг</label><input id="c-protein" type="number" min="0.5" max="3" step="0.1"></div>
+      <div class="field" style="flex:1"><label>Жир, г/кг</label><input id="c-fat" type="number" min="0.3" max="2" step="0.1"></div>
+    </div>
+    <div id="c-result"></div>`;
+  $("#c-sex").value=c.sex; $("#c-height").value=c.height; $("#c-age").value=c.age; $("#c-start").value=c.startWeight;
+  $("#c-activity").value=c.activity; $("#c-goal").value=c.goal; $("#c-intensity").value=c.intensity;
+  $("#c-change").value=c.changeKg; $("#c-protein").value=c.proteinPerKg; $("#c-fat").value=c.fatPerKg;
+  const save=()=>{ writeJSON(KEY_WK_CALC,{sex:$("#c-sex").value,height:+$("#c-height").value||0,age:+$("#c-age").value||0,
+      startWeight:+$("#c-start").value||0,activity:+$("#c-activity").value,goal:$("#c-goal").value,
+      intensity:$("#c-intensity").value,changeKg:+$("#c-change").value||0,proteinPerKg:+$("#c-protein").value||1.8,
+      fatPerKg:+$("#c-fat").value||0.9}); wkShowResult(); };
+  $$("#wk-pane input,#wk-pane select").forEach(el=>el.addEventListener("input",save));
+  wkShowResult();
+}
+function wkRenderWeight(){
+  const list=readJSON(KEY_WK_WEIGHT,[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
+  const c=readJSON(KEY_WK_CALC,null);
+  $("#wk-pane").innerHTML=`<div class="row" style="margin-bottom:10px"><button class="btn primary" id="wk-add-weight" type="button">+ Взвешивание</button></div><div id="wk-weight-list"></div>`;
+  $("#wk-add-weight").onclick=()=>{ $("#wkw-date").value=todayISO(); $("#wkw-value").value=list.length?list[list.length-1].weight:(c?c.startWeight:""); $("#dlg-wk-weight").showModal(); };
+  const box=$("#wk-weight-list");
+  if(!list.length){ box.innerHTML='<div class="blank"><p>Пока нет замеров</p>Взвешивайтесь по утрам раз в неделю, натощак.</div>'; return; }
+  const first=list[0].weight;
+  list.slice().reverse().forEach(w=>{
+    const diff=+(w.weight-first).toFixed(1);
+    const row=document.createElement("div"); row.className="item";
+    row.innerHTML=`<div class="meta"><strong>${w.weight} кг</strong><span>${fmtDate(w.date)} · ${diff>0?"+":""}${diff} кг от старта</span></div>`;
+    const rm=document.createElement("button"); rm.className="rm"; rm.type="button"; rm.textContent="🗑";
+    rm.onclick=()=>confirmDialog("Удалить запись веса?",`${w.weight} кг, ${fmtDate(w.date)}`,()=>{
+      writeJSON(KEY_WK_WEIGHT,readJSON(KEY_WK_WEIGHT,[]).filter(x=>x.id!==w.id)); renderWorkouts(); });
+    row.appendChild(rm); box.appendChild(row);
+  });
+}
+$("#dlg-wk-weight").addEventListener("close",()=>{
+  if($("#dlg-wk-weight").returnValue!=="ok") return;
+  const val=parseFloat($("#wkw-value").value); if(!val||val<=0){ toast("Укажите вес"); return; }
+  const date=$("#wkw-date").value||todayISO();
+  const l=readJSON(KEY_WK_WEIGHT,[]).filter(x=>x.date!==date); l.push({id:uid("w"),date,weight:val}); writeJSON(KEY_WK_WEIGHT,l);
+  renderWorkouts(); toast("Вес сохранён");
+});
+function wkRenderMeasure(){
+  const list=readJSON(KEY_WK_MEASURE,[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
+  $("#wk-pane").innerHTML=`<div class="row" style="margin-bottom:10px"><button class="btn primary" id="wk-add-measure" type="button">+ Замер</button></div><div id="wk-measure-list"></div>`;
+  $("#wk-add-measure").onclick=()=>{ $("#wkm-date").value=todayISO();
+    ["chest","waist","belly","hips","arm"].forEach(k=>$("#wkm-"+k).value=""); $("#dlg-wk-measure").showModal(); };
+  const box=$("#wk-measure-list");
+  if(!list.length){ box.innerHTML='<div class="blank"><p>Пока нет замеров</p>Меряйте раз в 2 недели сантиметровой лентой.</div>'; return; }
+  list.slice().reverse().forEach(m=>{
+    const row=document.createElement("div"); row.className="item";
+    row.innerHTML=`<div class="meta"><strong>${fmtDate(m.date)}</strong><span>Грудь ${m.chest??"—"} · Талия ${m.waist??"—"} · Живот ${m.belly??"—"} · Бёдра ${m.hips??"—"} · Плечо ${m.arm??"—"}</span></div>`;
+    const rm=document.createElement("button"); rm.className="rm"; rm.type="button"; rm.textContent="🗑";
+    rm.onclick=()=>confirmDialog("Удалить замер?",fmtDate(m.date),()=>{ writeJSON(KEY_WK_MEASURE,readJSON(KEY_WK_MEASURE,[]).filter(x=>x.id!==m.id)); renderWorkouts(); });
+    row.appendChild(rm); box.appendChild(row);
+  });
+}
+$("#dlg-wk-measure").addEventListener("close",()=>{
+  if($("#dlg-wk-measure").returnValue!=="ok") return;
+  const date=$("#wkm-date").value||todayISO();
+  const rec={id:uid("m"),date,chest:parseFloat($("#wkm-chest").value)||null,waist:parseFloat($("#wkm-waist").value)||null,
+    belly:parseFloat($("#wkm-belly").value)||null,hips:parseFloat($("#wkm-hips").value)||null,arm:parseFloat($("#wkm-arm").value)||null};
+  const l=readJSON(KEY_WK_MEASURE,[]).filter(x=>x.date!==date); l.push(rec); writeJSON(KEY_WK_MEASURE,l);
+  renderWorkouts(); toast("Замер сохранён");
+});
+function wkRenderFood(){
+  const list=readJSON(KEY_WK_FOOD,[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
+  $("#wk-pane").innerHTML=`<div class="row" style="margin-bottom:10px"><button class="btn primary" id="wk-add-food" type="button">+ День</button></div><div id="wk-food-list"></div>`;
+  $("#wk-add-food").onclick=()=>{ $("#wkf-date").value=todayISO();
+    ["kcal","p","f","c","steps","act"].forEach(k=>$("#wkf-"+k).value=""); $("#dlg-wk-food").showModal(); };
+  const box=$("#wk-food-list");
+  if(!list.length){ box.innerHTML='<div class="blank"><p>Пока нет записей</p>Заносите факт по еде и активности каждый день.</div>'; return; }
+  const r=calcAll();
+  list.forEach(f=>{
+    const pct=r.target?Math.round(f.kcal/r.target*100):0;
+    const cls=(pct>=90&&pct<=110)?"g":(((pct>=70&&pct<90)||(pct>110&&pct<=130))?"y":"r");
+    const row=document.createElement("div"); row.className="item";
+    row.innerHTML=`<div class="meta"><strong>${fmtDate(f.date)} <span class="pct ${cls}">${pct}%</span></strong>
+      <span>${f.kcal||0} ккал · Б${f.p||0} Ж${f.f||0} У${f.c||0}${f.steps?(" · "+f.steps+" шаг."):""}${f.act?(" · "+esc(f.act)):""}</span></div>`;
+    const rm=document.createElement("button"); rm.className="rm"; rm.type="button"; rm.textContent="🗑";
+    rm.onclick=()=>confirmDialog("Удалить запись?",fmtDate(f.date),()=>{ writeJSON(KEY_WK_FOOD,readJSON(KEY_WK_FOOD,[]).filter(x=>x.id!==f.id)); renderWorkouts(); });
+    row.appendChild(rm); box.appendChild(row);
+  });
+}
+$("#dlg-wk-food").addEventListener("close",()=>{
+  if($("#dlg-wk-food").returnValue!=="ok") return;
+  const date=$("#wkf-date").value||todayISO();
+  const rec={id:uid("f"),date,kcal:parseFloat($("#wkf-kcal").value)||0,p:parseFloat($("#wkf-p").value)||0,
+    f:parseFloat($("#wkf-f").value)||0,c:parseFloat($("#wkf-c").value)||0,steps:parseFloat($("#wkf-steps").value)||0,
+    act:$("#wkf-act").value.trim()};
+  const l=readJSON(KEY_WK_FOOD,[]).filter(x=>x.date!==date); l.push(rec); writeJSON(KEY_WK_FOOD,l);
+  renderWorkouts(); toast("Записано");
+});
+function wkRenderProgress(){
+  const w=readJSON(KEY_WK_WEIGHT,[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
+  const ms=readJSON(KEY_WK_MEASURE,[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
+  const row=(label,start,now)=>{ if(start==null||now==null) return `<div class="item"><div class="meta"><strong>${label}</strong><span>Нет данных</span></div></div>`;
+    const diff=+(now-start).toFixed(1);
+    return `<div class="item"><div class="meta"><strong>${label}</strong><span>Старт ${start} → сейчас ${now} (${diff>0?"+":""}${diff})</span></div></div>`; };
+  const field=(k,label)=>{ const withVal=ms.filter(m=>m[k]!=null); return row(label,withVal.length?withVal[0][k]:null,withVal.length?withVal[withVal.length-1][k]:null); };
+  const html=row("Вес, кг",w.length?w[0].weight:null,w.length?w[w.length-1].weight:null)+
+    field("chest","Грудь, см")+field("waist","Талия, см")+field("belly","Низ живота, см")+field("hips","Бёдра, см")+field("arm","Плечо (бицепс), см");
+  $("#wk-pane").innerHTML=html;
+}
+function renderWorkouts(){ wkSetTab();
+  ({calc:wkRenderCalc,weight:wkRenderWeight,measure:wkRenderMeasure,food:wkRenderFood,progress:wkRenderProgress}[wkTab])(); }
+
+/* ---------- календарь: события и напоминалки ---------- */
+const KEY_EVENTS="cal_events", KEY_REMS="cal_reminders";
+let calTab="events";
+$$("#cal-tabs button").forEach(b=>b.onclick=()=>{ calTab=b.dataset.cal; renderCalendar(); });
+$("#btn-cal-add").onclick=()=>{
+  if(calTab==="events"){ $("#ev-title").value=""; $("#ev-date").value=todayISO(); $("#ev-time").value=""; $("#ev-note").value=""; $("#dlg-cal-event").showModal(); }
+  else{ $("#rem-title").value=""; $("#rem-date").value=todayISO(); $("#rem-time").value="09:00"; $("#rem-repeat").value="none"; $("#dlg-cal-reminder").showModal(); }
+};
+$("#dlg-cal-event").addEventListener("close",()=>{
+  if($("#dlg-cal-event").returnValue!=="ok") return;
+  const title=$("#ev-title").value.trim(); if(!title){ toast("Укажите название"); return; }
+  const l=readJSON(KEY_EVENTS,[]); l.push({id:uid("ev"),title,date:$("#ev-date").value||todayISO(),time:$("#ev-time").value,note:$("#ev-note").value.trim()});
+  writeJSON(KEY_EVENTS,l); renderCalendar(); toast("Событие добавлено");
+});
+$("#dlg-cal-reminder").addEventListener("close",()=>{
+  if($("#dlg-cal-reminder").returnValue!=="ok") return;
+  const title=$("#rem-title").value.trim(); if(!title){ toast("Укажите текст"); return; }
+  const l=readJSON(KEY_REMS,[]); l.push({id:uid("rem"),title,date:$("#rem-date").value||todayISO(),time:$("#rem-time").value||"09:00",
+    repeat:$("#rem-repeat").value,done:false,notified:false});
+  writeJSON(KEY_REMS,l); renderCalendar(); toast("Напоминалка добавлена"); requestNotifyPermission();
+});
+function renderEvents(){
+  const box=$("#cal-pane");
+  const list=readJSON(KEY_EVENTS,[]).slice().sort((a,b)=>(a.date+(a.time||"")).localeCompare(b.date+(b.time||"")));
+  box.innerHTML="";
+  if(!list.length){ box.innerHTML='<div class="blank"><p>Событий пока нет</p>Нажмите «+», чтобы добавить.</div>'; return; }
+  const now=todayISO();
+  list.forEach(e=>{
+    const row=document.createElement("div"); row.className="item"+(e.date<now?" done":"");
+    row.innerHTML=`<div class="meta"><strong>${esc(e.title)}</strong><span>${fmtDateLong(e.date)}${e.time?", "+e.time:""}${e.note?" · "+esc(e.note):""}</span></div>`;
+    const rm=document.createElement("button"); rm.className="rm"; rm.type="button"; rm.textContent="🗑";
+    rm.onclick=()=>confirmDialog("Удалить событие?",e.title,()=>{ writeJSON(KEY_EVENTS,readJSON(KEY_EVENTS,[]).filter(x=>x.id!==e.id)); renderCalendar(); });
+    row.appendChild(rm); box.appendChild(row);
+  });
+}
+function renderReminders(){
+  const box=$("#cal-pane");
+  const list=readJSON(KEY_REMS,[]).slice().sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  box.innerHTML="";
+  if(!list.length){ box.innerHTML='<div class="blank"><p>Напоминалок пока нет</p>Нажмите «+», чтобы добавить.</div>'; return; }
+  list.forEach(r=>{
+    const row=document.createElement("div"); row.className="item"+(r.done?" done":"");
+    const chk=document.createElement("button"); chk.className="chk"; chk.type="button"; chk.setAttribute("aria-pressed",String(!!r.done)); chk.textContent="✓";
+    chk.onclick=()=>{ const l=readJSON(KEY_REMS,[]); const it=l.find(x=>x.id===r.id); if(it){ it.done=!it.done; writeJSON(KEY_REMS,l); renderCalendar(); } };
+    const meta=document.createElement("div"); meta.className="meta";
+    meta.innerHTML=`<strong>${esc(r.title)}</strong><span>${fmtDateLong(r.date)}, ${r.time}${r.repeat!=="none"?" · повтор":""}</span>`;
+    const rm=document.createElement("button"); rm.className="rm"; rm.type="button"; rm.textContent="🗑";
+    rm.onclick=()=>confirmDialog("Удалить напоминалку?",r.title,()=>{ writeJSON(KEY_REMS,readJSON(KEY_REMS,[]).filter(x=>x.id!==r.id)); renderCalendar(); });
+    row.append(chk,meta,rm); box.appendChild(row);
+  });
+}
+function renderCalendar(){
+  $$("#cal-tabs button").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.cal===calTab)));
+  calTab==="events"?renderEvents():renderReminders();
+}
+function requestNotifyPermission(){ if(window.Notification&&Notification.permission==="default") Notification.requestPermission().catch(()=>{}); }
+function checkReminders(){
+  const l=readJSON(KEY_REMS,[]); const now=new Date(); let changed=false;
+  l.forEach(r=>{ if(r.done||r.notified) return; const due=new Date(r.date+"T"+(r.time||"09:00"));
+    if(due<=now){ r.notified=true; changed=true;
+      if(window.Notification&&Notification.permission==="granted"){ try{ new Notification("Напоминание",{body:r.title}); }catch(e){} }
+      else toast("Напоминание: "+r.title);
+      if(r.repeat&&r.repeat!=="none"){ const nd=new Date(due);
+        if(r.repeat==="daily") nd.setDate(nd.getDate()+1);
+        else if(r.repeat==="weekly") nd.setDate(nd.getDate()+7);
+        else if(r.repeat==="monthly") nd.setMonth(nd.getMonth()+1);
+        r.date=toISODate(nd); r.notified=false; }
+    } });
+  if(changed){ writeJSON(KEY_REMS,l); if($("#screen-calendar").hidden===false) renderCalendar(); }
+}
+setInterval(checkReminders,60000);
+
+/* ---------- топы ---------- */
+const readTops=()=>readJSON("top_lists",[]);
+const writeTops=l=>writeJSON("top_lists",l);
+let topOpenId=null;
+$("#btn-top-add").onclick=()=>{ $("#top-new-title").value=""; $("#dlg-top-new").showModal(); };
+$("#dlg-top-new").addEventListener("close",()=>{
+  if($("#dlg-top-new").returnValue!=="ok") return;
+  const title=$("#top-new-title").value.trim(); if(!title) return;
+  const l=readTops(); l.push({id:uid("top"),title,items:[]}); writeTops(l); renderTops(); toast("Топ создан");
+});
+function renderTops(){
+  const box=$("#top-pane"); const list=readTops(); box.innerHTML="";
+  if(!list.length){ box.innerHTML='<div class="blank"><p>Топов пока нет</p>Создайте свой первый рейтинг — фильмы, книги, места, цели…</div>'; return; }
+  list.forEach(t=>{
+    const cnt=t.items.length;
+    const card=document.createElement("button"); card.type="button"; card.className="top-card";
+    card.innerHTML=`<div class="meta"><strong>${esc(t.title)}</strong><span>${cnt} пункт${cnt%10===1&&cnt%100!==11?"":(cnt%10>=2&&cnt%10<=4&&(cnt%100<10||cnt%100>=20)?"а":"ов")}</span></div>`;
+    card.onclick=()=>openTop(t.id); box.appendChild(card);
+  });
+}
+function openTop(id){ topOpenId=id; renderTopDetail(); $("#dlg-top-detail").showModal(); }
+function renderTopDetail(){
+  const t=readTops().find(x=>x.id===topOpenId); if(!t) return;
+  $("#top-detail-title").textContent=t.title;
+  const box=$("#top-detail-list"); box.innerHTML="";
+  if(!t.items.length){ box.innerHTML='<p style="color:var(--text-dim);font-size:13px;margin:6px 0">Пока пусто — добавьте пункт ниже.</p>'; }
+  t.items.forEach((it,i)=>{
+    const row=document.createElement("div"); row.className="top-item";
+    row.innerHTML=`<b class="rank">${i+1}</b><span>${esc(it.text)}</span>`;
+    const up=document.createElement("button"); up.className="mv"; up.type="button"; up.textContent="↑"; up.disabled=i===0;
+    up.onclick=()=>moveTopItem(i,-1);
+    const down=document.createElement("button"); down.className="mv"; down.type="button"; down.textContent="↓"; down.disabled=i===t.items.length-1;
+    down.onclick=()=>moveTopItem(i,1);
+    const rm=document.createElement("button"); rm.className="rm mv"; rm.type="button"; rm.textContent="🗑";
+    rm.onclick=()=>{ const tt=readTops(); const cur=tt.find(x=>x.id===topOpenId); cur.items.splice(i,1); writeTops(tt); renderTopDetail(); renderTops(); };
+    row.append(up,down,rm); box.appendChild(row);
+  });
+}
+function moveTopItem(i,dir){ const tt=readTops(); const t=tt.find(x=>x.id===topOpenId); const j=i+dir;
+  if(j<0||j>=t.items.length) return; [t.items[i],t.items[j]]=[t.items[j],t.items[i]]; writeTops(tt); renderTopDetail(); }
+$("#top-item-add").onclick=()=>{ const val=$("#top-item-input").value.trim(); if(!val) return;
+  const tt=readTops(); const t=tt.find(x=>x.id===topOpenId); t.items.push({id:uid("ti"),text:val}); writeTops(tt);
+  $("#top-item-input").value=""; renderTopDetail(); renderTops(); };
+$("#top-item-input").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); $("#top-item-add").click(); } });
+$("#top-detail-close").onclick=()=>$("#dlg-top-detail").close();
+$("#top-detail-del").onclick=()=>{ const t=readTops().find(x=>x.id===topOpenId);
+  confirmDialog("Удалить топ?",t?t.title:"",()=>{ writeTops(readTops().filter(x=>x.id!==topOpenId)); $("#dlg-top-detail").close(); renderTops(); }); };
+
+/* ---------- заметки ---------- */
+const readNotes=()=>readJSON("notes_list",[]);
+const writeNotes=l=>writeJSON("notes_list",l);
+let noteEditId=null, noteQuery="";
+$("#btn-note-add").onclick=()=>{ noteEditId=null; $("#note-edit-title").textContent="Новая заметка"; $("#note-title").value=""; $("#note-body").value=""; $("#dlg-note-edit").showModal(); };
+$("#dlg-note-edit").addEventListener("close",()=>{
+  if($("#dlg-note-edit").returnValue!=="ok") return;
+  const title=$("#note-title").value.trim(), body=$("#note-body").value.trim();
+  if(!title&&!body) return;
+  const l=readNotes();
+  if(noteEditId){ const it=l.find(x=>x.id===noteEditId); if(it){ it.title=title; it.body=body; it.ts=new Date().toISOString(); } }
+  else l.unshift({id:uid("note"),title,body,ts:new Date().toISOString(),pinned:false});
+  writeNotes(l); renderNotes(); toast("Заметка сохранена");
+});
+function editNote(n){ noteEditId=n.id; $("#note-edit-title").textContent="Заметка"; $("#note-title").value=n.title; $("#note-body").value=n.body; $("#dlg-note-edit").showModal(); }
+$("#note-search").addEventListener("input",e=>{ noteQuery=e.target.value.trim().toLowerCase(); renderNotes(); });
+function renderNotes(){
+  const box=$("#note-pane"); let list=readNotes();
+  if(noteQuery) list=list.filter(n=>(n.title+" "+n.body).toLowerCase().includes(noteQuery));
+  list=list.slice().sort((a,b)=>(b.pinned-a.pinned)||b.ts.localeCompare(a.ts));
+  box.innerHTML="";
+  if(!list.length){ box.innerHTML='<div class="blank"><p>Заметок нет</p>Нажмите «+», чтобы записать первую мысль.</div>'; return; }
+  list.forEach(n=>{
+    const row=document.createElement("div"); row.className="item";
+    const meta=document.createElement("button"); meta.type="button"; meta.className="meta"; meta.style.cssText="background:none;border:0;text-align:left;padding:0;flex:1;min-width:0";
+    meta.innerHTML=`<strong>${esc(n.title||"Без названия")}</strong><span>${esc((n.body||"").slice(0,60))}</span>`;
+    meta.onclick=()=>editNote(n);
+    const pin=document.createElement("button"); pin.className="pin"; pin.type="button"; pin.textContent="📌"; pin.setAttribute("aria-pressed",String(!!n.pinned));
+    pin.setAttribute("aria-label","Закрепить"); pin.onclick=()=>{ const l=readNotes(); const it=l.find(x=>x.id===n.id); it.pinned=!it.pinned; writeNotes(l); renderNotes(); };
+    const rm=document.createElement("button"); rm.className="rm"; rm.type="button"; rm.textContent="🗑";
+    rm.onclick=()=>confirmDialog("Удалить заметку?",n.title||"Без названия",()=>{ writeNotes(readNotes().filter(x=>x.id!==n.id)); renderNotes(); });
+    row.append(meta,pin,rm); box.appendChild(row);
+  });
+}
+
+/* ---------- нижняя навигация ---------- */
+const SCREEN_GROUP={editor:"wardrobe",gallery:"wardrobe",finance:"finance",workouts:"workouts",calendar:"calendar",tops:"tops",notes:"notes"};
+function setTab(group){ $$("#tabbar button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.view===group))); }
+function showScreen(id){ $$(".views .screen").forEach(s=>s.hidden=true); $("#screen-"+id).hidden=false; setTab(SCREEN_GROUP[id]||id); }
+$$("#tabbar button").forEach(b=>b.onclick=()=>{
+  const v=b.dataset.view;
+  if(v==="wardrobe") showEditor();
+  else if(v==="finance"){ showScreen("finance"); renderFinance(); }
+  else if(v==="workouts"){ showScreen("workouts"); renderWorkouts(); }
+  else if(v==="calendar"){ showScreen("calendar"); renderCalendar(); }
+  else if(v==="tops"){ showScreen("tops"); renderTops(); }
+  else if(v==="notes"){ showScreen("notes"); renderNotes(); }
+});
+
+function showEditor(){ showScreen("editor"); requestAnimationFrame(resize); }
+function showGallery(){ renderOutfits(); showScreen("gallery"); }
 
 $("#btn-gallery").onclick=showGallery;
 $("#btn-back").onclick=showEditor;
@@ -1186,6 +1813,7 @@ if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch
   }));
   state.model.strokes=(readJSON(KEY_MODEL,{strokes:[]}).strokes)||[];
   commit(); renderWorn(); resize();
+  checkReminders();
 })();
 </script>
 </body>
