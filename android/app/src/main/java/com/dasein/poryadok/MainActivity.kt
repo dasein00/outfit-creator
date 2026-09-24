@@ -14,6 +14,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dasein.poryadok.ui.AppRoot
 import com.dasein.poryadok.ui.LockScreen
 import com.dasein.poryadok.ui.theme.PoryadokTheme
+import kotlinx.coroutines.launch
 
 object Lock {
     val unlocked = mutableStateOf(false)
@@ -36,6 +37,7 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
         Graph.init(this)
         deepLink.value = intent?.getStringExtra(EXTRA_ROUTE)
+        if (intent?.getBooleanExtra(EXTRA_DEMO, false) == true) Graph.scope.launch { DemoData.fill() }
         if (Build.VERSION.SDK_INT >= 33) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
 
         setContent {
@@ -59,5 +61,6 @@ class MainActivity : FragmentActivity() {
 
     companion object {
         const val EXTRA_ROUTE = "route"
+        const val EXTRA_DEMO = "demo"
     }
 }

@@ -40,6 +40,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.fragment.app.FragmentActivity
 import androidx.navigation.NavHostController
 import com.dasein.poryadok.BuildConfigInfo
+import com.dasein.poryadok.DemoData
 import com.dasein.poryadok.Graph
 import com.dasein.poryadok.data.Settings
 import com.dasein.poryadok.logic.Dates
@@ -166,6 +167,12 @@ fun SettingsScreen(nav: NavHostController, s: Settings) {
                     OutlinedButton(onClick = { exportLauncher.launch("poryadok-${Dates.day(Dates.today())}.zip") }, modifier = Modifier.weight(1f)) { Text("Сохранить копию") }
                     OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) }, modifier = Modifier.weight(1f)) { Text("Восстановить") }
                 }
+                OutlinedButton(onClick = {
+                    scope.launch {
+                        message = if (DemoData.fill()) "Пример данных добавлен — загляните на главный экран"
+                        else "Пример добавляется только в пустое приложение"
+                    }
+                }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Заполнить примером") }
                 message?.let { Text(it, fontSize = 13.sp, color = extra.ok, modifier = Modifier.padding(top = 8.dp)) }
             }
             SectionTitle("О приложении")

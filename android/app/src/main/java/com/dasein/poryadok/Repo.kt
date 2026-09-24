@@ -12,12 +12,15 @@ import com.dasein.poryadok.logic.Dates
 import com.dasein.poryadok.logic.Repeat
 import com.dasein.poryadok.logic.nextOccurrence
 import com.dasein.poryadok.ui.wardrobe.WardrobeSeed
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /** Операции, которые затрагивают несколько таблиц или содержат правила предметной области. */
 object Repo {
     private val dao get() = Graph.dao
+    private val seedLock = Mutex()
 
-    suspend fun seed() {
+    suspend fun seed() = seedLock.withLock {
         if (dao.categoryCount() == 0) {
             val out = listOf(
                 "Продукты" to "🛒", "Кафе и рестораны" to "☕", "Транспорт" to "🚕", "Жильё и ЖКХ" to "🏠",
