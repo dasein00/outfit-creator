@@ -28,11 +28,17 @@ import com.dasein.poryadok.data.WeightEntry
 import com.dasein.poryadok.data.Workout
 import com.dasein.poryadok.logic.Dates
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.random.Random
 
 /** Пример данных, чтобы сразу увидеть, как всё работает. Добавляется только в пустое приложение. */
 object DemoData {
-    suspend fun fill(): Boolean {
+    private val lock = Mutex()
+
+    suspend fun fill(): Boolean = lock.withLock { fillLocked() }
+
+    private suspend fun fillLocked(): Boolean {
         val dao = Graph.dao
         Repo.seed()
         if (dao.tasks().first().isNotEmpty() || dao.habitsNow().isNotEmpty()) return false
@@ -94,7 +100,7 @@ object DemoData {
 
         dao.upsertProfile(BodyProfile(male = false, heightCm = 168.0, age = 28, startWeight = 75.0, startDay = Dates.weekStart(today) - 42))
         var w = 75.0
-        for (k in 0..6) { dao.upsertWeight(WeightEntry(Dates.weekStart(today) - 42 + k * 7L, w)); w -= .5 + rnd.nextDouble() * .6 }
+        for (k in 0..6) { dao.upsertWeight(WeightEntry(Dates.weekStart(today) - 42 + k * 7L, w)); w = Math.round((w - .5 - rnd.nextDouble() * .6) * 10) / 10.0 }
         dao.upsertMeasurement(Measurement(today - 42, 96.0, 78.0, 90.0, 104.0, 30.0))
         dao.upsertMeasurement(Measurement(today - 28, 95.0, 76.5, 88.0, 103.0, 29.5))
         dao.upsertMeasurement(Measurement(today - 14, 94.0, 75.0, 86.5, 102.0, 29.5))

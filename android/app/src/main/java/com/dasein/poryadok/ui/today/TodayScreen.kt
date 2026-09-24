@@ -373,10 +373,10 @@ fun goalProgress(g: com.dasein.poryadok.data.Goal, tasksDone: Int, tasksTotal: I
 private fun RingStat(modifier: Modifier, progress: Float, color: androidx.compose.ui.graphics.Color, value: String, label: String, onClick: () -> Unit) {
     Tile(modifier, onClick = onClick, padding = 10.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            ProgressRing(progress, color, size = 40.dp, stroke = 5.dp)
-            Column(Modifier.padding(start = 8.dp)) {
+            ProgressRing(progress, color, size = 32.dp, stroke = 4.dp)
+            Column(Modifier.padding(start = 6.dp)) {
                 Text(value, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                Text(label, fontSize = 11.sp, color = LocalExtra.current.dim, maxLines = 1)
+                Text(label, fontSize = 10.sp, color = LocalExtra.current.dim, maxLines = 1, softWrap = false)
             }
         }
     }

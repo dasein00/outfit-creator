@@ -104,7 +104,7 @@ fun balanceOf(a: Account, txns: List<Txn>): Double {
 fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int) {
     val dao = Graph.dao
     val cur = settings.currency
-    var tab by rememberSaveable { mutableStateOf(initialTab) }
+    var tab by rememberSaveable(initialTab) { mutableStateOf(initialTab) }
     var ymText by rememberSaveable { mutableStateOf(YearMonth.now().toString()) }
     val ym = YearMonth.parse(ymText)
     val txns by observe(emptyList()) { dao.txns() }

@@ -144,8 +144,11 @@ fun FocusScreen(nav: NavHostController, settings: Settings) {
                     listOf(3, 5, 10).forEach { m ->
                         Pill("$m", settings.focusBreak == m) { io { Graph.prefs.update { it.copy(focusBreak = m) } } }
                     }
+                }
+                SectionTitle("Длинный перерыв")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(15, 20, 30).forEach { m ->
-                        Pill("длинный $m", settings.focusLong == m) { io { Graph.prefs.update { it.copy(focusLong = m) } } }
+                        Pill("$m", settings.focusLong == m) { io { Graph.prefs.update { it.copy(focusLong = m) } } }
                     }
                 }
             }

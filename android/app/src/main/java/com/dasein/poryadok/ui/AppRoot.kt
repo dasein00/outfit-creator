@@ -125,7 +125,14 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
     LaunchedEffect(deepLink.value) {
         val link = deepLink.value ?: return@LaunchedEffect
         deepLink.value = null
-        if (tabs.any { it.route == link.substringBefore('?') }) nav.openTab(link) else nav.navigate(link)
+        when {
+            '?' !in link && tabs.any { it.route == link } -> nav.openTab(link)
+            tabs.any { it.route == link.substringBefore('?') } -> nav.navigate(link) {
+                popUpTo(nav.graph.findStartDestination().id)
+                launchSingleTop = true
+            }
+            else -> nav.navigate(link)
+        }
     }
 
     Column(Modifier.fillMaxSize()) {

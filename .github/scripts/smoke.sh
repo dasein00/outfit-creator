@@ -30,11 +30,12 @@ done
 
 adb shell am start -n $PKG/.MainActivity --es route "wardrobe"
 sleep 3
-adb shell input tap 150 2000
+adb shell input tap 385 1980
 sleep 3
 adb exec-out screencap -p > shots/99_wardrobe_tap.png
 
 adb logcat -d -b crash > shots/crash.txt || true
+[ -s shots/crash.txt ] || echo "no crashes" > shots/crash.txt
 adb logcat -d | grep -E "AndroidRuntime|FATAL|Poryadok|poryadok|System.err" | tail -300 > shots/log.txt || true
 if adb shell pidof $PKG > /dev/null; then echo "APP ALIVE" > shots/status.txt; else echo "APP DEAD" > shots/status.txt; fi
 cat shots/status.txt

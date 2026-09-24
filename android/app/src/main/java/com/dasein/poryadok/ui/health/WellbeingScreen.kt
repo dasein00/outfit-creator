@@ -76,7 +76,7 @@ val MOOD_TAGS = listOf(
 
 @Composable
 fun WellbeingScreen(nav: NavHostController, initialTab: Int) {
-    var tab by rememberSaveable { mutableStateOf(initialTab) }
+    var tab by rememberSaveable(initialTab) { mutableStateOf(initialTab) }
     Screen(title = "Самочувствие", onBack = { nav.popBackStack() }) { pad ->
         Column(Modifier.padding(pad)) {
             TabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.background) {

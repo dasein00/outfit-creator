@@ -110,12 +110,12 @@ fun BodyProfile.input(weight: Double) = BodyInput(
 
 @Composable
 fun HealthScreen(nav: NavHostController, initialTab: Int) {
-    var tab by rememberSaveable { mutableStateOf(initialTab) }
+    var tab by rememberSaveable(initialTab) { mutableStateOf(initialTab) }
     val dao = Graph.dao
     val profileOrNull by observe(null) { dao.profile() }
     val weights by observe(emptyList()) { dao.weights() }
     LaunchedEffect(profileOrNull) {
-        if (profileOrNull == null) dao.upsertProfile(BodyProfile(startDay = Dates.weekStart(Dates.today())))
+        if (profileOrNull == null && dao.profileNow() == null) dao.upsertProfile(BodyProfile(startDay = Dates.weekStart(Dates.today())))
     }
     val profile = profileOrNull ?: BodyProfile()
     val current = weights.lastOrNull()?.kg ?: profile.startWeight
@@ -166,7 +166,7 @@ private fun CalcTab(p: BodyProfile, current: Double, plan: NutritionPlan) {
     }
     Gap(8.dp)
     NumberField(start, { start = it; it.num()?.let { v -> upd(p.copy(startWeight = v)) } }, "Стартовый вес", suffix = "кг")
-    Text("Текущий вес: ${current.plain()} кг (из последнего взвешивания)", fontSize = 12.sp, color = extra.dim)
+    Text("Текущий вес: ${"%.1f".format(current)} кг (из последнего взвешивания)", fontSize = 12.sp, color = extra.dim)
     SectionTitle("Активность")
     ACTIVITY_LEVELS.forEach { (k, label) ->
         Row(
@@ -402,11 +402,11 @@ private fun WeightTab(profile: BodyProfile, weights: List<WeightEntry>) {
     SectionTitle("Записи")
     weights.reversed().forEach { w ->
         val week = ((w.day - start) / 7).toInt()
-        val plan = Nutrition.plannedWeight(profile.startWeight, profile.changeKg, goal, week)
+        val plan = Nutrition.plannedWeight(profile.startWeight, profile.changeKg, goal, week.coerceAtLeast(0))
         Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("${w.kg.plain()} кг", fontWeight = FontWeight.Medium)
-                Text("${Dates.label(w.day)} · неделя ${week + 1} · план ${"%.1f".format(plan)}", fontSize = 12.sp, color = extra.dim)
+                Text(if (week >= 0) "${Dates.label(w.day)} · неделя ${week + 1} · план ${"%.1f".format(plan)}" else "${Dates.label(w.day)} · до старта", fontSize = 12.sp, color = extra.dim)
             }
             IconButton(onClick = { io { Graph.dao.deleteWeight(w) } }) { Icon(Icons.Default.Close, "Удалить", tint = extra.dim) }
         }

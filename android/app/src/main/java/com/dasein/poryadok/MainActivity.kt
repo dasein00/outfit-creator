@@ -37,7 +37,7 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
         Graph.init(this)
         deepLink.value = intent?.getStringExtra(EXTRA_ROUTE)
-        if (intent?.getBooleanExtra(EXTRA_DEMO, false) == true) Graph.scope.launch { DemoData.fill() }
+        if (savedInstanceState == null && intent?.getBooleanExtra(EXTRA_DEMO, false) == true) Graph.scope.launch { DemoData.fill() }
         if (Build.VERSION.SDK_INT >= 33) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
 
         setContent {

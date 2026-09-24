@@ -90,7 +90,7 @@ import java.time.YearMonth
 
 @Composable
 fun CalendarScreen(nav: NavHostController, initialTab: Int) {
-    var tab by rememberSaveable { mutableStateOf(initialTab) }
+    var tab by rememberSaveable(initialTab) { mutableStateOf(initialTab) }
     var addMenu by remember { mutableStateOf(false) }
     var editReminder by remember { mutableStateOf<Reminder?>(null) }
     var quickTask by remember { mutableStateOf(false) }
