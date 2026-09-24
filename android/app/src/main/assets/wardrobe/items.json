@@ -1,0 +1,727 @@
+[
+{
+"id": "shirt_stripe",
+"name": "Рубашка в голубую полоску",
+"category": "верх",
+"season": "лето",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "shirt_stripe.webp",
+"sketch": false
+},
+{
+"id": "tee_spider",
+"name": "Футболка оверсайз «Spider»",
+"category": "верх",
+"season": "лето",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "tee_spider.webp",
+"sketch": false
+},
+{
+"id": "polo_beige",
+"name": "Поло в рубчик, беж",
+"category": "верх",
+"season": "лето",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "polo_beige.webp",
+"sketch": false
+},
+{
+"id": "top_blue",
+"name": "Рубашка голубая (v1)",
+"category": "верх",
+"season": "лето",
+"pct": [
+105,
+50,
+13.4
+],
+"file": "top_blue.webp",
+"sketch": false
+},
+{
+"id": "tee_skyblue",
+"name": "Футболка оверсайз, голубая",
+"category": "верх",
+"season": "лето",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "tee_skyblue.webp",
+"sketch": false
+},
+{
+"id": "tee_lego",
+"name": "Футболка «Lego Star Wars»",
+"category": "верх",
+"season": "лето",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "tee_lego.webp",
+"sketch": false
+},
+{
+"id": "tee_frog",
+"name": "Футболка «Trust me», рингер",
+"category": "верх",
+"season": "лето",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "tee_frog.webp",
+"sketch": false
+},
+{
+"id": "tee_green",
+"name": "Футболка тёмно-зелёная",
+"category": "верх",
+"season": "лето",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "tee_green.webp",
+"sketch": false
+},
+{
+"id": "tee_raglan",
+"name": "Футболка реглан, три цвета",
+"category": "верх",
+"season": "весна",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "tee_raglan.webp",
+"sketch": false
+},
+{
+"id": "shirt_cross",
+"name": "Оверширт «Nowhere»",
+"category": "верх",
+"season": "весна",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "shirt_cross.webp",
+"sketch": false
+},
+{
+"id": "shirt_swirl",
+"name": "Рубашка с чёрно-белым принтом",
+"category": "верх",
+"season": "осень",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "shirt_swirl.webp",
+"sketch": false
+},
+{
+"id": "top_red",
+"name": "Оверширт «Successful time»",
+"category": "верх",
+"season": "осень",
+"pct": [
+107,
+50,
+12.8
+],
+"file": "top_red.webp",
+"sketch": false
+},
+{
+"id": "shirt_cord",
+"name": "Вельветовая куртка-рубашка",
+"category": "верх",
+"season": "осень",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "shirt_cord.webp",
+"sketch": false
+},
+{
+"id": "shirt_pinstripe",
+"name": "Рубашка в тонкую полоску",
+"category": "верх",
+"season": "лето",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "shirt_pinstripe.webp",
+"sketch": false
+},
+{
+"id": "shirt_stars",
+"name": "Рубашка белая со звёздами",
+"category": "верх",
+"season": "лето",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "shirt_stars.webp",
+"sketch": false
+},
+{
+"id": "shirt_linen",
+"name": "Рубашка льняная белая",
+"category": "верх",
+"season": "лето",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "shirt_linen.webp",
+"sketch": false
+},
+{
+"id": "shirt_sage",
+"name": "Рубашка шалфейная в рубчик",
+"category": "верх",
+"season": "лето",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "shirt_sage.webp",
+"sketch": false
+},
+{
+"id": "tee_fries",
+"name": "Футболка «Fries»",
+"category": "верх",
+"season": "лето",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "tee_fries.webp",
+"sketch": false
+},
+{
+"id": "tee_yellow",
+"name": "Футболка жёлтая",
+"category": "верх",
+"season": "лето",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "tee_yellow.webp",
+"sketch": false
+},
+{
+"id": "shirt_heart",
+"name": "Оверширт белый с сердцем",
+"category": "верх",
+"season": "весна",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "shirt_heart.webp",
+"sketch": false
+},
+{
+"id": "shirt_darkgreen",
+"name": "Рубашка тёмно-зелёная",
+"category": "верх",
+"season": "осень",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "shirt_darkgreen.webp",
+"sketch": false
+},
+{
+"id": "shirt_cord_red",
+"name": "Вельветовая куртка, бордовая",
+"category": "верх",
+"season": "осень",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "shirt_cord_red.webp",
+"sketch": false
+},
+{
+"id": "shirt_cord_grey",
+"name": "Вельветовый оверширт, серый",
+"category": "верх",
+"season": "осень",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "shirt_cord_grey.webp",
+"sketch": false
+},
+{
+"id": "hoodie_camo",
+"name": "Худи на молнии, камуфляж",
+"category": "верх",
+"season": "зима",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "hoodie_camo.webp",
+"sketch": false
+},
+{
+"id": "sweat_monte",
+"name": "Свитшот «Monte» на молнии",
+"category": "верх",
+"season": "зима",
+"pct": [
+106,
+50,
+12.8
+],
+"file": "sweat_monte.webp",
+"sketch": false
+},
+{
+"id": "top_bw",
+"name": "Оверширт чёрно-белый (v1)",
+"category": "верх",
+"season": "зима",
+"pct": [
+107,
+50,
+12.8
+],
+"file": "top_bw.webp",
+"sketch": false
+},
+{
+"id": "jeans_light",
+"name": "Джинсы бананы, светлые",
+"category": "низ",
+"season": "весна",
+"pct": [
+89.6,
+50,
+42,
+54
+],
+"file": "jeans_light.webp",
+"sketch": false
+},
+{
+"id": "pants_tan",
+"name": "Брюки охра с манжетами",
+"category": "низ",
+"season": "весна",
+"pct": [
+76,
+50,
+42
+],
+"file": "pants_tan.webp",
+"sketch": false
+},
+{
+"id": "trousers_mint",
+"name": "Брюки мятные",
+"category": "низ",
+"season": "весна",
+"pct": [
+68.0,
+50,
+42,
+54
+],
+"file": "trousers_mint.webp",
+"sketch": false
+},
+{
+"id": "trousers_beige",
+"name": "Брюки бежевые со складками",
+"category": "низ",
+"season": "весна",
+"pct": [
+66.8,
+50,
+42,
+54
+],
+"file": "trousers_beige.webp",
+"sketch": false
+},
+{
+"id": "jeans_black",
+"name": "Джинсы прямые, чёрные",
+"category": "низ",
+"season": "осень",
+"pct": [
+74.8,
+50,
+42,
+54
+],
+"file": "jeans_black.webp",
+"sketch": false
+},
+{
+"id": "trousers_grey",
+"name": "Брюки со складками, серые",
+"category": "низ",
+"season": "осень",
+"pct": [
+83.5,
+50,
+42,
+54
+],
+"file": "trousers_grey.webp",
+"sketch": false
+},
+{
+"id": "pants_brown",
+"name": "Брюки со стрелками, тёмные",
+"category": "низ",
+"season": "осень",
+"pct": [
+76,
+50,
+42
+],
+"file": "pants_brown.webp",
+"sketch": false
+},
+{
+"id": "trousers_navy",
+"name": "Брюки тёмно-синие",
+"category": "низ",
+"season": "осень",
+"pct": [
+71.0,
+50,
+42,
+54
+],
+"file": "trousers_navy.webp",
+"sketch": false
+},
+{
+"id": "trousers_black",
+"name": "Брюки чёрные классические",
+"category": "низ",
+"season": "осень",
+"pct": [
+69.2,
+50,
+42,
+54
+],
+"file": "trousers_black.webp",
+"sketch": false
+},
+{
+"id": "trousers_black_wide",
+"name": "Брюки чёрные широкие с ремнём",
+"category": "низ",
+"season": "осень",
+"pct": [
+89.2,
+50,
+42,
+54
+],
+"file": "trousers_black_wide.webp",
+"sketch": false
+},
+{
+"id": "trousers_bluegrey",
+"name": "Брюки серо-синие",
+"category": "низ",
+"season": "осень",
+"pct": [
+70.6,
+50,
+42,
+54
+],
+"file": "trousers_bluegrey.webp",
+"sketch": false
+},
+{
+"id": "trousers_grey2",
+"name": "Брюки серые с пряжкой",
+"category": "низ",
+"season": "осень",
+"pct": [
+70.0,
+50,
+42,
+54
+],
+"file": "trousers_grey2.webp",
+"sketch": false
+},
+{
+"id": "shorts_arrow",
+"name": "Шорты белые с принтом",
+"category": "низ",
+"season": "лето",
+"pct": [
+79.5,
+50,
+42
+],
+"file": "shorts_arrow.webp",
+"sketch": false
+},
+{
+"id": "shorts_palm_white",
+"name": "Шорты белые с пальмами",
+"category": "низ",
+"season": "лето",
+"pct": [
+90.8,
+50,
+42
+],
+"file": "shorts_palm_white.webp",
+"sketch": false
+},
+{
+"id": "shorts_yellow",
+"name": "Шорты жёлтые",
+"category": "низ",
+"season": "лето",
+"pct": [
+83.2,
+50,
+42
+],
+"file": "shorts_yellow.webp",
+"sketch": false
+},
+{
+"id": "shorts_palm_sage",
+"name": "Шорты шалфейные с пальмами",
+"category": "низ",
+"season": "лето",
+"pct": [
+85.1,
+50,
+42
+],
+"file": "shorts_palm_sage.webp",
+"sketch": false
+},
+{
+"id": "shorts_ink",
+"name": "Шорты с чернильным принтом",
+"category": "низ",
+"season": "лето",
+"pct": [
+82.3,
+50,
+42
+],
+"file": "shorts_ink.webp",
+"sketch": false
+},
+{
+"id": "shorts_skyblue",
+"name": "Шорты голубые",
+"category": "низ",
+"season": "лето",
+"pct": [
+84.2,
+50,
+42
+],
+"file": "shorts_skyblue.webp",
+"sketch": false
+},
+{
+"id": "shorts_cream",
+"name": "Шорты кремовые с лампасами",
+"category": "низ",
+"season": "лето",
+"pct": [
+85.5,
+50,
+42
+],
+"file": "shorts_cream.webp",
+"sketch": false
+},
+{
+"id": "shorts_fries",
+"name": "Шорты «Fries» белые",
+"category": "низ",
+"season": "лето",
+"pct": [
+81.8,
+50,
+42
+],
+"file": "shorts_fries.webp",
+"sketch": false
+},
+{
+"id": "shorts_taupe",
+"name": "Шорты серо-бежевые с лампасами",
+"category": "низ",
+"season": "лето",
+"pct": [
+90.3,
+50,
+42
+],
+"file": "shorts_taupe.webp",
+"sketch": false
+},
+{
+"id": "sneaker_nike",
+"name": "Кроссовки Nike хаки",
+"category": "обувь",
+"season": "любой",
+"pct": [
+94,
+50,
+90.5
+],
+"file": "sneaker_nike.webp",
+"sketch": false
+},
+{
+"id": "w_boots",
+"name": "Высокие ботинки",
+"category": "обувь",
+"season": "зима",
+"pct": [
+88,
+50,
+82
+],
+"file": "w_boots.png",
+"sketch": true
+},
+{
+"id": "sp_sneakers",
+"name": "Белые кроссовки",
+"category": "обувь",
+"season": "весна",
+"pct": [
+88,
+50,
+89
+],
+"file": "sp_sneakers.png",
+"sketch": true
+},
+{
+"id": "a_loafers",
+"name": "Коричневые лоферы",
+"category": "обувь",
+"season": "осень",
+"pct": [
+86,
+50,
+89.4
+],
+"file": "a_loafers.png",
+"sketch": true
+},
+{
+"id": "s_sandals",
+"name": "Сандалии",
+"category": "обувь",
+"season": "лето",
+"pct": [
+86,
+50,
+89.4
+],
+"file": "s_sandals.png",
+"sketch": true
+},
+{
+"id": "w_beanie",
+"name": "Шапка с помпоном",
+"category": "аксессуары",
+"season": "зима",
+"pct": [
+37,
+47.8,
+0
+],
+"file": "w_beanie.png",
+"sketch": true
+},
+{
+"id": "s_cap",
+"name": "Кепка",
+"category": "аксессуары",
+"season": "лето",
+"pct": [
+41,
+47.8,
+0.2
+],
+"file": "s_cap.png",
+"sketch": true
+},
+{
+"id": "s_glasses",
+"name": "Очки от солнца",
+"category": "аксессуары",
+"season": "лето",
+"pct": [
+32,
+47.8,
+6
+],
+"file": "s_glasses.png",
+"sketch": true
+}
+]
