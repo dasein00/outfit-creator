@@ -30,15 +30,19 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Unit tests
-        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
-
-      - name: Build release APK
+      - name: Unit tests and release APK
         env:
           VERSION_CODE: ${{ github.run_number }}
         run: |
-          ./gradlew --no-daemon --stacktrace assembleRelease
+          set -o pipefail
+          ./gradlew --no-daemon testDebugUnitTest assembleRelease 2>&1 | tee build.log
           cp app/build/outputs/apk/release/app-release.apk Poryadok.apk
+
+      - name: Error summary
+        if: failure()
+        run: |
+          grep -E "^e: |FAILED|AssertionError|What went wrong" -A4 build.log | head -150 || true
+          find app/build/test-results -name "*.xml" -exec grep -l "<failure" {} \; 2>/dev/null | xargs -r grep -h -A6 "<failure" | head -60 || true
 
       - uses: actions/upload-artifact@v4
         with:

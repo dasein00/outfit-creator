@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Backspace
+import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -118,7 +118,7 @@ fun PinPad(
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             when (k) {
-                                "del" -> Icon(Icons.Default.Backspace, "Стереть")
+                                "del" -> Icon(Icons.AutoMirrored.Filled.Backspace, "Стереть")
                                 "bio" -> if (onBiometric != null) Icon(Icons.Default.Fingerprint, "Отпечаток", tint = MaterialTheme.colorScheme.primary)
                                 else -> Text(k, fontSize = 26.sp)
                             }

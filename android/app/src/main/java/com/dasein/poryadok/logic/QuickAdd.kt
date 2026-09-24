@@ -70,8 +70,8 @@ object QuickAdd {
         )
         for ((r, p) in repeats) if (cut(rx("""\s(?:$p)(?=\s)""")) { repeat = r }) break
 
-        // время: «в 18:30», «18:30», «в 9 утра», «в 7 вечера», «в 18»
-        cut(rx("""\s(?:в\s+)?(\d{1,2})[:.](\d{2})(?=\s)""")) { m ->
+        // время: «в 18:30», «18:30», «в 9 утра», «в 7 вечера», «в 18»; «03.01» — это дата, а не время
+        cut(rx("""\s(?:в\s+)?(\d{1,2}):(\d{2})(?=\s)""")) { m ->
             val h = m.groupValues[1].toInt()
             val mm = m.groupValues[2].toInt()
             if (h in 0..23 && mm in 0..59) min = h * 60 + mm
