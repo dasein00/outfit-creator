@@ -1,0 +1,53 @@
+name: "Путь жизни — сборка APK"
+
+on:
+  push:
+    paths:
+      - "put-zhizni/**"
+      - ".github/workflows/put-zhizni-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: put-zhizni
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Сборка
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+
+      - name: Имя файла
+        run: cp app/build/outputs/apk/release/app-release.apk put-zhizni.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: put-zhizni-apk
+          path: put-zhizni/put-zhizni.apk
+
+      - name: Опубликовать в релиз «put-zhizni-latest»
+        if: github.event_name == 'workflow_dispatch' || github.ref_type == 'branch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=put-zhizni-latest
+          gh release delete "$TAG" --yes --cleanup-tag || true
+          gh release create "$TAG" put-zhizni.apk \
+            --target "${{ github.sha }}" \
+            --prerelease \
+            --title "Путь жизни — последняя сборка" \
+            --notes "Сборка из ветки ${{ github.ref_name }}, коммит ${{ github.sha }}. Скачайте put-zhizni.apk на телефон и установите."

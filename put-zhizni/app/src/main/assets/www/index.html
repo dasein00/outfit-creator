@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FBF7F2">
+<title>Путь жизни</title>
+<link rel="icon" href="img/logo-192.png">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="lock" class="lock" hidden>
+  <img src="img/logo-192.png" alt="" width="96" height="96">
+  <h2>Путь жизни</h2>
+  <p class="muted" id="lockMsg">Введите PIN-код</p>
+  <div class="pin-dots" id="pinDots"></div>
+  <div class="pinpad" id="pinpad"></div>
+</div>
+
+<div class="app" id="app">
+  <header class="topbar">
+    <button id="back" class="icon-btn" aria-label="Назад" onclick="window.__onBack()">‹</button>
+    <h1 id="title">Путь жизни</h1>
+    <div id="actions" class="actions"></div>
+  </header>
+  <main id="main" class="main" tabindex="-1"></main>
+  <nav class="tabs" aria-label="Разделы">
+    <a class="tab" data-tab="today" href="#/today"><span class="ti">☀</span><span>Сегодня</span></a>
+    <a class="tab" data-tab="calendar" href="#/calendar"><span class="ti">▦</span><span>План</span></a>
+    <a class="tab" data-tab="trackers" href="#/trackers"><span class="ti">◫</span><span>Трекеры</span></a>
+    <a class="tab" data-tab="goals" href="#/goals"><span class="ti">◎</span><span>Цели</span></a>
+    <a class="tab" data-tab="more" href="#/more"><span class="ti">☰</span><span>Ещё</span></a>
+  </nav>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="js/core.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/data.js"></script>
+<script src="js/content-learn.js"></script>
+<script src="js/content-book.js"></script>
+<script src="js/v-today.js"></script>
+<script src="js/v-plan.js"></script>
+<script src="js/v-trackers.js"></script>
+<script src="js/v-health.js"></script>
+<script src="js/v-food.js"></script>
+<script src="js/v-money.js"></script>
+<script src="js/v-learn.js"></script>
+<script src="js/v-culture.js"></script>
+<script src="js/v-goals.js"></script>
+<script src="js/v-stats.js"></script>
+<script src="js/v-settings.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
