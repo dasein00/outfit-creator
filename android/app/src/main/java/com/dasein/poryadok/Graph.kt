@@ -6,8 +6,13 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.dasein.poryadok.data.AppDb
+import com.dasein.poryadok.data.ExtraDao
+import com.dasein.poryadok.data.ExtraDb
 import com.dasein.poryadok.data.LifeDao
 import com.dasein.poryadok.data.Prefs
+import com.dasein.poryadok.data.RecipeRepo
+import com.dasein.poryadok.system.Steps
+import android.util.Log
 import com.dasein.poryadok.system.Alarms
 import com.dasein.poryadok.system.Widgets
 import kotlinx.coroutines.CoroutineScope
@@ -37,9 +42,12 @@ object Graph {
         private set
     lateinit var db: AppDb
         private set
+    lateinit var extraDb: ExtraDb
+        private set
     lateinit var prefs: Prefs
         private set
     val dao: LifeDao get() = db.dao()
+    val extra: ExtraDao get() = extraDb.dao()
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var ready = false
 
@@ -50,10 +58,13 @@ object Graph {
         ready = true
         app = context.applicationContext
         db = AppDb.create(app)
+        extraDb = ExtraDb.create(app)
         prefs = Prefs(app)
         Alarms.createChannels(app)
         scope.launch {
             Repo.seed()
+            runCatching { RecipeRepo.seed(); RecipeRepo.materializeRepeats() }.onFailure { Log.e("DASEIN", "recipes seed", it) }
+            runCatching { Steps.ensureScheduled(app) }.onFailure { Log.e("DASEIN", "steps", it) }
             Repo.processRecurring()
             Alarms.rescheduleAll(app)
             Widgets.refresh(app)

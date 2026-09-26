@@ -26,7 +26,12 @@ import com.dasein.poryadok.data.Txn
 import com.dasein.poryadok.data.TxnType
 import com.dasein.poryadok.data.WeightEntry
 import com.dasein.poryadok.data.Workout
+import com.dasein.poryadok.data.MealRepeat
+import com.dasein.poryadok.data.NotebookImport
+import com.dasein.poryadok.data.RecipeRepo
 import com.dasein.poryadok.logic.Dates
+import com.dasein.poryadok.logic.MealType
+import com.dasein.poryadok.logic.Notebook
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -125,6 +130,52 @@ object DemoData {
             dao.upsertTopItem(TopItem(listId = films, title = t, rating = r, sort = i))
         }
         dao.upsertTopList(TopList(title = "Места, где хочу побывать", emoji = "✈️", sort = 1))
+        fillRecipes(today)
+        fillNotebook()
         return true
+    }
+
+    /** Меню на неделю, избранное, повтор, шаблон, покупки и история готовки. */
+    private suspend fun fillRecipes(today: Long) {
+        val x = Graph.extra
+        RecipeRepo.seed()
+        val byKey = x.recipesNow().associateBy { it.seedKey }
+        fun id(key: String) = byKey[key]?.id
+        listOf("oatmeal_berries", "salmon_broccoli", "syrniki_oven", "greek_salad", "buckwheat_turkey").forEach { k -> id(k)?.let { x.setFavorite(it, true) } }
+        val week = listOf(
+            listOf("oatmeal_berries", "chicken_buckwheat_soup", "salmon_broccoli", "cottage_berries"),
+            listOf("syrniki_oven", "buckwheat_turkey", "cod_vegetables", "energy_balls"),
+            listOf("omelet_veg", "chicken_plov", "turkey_zucchini", "baked_apples"),
+            listOf("overnight_oats", "lentil_soup", "caesar_pp", "kefir_berry_shake"),
+            listOf("avocado_toast", "pasta_chicken_spinach", "shrimp_wok", "cottage_berries"),
+        )
+        week.forEachIndexed { i, keys ->
+            val day = today + i
+            listOf(MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACK).zip(keys).forEach { (meal, k) ->
+                id(k)?.let { RecipeRepo.addToPlan(day, meal, it, 1.0, MealType.defaultTime[meal]) }
+            }
+        }
+        x.planNow(today, today).firstOrNull { it.meal == MealType.LUNCH }?.let { RecipeRepo.markEaten(it) }
+        id("green_smoothie")?.let { RecipeRepo.saveRepeat(MealRepeat(recipeId = it, meal = MealType.BRUNCH, daysMask = 31, fromDay = today)) }
+        RecipeRepo.presetFromDays("Мой обычный будний день", today, 1)
+        RecipeRepo.shoppingFromMenu(today, today + 6)
+        id("meal_prep_chicken")?.let { RecipeRepo.cook(it, 6.0, 1.0, MealType.DINNER, addToFood = false, day = today - 1) }
+    }
+
+    /** Небольшая вымышленная тетрадь, чтобы показать импорт и проверку записей. */
+    private suspend fun fillNotebook() {
+        val sample = """
+            {"currency":"RUB","year_assumption":2026,
+             "normalized_records":[
+              {"date":"2026-08-01","month":8,"day":1,"type":"income","amount_rub":1500,"category":"зарплата/ежедневный доход","source":"пример","confidence":"medium"},
+              {"date":"2026-08-02","month":8,"day":2,"type":"income","amount_rub":2000,"category":"зарплата/ежедневный доход","source":"пример","confidence":"medium"},
+              {"date":null,"month":8,"day":3,"type":"no_income_recorded","description":"выходной","source":"пример","confidence":"medium"},
+              {"date":"2026-08-04","month":8,"day":4,"type":"income","amount_rub":1500,"category":"зарплата/ежедневный доход","source":"пример","confidence":"low"},
+              {"date":null,"month":8,"type":"monthly_note","amount_rub":5500,"category":"итого","description":"пример","source":"пример","confidence":"medium"},
+              {"date":null,"month":8,"type":"monthly_note","amount_rub":900,"category":"остаток","description":"пример","source":"пример","confidence":"medium"}
+             ],
+             "monthly_information":{"2026-08":{"raw_expense_notes":["1200 мясо","500 бенз","300 (?)"],"uncertainty":"пример неразборчивой записи"}}}
+        """.trimIndent()
+        NotebookImport.apply(Notebook.parse(sample), 2026)
     }
 }

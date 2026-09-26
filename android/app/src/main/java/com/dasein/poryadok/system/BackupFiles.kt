@@ -5,6 +5,8 @@ import android.net.Uri
 import com.dasein.poryadok.Graph
 import com.dasein.poryadok.data.BackupData
 import com.dasein.poryadok.data.exportData
+import com.dasein.poryadok.data.exportExtra
+import com.dasein.poryadok.data.importExtra
 import com.dasein.poryadok.data.importData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,12 +19,12 @@ import java.util.zip.ZipOutputStream
 /** Резервная копия: zip с data.json и папками фото. */
 object BackupFiles {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
-    private val DIRS = listOf("progress", "wardrobe", "outfits")
-    private val SAFE_ENTRY = Regex("^(progress|wardrobe|outfits)/[A-Za-z0-9_.\\-]+$")
+    private val DIRS = listOf("progress", "wardrobe", "outfits", "recipes")
+    private val SAFE_ENTRY = Regex("^(progress|wardrobe|outfits|recipes)/[A-Za-z0-9_.\\-]+$")
 
     suspend fun export(ctx: Context, uri: Uri): Result<Int> = withContext(Dispatchers.IO) {
         runCatching {
-            val data = Graph.db.exportData(System.currentTimeMillis())
+            val data = Graph.db.exportData(System.currentTimeMillis()).copy(extra = Graph.extraDb.exportExtra())
             var files = 0
             val out = ctx.contentResolver.openOutputStream(uri) ?: error("Не удалось открыть файл")
             ZipOutputStream(out).use { zip ->
@@ -60,7 +62,7 @@ object BackupFiles {
                     e = zip.nextEntry
                 }
             }
-            val d = data ?: error("В архиве нет data.json — это не копия «Порядка»")
+            val d = data ?: error("В архиве нет data.json — это не копия DASEIN")
             fun fix(p: String): String {
                 if (p.isBlank() || p.startsWith("asset:")) return p
                 val i = p.indexOf("/files/")
@@ -73,6 +75,7 @@ object BackupFiles {
                     outfits = d.outfits.map { it.copy(preview = fix(it.preview)) },
                 )
             )
+            d.extra?.let { x -> Graph.extraDb.importExtra(x.copy(recipes = x.recipes.map { it.copy(photo = fix(it.photo)) })) }
             Alarms.rescheduleAll(ctx)
             Widgets.refresh(ctx)
         }

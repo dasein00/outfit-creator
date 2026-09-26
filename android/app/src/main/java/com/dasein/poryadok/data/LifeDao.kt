@@ -111,6 +111,8 @@ interface LifeDao {
 
     @Query("SELECT * FROM categories ORDER BY income, sort, id")
     fun categories(): Flow<List<Category>>
+    @Query("SELECT * FROM categories ORDER BY income, sort, id")
+    suspend fun categoriesNow(): List<Category>
     @Query("SELECT COUNT(*) FROM categories")
     suspend fun categoryCount(): Int
     @Upsert suspend fun upsertCategory(c: Category): Long
@@ -120,6 +122,8 @@ interface LifeDao {
 
     @Query("SELECT * FROM txns ORDER BY day DESC, createdAt DESC")
     fun txns(): Flow<List<Txn>>
+    @Query("SELECT * FROM txns")
+    suspend fun txnsNow(): List<Txn>
     @Upsert suspend fun upsertTxn(t: Txn): Long
     @Delete suspend fun deleteTxn(t: Txn)
     @Query("DELETE FROM txns WHERE accountId = :accountId OR toAccountId = :accountId")
@@ -159,6 +163,7 @@ interface LifeDao {
     fun food(): Flow<List<FoodEntry>>
     @Upsert suspend fun upsertFood(f: FoodEntry): Long
     @Delete suspend fun deleteFood(f: FoodEntry)
+    @Query("DELETE FROM food WHERE id = :id") suspend fun deleteFoodById(id: Long)
 
     @Query("SELECT * FROM day_logs ORDER BY day")
     fun dayLogs(): Flow<List<DayLog>>

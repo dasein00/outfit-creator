@@ -3,6 +3,8 @@
 package com.dasein.poryadok.ui.calendar
 
 import androidx.activity.compose.BackHandler
+import com.dasein.poryadok.ui.common.IconAction
+import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -253,7 +255,7 @@ private fun ReminderRow(r: Reminder, onEdit: () -> Unit) {
 private fun RemindersList(onEdit: (Reminder) -> Unit) {
     val reminders by observe(emptyList()) { Graph.dao.reminders() }
     if (reminders.isEmpty()) {
-        Empty("⏰", "Напоминалок нет", "Добавьте через «+» — придёт уведомление в нужное время, даже если приложение закрыто.")
+        Empty(Ic.bell, "Напоминалок нет", "Добавьте через «+» — придёт уведомление в нужное время, даже если приложение закрыто.")
         return
     }
     LazyColumn(contentPadding = PaddingValues(12.dp, 8.dp, 12.dp, 96.dp)) {
@@ -332,7 +334,7 @@ fun EventEditScreen(nav: NavHostController, id: Long, day: Long) {
         title = if (id == 0L) "Новое событие" else "Событие",
         onBack = { save() },
         actions = {
-            if (id != 0L) IconButton(onClick = { confirm = true }) { Icon(Icons.Default.Delete, "Удалить") }
+            if (id != 0L) IconAction(Ic.trash, "Удалить") { confirm = true }
             IconButton(onClick = { save() }) { Icon(Icons.Default.Check, "Сохранить") }
         },
     ) { pad ->

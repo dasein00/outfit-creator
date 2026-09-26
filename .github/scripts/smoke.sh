@@ -3,7 +3,7 @@
 set -x
 PKG=com.dasein.poryadok
 mkdir -p shots
-adb install -r apk/Poryadok.apk
+adb install -r apk/DASEIN.apk
 adb shell pm grant $PKG android.permission.POST_NOTIFICATIONS || true
 adb logcat -c
 
@@ -18,6 +18,9 @@ routes=(
   "notes" "tops" "top/1" "wardrobe" "outfits" "wheel" "review" "settings" "search"
   "finance?tab=1" "finance?tab=2" "finance?tab=3" "finance?tab=4" "calendar?tab=1"
   "task/1" "txn/0" "habit/1" "habitEdit/0" "goal/1" "event/1" "note/2"
+  "recipes" "recipes?tab=1&mode=0" "recipes?tab=1&mode=1" "recipes?tab=1&mode=2" "recipes?tab=2" "recipes?tab=3"
+  "recipe/1" "recipe/20" "recipeEdit/0" "menuCreate" "presets" "preset/1" "shopping" "cookHistory"
+  "steps" "sber" "finNotebook"
 )
 i=1
 for r in "${routes[@]}"; do
@@ -33,6 +36,12 @@ sleep 3
 adb shell input tap 385 1980
 sleep 3
 adb exec-out screencap -p > shots/99_wardrobe_tap.png
+
+# Мастер нового рецепта: шаг «Ингредиенты» и выбор из базы.
+adb shell am start -n $PKG/.MainActivity --es route "recipeEdit/0"
+sleep 3
+adb shell input text "Test"
+adb exec-out screencap -p > shots/98_recipe_wizard.png
 
 adb logcat -d -b crash > shots/crash.txt || true
 [ -s shots/crash.txt ] || echo "no crashes" > shots/crash.txt

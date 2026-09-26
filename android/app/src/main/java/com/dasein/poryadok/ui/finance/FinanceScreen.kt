@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.finance
 
 import androidx.compose.foundation.clickable
+import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -60,6 +61,8 @@ import com.dasein.poryadok.logic.Dates
 import com.dasein.poryadok.logic.Money
 import com.dasein.poryadok.logic.Repeat
 import com.dasein.poryadok.ui.Routes
+import com.dasein.poryadok.ui.common.IconAction
+import com.dasein.poryadok.data.NoteKind
 import com.dasein.poryadok.ui.common.Bar
 import com.dasein.poryadok.ui.common.BarChart
 import com.dasein.poryadok.ui.common.ColorPicker
@@ -116,9 +119,14 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int) {
     var editBudget by remember { mutableStateOf<Budget?>(null) }
     var editRecurring by remember { mutableStateOf<Recurring?>(null) }
     var editCategory by remember { mutableStateOf<Category?>(null) }
+    val nbNotes by observe(emptyList()) { Graph.extra.financeNotes() }
 
     Screen(
         title = "Финансы",
+        actions = {
+            IconAction(Ic.bank, "Сбербанк") { nav.navigate(Routes.SBER) }
+            IconAction(Ic.document, "Тетрадь финансов") { nav.navigate(Routes.FIN_NOTEBOOK) }
+        },
         fab = {
             FloatingActionButton(
                 onClick = {
@@ -146,6 +154,19 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int) {
             }
             val range = Dates.monthRange(ym)
             val month = txns.filter { it.day in range }
+            val monthNotes = nbNotes.filter { it.year == ym.year && it.month == ym.monthValue }
+            if (tab <= 1 && monthNotes.isNotEmpty()) {
+                val undated = monthNotes.filter { it.kind == NoteKind.UNDATED_EXPENSE }
+                val written = monthNotes.filter { it.kind == NoteKind.WRITTEN_TOTAL }
+                Tile(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), onClick = { nav.navigate(Routes.FIN_NOTEBOOK) }, padding = 10.dp) {
+                    Text("Тетрадь за месяц", fontSize = 12.sp, color = LocalExtra.current.dim)
+                    Text(
+                        (if (undated.isNotEmpty()) "Расходы без даты: ${Money.format(undated.sumOf { it.amount ?: 0.0 }, cur)} (${undated.size})" else "") +
+                            (if (written.isNotEmpty()) (if (undated.isNotEmpty()) " · " else "") + written.joinToString { "${it.label} ${Money.format(it.amount ?: 0.0, cur)}" } else ""),
+                        fontSize = 13.sp, maxLines = 2,
+                    )
+                }
+            }
             when (tab) {
                 0 -> Operations(nav, month, cats, accounts, cur)
                 1 -> Overview(txns, month, cats, ym, cur) { editCategory = it }
@@ -178,7 +199,7 @@ private fun Operations(nav: NavHostController, month: List<Txn>, cats: List<Cate
                 Pill("+ Доход", false) { nav.navigate(Routes.txn(0, income = true)) }
             }
         }
-        if (month.isEmpty()) item { Empty("💸", "Операций нет", "Записывайте расходы сразу — это занимает пять секунд.") }
+        if (month.isEmpty()) item { Empty(Ic.wallet, "Операций нет", "Записывайте расходы сразу — это занимает пять секунд.") }
         month.groupBy { it.day }.toSortedMap(compareByDescending { it }).forEach { (day, list) ->
             item(key = "d$day") {
                 val dayExp = list.filter { it.type == TxnType.EXPENSE }.sumOf { it.amount }
@@ -312,7 +333,7 @@ private fun Budgets(month: List<Txn>, cats: List<Category>, budgets: List<Budget
     val daysLeft = if (today in range) (range.last - today + 1).toInt() else if (today < range.first) (range.last - range.first + 1).toInt() else 0
     LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 96.dp)) {
         if (budgets.isEmpty()) item {
-            Empty("🎯", "Бюджетов нет", "Задайте лимит на месяц — общий или по категориям. Приложение подскажет, сколько можно тратить в день.")
+            Empty(Ic.target, "Бюджетов нет", "Задайте лимит на месяц — общий или по категориям. Приложение подскажет, сколько можно тратить в день.")
         }
         items(budgets.sortedBy { if (it.categoryId == 0L) -1 else it.categoryId }, key = { it.categoryId }) { b ->
             val c = cats.firstOrNull { it.id == b.categoryId }
@@ -353,7 +374,7 @@ private fun RecurringList(list: List<Recurring>, cats: List<Category>, accounts:
             }
             Gap()
         }
-        if (list.isEmpty()) item { Empty("🔁", "Пока пусто", "Добавьте аренду, связь, подписки или зарплату.") }
+        if (list.isEmpty()) item { Empty(Ic.receipt, "Пока пусто", "Добавьте аренду, связь, подписки или зарплату.") }
         items(list, key = { it.id }) { r ->
             val c = cats.firstOrNull { it.id == r.categoryId }
             Row(

@@ -37,7 +37,7 @@ jobs:
         run: |
           set -o pipefail
           ./gradlew --no-daemon testDebugUnitTest assembleRelease 2>&1 | tee build.log
-          cp app/build/outputs/apk/release/app-release.apk Poryadok.apk
+          cp app/build/outputs/apk/release/app-release.apk DASEIN.apk
 
       - name: Error summary
         if: failure()
@@ -47,20 +47,20 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Poryadok-apk
-          path: android/Poryadok.apk
+          name: DASEIN-apk
+          path: android/DASEIN.apk
 
       - name: Publish release
         if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[release]')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-v1.0.${{ github.run_number }}
-          name: Порядок 1.0.${{ github.run_number }}
+          name: DASEIN 1.0.${{ github.run_number }}
           target_commitish: ${{ github.sha }}
           make_latest: true
-          files: android/Poryadok.apk
+          files: android/DASEIN.apk
           body: |
-            Android-приложение «Порядок». Скачайте Poryadok.apk на телефон и установите.
+            Android-приложение DASEIN. Скачайте DASEIN.apk на телефон и установите.
             Обновление ставится поверх старой версии, данные сохраняются.
 
   smoke:
@@ -72,7 +72,7 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: Poryadok-apk
+          name: DASEIN-apk
           path: apk
 
       - name: Enable KVM

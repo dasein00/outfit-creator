@@ -3,6 +3,8 @@
 package com.dasein.poryadok.ui.productivity
 
 import androidx.activity.compose.BackHandler
+import com.dasein.poryadok.ui.common.IconAction
+import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -123,7 +125,7 @@ fun HabitsScreen(nav: NavHostController) {
     ) { pad ->
         if (habits.isEmpty()) {
             Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(16.dp)) {
-                Empty("🌱", "Начните с одной привычки", "Выберите шаблон или создайте свою. Маленькие шаги каждый день работают лучше рывков.")
+                Empty(Ic.leaves, "Начните с одной привычки", "Выберите шаблон или создайте свою. Маленькие шаги каждый день работают лучше рывков.")
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     HABIT_TEMPLATES.forEach { tpl ->
                         Pill("${tpl.emoji} ${tpl.name}", false) {
@@ -318,7 +320,7 @@ fun HabitDetailScreen(nav: NavHostController, id: Long) {
         onBack = { nav.popBackStack() },
         actions = {
             IconButton(onClick = { nav.navigate(Routes.habitEdit(h.id)) }) { Icon(Icons.Default.Edit, "Изменить") }
-            IconButton(onClick = { confirm = true }) { Icon(Icons.Default.Delete, "Удалить") }
+            IconAction(Ic.trash, "Удалить") { confirm = true }
         },
     ) { pad ->
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {

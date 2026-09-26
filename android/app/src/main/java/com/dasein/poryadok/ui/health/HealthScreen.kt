@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.health
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import com.dasein.poryadok.ui.common.Ic
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -68,6 +69,10 @@ import com.dasein.poryadok.logic.Dates
 import com.dasein.poryadok.logic.Intensity
 import com.dasein.poryadok.logic.Nutrition
 import com.dasein.poryadok.logic.NutritionPlan
+import com.dasein.poryadok.data.PlanStatus
+import com.dasein.poryadok.data.RecipeRepo
+import com.dasein.poryadok.logic.MealType
+import com.dasein.poryadok.ui.Routes
 import com.dasein.poryadok.logic.plural
 import com.dasein.poryadok.ui.common.Bar
 import com.dasein.poryadok.ui.common.BarChart
@@ -98,7 +103,8 @@ import com.dasein.poryadok.ui.theme.Palette
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-val MEALS = listOf("🌅 Завтрак", "☀️ Обед", "🌙 Ужин", "🍎 Перекус")
+/** Названия приёмов пищи по индексу записи; порядок в течение дня — MealType.order. */
+val MEALS = MealType.names
 val WORKOUT_TYPES = listOf("🏋️ Силовая", "🏃 Бег", "🚴 Вело", "🏊 Плавание", "🧘 Йога", "🤸 Растяжка", "⚡ HIIT", "🚶 Ходьба", "⚽ Игры", "✨ Другое")
 
 fun BodyProfile.input(weight: Double) = BodyInput(
@@ -129,7 +135,7 @@ fun HealthScreen(nav: NavHostController, initialTab: Int) {
             }
             Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
                 when (tab) {
-                    0 -> FoodTab(plan, profile)
+                    0 -> FoodTab(nav, plan, profile)
                     1 -> WeightTab(profile, weights)
                     2 -> MeasureTab()
                     3 -> WorkoutTab()
@@ -223,7 +229,7 @@ private fun CalcTab(p: BodyProfile, current: Double, plan: NutritionPlan) {
 }
 
 @Composable
-private fun FoodTab(plan: NutritionPlan, profile: BodyProfile) {
+private fun FoodTab(nav: NavHostController, plan: NutritionPlan, profile: BodyProfile) {
     val dao = Graph.dao
     val extra = LocalExtra.current
     var day by rememberSaveable { mutableStateOf(Dates.today()) }
@@ -267,9 +273,30 @@ private fun FoodTab(plan: NutritionPlan, profile: BodyProfile) {
             fontSize = 13.sp, color = levelColor, modifier = Modifier.padding(top = 8.dp),
         )
     }
-    MEALS.forEachIndexed { mi, meal ->
+    val planAll by observe(emptyList()) { Graph.extra.plan() }
+    val planned = planAll.filter { it.day == day && it.status == PlanStatus.PLANNED }
+    if (planned.isNotEmpty()) {
+        Text(
+            "В меню ещё ${planned.size} ${plural(planned.size, "блюдо", "блюда", "блюд")} на ${planned.sumOf { it.kcal * it.servings }.roundToInt()} ккал — отметьте «Съедено», и они перейдут в факт.",
+            fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp),
+        )
+    }
+    TextButton(onClick = { nav.navigate(Routes.recipes(1)) }) { Text("Меню и рецепты →") }
+    MealType.order.forEach { mi ->
+        val meal = MEALS[mi]
         val list = entries.filter { it.meal == mi }
+        val plannedHere = planned.filter { it.meal == mi }
+        if (list.isEmpty() && plannedHere.isEmpty() && mi in listOf(MealType.BRUNCH, MealType.AFTERNOON)) return@forEach
         SectionTitle("$meal  ${list.sumOf { it.kcal }} ккал", action = "+ Добавить") { edit = FoodEntry(day = day, meal = mi, name = "") }
+        plannedHere.forEach { p ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 2.dp, horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(p.title, color = extra.dim)
+                    Text("по плану · ${(p.kcal * p.servings).roundToInt()} ккал", fontSize = 11.sp, color = extra.dim)
+                }
+                TextButton(onClick = { io { RecipeRepo.markEaten(p) } }) { Text("Съедено") }
+            }
+        }
         list.forEach { e ->
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { edit = e }.padding(vertical = 6.dp, horizontal = 4.dp),
@@ -336,7 +363,7 @@ private fun FoodDialog(e0: FoodEntry, history: List<FoodEntry>, onDismiss: () ->
                 }
                 Gap(8.dp)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    MEALS.forEachIndexed { i, m -> Pill(m, e.meal == i) { e = e.copy(meal = i) } }
+                    MealType.order.forEach { i -> Pill(MEALS[i], e.meal == i) { e = e.copy(meal = i) } }
                 }
             }
         },
@@ -411,7 +438,7 @@ private fun WeightTab(profile: BodyProfile, weights: List<WeightEntry>) {
             IconButton(onClick = { io { Graph.dao.deleteWeight(w) } }) { Icon(Icons.Default.Close, "Удалить", tint = extra.dim) }
         }
     }
-    if (weights.isEmpty()) Empty("⚖️", "Нет взвешиваний", "Добавьте первое — и график оживёт.")
+    if (weights.isEmpty()) Empty(Ic.scale, "Нет взвешиваний", "Добавьте первое — и график оживёт.")
     if (add) WeightDialog(weights.lastOrNull()?.kg ?: profile.startWeight) { add = false }
 }
 
@@ -469,7 +496,7 @@ private fun MeasureTab() {
         }
     }
     SectionTitle("Записи")
-    if (ms.isEmpty()) Empty("📏", "Замеров пока нет", "Сантиметры часто показывают прогресс раньше весов.")
+    if (ms.isEmpty()) Empty(Ic.stats, "Замеров пока нет", "Сантиметры часто показывают прогресс раньше весов.")
     ms.reversed().forEach { m ->
         Tile(Modifier.padding(bottom = 8.dp), onClick = { edit = m }) {
             Text(Dates.full(m.day), fontWeight = FontWeight.Medium)
@@ -533,7 +560,7 @@ private fun WorkoutTab() {
         BarChart(weeks.map { w -> list.count { it.day in w..(w + 6) }.toFloat() }, weeks.map { Dates.short(it) }, MaterialTheme.colorScheme.primary, highlight = 7)
     }
     SectionTitle("Журнал")
-    if (list.isEmpty()) Empty("💪", "Тренировок пока нет", "Записывайте каждую — и смотрите, как растёт регулярность.")
+    if (list.isEmpty()) Empty(Ic.dumbbell, "Тренировок пока нет", "Записывайте каждую — и смотрите, как растёт регулярность.")
     list.forEach { w ->
         Tile(Modifier.padding(bottom = 8.dp), onClick = { edit = w }) {
             Row {

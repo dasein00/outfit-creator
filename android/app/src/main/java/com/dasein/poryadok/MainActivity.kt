@@ -2,6 +2,7 @@ package com.dasein.poryadok
 
 import android.Manifest
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.setContent
@@ -11,7 +12,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dasein.poryadok.system.Steps
 import com.dasein.poryadok.ui.AppRoot
+import com.dasein.poryadok.ui.Routes
+import com.dasein.poryadok.ui.finance.NotebookInbox
 import com.dasein.poryadok.ui.LockScreen
 import com.dasein.poryadok.ui.theme.PoryadokTheme
 import kotlinx.coroutines.launch
@@ -36,7 +40,7 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         Graph.init(this)
-        deepLink.value = intent?.getStringExtra(EXTRA_ROUTE)
+        deepLink.value = intent?.let { routeOf(it) }
         if (savedInstanceState == null && intent?.getBooleanExtra(EXTRA_DEMO, false) == true) Graph.scope.launch { DemoData.fill() }
         if (Build.VERSION.SDK_INT >= 33) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
 
@@ -56,7 +60,27 @@ class MainActivity : FragmentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        intent.getStringExtra(EXTRA_ROUTE)?.let { deepLink.value = it }
+        routeOf(intent)?.let { deepLink.value = it }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Health Connect отдаёт данные только приложению на экране — подтягиваем шаги при каждом открытии.
+        Graph.scope.launch { runCatching { Steps.sync(applicationContext) } }
+    }
+
+    /** Куда вести: явный маршрут, пояснение Health Connect или открытый файл тетради. */
+    private fun routeOf(intent: Intent): String? {
+        intent.getStringExtra(EXTRA_ROUTE)?.let { return it }
+        return when (intent.action) {
+            "androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE", "android.intent.action.VIEW_PERMISSION_USAGE" -> Routes.STEPS
+            Intent.ACTION_VIEW, Intent.ACTION_SEND -> {
+                val uri = intent.data ?: if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+                else @Suppress("DEPRECATION") intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+                uri?.let { NotebookInbox.pending.value = it; Routes.FIN_NOTEBOOK }
+            }
+            else -> null
+        }
     }
 
     companion object {

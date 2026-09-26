@@ -3,6 +3,8 @@
 package com.dasein.poryadok.ui.notes
 
 import androidx.activity.compose.BackHandler
+import com.dasein.poryadok.ui.common.IconAction
+import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -121,7 +123,7 @@ fun NotesScreen(nav: NavHostController) {
     Screen(
         title = "Заметки",
         onBack = { nav.popBackStack() },
-        actions = { IconButton(onClick = { searching = !searching; if (!searching) query = "" }) { Icon(Icons.Default.Search, "Поиск") } },
+        actions = { IconAction(Ic.search, "Поиск") { searching = !searching; if (!searching) query = "" } },
         fab = {
             FloatingActionButton(onClick = { nav.navigate(Routes.note(0)) }, containerColor = MaterialTheme.colorScheme.primary) {
                 Icon(Icons.Default.Add, "Новая заметка")
@@ -133,7 +135,7 @@ fun NotesScreen(nav: NavHostController) {
                 value = query, onValueChange = { query = it }, placeholder = { Text("Искать в заметках…") },
                 singleLine = true, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), shape = RoundedCornerShape(14.dp),
             )
-            if (shown.isEmpty()) Empty("📝", if (query.isBlank()) "Заметок нет" else "Ничего не нашлось", "Мысли, списки покупок, идеи — всё сюда.")
+            if (shown.isEmpty()) Empty(Ic.notebook, if (query.isBlank()) "Заметок нет" else "Ничего не нашлось", "Мысли, списки покупок, идеи — всё сюда.")
             else LazyVerticalStaggeredGrid(
                 columns = StaggeredGridCells.Fixed(2),
                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 96.dp),
@@ -218,7 +220,7 @@ fun NoteEditScreen(nav: NavHostController, id: Long) {
                 val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, text)
                 ctx.startActivity(android.content.Intent.createChooser(send, "Поделиться заметкой"))
             }) { Icon(Icons.Default.Share, "Поделиться") }
-            if (id != 0L) IconButton(onClick = { confirm = true }) { Icon(Icons.Default.Delete, "Удалить") }
+            if (id != 0L) IconAction(Ic.trash, "Удалить") { confirm = true }
         },
     ) { pad ->
         val fieldColors = TextFieldDefaults.colors(
@@ -306,7 +308,7 @@ fun TopsScreen(nav: NavHostController) {
     ) { pad ->
         LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
             if (lists.isEmpty()) item {
-                Empty("🏆", "Ваши рейтинги", "Фильмы, книги, места, желания — соберите свои топы и расставьте места.")
+                Empty(Ic.trophy, "Ваши рейтинги", "Фильмы, книги, места, желания — соберите свои топы и расставьте места.")
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     TOP_IDEAS.forEach { (e, t) -> Pill("$e $t", false) { io { Graph.dao.upsertTopList(TopList(title = t, emoji = e, sort = lists.size)) } } }
                 }
@@ -386,7 +388,7 @@ fun TopScreen(nav: NavHostController, id: Long) {
         onBack = { nav.popBackStack() },
         actions = {
             IconButton(onClick = { editList = true }) { Icon(Icons.Default.Checklist, "Переименовать") }
-            IconButton(onClick = { confirm = true }) { Icon(Icons.Default.Delete, "Удалить") }
+            IconAction(Ic.trash, "Удалить") { confirm = true }
         },
     ) { pad ->
         LazyColumn(Modifier.padding(pad).imePadding(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 40.dp)) {

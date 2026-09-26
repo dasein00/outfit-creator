@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.wardrobe
 
 import androidx.compose.foundation.Image
+import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -90,7 +91,7 @@ fun OutfitsScreen(nav: NavHostController) {
                 }
             }
             if (shown.isEmpty()) item(span = { GridItemSpan(2) }) {
-                Empty("👗", "Здесь пока пусто", "Соберите образ в гардеробе и нажмите «Сохранить лук».")
+                Empty(Ic.hanger, "Здесь пока пусто", "Соберите образ в гардеробе и нажмите «Сохранить лук».")
             }
             items(shown, key = { it.id }) { o ->
                 val img by rememberImage(o.preview.ifBlank { null }, 500)

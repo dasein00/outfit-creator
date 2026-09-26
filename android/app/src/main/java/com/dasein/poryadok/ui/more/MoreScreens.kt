@@ -48,7 +48,9 @@ import com.dasein.poryadok.logic.HabitSchedule
 import com.dasein.poryadok.logic.Money
 import com.dasein.poryadok.logic.plural
 import com.dasein.poryadok.ui.Routes
+import com.dasein.poryadok.ui.common.AppIcon
 import com.dasein.poryadok.ui.common.Gap
+import com.dasein.poryadok.ui.common.Ic
 import com.dasein.poryadok.ui.common.Radar
 import com.dasein.poryadok.ui.common.Screen
 import com.dasein.poryadok.ui.common.SectionTitle
@@ -61,25 +63,29 @@ import com.dasein.poryadok.ui.health.sleepMinutes
 import com.dasein.poryadok.ui.theme.LocalExtra
 import com.dasein.poryadok.ui.theme.Palette
 
-private data class Hub(val emoji: String, val title: String, val sub: String, val route: String)
+private data class Hub(val icon: Int, val title: String, val sub: String, val route: String)
 
 private val HUB = listOf(
-    Hub("🔥", "Привычки", "серии и статистика", Routes.HABITS),
-    Hub("🎯", "Цели", "этапы и прогресс", Routes.GOALS),
-    Hub("⏱", "Фокус", "помодоро-таймер", Routes.FOCUS),
-    Hub("🥗", "Питание", "КБЖУ и калории", Routes.health(0)),
-    Hub("⚖️", "Вес и замеры", "план и факт", Routes.health(1)),
-    Hub("💪", "Тренировки", "журнал нагрузок", Routes.health(3)),
-    Hub("🙂", "Настроение", "дневник и инсайты", Routes.wellbeing(0)),
-    Hub("😴", "Сон", "режим и качество", Routes.wellbeing(1)),
-    Hub("💧", "Вода", "норма на день", Routes.wellbeing(2)),
-    Hub("📝", "Заметки", "мысли и списки", Routes.NOTES),
-    Hub("🏆", "Топы", "мои рейтинги", Routes.TOPS),
-    Hub("👗", "Гардероб", "образы на манекене", Routes.WARDROBE),
-    Hub("🧭", "Колесо баланса", "8 сфер жизни", Routes.WHEEL),
-    Hub("📊", "Итоги недели", "всё в одном отчёте", Routes.REVIEW),
-    Hub("⏰", "Напоминалки", "по времени", Routes.calendar(1)),
-    Hub("⚙️", "Настройки", "тема, PIN, копия", Routes.SETTINGS),
+    Hub(Ic.salad, "Рецепты и меню", "ПП-блюда, план, покупки", Routes.RECIPES),
+    Hub(Ic.flame, "Привычки", "серии и статистика", Routes.HABITS),
+    Hub(Ic.target, "Цели", "этапы и прогресс", Routes.GOALS),
+    Hub(Ic.timer, "Фокус", "помодоро-таймер", Routes.FOCUS),
+    Hub(Ic.leaves, "Питание", "КБЖУ и калории", Routes.health(0)),
+    Hub(Ic.scale, "Вес и замеры", "план и факт", Routes.health(1)),
+    Hub(Ic.dumbbell, "Тренировки", "журнал нагрузок", Routes.health(3)),
+    Hub(Ic.heart, "Шаги", "синхронизация с телефоном", Routes.STEPS),
+    Hub(Ic.smile, "Настроение", "дневник и инсайты", Routes.wellbeing(0)),
+    Hub(Ic.moon, "Сон", "режим и качество", Routes.wellbeing(1)),
+    Hub(Ic.drop, "Вода", "норма на день", Routes.wellbeing(2)),
+    Hub(Ic.notebook, "Заметки", "мысли и списки", Routes.NOTES),
+    Hub(Ic.trophy, "Топы", "мои рейтинги", Routes.TOPS),
+    Hub(Ic.hanger, "Гардероб", "образы на манекене", Routes.WARDROBE),
+    Hub(Ic.wheel, "Колесо баланса", "8 сфер жизни", Routes.WHEEL),
+    Hub(Ic.review, "Итоги недели", "всё в одном отчёте", Routes.REVIEW),
+    Hub(Ic.bell, "Напоминалки", "по времени", Routes.calendar(1)),
+    Hub(Ic.bank, "Сбербанк", "операции из уведомлений", Routes.SBER),
+    Hub(Ic.document, "Тетрадь финансов", "импорт и месячные записи", Routes.FIN_NOTEBOOK),
+    Hub(Ic.settings, "Настройки", "тема, PIN, копия", Routes.SETTINGS),
 )
 
 @Composable
@@ -95,8 +101,8 @@ fun MoreScreen(nav: NavHostController) {
         ) {
             items(HUB) { h ->
                 Tile(onClick = { nav.navigate(h.route) }) {
-                    Text(h.emoji, fontSize = 28.sp)
-                    Gap(6.dp)
+                    AppIcon(h.icon, 34.dp)
+                    Gap(8.dp)
                     Text(h.title, fontWeight = FontWeight.SemiBold)
                     Text(h.sub, fontSize = 12.sp, color = extra.dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }

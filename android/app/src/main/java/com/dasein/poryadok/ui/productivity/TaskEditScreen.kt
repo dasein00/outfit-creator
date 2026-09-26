@@ -3,6 +3,8 @@
 package com.dasein.poryadok.ui.productivity
 
 import androidx.activity.compose.BackHandler
+import com.dasein.poryadok.ui.common.IconAction
+import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -126,7 +128,7 @@ fun TaskEditScreen(nav: NavHostController, id: Long, day: Long, goal: Long) {
                     io { Graph.prefs.update { it.copy(focusTaskId = id) } }
                     save { nav.navigate(Routes.FOCUS) }
                 }) { Icon(Icons.Default.Timer, "Фокус на задаче") }
-                IconButton(onClick = { confirmDelete = true }) { Icon(Icons.Default.Delete, "Удалить") }
+                IconAction(Ic.trash, "Удалить") { confirmDelete = true }
             }
             IconButton(onClick = { save() }) { Icon(Icons.Default.Check, "Сохранить") }
         },

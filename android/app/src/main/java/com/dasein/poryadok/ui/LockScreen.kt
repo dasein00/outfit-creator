@@ -57,7 +57,7 @@ object Pin {
             },
         )
         val info = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Порядок")
+            .setTitle("DASEIN")
             .setSubtitle("Подтвердите, что это вы")
             .setNegativeButtonText("Ввести PIN")
             .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK)
@@ -82,7 +82,10 @@ fun PinPad(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("🔒", fontSize = 40.sp)
+        androidx.compose.foundation.Image(
+            androidx.compose.ui.res.painterResource(com.dasein.poryadok.R.drawable.logo_dasein), "DASEIN",
+            Modifier.size(96.dp),
+        )
         Spacer(Modifier.height(12.dp))
         Text(title, style = MaterialTheme.typography.headlineSmall)
         Text(subtitle, color = if (error) LocalExtra.current.danger else LocalExtra.current.dim)

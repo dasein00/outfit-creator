@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.health
 
 import androidx.compose.foundation.background
+import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -119,7 +120,7 @@ private fun MoodTab() {
         }
     }
     if (moods.isEmpty()) {
-        Empty("🙂", "Дневник настроения", "Отмечайте настроение и что происходило — через пару недель появится аналитика, что делает вас счастливее.")
+        Empty(Ic.smile, "Дневник настроения", "Отмечайте настроение и что происходило — через пару недель появится аналитика, что делает вас счастливее.")
         edit?.let { MoodDialog(it) { edit = null } }
         return
     }
@@ -240,7 +241,7 @@ private fun SleepTab() {
     Button(onClick = { edit = list.firstOrNull { it.day == today } ?: SleepEntry(today, 23 * 60, 7 * 60) }, modifier = Modifier.fillMaxWidth()) {
         Text("😴 Записать сон за эту ночь")
     }
-    if (list.isEmpty()) { Empty("🌙", "Сон пока не записан", "Отмечайте, во сколько легли и встали — увидите среднюю длительность и режим."); edit?.let { SleepDialog(it) { edit = null } }; return }
+    if (list.isEmpty()) { Empty(Ic.moon, "Сон пока не записан", "Отмечайте, во сколько легли и встали — увидите среднюю длительность и режим."); edit?.let { SleepDialog(it) { edit = null } }; return }
     val last14 = list.filter { it.day > today - 14 }
     val avg = if (last14.isEmpty()) 0 else last14.map { sleepMinutes(it) }.average().toInt()
     SectionTitle("2 недели")

@@ -1,6 +1,8 @@
 package com.dasein.poryadok.ui.today
 
 import androidx.compose.foundation.background
+import com.dasein.poryadok.ui.common.IconAction
+import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,6 +55,10 @@ import com.dasein.poryadok.logic.HabitSchedule
 import com.dasein.poryadok.logic.Money
 import com.dasein.poryadok.logic.plural
 import com.dasein.poryadok.ui.Routes
+import com.dasein.poryadok.data.PlanStatus
+import com.dasein.poryadok.logic.MealType
+import com.dasein.poryadok.ui.common.AppIcon
+import kotlin.math.roundToInt
 import com.dasein.poryadok.ui.calendar.eventsOn
 import com.dasein.poryadok.ui.calendar.remindersOn
 import com.dasein.poryadok.ui.common.Bar
@@ -104,6 +110,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
     val focus by observe(emptyList()) { dao.focusSessions() }
     val goals by observe(emptyList()) { dao.goals() }
     val profile by observe(null) { dao.profile() }
+    val plan by observe(emptyList()) { Graph.extra.plan() }
     var quickAdd by remember { mutableStateOf(false) }
 
     val todayTasks = tasks.filter { !it.done && it.dueDay != null && it.dueDay <= today }
@@ -148,8 +155,8 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                         )
                         Text("${Dates.weekdayFull(today)}, ${Dates.full(today)}", color = extra.dim, fontSize = 14.sp)
                     }
-                    IconButton(onClick = { nav.navigate(Routes.SEARCH) }) { Icon(Icons.Default.Search, "Поиск") }
-                    IconButton(onClick = { nav.navigate(Routes.SETTINGS) }) { Icon(Icons.Default.Settings, "Настройки") }
+                    IconAction(Ic.search, "Поиск") { nav.navigate(Routes.SEARCH) }
+                    IconAction(Ic.settings, "Настройки") { nav.navigate(Routes.SETTINGS) }
                 }
                 Gap(14.dp)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -289,6 +296,42 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                                     })
                                 }
                             }
+                        }
+                    }
+                }
+            }
+
+            item {
+                val stepsGoal = profile?.stepsGoal ?: 8000
+                val steps = water?.steps ?: 0
+                val todayPlan = plan.filter { it.day == today && it.status != PlanStatus.SKIPPED }
+                val next = todayPlan.filter { it.status == PlanStatus.PLANNED }.minByOrNull { MealType.order.indexOf(it.meal) }
+                Gap(10.dp)
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.STEPS) }) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            AppIcon(Ic.heart, 18.dp, badge = false)
+                            Text("  Шаги", fontSize = 13.sp, color = extra.dim)
+                        }
+                        Text("$steps", style = MaterialTheme.typography.titleMedium)
+                        Gap(6.dp)
+                        Bar(steps / stepsGoal.coerceAtLeast(1).toFloat(), extra.ok)
+                        Text("цель $stepsGoal", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
+                    }
+                    Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.recipes(1)) }) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            AppIcon(Ic.salad, 18.dp, badge = false)
+                            Text("  Меню", fontSize = 13.sp, color = extra.dim)
+                        }
+                        if (todayPlan.isEmpty()) {
+                            Text("Не составлено", style = MaterialTheme.typography.titleMedium)
+                            Text("Подобрать блюда →", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                        } else {
+                            Text("${todayPlan.sumOf { it.kcal * it.servings }.roundToInt()} ккал", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                next?.let { "Далее: ${MealType.name(it.meal).lowercase()} — ${it.title}" } ?: "Всё из меню съедено ✓",
+                                fontSize = 12.sp, color = extra.dim, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                            )
                         }
                     }
                 }

@@ -1,6 +1,8 @@
 package com.dasein.poryadok.ui.productivity
 
 import androidx.activity.compose.BackHandler
+import com.dasein.poryadok.ui.common.IconAction
+import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -188,7 +190,7 @@ fun GoalScreen(nav: NavHostController, id: Long) {
         title = if (id == 0L) "Новая цель" else "Цель",
         onBack = { save() },
         actions = {
-            if (id != 0L) IconButton(onClick = { confirm = true }) { Icon(Icons.Default.Delete, "Удалить") }
+            if (id != 0L) IconAction(Ic.trash, "Удалить") { confirm = true }
             IconButton(onClick = { save() }) { Icon(Icons.Default.Check, "Сохранить") }
         },
     ) { pad ->

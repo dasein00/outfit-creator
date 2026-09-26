@@ -34,6 +34,16 @@ data class Settings(
     val focusPhase: String = "",
     val focusTaskId: Long = 0,
     val focusCycle: Int = 0,
+    val stepsHc: Boolean = false,
+    val stepsSensor: Boolean = false,
+    val sensorLast: Long = -1L,
+    val sensorDay: Long = 0L,
+    val sensorSteps: Int = 0,
+    val stepsSyncedAt: Long = 0L,
+    val stepsSource: String = "",
+    val sberOn: Boolean = false,
+    val sberImported: Int = 0,
+    val sberLastAt: Long = 0L,
 )
 
 class Prefs(private val context: Context) {
@@ -57,6 +67,16 @@ class Prefs(private val context: Context) {
         val focusPhase = stringPreferencesKey("focusPhase")
         val focusTaskId = longPreferencesKey("focusTaskId")
         val focusCycle = intPreferencesKey("focusCycle")
+        val stepsHc = booleanPreferencesKey("stepsHc")
+        val stepsSensor = booleanPreferencesKey("stepsSensor")
+        val sensorLast = longPreferencesKey("sensorLast")
+        val sensorDay = longPreferencesKey("sensorDay")
+        val sensorSteps = intPreferencesKey("sensorSteps")
+        val stepsSyncedAt = longPreferencesKey("stepsSyncedAt")
+        val stepsSource = stringPreferencesKey("stepsSource")
+        val sberOn = booleanPreferencesKey("sberOn")
+        val sberImported = intPreferencesKey("sberImported")
+        val sberLastAt = longPreferencesKey("sberLastAt")
     }
 
     val settings: Flow<Settings> = context.store.data.map { p -> p.toSettings() }
@@ -83,6 +103,16 @@ class Prefs(private val context: Context) {
         focusPhase = this[K.focusPhase] ?: "",
         focusTaskId = this[K.focusTaskId] ?: 0,
         focusCycle = this[K.focusCycle] ?: 0,
+        stepsHc = this[K.stepsHc] ?: false,
+        stepsSensor = this[K.stepsSensor] ?: false,
+        sensorLast = this[K.sensorLast] ?: -1L,
+        sensorDay = this[K.sensorDay] ?: 0L,
+        sensorSteps = this[K.sensorSteps] ?: 0,
+        stepsSyncedAt = this[K.stepsSyncedAt] ?: 0L,
+        stepsSource = this[K.stepsSource] ?: "",
+        sberOn = this[K.sberOn] ?: false,
+        sberImported = this[K.sberImported] ?: 0,
+        sberLastAt = this[K.sberLastAt] ?: 0L,
     )
 
     suspend fun update(block: (Settings) -> Settings) {
@@ -107,6 +137,16 @@ class Prefs(private val context: Context) {
             p[K.focusPhase] = s.focusPhase
             p[K.focusTaskId] = s.focusTaskId
             p[K.focusCycle] = s.focusCycle
+            p[K.stepsHc] = s.stepsHc
+            p[K.stepsSensor] = s.stepsSensor
+            p[K.sensorLast] = s.sensorLast
+            p[K.sensorDay] = s.sensorDay
+            p[K.sensorSteps] = s.sensorSteps
+            p[K.stepsSyncedAt] = s.stepsSyncedAt
+            p[K.stepsSource] = s.stepsSource
+            p[K.sberOn] = s.sberOn
+            p[K.sberImported] = s.sberImported
+            p[K.sberLastAt] = s.sberLastAt
         }
     }
 }

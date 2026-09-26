@@ -89,6 +89,8 @@ dependencies {
     implementation("androidx.glance:glance-material3:1.1.1")
     implementation("androidx.biometric:biometric:1.1.0")
     implementation("androidx.exifinterface:exifinterface:1.3.7")
+    implementation("androidx.health.connect:connect-client:1.1.0-alpha07")
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
 
     testImplementation("junit:junit:4.13.2")
 }

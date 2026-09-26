@@ -3,6 +3,8 @@
 package com.dasein.poryadok.ui.productivity
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import com.dasein.poryadok.ui.common.IconAction
+import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -92,7 +94,7 @@ fun TasksScreen(nav: NavHostController) {
         actions = {
             IconButton(onClick = { nav.navigate(Routes.GOALS) }) { Icon(Icons.Default.TrackChanges, "Цели") }
             IconButton(onClick = { nav.navigate(Routes.FOCUS) }) { Icon(Icons.Default.Timer, "Фокус") }
-            if (list == L_DONE) IconButton(onClick = { confirmClear = true }) { Icon(Icons.Default.DeleteSweep, "Очистить") }
+            if (list == L_DONE) IconAction(Ic.trash, "Очистить") { confirmClear = true }
         },
         fab = {
             if (list != L_DONE) FloatingActionButton(onClick = { quickAdd = true }, containerColor = MaterialTheme.colorScheme.primary) {

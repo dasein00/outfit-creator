@@ -164,7 +164,7 @@ fun SettingsScreen(nav: NavHostController, s: Settings) {
                 Text("Все данные хранятся только на телефоне. Сохраните копию в файл — её можно перенести на новый телефон.", fontSize = 13.sp)
                 Gap(8.dp)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { exportLauncher.launch("poryadok-${Dates.day(Dates.today())}.zip") }, modifier = Modifier.weight(1f)) { Text("Сохранить копию") }
+                    OutlinedButton(onClick = { exportLauncher.launch("dasein-${Dates.day(Dates.today())}.zip") }, modifier = Modifier.weight(1f)) { Text("Сохранить копию") }
                     OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) }, modifier = Modifier.weight(1f)) { Text("Восстановить") }
                 }
                 OutlinedButton(onClick = {
@@ -176,8 +176,19 @@ fun SettingsScreen(nav: NavHostController, s: Settings) {
                 message?.let { Text(it, fontSize = 13.sp, color = extra.ok, modifier = Modifier.padding(top = 8.dp)) }
             }
             SectionTitle("О приложении")
-            Text("Порядок ${BuildConfigInfo.version(ctx)}", color = extra.dim)
-            Text("Задачи, привычки, цели, фокус, календарь, финансы, здоровье, заметки, топы и гардероб — в одном месте.", fontSize = 12.sp, color = extra.dim)
+            androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                androidx.compose.foundation.Image(
+                    androidx.compose.ui.res.painterResource(com.dasein.poryadok.R.drawable.logo_dasein), "DASEIN",
+                    Modifier.padding(end = 12.dp).size(56.dp),
+                )
+                Column {
+                    Text("DASEIN ${BuildConfigInfo.version(ctx)}", color = extra.dim)
+                    Text(
+                        "Задачи, привычки, цели, фокус, календарь, финансы, Сбер, тетрадь доходов, здоровье, шаги, рецепты и меню, заметки, топы и гардероб — в одном месте.",
+                        fontSize = 12.sp, color = extra.dim,
+                    )
+                }
+            }
             Gap(40.dp)
         }
     }

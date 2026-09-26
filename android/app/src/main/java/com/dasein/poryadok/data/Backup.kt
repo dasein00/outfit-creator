@@ -38,6 +38,8 @@ data class BackupData(
     val wardrobeItems: List<WardrobeItem> = emptyList(),
     val itemFits: List<ItemFit> = emptyList(),
     val outfits: List<Outfit> = emptyList(),
+    /** Рецепты, меню, покупки, тетрадь финансов (с версии DASEIN). */
+    val extra: ExtraBackup? = null,
 )
 
 suspend fun AppDb.exportData(now: Long): BackupData {
