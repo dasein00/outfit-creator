@@ -51,6 +51,19 @@ class CookingTest {
         assertEquals(1.1, meat.amount, 1e-9)
     }
 
+    @Test fun shoppingRoundsToBuyableAmounts() {
+        val lines = Cooking.mergeShopping(
+            listOf(
+                Ingr("Кабачок", 1.0 / 3, "шт", 100.0, Macros(), "Овощи"),
+                Ingr("Имбирь", 10.0 / 3, "г", 3.3, Macros(), "Овощи"),
+            )
+        ).associateBy { it.name }
+        assertEquals(1.0, lines.getValue("Кабачок").amount, 0.0)
+        assertEquals(4.0, lines.getValue("Имбирь").amount, 0.0)
+        assertEquals(1.2, Cooking.buyable(1.15, "кг"), 1e-9)
+        assertEquals(2.0, Cooking.buyable(2.0, "шт"), 0.0)
+    }
+
     @Test fun autofillHitsTargetAndRespectsExclusions() {
         val c = listOf(
             Cooking.Candidate(1, listOf(MealType.BREAKFAST), Macros(350.0, 20.0, 10.0, 40.0), 10, "Завтраки", setOf("Овсяные хлопья")),

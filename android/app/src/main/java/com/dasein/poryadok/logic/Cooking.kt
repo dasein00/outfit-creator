@@ -106,9 +106,16 @@ object Cooking {
                     u == "мл" && sum >= 1000 -> "л" to sum / 1000
                     else -> u to sum
                 }
-                ShopLine(k, list.first().name.trim(), amount, unit, list.first().shopCategory)
+                ShopLine(k, list.first().name.trim(), buyable(amount, unit), unit, list.first().shopCategory)
             }
             .sortedWith(compareBy({ SHOP_CATEGORIES.indexOf(it.category).let { i -> if (i < 0) 99 else i } }, { it.name.lowercase() }))
+
+    /** В магазине не купить треть кабачка: штуки и граммы округляются вверх, килограммы — до 0,1. */
+    fun buyable(amount: Double, unit: String): Double = when (unit) {
+        "кг", "л" -> kotlin.math.ceil(amount * 10 - 1e-9) / 10
+        "г", "мл", "шт" -> kotlin.math.ceil(amount - 1e-9)
+        else -> amount
+    }
 
     /** Замены ингредиентов: что можно взять вместо. */
     val SWAPS: Map<String, List<String>> = mapOf(
