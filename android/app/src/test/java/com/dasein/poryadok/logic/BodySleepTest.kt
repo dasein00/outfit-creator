@@ -67,7 +67,7 @@ class SleepDetectTest {
 
     @Test fun typicalNight() {
         // Вечером телефон в руках, последний раз в 23:40, ночью два уведомления, в 3:10 проверил 3 минуты, подъём 7:05.
-        val ev = use(-6 * 60, 30) + use(-3 * 60, 50) + use(-60, 25) + use(-40, 20) +
+        val ev = use(-6 * 60, 30) + use(-3 * 60, 50) + use(-60, 15) + use(-40, 20) +
             glance(60) + glance(150) + use(190, 3) + use(425, 15) + use(600, 30)
         val g = SleepDetect.detect(ev, midnight)!!
         assertEquals(midnight - 20 * MIN, g.lastUseAt)       // 23:40
