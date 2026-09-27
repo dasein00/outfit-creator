@@ -197,7 +197,8 @@ object BodyComp {
         /** true — изменение в лучшую сторону, false — в худшую, null — без оценки или без изменений. */
         val better: Boolean? get() {
             val d = delta ?: return null
-            if (goodDown == null || kotlin.math.abs(d) < 1e-9) return null
+            // Изменение меньше половины последнего знака не считаем ни улучшением, ни ухудшением.
+            if (goodDown == null || kotlin.math.abs(d) < 0.05) return null
             return if (goodDown) d < 0 else d > 0
         }
     }

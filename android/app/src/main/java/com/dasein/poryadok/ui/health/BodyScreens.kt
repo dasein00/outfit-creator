@@ -516,7 +516,7 @@ fun BodyCompareScreen(nav: NavHostController) {
                         listOf("weight" to "вес (кг)", "bmi" to "ИМТ", "fat" to "жир (%)").forEach { (k, l) ->
                             val d = diffs.firstOrNull { it.key == k }
                             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(d?.delta?.let { signed(it) } ?: "—", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold,
+                                Text(d?.delta?.let { if (abs(it) < 0.05) "0,0" else signed(it) } ?: "—", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold,
                                     color = when (d?.better) { true -> extra.ok; false -> extra.danger; null -> MaterialTheme.colorScheme.onSurface })
                                 Text(l, fontSize = 12.sp, color = extra.dim)
                             }
@@ -537,7 +537,7 @@ fun BodyCompareScreen(nav: NavHostController) {
                     Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(d.title, fontSize = 13.sp, color = extra.dim, textAlign = TextAlign.Center)
                         Text(
-                            d.delta?.let { signed(it).let { s -> if (abs(it) < 1e-9) "0,0" else s } } ?: "—", fontWeight = FontWeight.SemiBold,
+                            d.delta?.let { if (abs(it) < 0.05) "0,0" else signed(it) } ?: "—", fontWeight = FontWeight.SemiBold,
                             color = when (d.better) { true -> extra.ok; false -> extra.danger; null -> extra.dim },
                         )
                     }

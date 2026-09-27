@@ -37,6 +37,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -118,7 +119,9 @@ fun KpImportScreen(nav: NavHostController, kind: Int) {
     val extra = LocalExtra.current
     val scope = rememberCoroutineScope()
     var web by remember { mutableStateOf<WebView?>(null) }
+    var opened by remember { mutableStateOf(false) }
     var url by remember { mutableStateOf("https://www.kinopoisk.ru/") }
+    var startUrl by remember { mutableStateOf("https://www.kinopoisk.ru/") }
     var profile by remember { mutableStateOf("") }
     var allPages by rememberUiFlag("kp_all_pages", true)
     var collecting by remember { mutableStateOf(false) }
@@ -184,7 +187,10 @@ fun KpImportScreen(nav: NavHostController, kind: Int) {
                     OutlinedButton(onClick = {
                         val id = Regex("(\\d{3,})").find(profile)?.groupValues?.get(1)
                         if (id == null) Toast.makeText(ctx, "Номер профиля — цифры из ссылки kinopoisk.ru/user/…", Toast.LENGTH_LONG).show()
-                        else web?.loadUrl("https://www.kinopoisk.ru/user/$id/votes/")
+                        else {
+                            val target = "https://www.kinopoisk.ru/user/$id/votes/"
+                            if (web == null) { startUrl = target; opened = true } else web?.loadUrl(target)
+                        }
                     }) { Text("Мои оценки", fontSize = 12.sp) }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -200,9 +206,14 @@ fun KpImportScreen(nav: NavHostController, kind: Int) {
                 }
                 Text(url, fontSize = 10.sp, color = extra.dim, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(vertical = 2.dp))
             }
-            AndroidView(
+            if (!opened) {
+                Box(Modifier.weight(1f).fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                    Button(onClick = { opened = true }) { Text("Открыть Кинопоиск") }
+                }
+            } else AndroidView(
                 factory = { c ->
                     WebView(c).apply {
+                        setBackgroundColor(android.graphics.Color.WHITE)
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
                         settings.userAgentString = DESKTOP_UA
@@ -219,11 +230,11 @@ fun KpImportScreen(nav: NavHostController, kind: Int) {
                                 if (autoNext) scope.launch { delay(1200); collect { nextPage() } }
                             }
                         }
-                        loadUrl("https://www.kinopoisk.ru/")
+                        loadUrl(startUrl)
                         web = this
                     }
                 },
-                modifier = Modifier.weight(1f).fillMaxWidth(),
+                modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds(),
             )
         }
     }
