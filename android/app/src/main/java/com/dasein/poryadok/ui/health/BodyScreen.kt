@@ -165,6 +165,7 @@ fun BodyTab(profile: BodyProfile, weights: List<WeightEntry>) {
     val metricsDb by observe(emptyList()) { Graph.extra.bodyMetrics() }
     var edit by remember { mutableStateOf<BodyMetric?>(null) }
     var syncing by remember { mutableStateOf(false) }
+    var syncs by remember { mutableStateOf(0) }
     var hcGranted by remember { mutableStateOf(emptySet<String>()) }
     LaunchedEffect(Unit) { hcGranted = Body.granted(ctx) }
     val person = Person(profile.male, profile.heightCm, profile.age)
@@ -183,6 +184,8 @@ fun BodyTab(profile: BodyProfile, weights: List<WeightEntry>) {
         scope.launch {
             val n = runCatching { Body.syncHealthConnect(ctx) }.getOrElse { -1 }
             syncing = false
+            syncs++
+            hcGranted = Body.granted(ctx)
             Toast.makeText(ctx, if (n < 0) "Не удалось прочитать Health Connect" else if (n == 0) "Новых взвешиваний нет" else "Добавлено взвешиваний: $n", Toast.LENGTH_SHORT).show()
         }
     }
@@ -235,11 +238,9 @@ fun BodyTab(profile: BodyProfile, weights: List<WeightEntry>) {
             enabled = !syncing && Steps.hcStatus(ctx) == Steps.HcStatus.AVAILABLE, modifier = Modifier.weight(1f),
         ) { Text(if (syncing) "Синхронизация…" else if (hcGranted.isEmpty()) "Подключить весы" else "Синхронизировать") }
     }
-    Text(
-        "Весы OKOK → приложение OKOK International → Health Connect (в OKOK: «Мой» → настройки → Google Fit / Health Connect). " +
-            "Так приходят вес, жир, кости, безжировая масса и обмен. Воду, белок, висцеральный жир и другие показатели можно дописать в «+ Взвешивание».",
-        fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(vertical = 6.dp),
-    )
+    Gap(8.dp)
+    HcLinkCard(syncs) { io { Graph.prefs.update { it.copy(bodyHc = true) } }; sync() }
+    Gap(4.dp)
 
     if (last != null) {
         val r = last.reading()

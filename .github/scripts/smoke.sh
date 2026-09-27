@@ -4,7 +4,7 @@ set -x
 PKG=com.dasein.poryadok
 mkdir -p shots
 # Проверка обновления: сначала ставим предыдущий выпуск с примером данных, потом новую сборку поверх.
-curl -sSL -o old.apk https://github.com/dasein00/outfit-creator/releases/download/android-v1.0.10/DASEIN.apk || true
+curl -sSL -o old.apk https://github.com/dasein00/outfit-creator/releases/download/android-v1.0.13/DASEIN.apk || true
 if [ -s old.apk ]; then
   adb install old.apk
   adb shell pm grant $PKG android.permission.POST_NOTIFICATIONS || true
@@ -55,6 +55,16 @@ adb shell am start -n $PKG/.MainActivity --es route "recipeEdit/0"
 sleep 3
 adb shell input text "Test"
 adb exec-out screencap -p > shots/98_recipe_wizard.png
+
+# Главная: метрики под первым экраном и плашка фактов внизу.
+adb shell am start -n $PKG/.MainActivity --es route "today"
+sleep 3
+adb shell input swipe 540 1700 540 700 400
+sleep 2
+adb exec-out screencap -p > shots/96_today_metrics.png
+for k in 1 2 3 4 5 6 7 8; do adb shell input swipe 540 1900 540 300 200; sleep 1; done
+sleep 2
+adb exec-out screencap -p > shots/97_today_facts.png
 
 adb logcat -d -b crash > shots/crash.txt || true
 [ -s shots/crash.txt ] || echo "no crashes" > shots/crash.txt

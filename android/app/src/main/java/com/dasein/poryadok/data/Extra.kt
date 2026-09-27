@@ -421,6 +421,7 @@ interface ExtraDao {
     @Query("SELECT * FROM body_metrics ORDER BY at") fun bodyMetrics(): Flow<List<BodyMetric>>
     @Query("SELECT * FROM body_metrics ORDER BY at") suspend fun bodyMetricsNow(): List<BodyMetric>
     @Query("SELECT COUNT(*) FROM body_metrics WHERE extId = :extId") suspend fun bodyExtCount(extId: String): Int
+    @Query("SELECT * FROM body_metrics WHERE extId = :extId LIMIT 1") suspend fun bodyByExt(extId: String): BodyMetric?
     @Upsert suspend fun upsertBodyMetric(m: BodyMetric): Long
     @Delete suspend fun deleteBodyMetric(m: BodyMetric)
 

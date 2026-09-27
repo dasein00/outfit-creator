@@ -1,6 +1,19 @@
 package com.dasein.poryadok.system
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.RectF
+import android.graphics.Typeface
+import androidx.compose.runtime.remember
+import androidx.glance.Image
+import androidx.glance.ImageProvider
+import androidx.glance.LocalContext
+import androidx.glance.LocalSize
+import androidx.glance.appwidget.SizeMode
+import androidx.glance.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -38,8 +51,18 @@ import com.dasein.poryadok.Repo
 import com.dasein.poryadok.logic.Dates
 import com.dasein.poryadok.logic.Energy
 import com.dasein.poryadok.logic.HabitSchedule
+import com.dasein.poryadok.ui.Routes
 
 object Widgets {
+    /** Картинка кольца как на виджете — для предпросмотра в приложении. */
+    suspend fun ringPreview(ctx: Context): Bitmap {
+        val dao = Graph.dao
+        val today = Dates.today()
+        val steps = dao.dayLogNow(today)?.steps ?: 0
+        val burned = Energy.burned(steps, dao.lastWeight()?.kg ?: dao.profileNow()?.startWeight ?: 70.0, dao.workoutKcalOn(today), Graph.extra.dayEnergyOf(today)?.activeKcal).total
+        return WidgetRing.render(ctx, steps, dao.profileNow()?.stepsGoal ?: 8000, burned)
+    }
+
     suspend fun refresh(ctx: Context) {
         try {
             TodayWidget().updateAll(ctx)
@@ -55,6 +78,7 @@ private data class WidgetData(
 )
 
 private val TaskIdKey = ActionParameters.Key<Long>("taskId")
+private val RouteKey = ActionParameters.Key<String>(MainActivity.EXTRA_ROUTE)
 
 private val INK = Color(0xFF211D18)
 private val INK2 = Color(0xFF2B261F)
@@ -64,6 +88,8 @@ private val BRASS = Color(0xFFC79246)
 private val DANGER = Color(0xFFD27A63)
 
 class TodayWidget : GlanceAppWidget() {
+    override val sizeMode: SizeMode = SizeMode.Exact
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         Graph.init(context)
         val data = load()
@@ -91,56 +117,127 @@ class TodayWidget : GlanceAppWidget() {
 
     @Composable
     private fun Content(d: WidgetData) {
+        val size = LocalSize.current
+        val context = LocalContext.current
+        val compact = size.height < 140.dp
+        // Кольцо занимает всю высоту под заголовком, но не больше половины ширины.
+        val ringDp = ((if (compact) size.height - 20.dp else size.height - 56.dp).value)
+            .coerceAtMost(size.width.value * 0.5f).coerceAtLeast(72f)
+        val ring = remember(d.steps, d.stepsGoal, d.burned) { WidgetRing.render(context, d.steps, d.stepsGoal, d.burned) }
         Column(
-            GlanceModifier.fillMaxSize().background(ColorProvider(INK)).cornerRadius(20.dp).padding(14.dp)
+            GlanceModifier.fillMaxSize().background(ColorProvider(INK)).cornerRadius(20.dp).padding(10.dp)
                 .clickable(actionStartActivity<MainActivity>()),
         ) {
-            Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("Сегодня", style = TextStyle(color = ColorProvider(TEXT), fontSize = 17.sp, fontWeight = FontWeight.Bold))
-                Spacer(GlanceModifier.width(8.dp))
-                Text(d.date, style = TextStyle(color = ColorProvider(DIM), fontSize = 12.sp))
-                Spacer(GlanceModifier.defaultWeight())
-                if (d.habitsTotal > 0) Text(
-                    "Привычки ${d.habitsDone}/${d.habitsTotal}",
-                    style = TextStyle(color = ColorProvider(BRASS), fontSize = 12.sp),
-                )
-            }
-            Spacer(GlanceModifier.height(8.dp))
-            Row(
-                GlanceModifier.fillMaxWidth().background(ColorProvider(INK2)).cornerRadius(14.dp).padding(horizontal = 10.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(GlanceModifier.defaultWeight()) {
-                    Text("%,d".format(d.steps).replace(',', ' '), style = TextStyle(color = ColorProvider(TEXT), fontSize = 20.sp, fontWeight = FontWeight.Bold))
-                    Text("шагов из ${d.stepsGoal}", style = TextStyle(color = ColorProvider(DIM), fontSize = 11.sp))
-                }
-                Column(GlanceModifier.defaultWeight()) {
-                    Text("${d.burned}", style = TextStyle(color = ColorProvider(BRASS), fontSize = 20.sp, fontWeight = FontWeight.Bold))
-                    Text("ккал сожжено", style = TextStyle(color = ColorProvider(DIM), fontSize = 11.sp))
-                }
-            }
-            Spacer(GlanceModifier.height(8.dp))
-            if (d.tasks.isEmpty()) {
-                Text("Задач на сегодня нет", style = TextStyle(color = ColorProvider(DIM), fontSize = 14.sp))
-            }
-            d.tasks.forEach { t ->
-                Row(
-                    GlanceModifier.fillMaxWidth().padding(vertical = 4.dp)
-                        .clickable(actionRunCallback<ToggleTaskAction>(actionParametersOf(TaskIdKey to t.id))),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("○", style = TextStyle(color = ColorProvider(BRASS), fontSize = 16.sp))
+            if (!compact) {
+                Row(GlanceModifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Сегодня", style = TextStyle(color = ColorProvider(TEXT), fontSize = 19.sp, fontWeight = FontWeight.Bold))
                     Spacer(GlanceModifier.width(8.dp))
-                    Text(
-                        t.title, maxLines = 1,
-                        style = TextStyle(color = ColorProvider(if (t.overdue) DANGER else TEXT), fontSize = 14.sp),
-                        modifier = GlanceModifier.defaultWeight(),
+                    Text(d.date, style = TextStyle(color = ColorProvider(DIM), fontSize = 14.sp))
+                    Spacer(GlanceModifier.defaultWeight())
+                    if (d.habitsTotal > 0) Text(
+                        "Привычки ${d.habitsDone}/${d.habitsTotal}",
+                        style = TextStyle(color = ColorProvider(BRASS), fontSize = 14.sp, fontWeight = FontWeight.Bold),
                     )
-                    if (t.time.isNotEmpty()) Text(t.time, style = TextStyle(color = ColorProvider(DIM), fontSize = 12.sp))
+                }
+                Spacer(GlanceModifier.height(6.dp))
+            }
+            Row(GlanceModifier.fillMaxWidth().defaultWeight(), verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    ImageProvider(ring), contentDescription = "${d.steps} шагов из ${d.stepsGoal}, ${d.burned} ккал сожжено",
+                    modifier = GlanceModifier.size(ringDp.dp).clickable(actionStartActivity<MainActivity>(actionParametersOf(RouteKey to Routes.STEPS))),
+                )
+                Spacer(GlanceModifier.width(10.dp))
+                Column(GlanceModifier.defaultWeight()) {
+                    if (compact && d.habitsTotal > 0) Text(
+                        "Привычки ${d.habitsDone}/${d.habitsTotal}",
+                        style = TextStyle(color = ColorProvider(BRASS), fontSize = 14.sp, fontWeight = FontWeight.Bold),
+                    )
+                    if (d.tasks.isEmpty()) {
+                        Text("Задач на сегодня нет", style = TextStyle(color = ColorProvider(DIM), fontSize = 16.sp))
+                    }
+                    d.tasks.forEach { t ->
+                        Row(
+                            GlanceModifier.fillMaxWidth().padding(vertical = 5.dp)
+                                .clickable(actionRunCallback<ToggleTaskAction>(actionParametersOf(TaskIdKey to t.id))),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("○", style = TextStyle(color = ColorProvider(BRASS), fontSize = 18.sp, fontWeight = FontWeight.Bold))
+                            Spacer(GlanceModifier.width(6.dp))
+                            Text(
+                                t.title, maxLines = 1,
+                                style = TextStyle(color = ColorProvider(if (t.overdue) DANGER else TEXT), fontSize = 16.sp, fontWeight = FontWeight.Medium),
+                                modifier = GlanceModifier.defaultWeight(),
+                            )
+                            if (t.time.isNotEmpty()) Text(" " + t.time, style = TextStyle(color = ColorProvider(DIM), fontSize = 14.sp))
+                        }
+                    }
+                    if (d.more > 0) Text("и ещё ${d.more}", style = TextStyle(color = ColorProvider(DIM), fontSize = 14.sp))
                 }
             }
-            if (d.more > 0) Text("и ещё ${d.more}", style = TextStyle(color = ColorProvider(DIM), fontSize = 12.sp))
         }
+    }
+}
+
+/** Кольцо шагов для виджета: заполняется по мере выполнения плана, внутри — шаги и калории крупно, с иконками. */
+object WidgetRing {
+    private const val S = 480
+
+    private fun icon(ctx: Context, key: String): Bitmap? =
+        runCatching { ctx.assets.open("glyphs/$key.webp").use { BitmapFactory.decodeStream(it) } }.getOrNull()
+
+    private fun fit(p: Paint, text: String, maxW: Float, size: Float) {
+        p.textSize = size
+        val w = p.measureText(text)
+        if (w > maxW) p.textSize = size * maxW / w
+    }
+
+    fun render(ctx: Context, steps: Int, goal: Int, burned: Int): Bitmap {
+        val b = Bitmap.createBitmap(S, S, Bitmap.Config.ARGB_8888)
+        val c = Canvas(b)
+        val cx = S / 2f
+        val stroke = S * 0.08f
+        val oval = RectF(stroke / 2 + 2, stroke / 2 + 2, S - stroke / 2 - 2, S - stroke / 2 - 2)
+        val arc = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = stroke; strokeCap = Paint.Cap.ROUND }
+        arc.color = 0xFF3D362C.toInt()
+        c.drawArc(oval, 0f, 360f, false, arc)
+        val frac = (steps.toFloat() / goal.coerceAtLeast(1)).coerceIn(0f, 1f)
+        arc.color = if (frac >= 1f) 0xFF8CC46E.toInt() else 0xFFE0A04A.toInt()
+        if (frac > 0f) c.drawArc(oval, -90f, (360f * frac).coerceAtLeast(4f), false, arc)
+
+        val bold = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; typeface = bold }
+        val badge = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFF3E9D6.toInt() }
+        val src = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+
+        // Кроссовок на светлом кружке — чтобы тёмный силуэт был виден на тёмном фоне.
+        c.drawCircle(cx, 112f, 44f, badge)
+        icon(ctx, "sport/19")?.let { c.drawBitmap(it, null, RectF(cx - 36, 76f, cx + 36, 148f), src) }
+
+        val stepsText = steps.toString().reversed().chunked(3).joinToString(" ").reversed()
+        text.color = 0xFFFFFFFF.toInt()
+        fit(text, stepsText, 330f, 104f)
+        c.drawText(stepsText, cx, 244f, text)
+        text.typeface = Typeface.DEFAULT
+        text.color = 0xFFCFC6B8.toInt()
+        fit(text, "из $goal", 300f, 36f)
+        c.drawText("из $goal", cx, 286f, text)
+
+        val kcal = "$burned"
+        text.typeface = bold
+        text.color = 0xFFFFA24C.toInt()
+        fit(text, kcal, 210f, 78f)
+        val w = text.measureText(kcal)
+        val iconSize = 62f
+        val left = cx - (iconSize + 8 + w) / 2
+        icon(ctx, "sport/22")?.let { c.drawBitmap(it, null, RectF(left, 310f, left + iconSize, 310f + iconSize), src) }
+        text.textAlign = Paint.Align.LEFT
+        c.drawText(kcal, left + iconSize + 8, 366f, text)
+        text.textAlign = Paint.Align.CENTER
+        text.typeface = Typeface.DEFAULT
+        text.color = 0xFFCFC6B8.toInt()
+        text.textSize = 32f
+        c.drawText("ккал", cx, 404f, text)
+        return b
     }
 }
 

@@ -211,6 +211,9 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                 }
             }
 
+            item { SectionTitle("Метрики") }
+            item { DayMetrics(nav, settings.currency) }
+
             item { SectionTitle("Задачи на сегодня", action = "Все") { nav.goTab(Routes.plan(1)) } }
             if (todayTasks.isEmpty()) item {
                 Tile {
@@ -412,6 +415,11 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                         }
                     }
                 }
+            }
+
+            item {
+                Gap(18.dp)
+                FactsCard()
             }
 
             item {

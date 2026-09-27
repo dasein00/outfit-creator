@@ -48,6 +48,9 @@ data class Settings(
     val sleepAuto: Boolean = false,
     val bodyHc: Boolean = false,
     val kinopoiskToken: String = "",
+    val factsHistory: String = "",
+    val factsPos: Int = 0,
+    val factsRound: Int = 0,
 )
 
 class Prefs(private val context: Context) {
@@ -85,6 +88,9 @@ class Prefs(private val context: Context) {
         val sleepAuto = booleanPreferencesKey("sleepAuto")
         val bodyHc = booleanPreferencesKey("bodyHc")
         val kinopoiskToken = stringPreferencesKey("kinopoiskToken")
+        val factsHistory = stringPreferencesKey("factsHistory")
+        val factsPos = intPreferencesKey("factsPos")
+        val factsRound = intPreferencesKey("factsRound")
     }
 
     val settings: Flow<Settings> = context.store.data.map { p -> p.toSettings() }
@@ -125,6 +131,9 @@ class Prefs(private val context: Context) {
         sleepAuto = this[K.sleepAuto] ?: false,
         bodyHc = this[K.bodyHc] ?: false,
         kinopoiskToken = this[K.kinopoiskToken] ?: "",
+        factsHistory = this[K.factsHistory] ?: "",
+        factsPos = this[K.factsPos] ?: 0,
+        factsRound = this[K.factsRound] ?: 0,
     )
 
     suspend fun update(block: (Settings) -> Settings) {
@@ -163,6 +172,9 @@ class Prefs(private val context: Context) {
             p[K.sleepAuto] = s.sleepAuto
             p[K.bodyHc] = s.bodyHc
             p[K.kinopoiskToken] = s.kinopoiskToken
+            p[K.factsHistory] = s.factsHistory
+            p[K.factsPos] = s.factsPos
+            p[K.factsRound] = s.factsRound
         }
     }
 }

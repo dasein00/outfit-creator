@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -25,11 +26,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -126,6 +129,20 @@ fun StepsScreen(nav: NavHostController, settings: AppSettings) {
                 Gap(8.dp)
                 Button(onClick = { sync() }, enabled = !syncing && (settings.stepsHc || settings.stepsSensor), modifier = Modifier.fillMaxWidth()) {
                     Text(if (syncing) "Синхронизирую…" else "Синхронизировать сейчас")
+                }
+            }
+            Gap(10.dp)
+            val ring by produceState<android.graphics.Bitmap?>(null, todaySteps) { value = runCatching { com.dasein.poryadok.system.Widgets.ringPreview(ctx) }.getOrNull() }
+            Tile(color = androidx.compose.ui.graphics.Color(0xFF211D18)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    ring?.let { androidx.compose.foundation.Image(it.asImageBitmap(), "Виджет", Modifier.size(132.dp)) }
+                    Column(Modifier.padding(start = 14.dp).weight(1f)) {
+                        Text("Виджет «Сегодня»", color = androidx.compose.ui.graphics.Color(0xFFF0ECE3), fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "Кольцо заполняется по мере выполнения плана шагов и зеленеет, когда цель достигнута. Добавьте виджет: долгое нажатие на рабочий стол → «Виджеты» → DASEIN.",
+                            color = androidx.compose.ui.graphics.Color(0xFFA79E90), fontSize = 12.sp,
+                        )
+                    }
                 }
             }
             SectionTitle("Последние 14 дней")
@@ -245,6 +262,12 @@ fun SberScreen(nav: NavHostController, settings: AppSettings) {
                         ctx.startActivity(Intent(Settings.ACTION_SETTINGS))
                     }
                 }, Modifier.fillMaxWidth()) { Text("Открыть настройки доступа") }
+                if (!listener) {
+                    Gap(6.dp)
+                    com.dasein.poryadok.ui.common.RestrictedSettingsHelp("Доступ к уведомлениям") {
+                        try { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) } catch (_: ActivityNotFoundException) {}
+                    }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Записывать операции автоматически", Modifier.weight(1f))
                     Switch(settings.sberOn, { on -> io { Graph.prefs.update { it.copy(sberOn = on) } } }, enabled = listener)

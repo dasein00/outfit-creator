@@ -425,7 +425,7 @@ private fun SleepAutoCard() {
             }
             Switch(on && access, { v ->
                 if (v && !access) {
-                    try { ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) } catch (_: Exception) { ctx.startActivity(Intent(Settings.ACTION_SETTINGS)) }
+                    com.dasein.poryadok.ui.common.SystemScreens.usageAccess(ctx)
                 }
                 io { Graph.prefs.update { it.copy(sleepAuto = v) }; SleepTracker.ensureScheduled(ctx); if (v) SleepTracker.run(ctx, 14) }
             })
@@ -433,7 +433,8 @@ private fun SleepAutoCard() {
         if (on && !access) {
             Gap(6.dp)
             Text("Нужен доступ к статистике использования: в открывшемся списке выберите DASEIN и включите «Разрешить доступ».", fontSize = 12.sp, color = extra.warn)
-            TextButton(onClick = { try { ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) } catch (_: Exception) {} }) { Text("Открыть настройки доступа") }
+            Gap(6.dp)
+            com.dasein.poryadok.ui.common.RestrictedSettingsHelp("Доступ к статистике") { com.dasein.poryadok.ui.common.SystemScreens.usageAccess(ctx) }
         }
         val last = autos.firstOrNull()
         if (on && access && last != null) {

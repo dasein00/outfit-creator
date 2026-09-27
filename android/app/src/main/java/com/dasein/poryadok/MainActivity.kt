@@ -71,7 +71,9 @@ class MainActivity : FragmentActivity() {
         Graph.scope.launch {
             runCatching { Steps.sync(applicationContext) }
             runCatching { SleepTracker.run(applicationContext) }
-            if (Graph.prefs.now().bodyHc) runCatching { Body.syncHealthConnect(applicationContext, 30) }
+            // Весы: если доступ к весу выдан — читаем всегда, без отдельного включения.
+            runCatching { Body.syncHealthConnect(applicationContext, 30) }
+            runCatching { Steps.ensureScheduled(applicationContext) }
         }
     }
 

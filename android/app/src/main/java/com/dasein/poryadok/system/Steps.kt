@@ -178,7 +178,7 @@ object Steps {
     /** Включить или выключить фоновый замер в зависимости от настроек. */
     suspend fun ensureScheduled(ctx: Context) {
         val s = Graph.prefs.now()
-        if (s.stepsSensor || s.stepsHc) schedule(ctx) else cancel(ctx)
+        if (s.stepsSensor || s.stepsHc || s.bodyHc) schedule(ctx) else cancel(ctx)
     }
 }
 
@@ -186,6 +186,8 @@ class StepsWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx,
     override suspend fun doWork(): Result {
         Graph.init(applicationContext)
         runCatching { Steps.sync(applicationContext) }
+        // В фоне Health Connect отдаёт данные только при разрешении «чтение в фоне»; без него — при открытии приложения.
+        runCatching { Body.syncHealthConnect(applicationContext, 7) }
         return Result.success()
     }
 }
