@@ -107,9 +107,9 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
     val ingr = baseIngr.mapIndexed { i, ing ->
         swaps[i]?.let { p -> ing.copy(productId = p.id, name = p.name, kcal100 = p.kcal, protein100 = p.protein, fat100 = p.fat, carbs100 = p.carbs, fiber100 = p.fiber, shopCategory = p.category) } ?: ing
     }
-    val baseIngr0 = ingr
-    val baseIngr = ingr.getOrNull(baseIdx)?.toIngr()
-    val baseFactor = baseIngr?.let { b -> baseHave.num()?.let { Cooking.factorFor(b, it) } }
+    val calcList = ingr
+    val calcBase = ingr.getOrNull(baseIdx)?.toIngr()
+    val baseFactor = calcBase?.let { b -> baseHave.num()?.let { Cooking.factorFor(b, it) } }
     val servD: Double = baseFactor?.let { r.servings * it } ?: serv.toDouble()
     val factor = baseFactor ?: (serv / r.servings.toDouble())
     val scaled = Cooking.scale(ingr.map { it.toIngr() }, factor)
@@ -170,18 +170,18 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                 Text("Сколько у вас основного продукта? Остальное пересчитается в тех же пропорциях, КБЖУ — тоже.", fontSize = 12.sp, color = extra.dim)
                 Gap(6.dp)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    baseIngr0.forEachIndexed { i, ing ->
+                    calcList.forEachIndexed { i, ing ->
                         if (ing.unit != "по вкусу" && (ing.grams > 0 || ing.amount > 0)) Pill(ing.name, baseIdx == i) { baseIdx = if (baseIdx == i) -1 else i }
                     }
                 }
-                if (baseIngr != null) {
+                if (calcBase != null) {
                     Gap(6.dp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        NumberField(baseHave, { baseHave = it }, "У меня есть", Modifier.weight(1f), suffix = if (baseIngr.unit == "шт") "шт" else if (baseIngr.unit == "мл" || baseIngr.unit == "л") "мл" else "г")
+                        NumberField(baseHave, { baseHave = it }, "У меня есть", Modifier.weight(1f), suffix = if (calcBase.unit == "шт") "шт" else if (calcBase.unit == "мл" || calcBase.unit == "л") "мл" else "г")
                         TextButton(onClick = { baseIdx = -1; baseHave = "" }) { Text("Сброс") }
                     }
                     Text(
-                        "По рецепту: ${Cooking.label(baseIngr)}" + if (baseIngr.unit != "г" && baseIngr.grams > 0) " (${Cooking.amount(baseIngr.grams)} г)" else "",
+                        "По рецепту: ${Cooking.label(calcBase)}" + if (calcBase.unit != "г" && calcBase.grams > 0) " (${Cooking.amount(calcBase.grams)} г)" else "",
                         fontSize = 12.sp, color = extra.dim,
                     )
                     if (baseFactor != null) Text(
