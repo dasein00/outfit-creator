@@ -3,6 +3,11 @@
 package com.dasein.poryadok.ui.health
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.ui.text.style.TextOverflow
+import com.dasein.poryadok.ui.recipes.rememberRecipeBook
+import com.dasein.poryadok.data.toIngr
+import com.dasein.poryadok.logic.Plate
+import com.dasein.poryadok.logic.Macros
 import com.dasein.poryadok.ui.common.Glyphs
 import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.Ic
@@ -334,12 +339,60 @@ private fun FoodDialog(e0: FoodEntry, history: List<FoodEntry>, onDismiss: () ->
     var f by remember { mutableStateOf(if (e0.fat > 0) e0.fat.plain() else "") }
     var c by remember { mutableStateOf(if (e0.carbs > 0) e0.carbs.plain() else "") }
     val frequent = remember(history) { history.groupBy { it.name.lowercase() }.values.sortedByDescending { it.size }.map { it.first() }.take(12) }
+    val book = rememberRecipeBook()
+    val products by observe(emptyList()) { Graph.extra.products() }
+    var per100 by remember { mutableStateOf<Macros?>(null) }
+    var picked by remember { mutableStateOf("") }
+    var grams by remember { mutableStateOf("") }
+    var plate by remember { mutableStateOf(0) }
+    val q = e.name.trim()
+    val suggestions = remember(q, book, products) {
+        if (q.length < 2 || q == picked) emptyList() else {
+            val w = q.lowercase().replace('ё', 'е')
+            fun hit(n: String) = n.lowercase().replace('ё', 'е').contains(w)
+            book.recipes.filter { hit(it.name) }.take(5).mapNotNull { r ->
+                Plate.per100(book.ingredients[r.id].orEmpty().map { it.toIngr() })?.let { Triple(r.name, it, Plate.recipeGrams(r.category)) to r.photo }
+            } + products.filter { hit(it.name) }.take(5).map { pr ->
+                Triple(pr.name, Macros(pr.kcal, pr.protein, pr.fat, pr.carbs, pr.fiber), Plate.productGrams(pr.category)) to ""
+            }
+        }
+    }
+    LaunchedEffect(per100, grams, plate) {
+        val m = per100 ?: return@LaunchedEffect
+        val g = grams.num()?.takeIf { it > 0 } ?: plate.toDouble()
+        val k = m * (g / 100.0)
+        kcal = k.kcal.roundToInt().toString(); p = k.protein.plain1(); f = k.fat.plain1(); c = k.carbs.plain1()
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(MEALS[e.meal]) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                TextInput(e.name, { e = e.copy(name = it) }, "Что съели")
+                TextInput(e.name, { e = e.copy(name = it); if (it.trim() != picked) { per100 = null; picked = "" } }, "Что съели: блюдо, рецепт, продукт")
+                if (suggestions.isNotEmpty()) Column(
+                    Modifier.fillMaxWidth().padding(top = 4.dp).clip(RoundedCornerShape(12.dp)).background(LocalExtra.current.cardHigh),
+                ) {
+                    suggestions.forEach { (t, photo) ->
+                        val (name, m, g) = t
+                        Row(
+                            Modifier.fillMaxWidth().clickable {
+                                picked = name; e = e.copy(name = name); per100 = m; plate = g; grams = ""
+                            }.padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (photo.startsWith("dish/")) Glyph(photo, 28.dp, badge = false) else Glyph(if (photo.isEmpty() && book.recipes.none { it.name == name }) "food/12" else "food/00", 22.dp)
+                            Column(Modifier.padding(start = 8.dp).weight(1f)) {
+                                Text(name, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text("${m.kcal.roundToInt()} ккал / 100 г · тарелка ≈ $g г", fontSize = 11.sp, color = LocalExtra.current.dim)
+                            }
+                        }
+                    }
+                }
+                if (per100 != null) {
+                    Gap(6.dp)
+                    NumberField(grams, { grams = it }, "Граммовка (пусто — тарелка ≈ $plate г)", suffix = "г", decimal = false)
+                    Text("Без граммовки считается порция на обычной гарвардской тарелке: ½ — овощи, ¼ — белок, ¼ — гарнир.", fontSize = 11.sp, color = LocalExtra.current.dim)
+                }
                 if (e0.id == 0L && frequent.isNotEmpty()) {
                     Text("Часто едите:", fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -372,8 +425,9 @@ private fun FoodDialog(e0: FoodEntry, history: List<FoodEntry>, onDismiss: () ->
         confirmButton = {
             TextButton(onClick = {
                 if (e.name.isNotBlank()) {
+                    val g = grams.num()?.takeIf { it > 0 }?.roundToInt() ?: plate
                     val cur = e.copy(
-                        name = e.name.trim(), kcal = kcal.toIntOrNull() ?: 0,
+                        name = if (per100 != null) "${e.name.trim()} · $g г" else e.name.trim(), kcal = kcal.toIntOrNull() ?: 0,
                         protein = p.num() ?: 0.0, fat = f.num() ?: 0.0, carbs = c.num() ?: 0.0,
                     )
                     io { Graph.dao.upsertFood(cur) }
@@ -390,6 +444,8 @@ private fun FoodDialog(e0: FoodEntry, history: List<FoodEntry>, onDismiss: () ->
     )
 }
 
+
+private fun Double.plain1() = ((this * 10).roundToInt() / 10.0).plain()
 
 private val MEASURE_FIELDS = listOf("chest" to "Грудь", "waist" to "Талия", "belly" to "Низ живота", "hips" to "Бёдра", "arm" to "Плечо (бицепс)")
 

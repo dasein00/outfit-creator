@@ -107,7 +107,7 @@ fun balanceOf(a: Account, txns: List<Txn>): Double {
 }
 
 @Composable
-fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int) {
+fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, onBack: (() -> Unit)? = null) {
     val dao = Graph.dao
     val cur = settings.currency
     var tab by rememberSaveable(initialTab) { mutableStateOf(initialTab) }
@@ -126,6 +126,7 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int) {
 
     Screen(
         title = "Финансы",
+        onBack = onBack,
         actions = {
             IconAction(Ic.bank, "Сбербанк") { nav.navigate(Routes.SBER) }
             IconAction(Ic.document, "Тетрадь финансов") { nav.navigate(Routes.FIN_NOTEBOOK) }

@@ -36,6 +36,7 @@ import com.dasein.poryadok.Graph
 import com.dasein.poryadok.MainActivity
 import com.dasein.poryadok.Repo
 import com.dasein.poryadok.logic.Dates
+import com.dasein.poryadok.logic.Energy
 import com.dasein.poryadok.logic.HabitSchedule
 
 object Widgets {
@@ -48,11 +49,15 @@ object Widgets {
 }
 
 private data class WidgetTask(val id: Long, val title: String, val time: String, val overdue: Boolean)
-private data class WidgetData(val tasks: List<WidgetTask>, val more: Int, val habitsDone: Int, val habitsTotal: Int, val date: String)
+private data class WidgetData(
+    val tasks: List<WidgetTask>, val more: Int, val habitsDone: Int, val habitsTotal: Int, val date: String,
+    val steps: Int, val stepsGoal: Int, val burned: Int,
+)
 
 private val TaskIdKey = ActionParameters.Key<Long>("taskId")
 
 private val INK = Color(0xFF211D18)
+private val INK2 = Color(0xFF2B261F)
 private val TEXT = Color(0xFFF0ECE3)
 private val DIM = Color(0xFFA79E90)
 private val BRASS = Color(0xFFC79246)
@@ -72,12 +77,15 @@ class TodayWidget : GlanceAppWidget() {
         val habits = dao.habitsNow().filter { HabitSchedule(it.daysMask, it.timesPerWeek).isScheduled(today) }
         val logs = dao.habitLogsOn(today).associateBy { it.habitId }
         val done = habits.count { h -> (logs[h.id]?.value ?: 0) >= h.target }
+        val steps = dao.dayLogNow(today)?.steps ?: 0
         return WidgetData(
             tasks.take(5).map { t ->
                 WidgetTask(t.id, t.title, t.dueMin?.let { Dates.time(it) } ?: "", (t.dueDay ?: today) < today)
             },
             (tasks.size - 5).coerceAtLeast(0), done, habits.size,
             "${Dates.weekdayShort(today)}, ${Dates.short(today)}",
+            steps, dao.profileNow()?.stepsGoal ?: 8000,
+            Energy.burned(steps, dao.lastWeight()?.kg ?: dao.profileNow()?.startWeight ?: 70.0, dao.workoutKcalOn(today), Graph.extra.dayEnergyOf(today)?.activeKcal).total,
         )
     }
 
@@ -96,6 +104,20 @@ class TodayWidget : GlanceAppWidget() {
                     "Привычки ${d.habitsDone}/${d.habitsTotal}",
                     style = TextStyle(color = ColorProvider(BRASS), fontSize = 12.sp),
                 )
+            }
+            Spacer(GlanceModifier.height(8.dp))
+            Row(
+                GlanceModifier.fillMaxWidth().background(ColorProvider(INK2)).cornerRadius(14.dp).padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(GlanceModifier.defaultWeight()) {
+                    Text("%,d".format(d.steps).replace(',', ' '), style = TextStyle(color = ColorProvider(TEXT), fontSize = 20.sp, fontWeight = FontWeight.Bold))
+                    Text("шагов из ${d.stepsGoal}", style = TextStyle(color = ColorProvider(DIM), fontSize = 11.sp))
+                }
+                Column(GlanceModifier.defaultWeight()) {
+                    Text("${d.burned}", style = TextStyle(color = ColorProvider(BRASS), fontSize = 20.sp, fontWeight = FontWeight.Bold))
+                    Text("ккал сожжено", style = TextStyle(color = ColorProvider(DIM), fontSize = 11.sp))
+                }
             }
             Spacer(GlanceModifier.height(8.dp))
             if (d.tasks.isEmpty()) {

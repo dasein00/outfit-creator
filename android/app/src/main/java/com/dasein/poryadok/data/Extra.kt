@@ -277,6 +277,65 @@ data class SleepAuto(
     val userWakeMin: Int? = null,
 )
 
+/** Активные калории за день из Health Connect (часы, браслет, Mi Fitness). */
+@Serializable
+@Entity(tableName = "day_energy")
+data class DayEnergy(
+    @PrimaryKey val day: Long,
+    val activeKcal: Int,
+    val source: String = "Health Connect",
+)
+
+object MediaKind {
+    const val MOVIE = 0
+    const val SERIES = 1
+    const val BOOK = 2
+    val names = listOf("Фильм", "Сериал", "Книга")
+    val plural = listOf("Фильмы", "Сериалы", "Книги")
+}
+
+object MediaStatus {
+    const val PLANNED = 0
+    const val IN_PROGRESS = 1
+    const val DONE = 2
+    const val DROPPED = 3
+    fun names(kind: Int) = if (kind == MediaKind.BOOK) listOf("Хочу прочитать", "Читаю", "Прочитано", "Бросил")
+    else listOf("Хочу посмотреть", "Смотрю", "Просмотрено", "Бросил")
+}
+
+/** Карточка фильма, сериала или книги в личной коллекции. */
+@Serializable
+@Entity(tableName = "media_items", indices = [Index("kind"), Index("externalId")])
+data class MediaItem(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val kind: Int = MediaKind.MOVIE,
+    val title: String,
+    val originalTitle: String = "",
+    val year: Int? = null,
+    /** Локальный файл постера или обложки. */
+    val poster: String = "",
+    val posterUrl: String = "",
+    val description: String = "",
+    val genres: String = "",
+    /** Режиссёры (для книг — авторы), через запятую. */
+    val creators: String = "",
+    /** Актёры и роли: по строке «Имя — роль». */
+    val cast: String = "",
+    val countries: String = "",
+    /** Длительность, сезоны или страницы — как написано. */
+    val length: String = "",
+    val status: Int = MediaStatus.DONE,
+    val favorite: Boolean = false,
+    val myRating: Int = 0,
+    val review: String = "",
+    val finishedDay: Long? = null,
+    val source: String = "вручную",
+    val externalId: String = "",
+    val externalRating: Double? = null,
+    val url: String = "",
+    val createdAt: Long = 0,
+)
+
 @Dao
 interface ExtraDao {
     // Продукты
@@ -371,6 +430,19 @@ interface ExtraDao {
     @Query("SELECT * FROM sleep_auto WHERE day = :day") suspend fun sleepAutoOf(day: Long): SleepAuto?
     @Upsert suspend fun upsertSleepAuto(s: SleepAuto)
 
+    // Энергия за день
+    @Query("SELECT * FROM day_energy ORDER BY day") fun dayEnergy(): Flow<List<DayEnergy>>
+    @Query("SELECT * FROM day_energy WHERE day = :day") suspend fun dayEnergyOf(day: Long): DayEnergy?
+    @Upsert suspend fun upsertDayEnergy(e: DayEnergy)
+
+    // Фильмы, сериалы, книги
+    @Query("SELECT * FROM media_items ORDER BY createdAt DESC") fun media(): Flow<List<MediaItem>>
+    @Query("SELECT * FROM media_items WHERE id = :id") fun mediaItem(id: Long): Flow<MediaItem?>
+    @Query("SELECT * FROM media_items WHERE id = :id") suspend fun mediaItemNow(id: Long): MediaItem?
+    @Query("SELECT * FROM media_items WHERE externalId = :ext AND externalId != '' LIMIT 1") suspend fun mediaByExternal(ext: String): MediaItem?
+    @Upsert suspend fun upsertMedia(m: MediaItem): Long
+    @Delete suspend fun deleteMedia(m: MediaItem)
+
     // Резервная копия
     @Query("SELECT * FROM products") suspend fun allProducts(): List<FoodProduct>
     @Query("SELECT * FROM recipes") suspend fun allRecipes(): List<Recipe>
@@ -413,15 +485,21 @@ interface ExtraDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putSleepAuto(items: List<SleepAuto>)
     @Query("DELETE FROM body_metrics") suspend fun wipeBodyMetrics()
     @Query("DELETE FROM sleep_auto") suspend fun wipeSleepAuto()
+    @Query("SELECT * FROM day_energy") suspend fun allDayEnergy(): List<DayEnergy>
+    @Query("SELECT * FROM media_items") suspend fun allMedia(): List<MediaItem>
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putDayEnergy(items: List<DayEnergy>)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putMedia(items: List<MediaItem>)
+    @Query("DELETE FROM day_energy") suspend fun wipeDayEnergy()
+    @Query("DELETE FROM media_items") suspend fun wipeMedia()
 }
 
 @Database(
     entities = [
         FoodProduct::class, Recipe::class, RecipeIngredient::class, RecipeStep::class, MealPlanItem::class,
         MealPreset::class, MealPresetItem::class, MealRepeat::class, ShoppingItem::class, CookingLog::class,
-        FinanceNote::class, ImportRecord::class, BodyMetric::class, SleepAuto::class,
+        FinanceNote::class, ImportRecord::class, BodyMetric::class, SleepAuto::class, DayEnergy::class, MediaItem::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class ExtraDb : RoomDatabase() {
@@ -447,8 +525,25 @@ abstract class ExtraDb : RoomDatabase() {
             }
         }
 
+        /** v3: энергия за день и коллекция фильмов, сериалов и книг. */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `day_energy` (`day` INTEGER NOT NULL, `activeKcal` INTEGER NOT NULL, `source` TEXT NOT NULL, PRIMARY KEY(`day`))")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `media_items` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `kind` INTEGER NOT NULL, " +
+                        "`title` TEXT NOT NULL, `originalTitle` TEXT NOT NULL, `year` INTEGER, `poster` TEXT NOT NULL, `posterUrl` TEXT NOT NULL, " +
+                        "`description` TEXT NOT NULL, `genres` TEXT NOT NULL, `creators` TEXT NOT NULL, `cast` TEXT NOT NULL, `countries` TEXT NOT NULL, " +
+                        "`length` TEXT NOT NULL, `status` INTEGER NOT NULL, `favorite` INTEGER NOT NULL, `myRating` INTEGER NOT NULL, " +
+                        "`review` TEXT NOT NULL, `finishedDay` INTEGER, `source` TEXT NOT NULL, `externalId` TEXT NOT NULL, " +
+                        "`externalRating` REAL, `url` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_media_items_kind` ON `media_items` (`kind`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_media_items_externalId` ON `media_items` (`externalId`)")
+            }
+        }
+
         fun create(context: Context): ExtraDb =
-            Room.databaseBuilder(context, ExtraDb::class.java, "dasein_extra.db").addMigrations(MIGRATION_1_2).build()
+            Room.databaseBuilder(context, ExtraDb::class.java, "dasein_extra.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3).build()
     }
 }
 
@@ -468,6 +563,8 @@ data class ExtraBackup(
     val importRecords: List<ImportRecord> = emptyList(),
     val bodyMetrics: List<BodyMetric> = emptyList(),
     val sleepAuto: List<SleepAuto> = emptyList(),
+    val dayEnergy: List<DayEnergy> = emptyList(),
+    val media: List<MediaItem> = emptyList(),
 )
 
 suspend fun ExtraDb.exportExtra(): ExtraBackup {
@@ -475,7 +572,7 @@ suspend fun ExtraDb.exportExtra(): ExtraBackup {
     return ExtraBackup(
         d.allProducts(), d.allRecipes(), d.allIngredients(), d.allSteps(), d.allPlan(), d.allPresets(),
         d.allPresetItems(), d.allRepeats(), d.allShopping(), d.allHistory(), d.financeNotesNow(), d.allImportRecords(),
-        d.bodyMetricsNow(), d.sleepAutoNow(),
+        d.bodyMetricsNow(), d.sleepAutoNow(), d.allDayEnergy(), d.allMedia(),
     )
 }
 
@@ -496,5 +593,7 @@ suspend fun ExtraDb.importExtra(b: ExtraBackup) {
         d.wipeImportRecords(); d.putImportRecords(b.importRecords)
         d.wipeBodyMetrics(); d.putBodyMetrics(b.bodyMetrics)
         d.wipeSleepAuto(); d.putSleepAuto(b.sleepAuto)
+        d.wipeDayEnergy(); d.putDayEnergy(b.dayEnergy)
+        d.wipeMedia(); d.putMedia(b.media)
     }
 }

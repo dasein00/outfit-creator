@@ -93,7 +93,7 @@ import com.dasein.poryadok.ui.theme.Palette
 import java.time.YearMonth
 
 @Composable
-fun CalendarScreen(nav: NavHostController, initialTab: Int) {
+fun CalendarScreen(nav: NavHostController, initialTab: Int, onBack: (() -> Unit)? = null) {
     var tab by rememberSaveable(initialTab) { mutableStateOf(initialTab) }
     var addMenu by remember { mutableStateOf(false) }
     var editReminder by remember { mutableStateOf<Reminder?>(null) }
@@ -101,6 +101,7 @@ fun CalendarScreen(nav: NavHostController, initialTab: Int) {
     var selected by rememberSaveable { mutableStateOf(Dates.today()) }
     Screen(
         title = "Календарь",
+        onBack = onBack,
         actions = { IconButton(onClick = { selected = Dates.today() }) { Icon(Icons.Default.Today, "Сегодня") } },
         fab = {
             Box {

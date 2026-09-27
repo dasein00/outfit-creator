@@ -51,12 +51,12 @@ private const val MINE = "Мои рецепты"
 private const val FAV = "Избранное"
 
 @Composable
-fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int) {
+fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int, embedded: Boolean = false) {
     var tab by rememberSaveable(initialTab) { mutableStateOf(initialTab) }
     val book = rememberRecipeBook()
     Screen(
         title = "Рецепты",
-        onBack = { nav.popBackStack() },
+        onBack = if (embedded) null else ({ nav.popBackStack() }),
         actions = {
             IconAction("food/04", "Список покупок") { nav.navigate(Routes.SHOPPING) }
             IconAction("food/22", "История готовки") { nav.navigate(Routes.COOK_HISTORY) }

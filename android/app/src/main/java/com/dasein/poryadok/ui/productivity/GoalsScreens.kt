@@ -82,7 +82,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
-fun GoalsScreen(nav: NavHostController) {
+fun GoalsScreen(nav: NavHostController, embedded: Boolean = false) {
     val dao = Graph.dao
     val goals by observe(emptyList()) { dao.goals() }
     val tasks by observe(emptyList()) { dao.tasks() }
@@ -92,7 +92,7 @@ fun GoalsScreen(nav: NavHostController) {
     val today = Dates.today()
     Screen(
         title = "Цели",
-        onBack = { nav.popBackStack() },
+        onBack = if (embedded) null else ({ nav.popBackStack() }),
         fab = {
             FloatingActionButton(onClick = { nav.navigate(Routes.goal(0)) }, containerColor = MaterialTheme.colorScheme.primary) {
                 Icon(Icons.Default.Add, "Новая цель")

@@ -27,6 +27,10 @@ import com.dasein.poryadok.data.TxnType
 import com.dasein.poryadok.data.WeightEntry
 import com.dasein.poryadok.data.Workout
 import com.dasein.poryadok.data.BodyMetric
+import com.dasein.poryadok.data.DayEnergy
+import com.dasein.poryadok.data.MediaItem
+import com.dasein.poryadok.data.MediaKind
+import com.dasein.poryadok.data.MediaStatus
 import com.dasein.poryadok.data.MealRepeat
 import com.dasein.poryadok.system.Body
 import com.dasein.poryadok.data.NotebookImport
@@ -52,6 +56,24 @@ object DemoData {
     /** Разделы, появившиеся позже: добавляются, даже если остальной пример уже есть. */
     private suspend fun fillNewSections() {
         val x = Graph.extra
+        if (x.allMedia().isEmpty()) {
+            val now = System.currentTimeMillis()
+            listOf(
+                MediaItem(kind = MediaKind.MOVIE, title = "Интерстеллар", originalTitle = "Interstellar", year = 2014, genres = "фантастика, драма",
+                    creators = "Кристофер Нолан", cast = "Мэттью Макконахи — Купер\nЭнн Хэтэуэй — Амелия Брэнд\nДжессика Честейн — Мёрф",
+                    countries = "США, Великобритания", length = "2 ч 49 мин", favorite = true, myRating = 10,
+                    review = "Смотрю каждый год. Музыка Циммера и сцена с часами на волнах.", finishedDay = Dates.today() - 20, createdAt = now),
+                MediaItem(kind = MediaKind.MOVIE, title = "Амели", year = 2001, creators = "Жан-Пьер Жёне", cast = "Одри Тоту — Амели Пулен",
+                    myRating = 9, createdAt = now - 1),
+                MediaItem(kind = MediaKind.MOVIE, title = "Дюна: Часть вторая", year = 2024, creators = "Дени Вильнёв", status = MediaStatus.PLANNED, createdAt = now - 2),
+                MediaItem(kind = MediaKind.SERIES, title = "Во все тяжкие", originalTitle = "Breaking Bad", year = 2008, creators = "Винс Гиллиган",
+                    cast = "Брайан Крэнстон — Уолтер Уайт\nАарон Пол — Джесси Пинкман", length = "5 сезонов", myRating = 10, favorite = true, createdAt = now),
+                MediaItem(kind = MediaKind.BOOK, title = "Мастер и Маргарита", year = 1967, creators = "Михаил Булгаков", length = "480 стр.",
+                    myRating = 10, review = "Перечитываю раз в несколько лет — каждый раз новая книга.", createdAt = now),
+                MediaItem(kind = MediaKind.BOOK, title = "Атомные привычки", creators = "Джеймс Клир", year = 2018, status = MediaStatus.IN_PROGRESS, createdAt = now - 1),
+            ).forEach { x.upsertMedia(it) }
+        }
+        if (x.dayEnergyOf(Dates.today()) == null) x.upsertDayEnergy(DayEnergy(Dates.today(), 380, "пример"))
         if (x.bodyMetricsNow().isEmpty()) {
             val today = Dates.today()
             val base = listOf(80.2, 80.0, 79.7, 79.8, 80.0, 78.5, 78.4)

@@ -35,6 +35,8 @@ import com.dasein.poryadok.ui.finance.NotebookScreen
 import com.dasein.poryadok.ui.finance.TxnEditScreen
 import com.dasein.poryadok.ui.health.HealthScreen
 import com.dasein.poryadok.ui.health.WellbeingScreen
+import com.dasein.poryadok.ui.media.MediaCardScreen
+import com.dasein.poryadok.ui.media.MediaSearchScreen
 import com.dasein.poryadok.ui.more.MoreScreen
 import com.dasein.poryadok.ui.more.ReviewScreen
 import com.dasein.poryadok.ui.more.SearchScreen
@@ -93,6 +95,10 @@ object Routes {
     const val STEPS = "steps"
     const val SBER = "sber"
     const val FIN_NOTEBOOK = "finNotebook"
+    const val PLAN = "plan"
+    const val HEALTH_HUB = "healthHub"
+    const val TOPS_HUB = "topsHub"
+    const val MEDIA_SEARCH = "mediaSearch"
 
     fun task(id: Long, day: Long = -1, goal: Long = -1) = "task/$id?day=$day&goal=$goal"
     fun event(id: Long, day: Long = -1) = "event/$id?day=$day"
@@ -111,20 +117,33 @@ object Routes {
     fun recipeEdit(id: Long) = "recipeEdit/$id"
     fun menuCreate(day: Long = 0) = "$MENU_CREATE?day=$day"
     fun preset(id: Long) = "preset/$id"
+    fun plan(tab: Int) = "$PLAN?tab=$tab"
+    fun topsHub(tab: Int) = "$TOPS_HUB?tab=$tab"
+    fun media(id: Long, kind: Int = 0) = "media/$id?kind=$kind"
+    fun mediaSearch(kind: Int) = "$MEDIA_SEARCH?kind=$kind"
 }
 
 private data class Tab(val route: String, val label: String, val icon: String)
 
 private val tabs = listOf(
-    Tab(Routes.TODAY, "Сегодня", "ui:sun"),
-    Tab(Routes.TASKS, "Задачи", "cal/24"),
-    Tab(Routes.CALENDAR, "Календарь", "cal/00"),
-    Tab(Routes.FINANCE, "Финансы", "ui:wallet"),
+    Tab(Routes.TODAY, "Главное", "ui:home"),
+    Tab(Routes.RECIPES, "Рецепты", "food/00"),
+    Tab(Routes.HEALTH_HUB, "Здоровье", "train/11"),
+    Tab(Routes.PLAN, "График", "cal/00"),
+    Tab(Routes.TOPS_HUB, "Топы", "sport/27"),
     Tab(Routes.MORE, "Ещё", "cal/40"),
 )
 
 private fun NavBackStackEntry.long(name: String): Long = arguments?.getLong(name) ?: -1L
 private fun NavBackStackEntry.int(name: String): Int = arguments?.getInt(name) ?: 0
+
+/** Открыть вкладку с конкретным разделом внутри (например, «График» → «Задачи»). */
+fun NavHostController.goTab(route: String) {
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id)
+        launchSingleTop = true
+    }
+}
 
 fun NavHostController.openTab(route: String) {
     navigate(route) {
@@ -157,15 +176,32 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
     Column(Modifier.fillMaxSize()) {
         NavHost(nav, startDestination = Routes.TODAY, modifier = Modifier.weight(1f)) {
             composable(Routes.TODAY) { TodayScreen(nav, settings) }
-            composable(Routes.TASKS) { TasksScreen(nav) }
+            composable(Routes.TASKS) { TasksScreen(nav) { nav.popBackStack() } }
             composable(
                 "${Routes.CALENDAR}?tab={tab}",
                 arguments = listOf(navArgument("tab") { type = NavType.IntType; defaultValue = 0 }),
-            ) { CalendarScreen(nav, it.int("tab")) }
+            ) { CalendarScreen(nav, it.int("tab")) { nav.popBackStack() } }
             composable(
                 "${Routes.FINANCE}?tab={tab}",
                 arguments = listOf(navArgument("tab") { type = NavType.IntType; defaultValue = 0 }),
-            ) { FinanceScreen(nav, settings, it.int("tab")) }
+            ) { FinanceScreen(nav, settings, it.int("tab")) { nav.popBackStack() } }
+            composable(
+                "${Routes.PLAN}?tab={tab}",
+                arguments = listOf(navArgument("tab") { type = NavType.IntType; defaultValue = 0 }),
+            ) { PlanScreen(nav, it.int("tab")) }
+            composable(Routes.HEALTH_HUB) { HealthHubScreen(nav) }
+            composable(
+                "${Routes.TOPS_HUB}?tab={tab}",
+                arguments = listOf(navArgument("tab") { type = NavType.IntType; defaultValue = 0 }),
+            ) { TopsHubScreen(nav, it.int("tab")) }
+            composable(
+                "media/{id}?kind={kind}",
+                arguments = listOf(navArgument("id") { type = NavType.LongType }, navArgument("kind") { type = NavType.IntType; defaultValue = 0 }),
+            ) { MediaCardScreen(nav, it.long("id"), it.int("kind")) }
+            composable(
+                "${Routes.MEDIA_SEARCH}?kind={kind}",
+                arguments = listOf(navArgument("kind") { type = NavType.IntType; defaultValue = 0 }),
+            ) { MediaSearchScreen(nav, it.int("kind")) }
             composable(Routes.MORE) { MoreScreen(nav) }
 
             composable(
@@ -231,7 +267,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
                     navArgument("tab") { type = NavType.IntType; defaultValue = 0 },
                     navArgument("mode") { type = NavType.IntType; defaultValue = 0 },
                 ),
-            ) { RecipesScreen(nav, it.int("tab"), it.int("mode")) }
+            ) { RecipesScreen(nav, it.int("tab"), it.int("mode"), embedded = true) }
             composable("recipe/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
                 RecipeDetailScreen(nav, it.long("id"))
             }

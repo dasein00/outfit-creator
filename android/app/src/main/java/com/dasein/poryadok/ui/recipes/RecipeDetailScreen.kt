@@ -89,6 +89,8 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
     val scope = rememberCoroutineScope()
     var perServing by rememberSaveable { mutableStateOf(true) }
     var servings by rememberSaveable(id) { mutableStateOf(0) }
+    var baseIdx by rememberSaveable(id) { mutableStateOf(-1) }
+    var baseHave by rememberSaveable(id) { mutableStateOf("") }
     val done = remember(id) { mutableStateMapOf<Int, Boolean>() }
     val swaps = remember(id) { mutableStateMapOf<Int, FoodProduct>() }
     var swapFor by remember { mutableStateOf<Int?>(null) }
@@ -105,10 +107,14 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
     val ingr = baseIngr.mapIndexed { i, ing ->
         swaps[i]?.let { p -> ing.copy(productId = p.id, name = p.name, kcal100 = p.kcal, protein100 = p.protein, fat100 = p.fat, carbs100 = p.carbs, fiber100 = p.fiber, shopCategory = p.category) } ?: ing
     }
-    val factor = serv / r.servings.toDouble()
+    val baseIngr0 = ingr
+    val baseIngr = ingr.getOrNull(baseIdx)?.toIngr()
+    val baseFactor = baseIngr?.let { b -> baseHave.num()?.let { Cooking.factorFor(b, it) } }
+    val servD: Double = baseFactor?.let { r.servings * it } ?: serv.toDouble()
+    val factor = baseFactor ?: (serv / r.servings.toDouble())
     val scaled = Cooking.scale(ingr.map { it.toIngr() }, factor)
     val total = Cooking.total(scaled)
-    val shown = if (perServing) total / serv.toDouble() else total
+    val shown = if (perServing) total / servD else total
 
     Screen(
         title = r.name,
@@ -159,7 +165,32 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                 if (swaps.isNotEmpty()) Text("С учётом замен ингредиентов", fontSize = 12.sp, color = extra.warn, modifier = Modifier.padding(top = 6.dp))
             }
 
-            SectionTitle("Ингредиенты на $serv порц.")
+            SectionTitle("Калькулятор граммовки")
+            Tile {
+                Text("Сколько у вас основного продукта? Остальное пересчитается в тех же пропорциях, КБЖУ — тоже.", fontSize = 12.sp, color = extra.dim)
+                Gap(6.dp)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    baseIngr0.forEachIndexed { i, ing ->
+                        if (ing.unit != "по вкусу" && (ing.grams > 0 || ing.amount > 0)) Pill(ing.name, baseIdx == i) { baseIdx = if (baseIdx == i) -1 else i }
+                    }
+                }
+                if (baseIngr != null) {
+                    Gap(6.dp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        NumberField(baseHave, { baseHave = it }, "У меня есть", Modifier.weight(1f), suffix = if (baseIngr.unit == "шт") "шт" else if (baseIngr.unit == "мл" || baseIngr.unit == "л") "мл" else "г")
+                        TextButton(onClick = { baseIdx = -1; baseHave = "" }) { Text("Сброс") }
+                    }
+                    Text(
+                        "По рецепту: ${Cooking.label(baseIngr)}" + if (baseIngr.unit != "г" && baseIngr.grams > 0) " (${Cooking.amount(baseIngr.grams)} г)" else "",
+                        fontSize = 12.sp, color = extra.dim,
+                    )
+                    if (baseFactor != null) Text(
+                        "Получится ≈ ${Cooking.amount(servD)} порц. · всего ${Cooking.amount(scaled.sumOf { it.grams })} г · ${total.kcal.roundToInt()} ккал",
+                        fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
+            SectionTitle(if (baseFactor != null) "Ингредиенты на ≈ ${Cooking.amount(servD)} порц." else "Ингредиенты на $serv порц.")
             Tile(padding = 8.dp) {
                 scaled.forEachIndexed { i, ing ->
                     val hasSwap = Cooking.SWAPS.containsKey(baseIngr.getOrNull(i)?.name) || swaps.containsKey(i)
@@ -199,8 +230,8 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
             SectionTitle("Пищевая ценность")
             Tile {
                 val per100 = scaled.sumOf { it.grams }.takeIf { it > 0 }?.let { total * (100 / it) }
-                Text("Порция (${Cooking.amount(scaled.sumOf { it.grams } / serv)} г)", fontSize = 13.sp, color = extra.dim)
-                MacroLine(total / serv.toDouble(), showFiber = true)
+                Text("Порция (${Cooking.amount(scaled.sumOf { it.grams } / servD)} г)", fontSize = 13.sp, color = extra.dim)
+                MacroLine(total / servD, showFiber = true)
                 if (per100 != null) {
                     Gap(8.dp)
                     Text("На 100 г", fontSize = 13.sp, color = extra.dim)

@@ -298,14 +298,14 @@ val TOP_IDEAS = listOf(
 )
 
 @Composable
-fun TopsScreen(nav: NavHostController) {
+fun TopsScreen(nav: NavHostController, embedded: Boolean = false) {
     val lists by observe(emptyList()) { Graph.dao.topLists() }
     val allItems by observe(emptyList()) { Graph.dao.topItems() }
     var create by remember { mutableStateOf(false) }
     val extra = LocalExtra.current
     Screen(
         title = "Мои топы",
-        onBack = { nav.popBackStack() },
+        onBack = if (embedded) null else ({ nav.popBackStack() }),
         fab = { FloatingActionButton(onClick = { create = true }, containerColor = MaterialTheme.colorScheme.primary) { Icon(Icons.Default.Add, "Новый топ") } },
     ) { pad ->
         LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {

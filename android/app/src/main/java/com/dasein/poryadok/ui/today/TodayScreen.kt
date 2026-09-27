@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,10 +55,12 @@ import com.dasein.poryadok.data.MoodEntry
 import com.dasein.poryadok.data.Settings
 import com.dasein.poryadok.data.TxnType
 import com.dasein.poryadok.logic.Dates
+import com.dasein.poryadok.logic.Energy
 import com.dasein.poryadok.logic.HabitSchedule
 import com.dasein.poryadok.logic.Money
 import com.dasein.poryadok.logic.plural
 import com.dasein.poryadok.ui.Routes
+import com.dasein.poryadok.ui.goTab
 import com.dasein.poryadok.data.PlanStatus
 import com.dasein.poryadok.logic.MealType
 import com.dasein.poryadok.ui.common.AppIcon
@@ -114,6 +117,9 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
     val goals by observe(emptyList()) { dao.goals() }
     val profile by observe(null) { dao.profile() }
     val plan by observe(emptyList()) { Graph.extra.plan() }
+    val weightsAll by observe(emptyList()) { dao.weights() }
+    val workoutsAll by observe(emptyList()) { dao.workouts() }
+    val energyAll by observe(emptyList()) { Graph.extra.dayEnergy() }
     var quickAdd by remember { mutableStateOf(false) }
 
     val todayTasks = tasks.filter { !it.done && it.dueDay != null && it.dueDay <= today }
@@ -150,7 +156,35 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp),
         ) {
             item {
-                Row(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                val weightKg = weightsAll.lastOrNull()?.kg ?: profile?.startWeight ?: 70.0
+                val stepsNow = water?.steps ?: 0
+                val stepsGoalNow = profile?.stepsGoal ?: 8000
+                val burned = Energy.burned(stepsNow, weightKg, workoutsAll.filter { it.day == today }.sumOf { it.kcal }, energyAll.firstOrNull { it.day == today }?.activeKcal)
+                Row(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.STEPS) }, padding = 12.dp) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            ProgressRing(stepsNow / stepsGoalNow.coerceAtLeast(1).toFloat(), extra.ok, size = 54.dp, stroke = 6.dp) { Glyph("sport/19", 24.dp, badge = false) }
+                            Column(Modifier.padding(start = 10.dp)) {
+                                Text(String.format(java.util.Locale.US, "%,d", stepsNow).replace(',', ' '), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                Text("шагов из ${String.format(java.util.Locale.US, "%,d", stepsGoalNow).replace(',', ' ')}", fontSize = 11.sp, color = extra.dim, maxLines = 1)
+                            }
+                        }
+                    }
+                    Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.health(3)) }, padding = 12.dp) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            ProgressRing(burned.total / 600f, Palette.item(0), size = 54.dp, stroke = 6.dp) { Glyph("sport/22", 24.dp, badge = false) }
+                            Column(Modifier.padding(start = 10.dp)) {
+                                Text("${burned.total}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                Text(
+                                    "ккал сожжено" + if (burned.workouts > 0) " · трен. ${burned.workouts}" else "",
+                                    fontSize = 11.sp, color = extra.dim, maxLines = 2,
+                                )
+                            }
+                        }
+                    }
+                }
+                Gap(8.dp)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(
                             Dates.greeting() + if (settings.name.isNotBlank()) ", ${settings.name}" else "",
@@ -166,7 +200,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                     RingStat(
                         Modifier.weight(1f), if (taskProgressTotal == 0) 0f else doneToday.size / taskProgressTotal.toFloat(),
                         MaterialTheme.colorScheme.primary, "${doneToday.size}/$taskProgressTotal", "задачи",
-                    ) { nav.navigate(Routes.TASKS) }
+                    ) { nav.goTab(Routes.plan(1)) }
                     RingStat(
                         Modifier.weight(1f), if (habitsToday.isEmpty()) 0f else habitsDone / habitsToday.size.toFloat(),
                         extra.ok, "$habitsDone/${habitsToday.size}", "привычки",
@@ -177,7 +211,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                 }
             }
 
-            item { SectionTitle("Задачи на сегодня", action = "Все") { nav.navigate(Routes.TASKS) } }
+            item { SectionTitle("Задачи на сегодня", action = "Все") { nav.goTab(Routes.plan(1)) } }
             if (todayTasks.isEmpty()) item {
                 Tile {
                     Text(
@@ -193,7 +227,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                             nav.navigate(Routes.task(t.id))
                         })
                     }
-                    if (todayTasks.size > 8) TextButton(onClick = { nav.navigate(Routes.TASKS) }) {
+                    if (todayTasks.size > 8) TextButton(onClick = { nav.goTab(Routes.plan(1)) }) {
                         Text("Ещё ${todayTasks.size - 8}")
                     }
                 }
@@ -228,7 +262,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
             }
 
             if (todayEvents.isNotEmpty() || todayReminders.isNotEmpty()) {
-                item { SectionTitle("В календаре", action = "Открыть") { nav.navigate(Routes.CALENDAR) } }
+                item { SectionTitle("В календаре", action = "Открыть") { nav.goTab(Routes.plan(0)) } }
                 item {
                     Tile {
                         todayEvents.forEach { e ->
@@ -307,26 +341,14 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
             }
 
             item {
-                val stepsGoal = profile?.stepsGoal ?: 8000
-                val steps = water?.steps ?: 0
                 val todayPlan = plan.filter { it.day == today && it.status != PlanStatus.SKIPPED }
                 val next = todayPlan.filter { it.status == PlanStatus.PLANNED }.minByOrNull { MealType.order.indexOf(it.meal) }
                 Gap(10.dp)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.STEPS) }) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            AppIcon(Ic.heart, 18.dp, badge = false)
-                            Text("  Шаги", fontSize = 13.sp, color = extra.dim)
-                        }
-                        Text("$steps", style = MaterialTheme.typography.titleMedium)
-                        Gap(6.dp)
-                        Bar(steps / stepsGoal.coerceAtLeast(1).toFloat(), extra.ok)
-                        Text("цель $stepsGoal", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
-                    }
                     Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.recipes(1)) }) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            AppIcon(Ic.salad, 18.dp, badge = false)
-                            Text("  Меню", fontSize = 13.sp, color = extra.dim)
+                            Glyph("food/05", 18.dp, badge = false)
+                            Text("  Меню на сегодня", fontSize = 13.sp, color = extra.dim)
                         }
                         if (todayPlan.isEmpty()) {
                             Text("Не составлено", style = MaterialTheme.typography.titleMedium)
@@ -375,7 +397,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
 
             val activeGoals = goals.filter { !it.done }.take(3)
             if (activeGoals.isNotEmpty()) {
-                item { SectionTitle("Цели", action = "Все") { nav.navigate(Routes.GOALS) } }
+                item { SectionTitle("Цели", action = "Все") { nav.goTab(Routes.plan(2)) } }
                 items(activeGoals, key = { "g" + it.id }) { g ->
                     val goalTasks = tasks.filter { it.goalId == g.id }
                     val pr = goalProgress(g, goalTasks.count { it.done }, goalTasks.size)

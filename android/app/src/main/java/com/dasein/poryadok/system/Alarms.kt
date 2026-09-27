@@ -172,7 +172,7 @@ object Alarms {
             }
             "event" -> dao.eventsNow().firstOrNull { it.id == id }?.let { e ->
                 val time = e.startMin?.let { Dates.time(it) } ?: "сегодня"
-                notify(ctx, nid, CH_REMIND, e.title, "Начало в $time" + if (e.location.isNotBlank()) " · ${e.location}" else "", Routes.CALENDAR)
+                notify(ctx, nid, CH_REMIND, e.title, "Начало в $time" + if (e.location.isNotBlank()) " · ${e.location}" else "", Routes.plan(0))
             }
             "reminder" -> dao.reminderNow(id)?.takeIf { !it.done }?.let { r ->
                 notify(ctx, nid, CH_REMIND, "Напоминание", r.title, Routes.calendar(1))

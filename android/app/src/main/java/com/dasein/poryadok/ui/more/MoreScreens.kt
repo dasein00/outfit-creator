@@ -67,8 +67,9 @@ import com.dasein.poryadok.ui.theme.Palette
 private data class Hub(val icon: String, val title: String, val sub: String, val route: String)
 
 private val HUB = listOf(
-    Hub("food/00", "Рецепты и меню", "ПП-блюда, план, покупки", Routes.RECIPES),
+    Hub("ui:wallet", "Финансы", "операции, бюджеты, счета", Routes.FINANCE),
     Hub("sport/24", "Привычки", "серии и статистика", Routes.HABITS),
+    Hub("ui:notebook", "Задачи", "списки и проекты", Routes.TASKS),
     Hub("sport/21", "Цели", "этапы и прогресс", Routes.GOALS),
     Hub("train/18", "Фокус", "помодоро-таймер", Routes.FOCUS),
     Hub("food/02", "Питание", "КБЖУ и калории", Routes.health(0)),
@@ -79,7 +80,7 @@ private val HUB = listOf(
     Hub("sleep/00", "Сон", "автоопределение и режим", Routes.wellbeing(1)),
     Hub("ui:drop", "Вода", "норма на день", Routes.wellbeing(2)),
     Hub("habit/23", "Заметки", "мысли и списки", Routes.NOTES),
-    Hub("sport/27", "Топы", "мои рейтинги", Routes.TOPS),
+    Hub("habit/01", "Фильмы, сериалы, книги", "коллекция и отзывы", Routes.topsHub(0)),
     Hub("ui:hanger", "Гардероб", "образы на манекене", Routes.WARDROBE),
     Hub("ui:wheel", "Колесо баланса", "8 сфер жизни", Routes.WHEEL),
     Hub("train/29", "Итоги недели", "всё в одном отчёте", Routes.REVIEW),

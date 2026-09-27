@@ -101,7 +101,7 @@ fun StepsScreen(nav: NavHostController, settings: AppSettings) {
         }
     }
     val hcLauncher = rememberLauncherForActivityResult(PermissionController.createRequestPermissionResultContract()) { granted ->
-        hcGranted = granted.containsAll(Steps.HC_PERMISSIONS)
+        hcGranted = Steps.READ_STEPS in granted
         if (hcGranted) scope.launch { Graph.prefs.update { it.copy(stepsHc = true) }; Steps.ensureScheduled(ctx); sync() }
         else Toast.makeText(ctx, "Разрешение не выдано", Toast.LENGTH_SHORT).show()
     }

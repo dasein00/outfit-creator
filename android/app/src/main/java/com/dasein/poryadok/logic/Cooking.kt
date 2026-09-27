@@ -68,6 +68,20 @@ object Cooking {
 
     fun perServing(list: List<Ingr>, servings: Int): Macros = total(list) / servings.coerceAtLeast(1).toDouble()
 
+    /**
+     * Калькулятор граммовки: сколько раз увеличить рецепт, если основного продукта есть [have]
+     * (в граммах или штуках — как в рецепте). Остальные ингредиенты берутся в тех же пропорциях.
+     */
+    fun factorFor(base: Ingr, have: Double): Double? {
+        if (have <= 0) return null
+        return when {
+            base.unit == "шт" && base.amount > 0 -> have / base.amount
+            base.grams > 0 -> have / base.grams
+            base.amount > 0 -> have / base.amount
+            else -> null
+        }
+    }
+
     fun scale(list: List<Ingr>, factor: Double): List<Ingr> =
         list.map { it.copy(amount = if (it.unit == "по вкусу") it.amount else it.amount * factor, grams = it.grams * factor) }
 
@@ -213,5 +227,37 @@ object Cooking {
             out += Triple(meal, best.first.id, best.second)
         }
         return out
+    }
+}
+
+/**
+ * Порция «на обычную гарвардскую тарелку» (≈23 см): половина — овощи, четверть — белок, четверть — гарнир.
+ * Используется, когда в дневнике питания не указана граммовка.
+ */
+object Plate {
+    /** Готовое блюдо целиком на тарелке, граммы. */
+    fun recipeGrams(category: String): Int = when (category) {
+        "Супы" -> 350
+        "Салаты", "Завтраки", "Напитки" -> 300
+        "Десерты", "Выпечка", "Перекусы" -> 150
+        "Заготовки" -> 250
+        else -> 400
+    }
+
+    /** Отдельный продукт: сколько его места на тарелке по правилу гарвардской тарелки, граммы. */
+    fun productGrams(shopCategory: String): Int = when (shopCategory) {
+        "Овощи", "Заморозка" -> 200
+        "Фрукты" -> 150
+        "Мясо", "Рыба" -> 120
+        "Крупы" -> 60
+        "Молочные продукты" -> 150
+        "Бакалея" -> 30
+        else -> 100
+    }
+
+    /** КБЖУ на 100 г готового рецепта по сумме ингредиентов. */
+    fun per100(list: List<Ingr>): Macros? {
+        val g = list.sumOf { it.grams }
+        return if (g <= 0) null else Cooking.total(list) * (100.0 / g)
     }
 }

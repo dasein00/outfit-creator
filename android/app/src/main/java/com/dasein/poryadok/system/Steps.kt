@@ -11,6 +11,7 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.request.AggregateGroupByPeriodRequest
 import androidx.health.connect.client.time.TimeRangeFilter
@@ -20,6 +21,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.dasein.poryadok.Graph
+import com.dasein.poryadok.data.DayEnergy
 import com.dasein.poryadok.data.DayLog
 import com.dasein.poryadok.logic.Dates
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -38,7 +40,8 @@ import kotlin.coroutines.resume
 object Steps {
     private const val TAG = "Steps"
     val READ_STEPS: String = HealthPermission.getReadPermission(StepsRecord::class)
-    val HC_PERMISSIONS = setOf(READ_STEPS)
+    val READ_ACTIVE: String = HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class)
+    val HC_PERMISSIONS = setOf(READ_STEPS, READ_ACTIVE)
 
     enum class HcStatus { AVAILABLE, NEEDS_UPDATE, UNAVAILABLE }
 
@@ -50,7 +53,7 @@ object Steps {
 
     suspend fun hcGranted(ctx: Context): Boolean = runCatching {
         hcStatus(ctx) == HcStatus.AVAILABLE &&
-            HealthConnectClient.getOrCreate(ctx).permissionController.getGrantedPermissions().containsAll(HC_PERMISSIONS)
+            READ_STEPS in HealthConnectClient.getOrCreate(ctx).permissionController.getGrantedPermissions()
     }.getOrDefault(false)
 
     fun hasSensor(ctx: Context): Boolean =
@@ -73,6 +76,24 @@ object Steps {
             )
         )
         return res.associate { it.startTime.toLocalDate().toEpochDay() to (it.result[StepsRecord.COUNT_TOTAL] ?: 0L).toInt() }
+    }
+
+    /** Активные калории по дням из Health Connect (если разрешено). */
+    suspend fun readActiveKcal(ctx: Context, days: Int = 30): Map<Long, Int> {
+        val client = HealthConnectClient.getOrCreate(ctx)
+        if (READ_ACTIVE !in client.permissionController.getGrantedPermissions()) return emptyMap()
+        val start = LocalDate.now().minusDays(days.toLong() - 1).atStartOfDay()
+        val end = LocalDate.now().plusDays(1).atStartOfDay()
+        val res = client.aggregateGroupByPeriod(
+            AggregateGroupByPeriodRequest(
+                metrics = setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL),
+                timeRangeFilter = TimeRangeFilter.between(start, end),
+                timeRangeSlicer = Period.ofDays(1),
+            )
+        )
+        return res.mapNotNull { r ->
+            r.result[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.let { r.startTime.toLocalDate().toEpochDay() to it.inKilocalories.toInt() }
+        }.toMap()
     }
 
     /** Текущее значение аппаратного счётчика (шаги с момента включения телефона). */
@@ -123,12 +144,21 @@ object Steps {
 
     /** Синхронизация всех включённых источников. Возвращает шаги за сегодня или null. */
     suspend fun sync(ctx: Context): Int? {
+        val r = syncInner(ctx)
+        runCatching { Widgets.refresh(ctx) }
+        return r
+    }
+
+    private suspend fun syncInner(ctx: Context): Int? {
         val s = Graph.prefs.now()
         var today: Int? = null
         if (s.stepsHc && hcGranted(ctx)) {
             runCatching { readHealthConnect(ctx) }
                 .onSuccess { map -> map.forEach { (d, v) -> store(d, v, "Health Connect") }; today = map[Dates.today()] }
                 .onFailure { Log.w(TAG, "Health Connect", it) }
+            runCatching { readActiveKcal(ctx) }
+                .onSuccess { map -> map.forEach { (d, v) -> if (v > 0) Graph.extra.upsertDayEnergy(DayEnergy(d, v)) } }
+                .onFailure { Log.w(TAG, "active kcal", it) }
         }
         if (s.stepsSensor) {
             runCatching { sampleSensor(ctx) }

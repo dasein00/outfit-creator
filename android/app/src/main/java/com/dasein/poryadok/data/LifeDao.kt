@@ -154,6 +154,8 @@ interface LifeDao {
     @Upsert suspend fun upsertWeight(w: WeightEntry)
     @Delete suspend fun deleteWeight(w: WeightEntry)
     @Query("DELETE FROM weights WHERE day = :day") suspend fun deleteWeightOfDay(day: Long)
+    @Query("SELECT * FROM weights ORDER BY day DESC LIMIT 1") suspend fun lastWeight(): WeightEntry?
+    @Query("SELECT COALESCE(SUM(kcal), 0) FROM workouts WHERE day = :day") suspend fun workoutKcalOn(day: Long): Int
 
     @Query("SELECT * FROM measurements ORDER BY day")
     fun measurements(): Flow<List<Measurement>>

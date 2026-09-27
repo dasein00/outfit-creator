@@ -1,0 +1,560 @@
+@file:OptIn(ExperimentalLayoutApi::class)
+
+package com.dasein.poryadok.ui.media
+
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
+import com.dasein.poryadok.Graph
+import com.dasein.poryadok.data.MediaItem
+import com.dasein.poryadok.data.MediaKind
+import com.dasein.poryadok.data.MediaStatus
+import com.dasein.poryadok.data.TopItem
+import com.dasein.poryadok.logic.Dates
+import com.dasein.poryadok.logic.MediaHit
+import com.dasein.poryadok.logic.MediaParse
+import com.dasein.poryadok.system.MediaSearch
+import com.dasein.poryadok.system.MediaSource
+import com.dasein.poryadok.ui.Routes
+import com.dasein.poryadok.ui.common.ConfirmDialog
+import com.dasein.poryadok.ui.common.DatePickDialog
+import com.dasein.poryadok.ui.common.Empty
+import com.dasein.poryadok.ui.common.FieldButton
+import com.dasein.poryadok.ui.common.Gap
+import com.dasein.poryadok.ui.common.Glyph
+import com.dasein.poryadok.ui.common.HGap
+import com.dasein.poryadok.ui.common.IconAction
+import com.dasein.poryadok.ui.common.Images
+import com.dasein.poryadok.ui.common.Pill
+import com.dasein.poryadok.ui.common.Screen
+import com.dasein.poryadok.ui.common.SectionTitle
+import com.dasein.poryadok.ui.common.TextInput
+import com.dasein.poryadok.ui.common.Tile
+import com.dasein.poryadok.ui.common.io
+import com.dasein.poryadok.ui.common.observe
+import com.dasein.poryadok.ui.common.rememberImage
+import com.dasein.poryadok.ui.theme.LocalExtra
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+
+private fun kindIcon(kind: Int) = when (kind) { MediaKind.SERIES -> "habit/03"; MediaKind.BOOK -> "habit/11"; else -> "habit/01" }
+
+/** Постер: локальный файл, иначе заглушка с иконкой. */
+@Composable
+fun Poster(item: MediaItem, width: Dp, modifier: Modifier = Modifier) {
+    val img by rememberImage(item.poster.takeIf { it.isNotBlank() }, 600)
+    val shape = RoundedCornerShape(12.dp)
+    Box(
+        modifier.width(width).aspectRatio(2f / 3f).clip(shape).background(LocalExtra.current.cardHigh),
+        contentAlignment = Alignment.Center,
+    ) {
+        val b = img
+        if (b != null) Image(b, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        else Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Glyph(kindIcon(item.kind), width * .3f, badge = false)
+            Text(item.title, fontSize = 11.sp, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(6.dp))
+        }
+    }
+}
+
+@Composable
+private fun UrlImage(url: String, width: Dp) {
+    val bmp by produceState<android.graphics.Bitmap?>(null, url) { value = MediaSearch.thumb(url) }
+    Box(Modifier.width(width).aspectRatio(2f / 3f).clip(RoundedCornerShape(8.dp)).background(LocalExtra.current.cardHigh)) {
+        bmp?.let { Image(it.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+    }
+}
+
+@Composable
+fun Stars10(value: Int, size: Int = 22, onChange: ((Int) -> Unit)? = null) {
+    Row {
+        (1..10).forEach { i ->
+            Text(
+                if (i <= value) "★" else "☆", fontSize = size.sp, color = MaterialTheme.colorScheme.primary,
+                modifier = if (onChange != null) Modifier.clickable { onChange(if (value == i) 0 else i) }.padding(horizontal = 1.dp) else Modifier,
+            )
+        }
+    }
+}
+
+private const val FAV = 99
+
+/** Коллекция одного вида: сетка постеров, фильтры по статусу, поиск и добавление. */
+@Composable
+fun MediaListScreen(nav: NavHostController, kind: Int) {
+    val extra = LocalExtra.current
+    val all by observe<List<MediaItem>?>(null) { Graph.extra.media() }
+    var filter by rememberSaveable(kind) { mutableStateOf(-1) }
+    var sort by rememberSaveable(kind) { mutableStateOf(0) }
+    var q by rememberSaveable(kind) { mutableStateOf("") }
+    var menu by remember { mutableStateOf(false) }
+    var import by remember { mutableStateOf(false) }
+    val names = MediaStatus.names(kind)
+    val list = all.orEmpty().filter { it.kind == kind }
+        .filter { filter == -1 || (filter == FAV && it.favorite) || it.status == filter }
+        .filter { q.isBlank() || listOf(it.title, it.originalTitle, it.creators, it.cast, it.genres).any { f -> f.contains(q.trim(), true) } }
+        .let { l -> when (sort) { 1 -> l.sortedByDescending { it.myRating }; 2 -> l.sortedBy { it.title.lowercase() }; 3 -> l.sortedByDescending { it.year ?: 0 }; else -> l } }
+    Screen(
+        title = MediaKind.plural[kind],
+        actions = { IconAction("habit/24", "Найти онлайн") { nav.navigate(Routes.mediaSearch(kind)) } },
+        fab = {
+            Box {
+                FloatingActionButton(onClick = { menu = true }, containerColor = MaterialTheme.colorScheme.primary) { Icon(Icons.Default.Add, "Добавить") }
+                DropdownMenu(menu, { menu = false }) {
+                    DropdownMenuItem(text = { Text("Найти в каталоге") }, leadingIcon = { Glyph("habit/24", 20.dp) }, onClick = { menu = false; nav.navigate(Routes.mediaSearch(kind)) })
+                    DropdownMenuItem(text = { Text("Заполнить карточку самому") }, leadingIcon = { Glyph("habit/23", 20.dp) }, onClick = { menu = false; nav.navigate(Routes.media(0, kind)) })
+                    DropdownMenuItem(text = { Text("Импорт списка") }, leadingIcon = { Glyph("habit/26", 20.dp) }, onClick = { menu = false; import = true })
+                }
+            }
+        },
+    ) { pad ->
+        val items = all
+        if (items == null) { Box(Modifier.padding(pad).fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return@Screen }
+        LazyVerticalGrid(
+            GridCells.Adaptive(110.dp), Modifier.padding(pad),
+            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 96.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Column {
+                    TextInput(q, { q = it }, "Поиск в коллекции: название, режиссёр, актёр")
+                    Gap(6.dp)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Pill("Все ${items.count { it.kind == kind }}", filter == -1) { filter = -1 }
+                        Pill("Любимые", filter == FAV, glyph = "habit/28") { filter = FAV }
+                        names.forEachIndexed { i, n -> Pill(n, filter == i) { filter = i } }
+                    }
+                    Gap(6.dp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Порядок: ", fontSize = 12.sp, color = extra.dim)
+                        listOf("новые", "оценка", "название", "год").forEachIndexed { i, s ->
+                            Text(s, fontSize = 12.sp, color = if (sort == i) MaterialTheme.colorScheme.primary else extra.dim,
+                                fontWeight = if (sort == i) FontWeight.SemiBold else FontWeight.Normal,
+                                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { sort = i }.padding(6.dp))
+                        }
+                    }
+                }
+            }
+            if (list.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) {
+                Empty(
+                    kindIcon(kind), "Здесь пока пусто",
+                    "Найдите ${MediaKind.names[kind].lowercase()} в каталоге (Кинопоиск, iTunes, TVMaze, Google Книги, Open Library) или заполните карточку сами: постер, роли, режиссёр, ваше мнение.",
+                )
+            }
+            items(list, key = { it.id }) { m ->
+                Column(Modifier.clip(RoundedCornerShape(12.dp)).clickable { nav.navigate(Routes.media(m.id, kind)) }) {
+                    Box {
+                        Poster(m, 200.dp, Modifier.fillMaxWidth())
+                        if (m.favorite) Box(Modifier.padding(6.dp).align(Alignment.TopEnd)) { Glyph("habit/28", 16.dp) }
+                    }
+                    Text(m.title, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+                    Text(
+                        listOfNotNull(m.year?.toString(), if (m.myRating > 0) "★ ${m.myRating}" else null, names.getOrNull(m.status)?.takeIf { m.status != MediaStatus.DONE }).joinToString(" · "),
+                        fontSize = 11.sp, color = extra.dim, maxLines = 1,
+                    )
+                }
+            }
+        }
+    }
+    if (import) ImportDialog(kind) { import = false }
+}
+
+/** Импорт списка: по строке «Название (год)». Можно вставить список, скопированный с любого сайта. */
+@Composable
+private fun ImportDialog(kind: Int, onDismiss: () -> Unit) {
+    val ctx = LocalContext.current
+    var text by remember { mutableStateOf("") }
+    var status by remember { mutableStateOf(MediaStatus.DONE) }
+    val scope = rememberCoroutineScope()
+    val lines = text.lines().mapNotNull { MediaParse.parseListLine(it) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Импорт списка") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text("Вставьте список — по одному в строке, можно с годом: «Интерстеллар (2014)». Подойдёт список, скопированный с Кинопоиска, IMDb, LiveLib или заметки.", fontSize = 12.sp, color = LocalExtra.current.dim)
+                Gap(6.dp)
+                TextInput(text, { text = it }, "Список", singleLine = false, minLines = 6)
+                Gap(6.dp)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    MediaStatus.names(kind).forEachIndexed { i, n -> Pill(n, status == i) { status = i } }
+                }
+                Text("Будет добавлено: ${lines.size}", fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 6.dp))
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                scope.launch {
+                    val existing = Graph.extra.allMedia()
+                    var n = 0
+                    lines.forEach { (title, year) ->
+                        if (existing.none { it.kind == kind && it.title.equals(title, true) && (year == null || it.year == year) }) {
+                            Graph.extra.upsertMedia(MediaItem(kind = kind, title = title, year = year, status = status, createdAt = System.currentTimeMillis() - n))
+                            n++
+                        }
+                    }
+                    Toast.makeText(ctx, "Добавлено: $n. Откройте карточку, чтобы дополнить её из каталога.", Toast.LENGTH_LONG).show()
+                    onDismiss()
+                }
+            }, enabled = lines.isNotEmpty()) { Text("Добавить") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+    )
+}
+
+/** Поиск в открытых каталогах и на Кинопоиске. */
+@Composable
+fun MediaSearchScreen(nav: NavHostController, kind: Int, fillId: Long = 0) {
+    val ctx = LocalContext.current
+    val extra = LocalExtra.current
+    val scope = rememberCoroutineScope()
+    val settings by observe(null) { Graph.prefs.settings }
+    val sources = MediaSearch.sourcesFor(kind)
+    var source by rememberSaveable { mutableStateOf(sources.first { !it.needsToken }.name) }
+    LaunchedEffect(settings?.kinopoiskToken) { if (!settings?.kinopoiskToken.isNullOrBlank() && MediaSource.KINOPOISK in sources) source = MediaSource.KINOPOISK.name }
+    var q by rememberSaveable { mutableStateOf("") }
+    var results by remember { mutableStateOf<List<MediaHit>>(emptyList()) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var token by remember { mutableStateOf("") }
+    var adding by remember { mutableStateOf<String?>(null) }
+    val src = MediaSource.valueOf(source)
+    fun run() {
+        if (q.isBlank()) return
+        busy = true; error = null
+        scope.launch {
+            runCatching { MediaSearch.search(src, kind, q) }
+                .onSuccess { results = it; if (it.isEmpty()) error = "Ничего не найдено — попробуйте другое написание или другой источник" }
+                .onFailure { error = it.message ?: "Нет соединения с интернетом" }
+            busy = false
+        }
+    }
+    Screen("Найти: ${MediaKind.names[kind].lowercase()}", onBack = { nav.popBackStack() }) { pad ->
+        LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 40.dp)) {
+            item {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    sources.forEach { s -> Pill(s.title, s.name == source) { source = s.name; results = emptyList(); error = null } }
+                }
+                Gap(8.dp)
+                if (src.needsToken && settings?.kinopoiskToken.isNullOrBlank()) {
+                    Tile {
+                        Text("Кинопоиску нужен бесплатный личный токен", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "Получите его в Telegram у бота @kinopoiskdev_bot (сайт kinopoisk.dev) и вставьте сюда. Без токена ищите фильмы в iTunes, сериалы — в TVMaze.",
+                            fontSize = 12.sp, color = extra.dim,
+                        )
+                        Gap(6.dp)
+                        TextInput(token, { token = it }, "Токен")
+                        Row {
+                            TextButton(onClick = { io { Graph.prefs.update { it.copy(kinopoiskToken = token.trim()) } } }, enabled = token.isNotBlank()) { Text("Сохранить токен") }
+                            TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/kinopoiskdev_bot"))) } }) { Text("Открыть бота") }
+                        }
+                    }
+                    Gap(8.dp)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f)) { TextInput(q, { q = it }, if (kind == MediaKind.BOOK) "Название или автор" else "Название") }
+                    HGap(8.dp)
+                    Button(onClick = { run() }, enabled = !busy && q.isNotBlank()) { Text("Найти") }
+                }
+                if (busy) Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                error?.let { Text(it, color = extra.warn, fontSize = 13.sp, modifier = Modifier.padding(vertical = 8.dp)) }
+                Gap(6.dp)
+            }
+            items(results, key = { it.externalId }) { h ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.Top) {
+                    UrlImage(h.posterUrl, 64.dp)
+                    Column(Modifier.weight(1f).padding(start = 10.dp)) {
+                        Text(h.title, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            listOfNotNull(h.year?.toString(), h.creators.takeIf { it.isNotBlank() }, h.genres.takeIf { it.isNotBlank() }, h.rating?.let { "★ %.1f".format(it) }).joinToString(" · "),
+                            fontSize = 12.sp, color = extra.dim, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        )
+                        if (h.description.isNotBlank()) Text(h.description, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Row {
+                            MediaStatus.names(kind).take(3).forEachIndexed { i, n ->
+                                TextButton(onClick = {
+                                    adding = h.externalId
+                                    scope.launch {
+                                        val id = MediaSearch.add(ctx, h, i)
+                                        adding = null
+                                        Toast.makeText(ctx, "Добавлено: ${h.title}", Toast.LENGTH_SHORT).show()
+                                        if (fillId == 0L) nav.navigate(Routes.media(id, kind))
+                                    }
+                                }, enabled = adding == null) { Text(if (adding == h.externalId) "…" else n, fontSize = 12.sp) }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Карточка: всё можно заполнить и поправить самому. */
+@Composable
+fun MediaCardScreen(nav: NavHostController, id: Long, kind0: Int) {
+    val ctx = LocalContext.current
+    val extra = LocalExtra.current
+    val scope = rememberCoroutineScope()
+    var loaded by remember { mutableStateOf(id == 0L) }
+    var m by remember { mutableStateOf(MediaItem(kind = kind0, title = "", createdAt = System.currentTimeMillis())) }
+    LaunchedEffect(id) { if (id != 0L) { Graph.extra.mediaItemNow(id)?.let { m = it }; loaded = true } }
+    var year by remember(loaded) { mutableStateOf(m.year?.toString() ?: "") }
+    var confirmDelete by remember { mutableStateOf(false) }
+    var toTop by remember { mutableStateOf(false) }
+    var pickDate by remember { mutableStateOf(false) }
+    var searching by remember { mutableStateOf(false) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null) scope.launch { Images.importUri(ctx, uri, "posters")?.let { m = m.copy(poster = it) } }
+    }
+    val book = m.kind == MediaKind.BOOK
+    fun save(back: Boolean = true) {
+        if (m.title.isBlank()) { Toast.makeText(ctx, "Введите название", Toast.LENGTH_SHORT).show(); return }
+        val item = m.copy(title = m.title.trim(), year = year.toIntOrNull())
+        scope.launch {
+            val newId = Graph.extra.upsertMedia(item)
+            if (item.id == 0L) m = item.copy(id = newId)
+            if (back) nav.popBackStack()
+        }
+    }
+    Screen(
+        if (id == 0L) "Новая карточка" else MediaKind.names[m.kind],
+        onBack = { nav.popBackStack() },
+        actions = {
+            IconAction(if (m.favorite) "habit/28" else "ui:heart", "Любимое") { m = m.copy(favorite = !m.favorite) }
+            IconAction("ui:check", "Сохранить") { save() }
+        },
+    ) { pad ->
+        if (!loaded) { Box(Modifier.padding(pad).fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return@Screen }
+        Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+            Row {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Poster(m, 120.dp, Modifier.clickable { picker.launch("image/*") })
+                    TextButton(onClick = { picker.launch("image/*") }) { Text(if (m.poster.isBlank()) "Загрузить постер" else "Заменить", fontSize = 12.sp) }
+                    if (m.poster.isNotBlank()) TextButton(onClick = { m = m.copy(poster = "") }) { Text("Убрать", fontSize = 12.sp) }
+                }
+                HGap(12.dp)
+                Column(Modifier.weight(1f)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        MediaKind.names.forEachIndexed { i, n -> Pill(n, m.kind == i, glyph = kindIcon(i)) { m = m.copy(kind = i) } }
+                    }
+                    Gap(6.dp)
+                    TextInput(m.title, { m = m.copy(title = it) }, "Название")
+                    Gap(4.dp)
+                    TextInput(m.originalTitle, { m = m.copy(originalTitle = it) }, "Оригинальное название")
+                    Gap(4.dp)
+                    TextInput(year, { year = it.filter(Char::isDigit).take(4) }, "Год")
+                    if (m.externalRating != null) Text("${m.source}: ★ %.1f".format(m.externalRating), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
+                }
+            }
+            if (m.externalId.isBlank() && m.title.isNotBlank()) TextButton(onClick = { searching = true }) { Text("Дополнить из каталога…") }
+
+            SectionTitle("Моё")
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                MediaStatus.names(m.kind).forEachIndexed { i, n -> Pill(n, m.status == i) { m = m.copy(status = i) } }
+            }
+            Gap(8.dp)
+            Text("Моя оценка${if (m.myRating > 0) ": ${m.myRating}/10" else ""}", fontSize = 13.sp, color = extra.dim)
+            Stars10(m.myRating, 24) { m = m.copy(myRating = it) }
+            Gap(8.dp)
+            FieldButton(if (book) "Прочитано" else "Просмотрено", m.finishedDay?.let { Dates.full(it) } ?: "дата не указана", Modifier.fillMaxWidth(), glyph = "cal/06") { pickDate = true }
+            Gap(8.dp)
+            TextInput(m.review, { m = m.copy(review = it) }, "Моё мнение", singleLine = false, minLines = 3)
+
+            SectionTitle(if (book) "О книге" else "О фильме")
+            TextInput(m.creators, { m = m.copy(creators = it) }, if (book) "Автор(ы)" else "Режиссёр(ы)")
+            Gap(4.dp)
+            TextInput(m.genres, { m = m.copy(genres = it) }, "Жанры")
+            Gap(4.dp)
+            Row {
+                Box(Modifier.weight(1f)) { TextInput(m.countries, { m = m.copy(countries = it) }, if (book) "Издательство, страна" else "Страна") }
+                HGap(6.dp)
+                Box(Modifier.weight(1f)) { TextInput(m.length, { m = m.copy(length = it) }, if (book) "Страниц" else if (m.kind == MediaKind.SERIES) "Сезоны, серии" else "Длительность") }
+            }
+            Gap(4.dp)
+            TextInput(m.description, { m = m.copy(description = it) }, if (book) "Аннотация" else "Сюжет", singleLine = false, minLines = 3)
+
+            if (!book) {
+                SectionTitle("В ролях")
+                CastEditor(m.cast) { m = m.copy(cast = it) }
+            } else {
+                SectionTitle("Персонажи и цитаты")
+                TextInput(m.cast, { m = m.copy(cast = it) }, "Персонажи, любимые цитаты", singleLine = false, minLines = 3)
+            }
+            if (m.url.isNotBlank()) TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(m.url))) } }) { Text("Открыть на ${m.source}") }
+
+            Gap(16.dp)
+            Button(onClick = { save() }, Modifier.fillMaxWidth()) { Text("Сохранить") }
+            Row {
+                OutlinedButton(onClick = { toTop = true }, Modifier.weight(1f), enabled = m.title.isNotBlank()) { Text("В топ") }
+                HGap(8.dp)
+                if (m.id != 0L) OutlinedButton(onClick = { confirmDelete = true }, Modifier.weight(1f)) { Text("Удалить", color = extra.danger) }
+            }
+            Gap(40.dp)
+        }
+    }
+    if (pickDate) DatePickDialog(m.finishedDay ?: Dates.today(), { pickDate = false }, { d -> m = m.copy(finishedDay = d) })
+    if (confirmDelete) ConfirmDialog("Удалить карточку?", "«${m.title}» исчезнет из коллекции.", onDismiss = { confirmDelete = false }) {
+        io { Graph.extra.deleteMedia(m) }; nav.popBackStack()
+    }
+    if (toTop) AddToTopDialog(m) { toTop = false }
+    if (searching) FillFromCatalogDialog(m, onDismiss = { searching = false }) { h ->
+        scope.launch {
+            val full = MediaSearch.details(h)
+            val poster = if (m.poster.isBlank()) MediaSearch.downloadPoster(ctx, full.posterUrl).orEmpty() else m.poster
+            m = m.copy(
+                originalTitle = m.originalTitle.ifBlank { full.originalTitle }, poster = poster, posterUrl = full.posterUrl,
+                description = m.description.ifBlank { full.description }, genres = m.genres.ifBlank { full.genres },
+                creators = m.creators.ifBlank { full.creators }, cast = m.cast.ifBlank { full.cast }, countries = m.countries.ifBlank { full.countries },
+                length = m.length.ifBlank { full.length }, source = full.source, externalId = full.externalId, externalRating = full.rating, url = full.url,
+            )
+            if (year.isBlank()) year = full.year?.toString() ?: ""
+            searching = false
+        }
+    }
+}
+
+/** Актёры и роли построчно: «Имя — роль». */
+@Composable
+private fun CastEditor(cast: String, onChange: (String) -> Unit) {
+    val rows = cast.lines().filter { it.isNotBlank() }
+    val extra = LocalExtra.current
+    rows.forEachIndexed { i, line ->
+        val name = line.substringBefore(" — ").trim()
+        val role = line.substringAfter(" — ", "").trim()
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
+            Box(Modifier.weight(1f)) { TextInput(name, { v -> onChange(rows.toMutableList().also { it[i] = if (role.isBlank()) v else "$v — $role" }.joinToString("\n")) }, "Актёр") }
+            HGap(6.dp)
+            Box(Modifier.weight(1f)) { TextInput(role, { v -> onChange(rows.toMutableList().also { it[i] = if (v.isBlank()) name else "$name — $v" }.joinToString("\n")) }, "Роль") }
+            Text("✕", Modifier.clip(RoundedCornerShape(8.dp)).clickable { onChange(rows.toMutableList().also { it.removeAt(i) }.joinToString("\n")) }.padding(8.dp), color = extra.dim)
+        }
+    }
+    TextButton(onClick = { onChange((rows + "Актёр").joinToString("\n")) }) { Text("+ Добавить роль") }
+}
+
+@Composable
+private fun AddToTopDialog(m: MediaItem, onDismiss: () -> Unit) {
+    val ctx = LocalContext.current
+    val lists by observe(emptyList()) { Graph.dao.topLists() }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Добавить в топ") },
+        text = {
+            Column {
+                if (lists.isEmpty()) Text("Сначала создайте топ во вкладке «Топы».", color = LocalExtra.current.dim)
+                lists.forEach { l ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable {
+                            io {
+                                val count = Graph.dao.topItems().first().count { it.listId == l.id }
+                                Graph.dao.upsertTopItem(TopItem(listId = l.id, title = m.title + (m.year?.let { " ($it)" } ?: ""), rating = m.myRating, note = m.review.take(200), sort = count))
+                            }
+                            Toast.makeText(ctx, "Добавлено в «${l.title}»", Toast.LENGTH_SHORT).show()
+                            onDismiss()
+                        }.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) { Glyph(l.emoji, 20.dp); Text("  " + l.title) }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Закрыть") } },
+    )
+}
+
+@Composable
+private fun FillFromCatalogDialog(m: MediaItem, onDismiss: () -> Unit, onPick: (MediaHit) -> Unit) {
+    val sources = MediaSearch.sourcesFor(m.kind)
+    var results by remember { mutableStateOf<List<MediaHit>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(m.title) {
+        for (s in sources) {
+            val r = runCatching { MediaSearch.search(s, m.kind, m.title) }.getOrNull()
+            if (!r.isNullOrEmpty()) { results = r.sortedByDescending { if (m.year != null && it.year == m.year) 1 else 0 }; return@LaunchedEffect }
+        }
+        results = emptyList(); error = "Не нашлось в каталогах"
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Найдено: ${m.title}") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                if (results == null) CircularProgressIndicator()
+                error?.let { Text(it) }
+                results.orEmpty().take(10).forEach { h ->
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { onPick(h) }.padding(6.dp)) {
+                        UrlImage(h.posterUrl, 40.dp)
+                        Column(Modifier.padding(start = 8.dp)) {
+                            Text(h.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(listOfNotNull(h.year?.toString(), h.creators.takeIf { it.isNotBlank() }, h.source).joinToString(" · "), fontSize = 11.sp, color = LocalExtra.current.dim)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Закрыть") } },
+    )
+}

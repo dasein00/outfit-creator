@@ -47,6 +47,7 @@ data class Settings(
     val glyphsMigrated: Boolean = false,
     val sleepAuto: Boolean = false,
     val bodyHc: Boolean = false,
+    val kinopoiskToken: String = "",
 )
 
 class Prefs(private val context: Context) {
@@ -83,6 +84,7 @@ class Prefs(private val context: Context) {
         val glyphsMigrated = booleanPreferencesKey("glyphsMigrated")
         val sleepAuto = booleanPreferencesKey("sleepAuto")
         val bodyHc = booleanPreferencesKey("bodyHc")
+        val kinopoiskToken = stringPreferencesKey("kinopoiskToken")
     }
 
     val settings: Flow<Settings> = context.store.data.map { p -> p.toSettings() }
@@ -122,6 +124,7 @@ class Prefs(private val context: Context) {
         glyphsMigrated = this[K.glyphsMigrated] ?: false,
         sleepAuto = this[K.sleepAuto] ?: false,
         bodyHc = this[K.bodyHc] ?: false,
+        kinopoiskToken = this[K.kinopoiskToken] ?: "",
     )
 
     suspend fun update(block: (Settings) -> Settings) {
@@ -159,6 +162,7 @@ class Prefs(private val context: Context) {
             p[K.glyphsMigrated] = s.glyphsMigrated
             p[K.sleepAuto] = s.sleepAuto
             p[K.bodyHc] = s.bodyHc
+            p[K.kinopoiskToken] = s.kinopoiskToken
         }
     }
 }
