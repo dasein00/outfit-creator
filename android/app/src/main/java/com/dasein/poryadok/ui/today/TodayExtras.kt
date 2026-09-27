@@ -21,7 +21,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.dasein.poryadok.ui.common.SectionTitle
+import com.dasein.poryadok.ui.common.UiState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -148,6 +160,7 @@ fun FactsCard() {
 }
 
 private data class Metric(
+    val id: String,
     val glyph: String,
     val label: String,
     val value: String,
@@ -156,6 +169,46 @@ private data class Metric(
     val color: Color? = null,
     val go: () -> Unit,
 )
+
+private const val DEFAULT_METRICS = "sleep,weight,eaten,protein,workouts,steps,body,streak,focus,mood,overdue,event,money,media,water"
+
+/** Выбор и порядок метрик на главной. */
+@Composable
+private fun MetricsEditor(all: List<Pair<String, String>>, chosen0: List<String>, onDismiss: () -> Unit, onSave: (List<String>) -> Unit) {
+    val extra = LocalExtra.current
+    // Сначала выбранные в их порядке, потом остальные.
+    var order by remember { mutableStateOf(chosen0.filter { id -> all.any { it.first == id } } + all.map { it.first }.filter { it !in chosen0 }) }
+    var chosen by remember { mutableStateOf(chosen0.toSet()) }
+    val names = all.toMap()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Метрики на главной") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text("Отметьте нужные и расставьте стрелками.", fontSize = 12.sp, color = extra.dim)
+                order.forEachIndexed { i, id ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(id in chosen, { on -> chosen = if (on) chosen + id else chosen - id })
+                        Text(names[id] ?: id, Modifier.weight(1f), fontSize = 14.sp, color = if (id in chosen) MaterialTheme.colorScheme.onSurface else extra.dim)
+                        IconButton(onClick = { if (i > 0) order = order.toMutableList().also { l -> l.add(i - 1, l.removeAt(i)) } }, enabled = i > 0) {
+                            Icon(Icons.Default.KeyboardArrowUp, "Выше")
+                        }
+                        IconButton(onClick = { if (i < order.lastIndex) order = order.toMutableList().also { l -> l.add(i + 1, l.removeAt(i)) } }, enabled = i < order.lastIndex) {
+                            Icon(Icons.Default.KeyboardArrowDown, "Ниже")
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { onSave(order.filter { it in chosen }) }) { Text("Готово") } },
+        dismissButton = {
+            Row {
+                TextButton(onClick = { order = DEFAULT_METRICS.split(','); chosen = order.toSet() }) { Text("Как было") }
+                TextButton(onClick = onDismiss) { Text("Отмена") }
+            }
+        },
+    )
+}
 
 private fun kg(v: Double) = "%.1f".format(v).replace('.', ',')
 
@@ -216,35 +269,35 @@ fun DayMetrics(nav: NavHostController, currency: String) {
 
     val metrics = listOf(
         Metric(
-            "ui:moon", "Сон", lastSleep?.let { "${sleepMinutes(it) / 60} ч ${sleepMinutes(it) % 60} м" } ?: "—",
+            "sleep", "ui:moon", "Сон", lastSleep?.let { "${sleepMinutes(it) / 60} ч ${sleepMinutes(it) % 60} м" } ?: "—",
             if (sleepWeek.isNotEmpty()) "в среднем ${sleepWeek.sumOf { sleepMinutes(it) } / sleepWeek.size / 60} ч за неделю" else "нет записи",
             lastSleep?.let { sleepMinutes(it) / (profile?.sleepGoalMin ?: 480).toFloat() }, Palette.item(5),
         ) { nav.navigate(Routes.wellbeing(1)) },
         Metric(
-            "ui:scale", "Вес", lastW?.let { kg(it.kg) + " кг" } ?: "—",
+            "weight", "ui:scale", "Вес", lastW?.let { kg(it.kg) + " кг" } ?: "—",
             if (lastW != null && weekW != null) {
                 val d = lastW.kg - weekW.kg
                 (if (d > 0) "▲ +" else if (d < 0) "▼ " else "") + kg(d) + " за неделю"
             } else if (lastW != null) Dates.label(lastW.day) else "нет взвешиваний",
         ) { nav.navigate(Routes.health(1)) },
         Metric(
-            "ui:salad", "Съедено", "$kcal ккал", "из ${plan.targetKcal}",
+            "eaten", "ui:salad", "Съедено", "$kcal ккал", "из ${plan.targetKcal}",
             kcal / plan.targetKcal.coerceAtLeast(1).toFloat(), if (kcal > plan.targetKcal) extra.warn else extra.ok,
         ) { nav.navigate(Routes.health(0)) },
         Metric(
-            "ui:dumbbell", "Белок", "$protein г", "из ${plan.proteinG} г",
+            "protein", "ui:dumbbell", "Белок", "$protein г", "из ${plan.proteinG} г",
             protein / plan.proteinG.coerceAtLeast(1).toFloat(), Palette.item(1),
         ) { nav.navigate(Routes.health(0)) },
         Metric(
-            "ui:flame", "Тренировки", "${workoutsWeek.size}",
+            "workouts", "ui:flame", "Тренировки", "${workoutsWeek.size}",
             "на неделе · ${workoutsWeek.sumOf { it.minutes }} мин",
         ) { nav.navigate(Routes.health(3)) },
         Metric(
-            "ui:stats", "Шаги в среднем", "$stepsAvg", "в день за 7 дней",
+            "steps", "ui:stats", "Шаги в среднем", "$stepsAvg", "в день за 7 дней",
             stepsAvg / (profile?.stepsGoal ?: 8000).coerceAtLeast(1).toFloat(), extra.ok,
         ) { nav.navigate(Routes.STEPS) },
         Metric(
-            "ui:heart", if (fat != null) "Жир в теле" else "ИМТ",
+            "body", "ui:heart", if (fat != null) "Жир в теле" else "ИМТ",
             when {
                 fat != null -> kg(fat.fatPct!!) + " %"
                 lastW != null && heightM > 0.5 -> kg(lastW.kg / (heightM * heightM))
@@ -253,45 +306,57 @@ fun DayMetrics(nav: NavHostController, currency: String) {
             if (fat != null) Dates.label(fat.day) else "индекс массы тела",
         ) { nav.navigate(Routes.health(1)) },
         Metric(
-            "ui:check", "Лучшая серия", "$bestStreak",
+            "streak", "ui:check", "Лучшая серия", "$bestStreak",
             streakHabit?.takeIf { bestStreak > 0 }?.name ?: "привычек подряд",
         ) { nav.navigate(Routes.HABITS) },
         Metric(
-            "ui:timer", "Фокус", "${focusWeek / 60} ч ${focusWeek % 60} м", "за 7 дней",
+            "focus", "ui:timer", "Фокус", "${focusWeek / 60} ч ${focusWeek % 60} м", "за 7 дней",
         ) { nav.navigate(Routes.FOCUS) },
         Metric(
-            "ui:smile", "Настроение",
+            "mood", "ui:smile", "Настроение",
             if (moodWeek.isEmpty()) "—" else "%.1f".format(moodWeek.map { it.level }.average()).replace('.', ',') + " / 5",
             "в среднем за неделю",
         ) { nav.navigate(Routes.wellbeing(0)) },
         Metric(
-            "ui:target", "Просрочено", "$overdue", if (overdue == 0) "задач нет — отлично" else "задач ждут",
+            "overdue", "ui:target", "Просрочено", "$overdue", if (overdue == 0) "задач нет — отлично" else "задач ждут",
             color = if (overdue > 0) extra.warn else null,
         ) { nav.goTab(Routes.plan(1)) },
         Metric(
-            "ui:calendar", "Ближайшее",
+            "event", "ui:calendar", "Ближайшее",
             nextEvent?.let { (d, _) -> if (d == 0) "сегодня" else if (d == 1) "завтра" else "через $d дн." } ?: "—",
             nextEvent?.second?.title ?: "событий нет",
         ) { nav.goTab(Routes.plan(0)) },
         Metric(
-            "ui:wallet", "Траты за месяц", Money.format(spentMonth, currency),
+            "money", "ui:wallet", "Траты за месяц", Money.format(spentMonth, currency),
             if (budget != null && budget > 0) "из " + Money.format(budget, currency) else "без бюджета",
             budget?.takeIf { it > 0 }?.let { (spentMonth / it).toFloat() }, if (budget != null && spentMonth > budget) extra.danger else extra.ok,
         ) { nav.navigate(Routes.FINANCE) },
         Metric(
-            "ui:book", "За ${LocalDate.now().year} год",
+            "media", "ui:book", "За ${LocalDate.now().year} год",
             "${doneYear.size}",
             "фильмов, сериалов и книг",
         ) { nav.goTab(Routes.topsHub(0)) },
         Metric(
-            "ui:drop", "Вода за неделю",
+            "water", "ui:drop", "Вода за неделю",
             "${stepsWeek.sumOf { it.waterMl } / 7} мл", "в среднем в день",
             (stepsWeek.sumOf { it.waterMl } / 7) / (profile?.waterGoalMl ?: 2000).toFloat(), Palette.item(2),
         ) { nav.navigate(Routes.wellbeing(2)) },
     )
 
+    val ctx = LocalContext.current
+    var chosenIds by remember { mutableStateOf(UiState.str(ctx, "home_metrics", DEFAULT_METRICS)) }
+    var editing by remember { mutableStateOf(false) }
+    val byId = metrics.associateBy { it.id }
+    val shown = chosenIds.split(',').filter { it.isNotBlank() }.mapNotNull { byId[it] }
+    SectionTitle("Метрики", action = "Настроить") { editing = true }
+    if (shown.isEmpty()) Text("Все метрики скрыты — нажмите «Настроить», чтобы вернуть.", fontSize = 13.sp, color = extra.dim)
+    if (editing) MetricsEditor(metrics.map { it.id to it.label }, chosenIds.split(',').filter { it.isNotBlank() }, { editing = false }) { list ->
+        chosenIds = list.joinToString(",")
+        UiState.setStr(ctx, "home_metrics", chosenIds)
+        editing = false
+    }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        metrics.chunked(3).forEach { row ->
+        shown.chunked(3).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { m -> MetricTile(m, Modifier.weight(1f)) }
                 repeat(3 - row.size) { Box(Modifier.weight(1f)) }

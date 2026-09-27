@@ -336,6 +336,26 @@ data class MediaItem(
     val createdAt: Long = 0,
 )
 
+/** Свой список фильмов, сериалов или книг с любым названием («Новогодние», «Посоветовали друзья»…). kind = −1 — для всех видов. */
+@Serializable
+@Entity(tableName = "media_lists")
+data class MediaList(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val glyph: String = "",
+    val kind: Int = -1,
+    val createdAt: Long = 0,
+)
+
+@Serializable
+@Entity(tableName = "media_list_items", primaryKeys = ["listId", "mediaId"], indices = [Index("mediaId")])
+data class MediaListItem(
+    val listId: Long,
+    val mediaId: Long,
+    val position: Int = 0,
+    val addedAt: Long = 0,
+)
+
 @Dao
 interface ExtraDao {
     // Продукты
@@ -444,6 +464,22 @@ interface ExtraDao {
     @Upsert suspend fun upsertMedia(m: MediaItem): Long
     @Delete suspend fun deleteMedia(m: MediaItem)
 
+    // Свои списки
+    @Query("SELECT * FROM media_lists ORDER BY createdAt") fun mediaLists(): Flow<List<MediaList>>
+    @Query("SELECT * FROM media_list_items") fun mediaListItems(): Flow<List<MediaListItem>>
+    @Upsert suspend fun upsertMediaList(l: MediaList): Long
+    @Query("DELETE FROM media_lists WHERE id = :id") suspend fun deleteMediaListRow(id: Long)
+    @Query("DELETE FROM media_list_items WHERE listId = :id") suspend fun clearMediaList(id: Long)
+    @Query("DELETE FROM media_list_items WHERE mediaId = :mediaId") suspend fun removeMediaFromLists(mediaId: Long)
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun addToMediaList(i: MediaListItem)
+    @Query("DELETE FROM media_list_items WHERE listId = :listId AND mediaId = :mediaId") suspend fun removeFromMediaList(listId: Long, mediaId: Long)
+    @Query("SELECT * FROM media_lists") suspend fun allMediaLists(): List<MediaList>
+    @Query("SELECT * FROM media_list_items") suspend fun allMediaListItems(): List<MediaListItem>
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putMediaLists(items: List<MediaList>)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putMediaListItems(items: List<MediaListItem>)
+    @Query("DELETE FROM media_lists") suspend fun wipeMediaLists()
+    @Query("DELETE FROM media_list_items") suspend fun wipeMediaListItems()
+
     // Резервная копия
     @Query("SELECT * FROM products") suspend fun allProducts(): List<FoodProduct>
     @Query("SELECT * FROM recipes") suspend fun allRecipes(): List<Recipe>
@@ -499,8 +535,9 @@ interface ExtraDao {
         FoodProduct::class, Recipe::class, RecipeIngredient::class, RecipeStep::class, MealPlanItem::class,
         MealPreset::class, MealPresetItem::class, MealRepeat::class, ShoppingItem::class, CookingLog::class,
         FinanceNote::class, ImportRecord::class, BodyMetric::class, SleepAuto::class, DayEnergy::class, MediaItem::class,
+        MediaList::class, MediaListItem::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class ExtraDb : RoomDatabase() {
@@ -543,8 +580,23 @@ abstract class ExtraDb : RoomDatabase() {
             }
         }
 
+        /** v4: свои списки фильмов, сериалов и книг. */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `media_lists` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, " +
+                        "`glyph` TEXT NOT NULL, `kind` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `media_list_items` (`listId` INTEGER NOT NULL, `mediaId` INTEGER NOT NULL, " +
+                        "`position` INTEGER NOT NULL, `addedAt` INTEGER NOT NULL, PRIMARY KEY(`listId`, `mediaId`))"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_media_list_items_mediaId` ON `media_list_items` (`mediaId`)")
+            }
+        }
+
         fun create(context: Context): ExtraDb =
-            Room.databaseBuilder(context, ExtraDb::class.java, "dasein_extra.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3).build()
+            Room.databaseBuilder(context, ExtraDb::class.java, "dasein_extra.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build()
     }
 }
 
@@ -566,6 +618,8 @@ data class ExtraBackup(
     val sleepAuto: List<SleepAuto> = emptyList(),
     val dayEnergy: List<DayEnergy> = emptyList(),
     val media: List<MediaItem> = emptyList(),
+    val mediaLists: List<MediaList> = emptyList(),
+    val mediaListItems: List<MediaListItem> = emptyList(),
 )
 
 suspend fun ExtraDb.exportExtra(): ExtraBackup {
@@ -573,7 +627,7 @@ suspend fun ExtraDb.exportExtra(): ExtraBackup {
     return ExtraBackup(
         d.allProducts(), d.allRecipes(), d.allIngredients(), d.allSteps(), d.allPlan(), d.allPresets(),
         d.allPresetItems(), d.allRepeats(), d.allShopping(), d.allHistory(), d.financeNotesNow(), d.allImportRecords(),
-        d.bodyMetricsNow(), d.sleepAutoNow(), d.allDayEnergy(), d.allMedia(),
+        d.bodyMetricsNow(), d.sleepAutoNow(), d.allDayEnergy(), d.allMedia(), d.allMediaLists(), d.allMediaListItems(),
     )
 }
 
@@ -596,5 +650,7 @@ suspend fun ExtraDb.importExtra(b: ExtraBackup) {
         d.wipeSleepAuto(); d.putSleepAuto(b.sleepAuto)
         d.wipeDayEnergy(); d.putDayEnergy(b.dayEnergy)
         d.wipeMedia(); d.putMedia(b.media)
+        d.wipeMediaLists(); d.putMediaLists(b.mediaLists)
+        d.wipeMediaListItems(); d.putMediaListItems(b.mediaListItems)
     }
 }

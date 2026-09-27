@@ -19,7 +19,7 @@ import java.util.zip.ZipOutputStream
 /** Резервная копия: zip с data.json и папками фото. */
 object BackupFiles {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
-    private val DIRS = listOf("progress", "wardrobe", "outfits", "recipes", "posters")
+    private val DIRS = listOf("progress", "wardrobe", "outfits", "recipes", "posters", "icons")
     private val SAFE_ENTRY = Regex("^(progress|wardrobe|outfits|recipes|posters)/[A-Za-z0-9_.\\-]+$")
 
     suspend fun export(ctx: Context, uri: Uri): Result<Int> = withContext(Dispatchers.IO) {

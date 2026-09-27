@@ -71,10 +71,7 @@ object SystemScreens {
 fun RestrictedSettingsHelp(access: String, onOpenAccess: () -> Unit) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
-    Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(extra.warn.copy(alpha = .12f)).padding(12.dp),
-    ) {
-        Text("Пишет «Доступ для приложения запрещен»?", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+    InfoBox("restricted_$access", "Пишет «Доступ для приложения запрещен»?", glyph = "ui:settings") {
         Text(
             "Это защита Android для приложений, установленных из файла, а не из Google Play. Снимается один раз:",
             fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 2.dp),

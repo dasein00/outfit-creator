@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.recipes
 
+import com.dasein.poryadok.ui.common.Hint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -167,7 +168,7 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
 
             SectionTitle("Калькулятор граммовки")
             Tile {
-                Text("Сколько у вас основного продукта? Остальное пересчитается в тех же пропорциях, КБЖУ — тоже.", fontSize = 12.sp, color = extra.dim)
+                Hint("recipe_calc", "Сколько у вас основного продукта? Остальное пересчитается в тех же пропорциях, КБЖУ — тоже.", title = "Как работает калькулятор")
                 Gap(6.dp)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     calcList.forEachIndexed { i, ing ->

@@ -1,5 +1,6 @@
 package com.dasein.poryadok.ui.finance
 
+import com.dasein.poryadok.ui.common.Hint
 import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -98,11 +99,8 @@ fun NotebookScreen(nav: NavHostController, settings: Settings) {
             Row {
                 AppIcon(Ic.document, 32.dp)
                 HGap(12.dp)
-                Text(
-                    "Импорт оцифрованной бумажной тетради (JSON или CSV). Дневные суммы станут доходами на счёте «${NotebookImport.ACCOUNT}», " +
-                        "а итоги, расходы без даты и выходные — месячными записями. Суммы и даты не меняются.",
-                    fontSize = 13.sp,
-                )
+                Hint("notebook_about", "Импорт оцифрованной бумажной тетради (JSON или CSV). Дневные суммы станут доходами на счёте «${NotebookImport.ACCOUNT}», " +
+                        "а итоги, расходы без даты и выходные — месячными записями. Суммы и даты не меняются.", title = "Что делает импорт")
             }
             Gap(10.dp)
             Button(onClick = { picker.launch(arrayOf("application/json", "text/*", "text/csv", "application/octet-stream")) }, Modifier.fillMaxWidth()) {

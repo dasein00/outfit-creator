@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.health
 
+import com.dasein.poryadok.ui.common.Hint
 import androidx.compose.foundation.background
 import kotlinx.coroutines.launch
 import com.dasein.poryadok.system.SleepTracker
@@ -464,11 +465,8 @@ private fun SleepAutoCard() {
                 cal?.let { Text("засыпание ~${it.latencyMin} мин", fontSize = 12.sp, color = extra.dim) }
             }
         }
-        Text(
-            "Как это работает: ночью телефон не используют. Самая длинная пауза с 19:00 до 13:00 — это сон; короткие ночные проверки телефона " +
+        Hint("sleep_how", "Как это работает: ночью телефон не используют. Самая длинная пауза с 19:00 до 13:00 — это сон; короткие ночные проверки телефона " +
                 "считаются пробуждениями, экран от уведомлений и будильника не учитывается. Отбой = когда отложили телефон + время засыпания, " +
-                "подъём = первое использование утром. Если исправить время в записи, приложение подстроится под вас — после 3 исправлений точность обычно около 15–30 минут.",
-            fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp),
-        )
+                "подъём = первое использование утром. Если исправить время в записи, приложение подстроится под вас — после 3 исправлений точность обычно около 15–30 минут.", Modifier.padding(top = 6.dp), title = "Как это работает")
     }
 }

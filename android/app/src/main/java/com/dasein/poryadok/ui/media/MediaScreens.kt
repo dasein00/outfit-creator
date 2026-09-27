@@ -2,6 +2,8 @@
 
 package com.dasein.poryadok.ui.media
 
+import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.NumberField
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -70,6 +72,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.dasein.poryadok.Graph
 import com.dasein.poryadok.data.MediaItem
+import com.dasein.poryadok.data.MediaList
+import com.dasein.poryadok.data.MediaListItem
 import com.dasein.poryadok.data.MediaKind
 import com.dasein.poryadok.data.MediaStatus
 import com.dasein.poryadok.data.TopItem
@@ -85,6 +89,7 @@ import com.dasein.poryadok.ui.common.Empty
 import com.dasein.poryadok.ui.common.FieldButton
 import com.dasein.poryadok.ui.common.Gap
 import com.dasein.poryadok.ui.common.Glyph
+import com.dasein.poryadok.ui.common.GlyphPickerDialog
 import com.dasein.poryadok.ui.common.HGap
 import com.dasein.poryadok.ui.common.IconAction
 import com.dasein.poryadok.ui.common.Images
@@ -152,8 +157,17 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
     var q by rememberSaveable(kind) { mutableStateOf("") }
     var menu by remember { mutableStateOf(false) }
     var import by remember { mutableStateOf(false) }
+    val lists by observe(emptyList()) { Graph.extra.mediaLists() }
+    val listItems by observe(emptyList()) { Graph.extra.mediaListItems() }
+    var listFilter by rememberSaveable(kind) { mutableStateOf(0L) }
+    var newList by remember { mutableStateOf(false) }
+    var renameList by remember { mutableStateOf<MediaList?>(null) }
+    var deleteList by remember { mutableStateOf<MediaList?>(null) }
+    val myLists = lists.filter { it.kind == -1 || it.kind == kind }
+    val inList = listItems.filter { it.listId == listFilter }.associate { it.mediaId to it.position }
     val names = MediaStatus.names(kind)
     val list = all.orEmpty().filter { it.kind == kind }
+        .filter { listFilter == 0L || it.id in inList }
         .filter { filter == -1 || (filter == FAV && it.favorite) || it.status == filter }
         .filter { q.isBlank() || listOf(it.title, it.originalTitle, it.creators, it.cast, it.genres).any { f -> f.contains(q.trim(), true) } }
         .let { l -> when (sort) { 1 -> l.sortedByDescending { it.myRating }; 2 -> l.sortedBy { it.title.lowercase() }; 3 -> l.sortedByDescending { it.year ?: 0 }; else -> l } }
@@ -166,7 +180,9 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
                 DropdownMenu(menu, { menu = false }) {
                     DropdownMenuItem(text = { Text("Найти в каталоге") }, leadingIcon = { Glyph("habit/24", 20.dp) }, onClick = { menu = false; nav.navigate(Routes.mediaSearch(kind)) })
                     DropdownMenuItem(text = { Text("Заполнить карточку самому") }, leadingIcon = { Glyph("habit/23", 20.dp) }, onClick = { menu = false; nav.navigate(Routes.media(0, kind)) })
-                    DropdownMenuItem(text = { Text("Импорт списка") }, leadingIcon = { Glyph("habit/26", 20.dp) }, onClick = { menu = false; import = true })
+                    if (kind != MediaKind.BOOK) DropdownMenuItem(text = { Text("Импорт с Кинопоиска") }, leadingIcon = { Glyph("habit/01", 20.dp) }, onClick = { menu = false; nav.navigate(Routes.kpImport(kind)) })
+                    DropdownMenuItem(text = { Text("Импорт списка текстом") }, leadingIcon = { Glyph("habit/26", 20.dp) }, onClick = { menu = false; import = true })
+                    DropdownMenuItem(text = { Text("Новый список") }, leadingIcon = { Glyph("ui:folder", 20.dp) }, onClick = { menu = false; newList = true })
                 }
             }
         },
@@ -188,6 +204,22 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
                         names.forEachIndexed { i, n -> Pill(n, filter == i) { filter = i } }
                     }
                     Gap(6.dp)
+                    Text("Мои списки", fontSize = 12.sp, color = extra.dim)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
+                        myLists.forEach { l ->
+                            val n = listItems.count { it.listId == l.id && items.firstOrNull { m -> m.id == it.mediaId }?.kind == kind }
+                            Pill("${l.name} $n", listFilter == l.id, glyph = l.glyph.ifBlank { "ui:folder" }) { listFilter = if (listFilter == l.id) 0L else l.id }
+                        }
+                        Pill("+ Список", false) { newList = true }
+                    }
+                    myLists.firstOrNull { it.id == listFilter }?.let { l ->
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                            Text("«${l.name}»", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                            TextButton(onClick = { renameList = l }) { Text("Переименовать", fontSize = 12.sp) }
+                            TextButton(onClick = { deleteList = l }) { Text("Удалить", fontSize = 12.sp, color = extra.danger) }
+                        }
+                    }
+                    Gap(6.dp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Порядок: ", fontSize = 12.sp, color = extra.dim)
                         listOf("новые", "оценка", "название", "год").forEachIndexed { i, s ->
@@ -201,7 +233,7 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
             if (list.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) {
                 Empty(
                     kindIcon(kind), "Здесь пока пусто",
-                    "Найдите ${MediaKind.names[kind].lowercase()} в каталоге (Кинопоиск, iTunes, TVMaze, Google Книги, Open Library) или заполните карточку сами: постер, роли, режиссёр, ваше мнение.",
+                    "Найдите ${MediaKind.names[kind].lowercase()} в каталоге (Кинопоиск, Википедия, TVMaze, Google Книги, Open Library), импортируйте свои оценки с Кинопоиска или заполните карточку сами: постер, роли, режиссёр, ваше мнение.",
                 )
             }
             items(list, key = { it.id }) { m ->
@@ -220,6 +252,49 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
         }
     }
     if (import) ImportDialog(kind) { import = false }
+    if (newList) ListNameDialog("Новый список", "", { newList = false }) { name, glyph ->
+        newList = false
+        io { val id = Graph.extra.upsertMediaList(MediaList(name = name, glyph = glyph, createdAt = System.currentTimeMillis())); listFilter = id }
+    }
+    renameList?.let { l ->
+        ListNameDialog("Переименовать список", l.name, { renameList = null }, l.glyph) { name, glyph ->
+            renameList = null
+            io { Graph.extra.upsertMediaList(l.copy(name = name, glyph = glyph)) }
+        }
+    }
+    deleteList?.let { l ->
+        ConfirmDialog("Удалить список «${l.name}»?", "Фильмы и книги останутся в коллекции, исчезнет только сам список.", onDismiss = { deleteList = null }) {
+            deleteList = null; listFilter = 0L
+            io { Graph.extra.clearMediaList(l.id); Graph.extra.deleteMediaListRow(l.id) }
+        }
+    }
+}
+
+/** Название и иконка своего списка. */
+@Composable
+fun ListNameDialog(title: String, name0: String, onDismiss: () -> Unit, glyph0: String = "ui:folder", onSave: (String, String) -> Unit) {
+    var name by remember { mutableStateOf(name0) }
+    var glyph by remember { mutableStateOf(glyph0.ifBlank { "ui:folder" }) }
+    var pick by remember { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.clip(RoundedCornerShape(12.dp)).clickable { pick = true }.padding(4.dp)) { Glyph(glyph, 28.dp) }
+                    HGap(10.dp)
+                    Box(Modifier.weight(1f)) { TextInput(name, { name = it }, "Например: Новогодние, Посоветовали, Пересмотреть") }
+                }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
+                    listOf("Пересмотреть", "Посоветовали", "Новогодние", "С детьми", "Лучшее за год", "Классика").forEach { t -> Pill(t, name == t) { name = t } }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { onSave(name.trim(), glyph) }, enabled = name.isNotBlank()) { Text("Сохранить") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+    )
+    if (pick) GlyphPickerDialog(glyph, { pick = false }) { glyph = it }
 }
 
 /** Импорт списка: по строке «Название (год)». Можно вставить список, скопированный с любого сайта. */
@@ -273,21 +348,30 @@ fun MediaSearchScreen(nav: NavHostController, kind: Int, fillId: Long = 0) {
     val scope = rememberCoroutineScope()
     val settings by observe(null) { Graph.prefs.settings }
     val sources = MediaSearch.sourcesFor(kind)
-    var source by rememberSaveable { mutableStateOf(sources.first { !it.needsToken }.name) }
-    LaunchedEffect(settings?.kinopoiskToken) { if (!settings?.kinopoiskToken.isNullOrBlank() && MediaSource.KINOPOISK in sources) source = MediaSource.KINOPOISK.name }
+    var source by rememberSaveable { mutableStateOf(MediaSource.ALL.name) }
     var q by rememberSaveable { mutableStateOf("") }
+    var yearText by rememberSaveable { mutableStateOf("") }
+    var note by remember { mutableStateOf<String?>(null) }
     var results by remember { mutableStateOf<List<MediaHit>>(emptyList()) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var token by remember { mutableStateOf("") }
     var adding by remember { mutableStateOf<String?>(null) }
-    val src = MediaSource.valueOf(source)
+    val src = runCatching { MediaSource.valueOf(source) }.getOrDefault(MediaSource.ALL)
     fun run() {
         if (q.isBlank()) return
-        busy = true; error = null
+        busy = true; error = null; note = null
+        // «Дюна 2021» — ищем «Дюна» и оставляем только фильмы 2021 года. Отдельное поле «Год» важнее.
+        val (title, yq) = MediaParse.splitYear(q)
+        val year = yearText.trim().toIntOrNull() ?: yq
         scope.launch {
-            runCatching { MediaSearch.search(src, kind, q) }
-                .onSuccess { results = it; if (it.isEmpty()) error = "Ничего не найдено — попробуйте другое написание или другой источник" }
+            runCatching { MediaSearch.search(src, kind, title) }
+                .onSuccess { all ->
+                    val byYear = MediaParse.filterYear(all, year)
+                    results = if (year != null && byYear.isEmpty()) all else byYear
+                    if (year != null) note = if (byYear.isEmpty() && all.isNotEmpty()) "Вышедших именно в $year году не нашлось — показаны все" else "Только $year год · ${byYear.size}"
+                    if (all.isEmpty()) error = "Ничего не найдено — попробуйте другое написание или другой источник"
+                }
                 .onFailure { error = it.message ?: "Нет соединения с интернетом" }
             busy = false
         }
@@ -299,13 +383,14 @@ fun MediaSearchScreen(nav: NavHostController, kind: Int, fillId: Long = 0) {
                     sources.forEach { s -> Pill(s.title, s.name == source) { source = s.name; results = emptyList(); error = null } }
                 }
                 Gap(8.dp)
+                if (src == MediaSource.ALL && kind != MediaKind.BOOK && settings?.kinopoiskToken.isNullOrBlank()) {
+                    Hint("kp_all", "Сейчас «Везде» ищет в русской Википедии" + (if (kind == MediaKind.SERIES) " и TVMaze" else "") + ". Добавьте бесплатный токен Кинопоиска на вкладке «Кинопоиск» — и поиск пойдёт сначала по нему, а то, чего там нет, найдётся в Википедии.", title = "Где ищем")
+                    Gap(8.dp)
+                }
                 if (src.needsToken && settings?.kinopoiskToken.isNullOrBlank()) {
                     Tile {
                         Text("Кинопоиску нужен бесплатный личный токен", fontWeight = FontWeight.SemiBold)
-                        Text(
-                            "Получите его в Telegram у бота @kinopoiskdev_bot (сайт kinopoisk.dev) и вставьте сюда. Без токена ищите фильмы в iTunes, сериалы — в TVMaze.",
-                            fontSize = 12.sp, color = extra.dim,
-                        )
+                        Hint("kp_token", "Получите его в Telegram у бота @kinopoiskdev_bot (сайт kinopoisk.dev) и вставьте сюда. Без токена фильмы и сериалы ищутся в Википедии.", title = "Где взять токен Кинопоиска")
                         Gap(6.dp)
                         TextInput(token, { token = it }, "Токен")
                         Row {
@@ -316,10 +401,13 @@ fun MediaSearchScreen(nav: NavHostController, kind: Int, fillId: Long = 0) {
                     Gap(8.dp)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.weight(1f)) { TextInput(q, { q = it }, if (kind == MediaKind.BOOK) "Название или автор" else "Название") }
-                    HGap(8.dp)
+                    Box(Modifier.weight(1f)) { TextInput(q, { q = it }, if (kind == MediaKind.BOOK) "Название или автор" else "Название, можно с годом") }
+                    HGap(6.dp)
+                    Box(Modifier.width(84.dp)) { NumberField(yearText, { yearText = it.filter { c -> c.isDigit() }.take(4) }, "Год") }
+                    HGap(6.dp)
                     Button(onClick = { run() }, enabled = !busy && q.isNotBlank()) { Text("Найти") }
                 }
+                note?.let { Text(it, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp)) }
                 if (busy) Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 error?.let { Text(it, color = extra.warn, fontSize = 13.sp, modifier = Modifier.padding(vertical = 8.dp)) }
                 Gap(6.dp)
@@ -330,7 +418,7 @@ fun MediaSearchScreen(nav: NavHostController, kind: Int, fillId: Long = 0) {
                     Column(Modifier.weight(1f).padding(start = 10.dp)) {
                         Text(h.title, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text(
-                            listOfNotNull(h.year?.toString(), h.creators.takeIf { it.isNotBlank() }, h.genres.takeIf { it.isNotBlank() }, h.rating?.let { "★ %.1f".format(it) }).joinToString(" · "),
+                            listOfNotNull(h.year?.toString(), h.creators.takeIf { it.isNotBlank() }, h.genres.takeIf { it.isNotBlank() }, h.rating?.let { "★ %.1f".format(it) }, h.source).joinToString(" · "),
                             fontSize = 12.sp, color = extra.dim, maxLines = 2, overflow = TextOverflow.Ellipsis,
                         )
                         if (h.description.isNotBlank()) Text(h.description, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -368,8 +456,13 @@ fun MediaCardScreen(nav: NavHostController, id: Long, kind0: Int) {
     var toTop by remember { mutableStateOf(false) }
     var pickDate by remember { mutableStateOf(false) }
     var searching by remember { mutableStateOf(false) }
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        if (uri != null) scope.launch { Images.importUri(ctx, uri, "posters")?.let { m = m.copy(poster = it) } }
+    val lists by observe(emptyList()) { Graph.extra.mediaLists() }
+    val listItems by observe(emptyList()) { Graph.extra.mediaListItems() }
+    var newList by remember { mutableStateOf(false) }
+    val pickPoster = com.dasein.poryadok.ui.common.rememberImagePickerWithCrop(2f / 3f, "posters") { m = m.copy(poster = it) }
+    var recrop by remember { mutableStateOf(false) }
+    if (recrop) com.dasein.poryadok.ui.common.CropDialog(com.dasein.poryadok.ui.common.Crop.sourceFor(m.poster), 2f / 3f, "posters", onDismiss = { recrop = false }) {
+        recrop = false; m = m.copy(poster = it)
     }
     val book = m.kind == MediaKind.BOOK
     fun save(back: Boolean = true) {
@@ -393,8 +486,9 @@ fun MediaCardScreen(nav: NavHostController, id: Long, kind0: Int) {
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             Row {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Poster(m, 120.dp, Modifier.clickable { picker.launch("image/*") })
-                    TextButton(onClick = { picker.launch("image/*") }) { Text(if (m.poster.isBlank()) "Загрузить постер" else "Заменить", fontSize = 12.sp) }
+                    Poster(m, 120.dp, Modifier.clickable { pickPoster() })
+                    TextButton(onClick = { pickPoster() }) { Text(if (m.poster.isBlank()) "Загрузить постер" else "Заменить", fontSize = 12.sp) }
+                    if (m.poster.isNotBlank()) TextButton(onClick = { recrop = true }) { Text("Кадр", fontSize = 12.sp) }
                     if (m.poster.isNotBlank()) TextButton(onClick = { m = m.copy(poster = "") }) { Text("Убрать", fontSize = 12.sp) }
                 }
                 HGap(12.dp)
@@ -447,6 +541,18 @@ fun MediaCardScreen(nav: NavHostController, id: Long, kind0: Int) {
             }
             if (m.url.isNotBlank()) TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(m.url))) } }) { Text("Открыть на ${m.source}") }
 
+            SectionTitle("Мои списки")
+            if (m.id == 0L) Text("Сохраните карточку, чтобы добавить её в свои списки.", fontSize = 12.sp, color = extra.dim)
+            else FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                lists.filter { it.kind == -1 || it.kind == m.kind }.forEach { l ->
+                    val on = listItems.any { it.listId == l.id && it.mediaId == m.id }
+                    Pill(l.name, on, glyph = l.glyph.ifBlank { "ui:folder" }) {
+                        io { if (on) Graph.extra.removeFromMediaList(l.id, m.id) else Graph.extra.addToMediaList(MediaListItem(l.id, m.id, addedAt = System.currentTimeMillis())) }
+                    }
+                }
+                Pill("+ Новый список", false) { newList = true }
+            }
+
             Gap(16.dp)
             Button(onClick = { save() }, Modifier.fillMaxWidth()) { Text("Сохранить") }
             Row {
@@ -459,7 +565,15 @@ fun MediaCardScreen(nav: NavHostController, id: Long, kind0: Int) {
     }
     if (pickDate) DatePickDialog(m.finishedDay ?: Dates.today(), { pickDate = false }, { d -> m = m.copy(finishedDay = d) })
     if (confirmDelete) ConfirmDialog("Удалить карточку?", "«${m.title}» исчезнет из коллекции.", onDismiss = { confirmDelete = false }) {
-        io { Graph.extra.deleteMedia(m) }; nav.popBackStack()
+        io { Graph.extra.removeMediaFromLists(m.id); Graph.extra.deleteMedia(m) }; nav.popBackStack()
+    }
+    if (newList) ListNameDialog("Новый список", "", { newList = false }) { name, glyph ->
+        newList = false
+        val mid = m.id
+        io {
+            val lid = Graph.extra.upsertMediaList(MediaList(name = name, glyph = glyph, createdAt = System.currentTimeMillis()))
+            if (mid != 0L) Graph.extra.addToMediaList(MediaListItem(lid, mid, addedAt = System.currentTimeMillis()))
+        }
     }
     if (toTop) AddToTopDialog(m) { toTop = false }
     if (searching) FillFromCatalogDialog(m, onDismiss = { searching = false }) { h ->

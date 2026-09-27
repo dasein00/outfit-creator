@@ -7,6 +7,9 @@ import android.graphics.BitmapFactory
 import android.util.LruCache
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -183,6 +186,14 @@ fun Glyph(value: String, size: Dp = 24.dp, modifier: Modifier = Modifier, badge:
         return
     }
     val ctx = LocalContext.current
+    if (key.startsWith("/")) {
+        // Своя картинка: круглое фото вместо плашки.
+        val photo by rememberImage(key, 256)
+        Box(modifier.size(size * 1.45f).clip(CircleShape).background(Palette.Ink2).alpha(if (dimmed) .5f else 1f)) {
+            photo?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+        }
+        return
+    }
     val img = remember(key) { Glyphs.load(ctx, key) }
     val useBadge = (badge ?: !LocalExtra.current.dark) && !key.startsWith("dish/")
     val a = if (dimmed) .5f else 1f
@@ -220,6 +231,9 @@ fun GlyphPickerDialog(
         }
     }
     val current = Glyphs.normalize(selected)
+    val pickOwn = rememberImagePickerWithCrop(1f, "icons", round = !dishes, png = !dishes, outW = if (dishes) 900 else 320) { path ->
+        onPick(path); onDismiss()
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (dishes) "Иллюстрация" else "Иконка") },
@@ -228,6 +242,7 @@ fun GlyphPickerDialog(
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     tabs.forEach { (t, s) -> Pill(t, s == tab) { tab = s } }
                 }
+                TextButton(onClick = { pickOwn() }) { Text("+ Своя картинка из галереи") }
                 LazyVerticalGrid(GridCells.Adaptive(52.dp), Modifier.heightIn(max = 360.dp).padding(top = 10.dp)) {
                     items(keys, key = { it }) { k ->
                         Box(

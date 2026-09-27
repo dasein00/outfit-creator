@@ -124,6 +124,7 @@ object Routes {
     fun media(id: Long, kind: Int = 0) = "media/$id?kind=$kind"
     fun mediaSearch(kind: Int) = "$MEDIA_SEARCH?kind=$kind"
     fun bodyDetail(at: Long) = "bodyDetail/$at"
+    fun kpImport(kind: Int) = "kpImport?kind=$kind"
 }
 
 private data class Tab(val route: String, val label: String, val icon: String)
@@ -207,6 +208,9 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             ) { MediaSearchScreen(nav, it.int("kind")) }
             composable("bodyDetail/{at}", arguments = listOf(navArgument("at") { type = NavType.LongType })) {
                 com.dasein.poryadok.ui.health.BodyDetailScreen(nav, it.long("at"))
+            }
+            composable("kpImport?kind={kind}", arguments = listOf(navArgument("kind") { type = NavType.IntType; defaultValue = 0 })) {
+                com.dasein.poryadok.ui.media.KpImportScreen(nav, it.int("kind"))
             }
             composable(Routes.WEIGHT_TREND) { com.dasein.poryadok.ui.health.WeightTrendScreen(nav) }
             composable(Routes.BODY_COMPARE) { com.dasein.poryadok.ui.health.BodyCompareScreen(nav) }

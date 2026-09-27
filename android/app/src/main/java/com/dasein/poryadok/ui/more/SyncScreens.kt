@@ -1,5 +1,6 @@
 package com.dasein.poryadok.ui.more
 
+import com.dasein.poryadok.ui.common.Hint
 import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -155,11 +156,8 @@ fun StepsScreen(nav: NavHostController, settings: AppSettings) {
 
             SectionTitle("Health Connect — любые фитнес-приложения")
             Tile {
-                Text(
-                    "Через Health Connect шаги приходят из Mi Fitness (Xiaomi Wear), Zepp Life, Google Fit, Samsung Health, Huawei Health и других. " +
-                        "На Poco F7 шаги, которые показывает виджет, считает приложение Xiaomi — включите в нём синхронизацию с Health Connect.",
-                    fontSize = 13.sp,
-                )
+                Hint("steps_hc_about", "Через Health Connect шаги приходят из Mi Fitness (Xiaomi Wear), Zepp Life, Google Fit, Samsung Health, Huawei Health и других. " +
+                        "На Poco F7 шаги, которые показывает виджет, считает приложение Xiaomi — включите в нём синхронизацию с Health Connect.", title = "Откуда берутся шаги")
                 Gap(8.dp)
                 val statusText = when (hcStatus) {
                     Steps.HcStatus.AVAILABLE -> if (hcGranted) "Подключено" else "Доступно, нужно разрешение"
@@ -177,11 +175,8 @@ fun StepsScreen(nav: NavHostController, settings: AppSettings) {
                     hcStatus != Steps.HcStatus.AVAILABLE ->
                         OutlinedButton(onClick = { openStore(ctx, "com.google.android.apps.healthdata") }, Modifier.fillMaxWidth()) { Text("Установить Health Connect") }
                 }
-                Text(
-                    "Как включить в Mi Fitness: Профиль → значок настроек → «Health Connect» (или «Сторонние сервисы») → разрешить запись шагов. " +
-                        "В Google Fit: Профиль → Настройки → Health Connect.",
-                    fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp),
-                )
+                Hint("steps_hc_howto", "Как включить в Mi Fitness: Профиль → значок настроек → «Health Connect» (или «Сторонние сервисы») → разрешить запись шагов. " +
+                        "В Google Fit: Профиль → Настройки → Health Connect.", Modifier.padding(top = 8.dp), title = "Как включить в Mi Fitness и Google Fit")
             }
 
             SectionTitle("Датчик шагов телефона")
@@ -200,10 +195,7 @@ fun StepsScreen(nav: NavHostController, settings: AppSettings) {
                     })
                 }
             }
-            Text(
-                "Если включены оба источника, за день берётся большее значение. Шаги также можно ввести вручную в «Питание» раздела «Здоровье».",
-                fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(vertical = 12.dp),
-            )
+            Hint("steps_both", "Если включены оба источника, за день берётся большее значение. Шаги также можно ввести вручную в «Питание» раздела «Здоровье».", Modifier.padding(vertical = 12.dp), title = "Если источников два")
             Gap(40.dp)
         }
     }
@@ -243,10 +235,7 @@ fun SberScreen(nav: NavHostController, settings: AppSettings) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AppIcon(Ic.bank, 34.dp)
                 HGap(12.dp)
-                Text(
-                    "У Сбера нет открытого API для личных финансов, поэтому DASEIN читает уведомления «СберБанк Онлайн» и SMS с номера 900 и сам записывает покупки, переводы и зачисления на счёт «Сбер».",
-                    fontSize = 13.sp,
-                )
+                Hint("sber_about", "У Сбера нет открытого API для личных финансов, поэтому DASEIN читает уведомления «СберБанк Онлайн» и SMS с номера 900 и сам записывает покупки, переводы и зачисления на счёт «Сбер».", title = "Как это работает")
             }
             SectionTitle("1. Уведомления — новые операции")
             Tile {
@@ -272,10 +261,7 @@ fun SberScreen(nav: NavHostController, settings: AppSettings) {
                     Text("Записывать операции автоматически", Modifier.weight(1f))
                     Switch(settings.sberOn, { on -> io { Graph.prefs.update { it.copy(sberOn = on) } } }, enabled = listener)
                 }
-                Text(
-                    "На Xiaomi/Poco: разрешите DASEIN автозапуск и отключите для него экономию батареи — иначе система может выгружать службу.",
-                    fontSize = 12.sp, color = extra.dim,
-                )
+                Hint("sber_xiaomi", "На Xiaomi/Poco: разрешите DASEIN автозапуск и отключите для него экономию батареи — иначе система может выгружать службу.", title = "Если операции перестали приходить")
             }
             SectionTitle("2. История из SMS 900")
             Tile {
@@ -301,10 +287,7 @@ fun SberScreen(nav: NavHostController, settings: AppSettings) {
                     Text((if (t.type == 1) "+" else "−") + com.dasein.poryadok.logic.Money.format(t.amount, settings.currency), fontSize = 13.sp, color = if (t.type == 1) extra.ok else MaterialTheme.colorScheme.onSurface)
                 }
             }
-            Text(
-                "Категория подбирается по названию магазина; её можно поменять в операции. Если какое-то уведомление не распозналось — добавьте операцию вручную.",
-                fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(vertical = 12.dp),
-            )
+            Hint("sber_category", "Категория подбирается по названию магазина; её можно поменять в операции. Если какое-то уведомление не распозналось — добавьте операцию вручную.", Modifier.padding(vertical = 12.dp), title = "Категории")
             Gap(40.dp)
         }
     }

@@ -184,6 +184,11 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                     }
                 }
                 Gap(8.dp)
+                val body = com.dasein.poryadok.ui.health.rememberBodyData()
+                if (body.readings.isNotEmpty()) {
+                    com.dasein.poryadok.ui.health.WeightTrendCard(body.readings, { nav.navigate(Routes.WEIGHT_TREND) })
+                    Gap(8.dp)
+                }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(
@@ -211,7 +216,6 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                 }
             }
 
-            item { SectionTitle("Метрики") }
             item { DayMetrics(nav, settings.currency) }
 
             item { SectionTitle("Задачи на сегодня", action = "Все") { nav.goTab(Routes.plan(1)) } }

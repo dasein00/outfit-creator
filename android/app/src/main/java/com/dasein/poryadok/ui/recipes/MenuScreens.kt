@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.recipes
 
+import com.dasein.poryadok.ui.common.Hint
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -443,10 +444,7 @@ fun CreateMenuScreen(nav: NavHostController, startDay: Long) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         RECIPE_CATEGORIES.forEach { c -> Pill(c, c in cats) { cats = if (c in cats) cats - c else cats + c } }
                     }
-                    Text(
-                        "Цель по калориям взята из калькулятора в разделе «Здоровье». Подбор — это удобство, а не медицинская рекомендация.",
-                        fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp),
-                    )
+                    Hint("menu_goal", "Цель по калориям взята из калькулятора в разделе «Здоровье». Подбор — это удобство, а не медицинская рекомендация.", Modifier.padding(top = 8.dp), title = "Откуда цель по калориям")
                 }
                 1 -> {
                     if (presets.isEmpty()) Text("Шаблонов пока нет. Составьте день или неделю и сохраните как шаблон.", color = extra.dim)

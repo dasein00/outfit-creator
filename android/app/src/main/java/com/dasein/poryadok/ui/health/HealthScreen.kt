@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.health
 
+import com.dasein.poryadok.ui.common.Hint
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.ui.text.style.TextOverflow
 import com.dasein.poryadok.ui.recipes.rememberRecipeBook
@@ -201,7 +202,7 @@ private fun CalcTab(p: BodyProfile, current: Double, plan: NutritionPlan) {
         NumberField(protein, { protein = it; it.num()?.let { v -> upd(p.copy(proteinPerKg = v)) } }, "Белок", Modifier.weight(1f), "г/кг")
         NumberField(fat, { fat = it; it.num()?.let { v -> upd(p.copy(fatPerKg = v)) } }, "Жир", Modifier.weight(1f), "г/кг")
     }
-    Text("Белок: 1.6 минимум · 1.8 стандарт на дефиците · 2.0–2.2 при силовых. Жир: 0.7–1.0 г/кг.", fontSize = 12.sp, color = extra.dim)
+    Hint("calc_macros", "Белок: 1.6 минимум · 1.8 стандарт на дефиците · 2.0–2.2 при силовых. Жир: 0.7–1.0 г/кг.", title = "Как считаются белки, жиры и углеводы")
 
     SectionTitle("Ваша норма")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -223,7 +224,7 @@ private fun CalcTab(p: BodyProfile, current: Double, plan: NutritionPlan) {
             else "${if (d < 0) "Дефицит" else "Профицит"} ${kotlin.math.abs(d)} ккал в день. " +
                 "Реалистично за 3 месяца: ≈ ${"%.1f".format(plan.realisticKgPer12Weeks)} кг.",
         )
-        Text("У всех по-разному — ориентируйтесь на самочувствие и реальные замеры, а не только на цифры.", fontSize = 12.sp, color = extra.dim)
+        Hint("calc_note", "У всех по-разному — ориентируйтесь на самочувствие и реальные замеры, а не только на цифры.", title = "Важно")
     }
     SectionTitle("Другие цели")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -391,7 +392,7 @@ private fun FoodDialog(e0: FoodEntry, history: List<FoodEntry>, onDismiss: () ->
                 if (per100 != null) {
                     Gap(6.dp)
                     NumberField(grams, { grams = it }, "Граммовка (пусто — тарелка ≈ $plate г)", suffix = "г", decimal = false)
-                    Text("Без граммовки считается порция на обычной гарвардской тарелке: ½ — овощи, ¼ — белок, ¼ — гарнир.", fontSize = 11.sp, color = LocalExtra.current.dim)
+                    Hint("food_plate", "Без граммовки считается порция на обычной гарвардской тарелке: ½ — овощи, ¼ — белок, ¼ — гарнир.", title = "Если не указать граммы")
                 }
                 if (e0.id == 0L && frequent.isNotEmpty()) {
                     Text("Часто едите:", fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
@@ -458,10 +459,7 @@ private fun MeasureTab() {
     var edit by remember { mutableStateOf<Measurement?>(null) }
     Gap(8.dp)
     Button(onClick = { edit = Measurement(Dates.today()) }, modifier = Modifier.fillMaxWidth()) { Text("+ Новые замеры") }
-    Text(
-        "Раз в 2 недели, сантиметровой лентой, утром натощак: 1 — грудь, 2 — талия, 3 — низ живота, 4 — бёдра, 5 — плечо.",
-        fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(vertical = 8.dp),
-    )
+    Hint("measure_how", "Раз в 2 недели, сантиметровой лентой, утром натощак: 1 — грудь, 2 — талия, 3 — низ живота, 4 — бёдра, 5 — плечо.", Modifier.padding(vertical = 8.dp), title = "Как измерять")
     if (ms.size >= 2) {
         SectionTitle("Талия и бёдра")
         Tile {
@@ -647,7 +645,7 @@ private fun ProgressTab(weights: List<WeightEntry>) {
         }
     }
     SectionTitle("Фото до/после")
-    Text("Раз в месяц, в одно время суток, при одинаковом свете и в той же одежде.", fontSize = 12.sp, color = extra.dim)
+    Hint("photo_how", "Раз в месяц, в одно время суток, при одинаковом свете и в той же одежде.", title = "Как фотографировать")
     Gap(8.dp)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf("Анфас", "Профиль", "Со спины").forEach { p -> Pill(p, pose == p) { pose = p } }

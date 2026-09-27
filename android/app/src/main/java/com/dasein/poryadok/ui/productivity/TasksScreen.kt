@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.productivity
 
+import com.dasein.poryadok.ui.common.Hint
 import androidx.compose.foundation.ExperimentalFoundationApi
 import com.dasein.poryadok.ui.common.Glyphs
 import com.dasein.poryadok.ui.common.Glyph
@@ -229,10 +230,7 @@ private fun Matrix(open: List<TaskItem>, today: Long, nav: NavHostController) {
         Triple("Не срочно и не важно", "Отложить или удалить", extra.dim) to open.filter { !important(it) && !urgent(it) },
     )
     Column(Modifier.fillMaxSize().padding(horizontal = 12.dp).verticalScroll(rememberScrollState())) {
-        Text(
-            "Важность — приоритет «средний» и выше. Срочность — срок в ближайшие 2 дня.",
-            fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(4.dp),
-        )
+        Hint("tasks_matrix", "Важность — приоритет «средний» и выше. Срочность — срок в ближайшие 2 дня.", Modifier.padding(4.dp), title = "Как устроена матрица")
         quads.chunked(2).forEach { rowQuads ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 4.dp)) {
                 rowQuads.forEach { (meta, items) ->

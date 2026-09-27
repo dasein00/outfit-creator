@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.productivity
 
+import com.dasein.poryadok.ui.common.Hint
 import androidx.activity.compose.BackHandler
 import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.IconAction
@@ -263,7 +264,7 @@ fun HabitEditScreen(nav: NavHostController, id: Long) {
                 NumberField(targetText, { targetText = it }, "Сколько раз", Modifier.weight(1f), decimal = false)
                 TextInput(h.unit, { h = h.copy(unit = it) }, "Единица (раз, мин…)", Modifier.weight(1f))
             }
-            Text("1 — простая галочка. Больше 1 — счётчик: каждое нажатие прибавляет единицу.", fontSize = 12.sp, color = extra.dim)
+            Hint("habit_target", "1 — простая галочка. Больше 1 — счётчик: каждое нажатие прибавляет единицу.", title = "Цель в день")
 
             SectionTitle("Расписание")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

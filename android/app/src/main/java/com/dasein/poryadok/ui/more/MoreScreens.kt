@@ -1,5 +1,6 @@
 package com.dasein.poryadok.ui.more
 
+import com.dasein.poryadok.ui.common.Hint
 import androidx.compose.foundation.clickable
 import com.dasein.poryadok.ui.common.Glyph
 import androidx.compose.foundation.layout.Arrangement
@@ -110,10 +111,7 @@ fun MoreScreen(nav: NavHostController) {
                 }
             }
             item(span = { GridItemSpan(2) }) {
-                Text(
-                    "Все данные хранятся только на этом телефоне. Делайте резервную копию в настройках.",
-                    fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(8.dp),
-                )
+                Hint("more_data", "Все данные хранятся только на этом телефоне. Делайте резервную копию в настройках.", Modifier.padding(8.dp), title = "Где хранятся данные")
             }
         }
     }
@@ -135,7 +133,7 @@ fun WheelScreen(nav: NavHostController) {
     }
     Screen(title = "Колесо баланса", onBack = { nav.popBackStack() }) { pad ->
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            Text("Оцените каждую сферу от 0 до 10. Раз в месяц — и станет видно, куда уходит энергия и где нужен рост.", color = extra.dim, fontSize = 13.sp)
+            Hint("wheel_about", "Оцените каждую сферу от 0 до 10. Раз в месяц — и станет видно, куда уходит энергия и где нужен рост.", title = "Как пользоваться")
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                 Radar(values.toList(), WHEEL_AREAS, MaterialTheme.colorScheme.primary, size = 300.dp)
             }

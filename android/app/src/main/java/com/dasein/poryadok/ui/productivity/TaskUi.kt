@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.productivity
 
+import com.dasein.poryadok.ui.common.Hint
 import androidx.compose.foundation.clickable
 import com.dasein.poryadok.ui.common.Glyphs
 import com.dasein.poryadok.ui.common.Glyph
@@ -151,10 +152,7 @@ fun QuickAddSheet(onDismiss: () -> Unit, defaultDay: Long? = null, defaultProjec
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
         Column(Modifier.padding(horizontal = 18.dp).padding(bottom = 18.dp).navigationBarsPadding().imePadding()) {
             Text("Новая задача", style = MaterialTheme.typography.titleLarge)
-            Text(
-                "Пишите как говорите: «завтра в 18», «в пятницу», «каждый день», «!2» — приоритет, «#дом» — список, «@тег»",
-                fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 2.dp, bottom = 10.dp),
-            )
+            Hint("quickadd_syntax", "Пишите как говорите: «завтра в 18», «в пятницу», «каждый день», «!2» — приоритет, «#дом» — список, «@тег»", Modifier.padding(top = 2.dp, bottom = 10.dp), title = "Как писать быстро")
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = text, onValueChange = { text = it },

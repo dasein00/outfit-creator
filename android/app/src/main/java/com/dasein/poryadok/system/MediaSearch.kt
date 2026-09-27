@@ -9,16 +9,20 @@ import com.dasein.poryadok.data.MediaItem
 import com.dasein.poryadok.logic.MediaHit
 import com.dasein.poryadok.logic.MediaParse
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
-/** Источники поиска. Кинопоиску нужен бесплатный личный токен (api.kinopoisk.dev), остальным — ничего. */
+/** Источники поиска. «Везде» опрашивает все подходящие сразу. Кинопоиску нужен бесплатный личный токен (api.kinopoisk.dev). */
 enum class MediaSource(val title: String, val kinds: Set<Int>, val needsToken: Boolean = false) {
+    ALL("Везде", setOf(MediaParse.MOVIE, MediaParse.SERIES, MediaParse.BOOK)),
     KINOPOISK("Кинопоиск", setOf(MediaParse.MOVIE, MediaParse.SERIES), needsToken = true),
-    ITUNES("iTunes", setOf(MediaParse.MOVIE)),
+    WIKI("Википедия", setOf(MediaParse.MOVIE, MediaParse.SERIES, MediaParse.BOOK)),
     TVMAZE("TVMaze", setOf(MediaParse.SERIES)),
     GOOGLE_BOOKS("Google Книги", setOf(MediaParse.BOOK)),
     OPEN_LIBRARY("Open Library", setOf(MediaParse.BOOK)),
@@ -55,11 +59,56 @@ object MediaSearch {
                 MediaParse.kinopoiskSearch(get("https://api.kinopoisk.dev/v1.4/movie/search?page=1&limit=20&query=$q", mapOf("X-API-KEY" to token)))
                     .filter { it.kind == kind }
             }
-            MediaSource.ITUNES -> MediaParse.itunes(get("https://itunes.apple.com/search?term=$q&media=movie&entity=movie&country=RU&lang=ru_ru&limit=25"))
+            MediaSource.ALL -> all(kind, query)
+            MediaSource.WIKI -> wiki(kind, query.trim())
             MediaSource.TVMAZE -> MediaParse.tvmazeSearch(get("https://api.tvmaze.com/search/shows?q=$q"))
             MediaSource.GOOGLE_BOOKS -> MediaParse.googleBooks(get("https://www.googleapis.com/books/v1/volumes?q=$q&maxResults=25&printType=books"))
             MediaSource.OPEN_LIBRARY -> MediaParse.openLibrary(get("https://openlibrary.org/search.json?q=$q&limit=25"))
         }
+    }
+
+    /** Все подходящие каталоги параллельно; Кинопоиск первым (если есть токен), без повторов. */
+    private suspend fun all(kind: Int, query: String): List<MediaHit> = coroutineScope {
+        val hasToken = Graph.prefs.now().kinopoiskToken.isNotBlank()
+        val sources = when (kind) {
+            MediaParse.BOOK -> listOf(MediaSource.GOOGLE_BOOKS, MediaSource.WIKI, MediaSource.OPEN_LIBRARY)
+            MediaParse.SERIES -> listOfNotNull(MediaSource.KINOPOISK.takeIf { hasToken }, MediaSource.WIKI, MediaSource.TVMAZE)
+            else -> listOfNotNull(MediaSource.KINOPOISK.takeIf { hasToken }, MediaSource.WIKI)
+        }
+        val results = sources.map { s -> async { runCatching { search(s, kind, query) }.getOrDefault(emptyList()) } }.awaitAll()
+        MediaParse.mergeHits(results)
+    }
+
+    private const val WD = "https://www.wikidata.org/w/api.php?format=json"
+
+    /** Русскоязычный каталог без ключа: поиск в Викиданных, описание и постер — из статьи Википедии. */
+    private fun wiki(kind: Int, query: String): List<MediaHit> {
+        val ids = MediaParse.wikiSearch(get("$WD&action=wbsearchentities&language=ru&uselang=ru&type=item&limit=30&search=${enc(query)}"))
+        if (ids.isEmpty()) return emptyList()
+        val ents = MediaParse.wikiEntities(
+            get("$WD&action=wbgetentities&props=${enc("labels|descriptions|claims|sitelinks")}&languages=${enc("ru|en")}&sitefilter=${enc("ruwiki|enwiki")}&ids=${enc(ids.joinToString("|"))}")
+        ).associateBy { it.id }
+        val matched = ids.mapNotNull { ents[it] }.filter { MediaParse.wikiKind(it) == kind }.take(15)
+        if (matched.isEmpty()) return emptyList()
+        val refs = matched.flatMap { e ->
+            e.directors.take(3) + e.authors.take(4) + e.creators.take(3) + e.genres.take(4) + e.countries.take(3) +
+                e.cast.take(12).flatMap { listOfNotNull(it.first, it.second?.takeIf { r -> r.matches(Regex("Q\\d+")) }) }
+        }.distinct()
+        val labels = HashMap<String, String>()
+        refs.chunked(50).forEach { part ->
+            runCatching { labels += MediaParse.wikiLabels(get("$WD&action=wbgetentities&props=labels&languages=${enc("ru|en")}&ids=${enc(part.joinToString("|"))}")) }
+        }
+        fun pages(host: String, titles: List<String>): Map<String, Pair<String?, String?>> = if (titles.isEmpty()) emptyMap() else runCatching {
+            MediaParse.wikiPages(
+                get(
+                    "https://$host/w/api.php?format=json&formatversion=2&action=query&redirects=1&prop=${enc("pageimages|extracts")}" +
+                        "&piprop=thumbnail&pithumbsize=500&pilicense=any&exintro=1&explaintext=1&exsentences=4&exlimit=20&titles=${enc(titles.joinToString("|"))}"
+                )
+            )
+        }.getOrDefault(emptyMap())
+        val ru = pages("ru.wikipedia.org", matched.mapNotNull { it.ruTitle })
+        val en = pages("en.wikipedia.org", matched.filter { it.ruTitle == null || ru[it.ruTitle]?.first == null }.mapNotNull { it.enTitle })
+        return matched.map { e -> MediaParse.wikiHit(e, kind, labels, e.ruTitle?.let { ru[it] }, e.enTitle?.let { en[it] }) }
     }
 
     /** Подробности (режиссёры, актёры и роли), если источник их отдаёт отдельно. */

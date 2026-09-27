@@ -1,5 +1,6 @@
 package com.dasein.poryadok.ui.more
 
+import com.dasein.poryadok.ui.common.Hint
 import android.app.AlarmManager
 import android.content.Intent
 import android.net.Uri
@@ -21,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.HGap
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -106,6 +108,14 @@ fun SettingsScreen(nav: NavHostController, s: Settings) {
                 }
             }
 
+            SectionTitle("Подсказки и инструкции")
+            Text("Все пояснения в разделах сворачиваются нажатием на заголовок. Здесь можно сразу свернуть или развернуть их везде.", fontSize = 12.sp, color = extra.dim)
+            Row(Modifier.padding(top = 6.dp)) {
+                OutlinedButton(onClick = { com.dasein.poryadok.ui.common.UiState.setAllInfo(ctx, false); android.widget.Toast.makeText(ctx, "Подсказки свёрнуты", android.widget.Toast.LENGTH_SHORT).show() }, Modifier.weight(1f)) { Text("Свернуть все") }
+                HGap(8.dp)
+                OutlinedButton(onClick = { com.dasein.poryadok.ui.common.UiState.setAllInfo(ctx, true); android.widget.Toast.makeText(ctx, "Подсказки развёрнуты", android.widget.Toast.LENGTH_SHORT).show() }, Modifier.weight(1f)) { Text("Развернуть все") }
+            }
+
             SectionTitle("Защита")
             Tile {
                 if (s.pinHash.isEmpty()) {
@@ -161,7 +171,7 @@ fun SettingsScreen(nav: NavHostController, s: Settings) {
 
             SectionTitle("Данные")
             Tile {
-                Text("Все данные хранятся только на телефоне. Сохраните копию в файл — её можно перенести на новый телефон.", fontSize = 13.sp)
+                Hint("backup_about", "Все данные хранятся только на телефоне. Сохраните копию в файл — её можно перенести на новый телефон.", title = "Резервная копия")
                 Gap(8.dp)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = { exportLauncher.launch("dasein-${Dates.day(Dates.today())}.zip") }, modifier = Modifier.weight(1f)) { Text("Сохранить копию") }
@@ -183,10 +193,7 @@ fun SettingsScreen(nav: NavHostController, s: Settings) {
                 )
                 Column {
                     Text("DASEIN ${BuildConfigInfo.version(ctx)}", color = extra.dim)
-                    Text(
-                        "Задачи, привычки, цели, фокус, календарь, финансы, Сбер, тетрадь доходов, здоровье, шаги, рецепты и меню, заметки, топы и гардероб — в одном месте.",
-                        fontSize = 12.sp, color = extra.dim,
-                    )
+                    Hint("backup_what", "Задачи, привычки, цели, фокус, календарь, финансы, Сбер, тетрадь доходов, здоровье, шаги, рецепты и меню, заметки, топы и гардероб — в одном месте.", title = "Что входит в копию")
                 }
             }
             Gap(40.dp)

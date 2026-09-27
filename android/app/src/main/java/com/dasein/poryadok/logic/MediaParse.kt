@@ -173,6 +173,206 @@ object MediaParse {
 
     fun tvmazeDetails(text: String): MediaHit? = json.parseToJsonElement(text).obj()?.let { tvmazeShow(it) }
 
+    // ---------- Год в запросе и объединение результатов ----------
+
+    /** «Дюна 2021» → («Дюна», 2021). Год — только в конце и только 1900–2099; «2012» само по себе — название. */
+    fun splitYear(query: String): Pair<String, Int?> {
+        val t = query.trim()
+        val m = Regex("""^(.*\S)[\s,(]+((?:19|20)\d{2})\)?$""").find(t) ?: return t to null
+        val y = m.groupValues[2].toInt()
+        // «Бегущий по лезвию 2049» — число из будущего это часть названия, а не год.
+        if (y > java.time.LocalDate.now().year + 2) return t to null
+        return m.groupValues[1].trim().trimEnd(',', '(').trim() to y
+    }
+
+    /** Только вышедшие в [year]. Если таких нет — пусто (экран покажет подсказку). */
+    fun filterYear(hits: List<MediaHit>, year: Int?): List<MediaHit> = if (year == null) hits else hits.filter { it.year == year }
+
+    private fun norm(s: String) = s.lowercase().replace('ё', 'е').replace(Regex("[^\\p{L}\\p{N}]+"), " ").trim()
+
+    /** Склеивает выдачу нескольких каталогов без повторов: один и тот же фильм (название + год) показывается один раз. */
+    fun mergeHits(lists: List<List<MediaHit>>): List<MediaHit> {
+        val seen = HashSet<String>()
+        val out = ArrayList<MediaHit>()
+        lists.flatten().forEach { h ->
+            val keys = listOf(norm(h.title), norm(h.originalTitle)).filter { it.isNotEmpty() }.map { "$it|${h.year ?: ""}" }
+            if (keys.none { it in seen } && h.externalId !in seen) {
+                out += h
+                seen += keys
+                seen += h.externalId
+            }
+        }
+        return out
+    }
+
+    // ---------- Википедия и Викиданные (русскоязычный каталог без ключа) ----------
+
+    data class WikiEntity(
+        val id: String,
+        val label: String,
+        val description: String,
+        val origTitle: String,
+        val year: Int?,
+        val types: Set<String>,
+        val directors: List<String>,
+        val authors: List<String>,
+        val creators: List<String>,
+        val cast: List<Pair<String, String?>>,
+        val genres: List<String>,
+        val countries: List<String>,
+        val minutes: Int?,
+        val pages: Int?,
+        val seasons: Int?,
+        val kpId: String?,
+        val ruTitle: String?,
+        val enTitle: String?,
+    )
+
+    private val FILM_TYPES = setOf("Q11424", "Q202866", "Q24869", "Q506240", "Q93204", "Q226730", "Q17123180", "Q229390", "Q24862", "Q20650540", "Q18011172", "Q112158242")
+    private val SERIES_TYPES = setOf("Q5398426", "Q581714", "Q63952888", "Q1259759", "Q117467246", "Q15416", "Q526877")
+    private val BOOK_TYPES = setOf("Q7725634", "Q8261", "Q571", "Q47461344", "Q49084", "Q1667921", "Q12308638", "Q277759", "Q17518461")
+
+    fun wikiSearch(text: String): List<String> =
+        json.parseToJsonElement(text).obj()?.get("search").arr().orEmpty().mapNotNull { it.obj()?.get("id").str() }
+
+    private fun JsonObject.claims(p: String): List<JsonObject> =
+        this["claims"].obj()?.get(p).arr().orEmpty().mapNotNull { it.obj() }.filter { it["rank"].str() != "deprecated" }
+
+    private fun JsonObject.value(): JsonElement? = this["mainsnak"].obj()?.get("datavalue").obj()?.get("value")
+    private fun JsonObject.ids(p: String) = claims(p).mapNotNull { it.value().obj()?.get("id").str() }
+    private fun JsonObject.amount(p: String) = claims(p).firstNotNullOfOrNull { it.value().obj()?.get("amount").str()?.toDoubleOrNull()?.toInt() }
+    private fun JsonObject.label(): String? = this["labels"].obj()?.let { l -> l["ru"].obj()?.get("value").str() ?: l["en"].obj()?.get("value").str() }
+
+    fun wikiEntities(text: String): List<WikiEntity> {
+        val root = json.parseToJsonElement(text).obj()?.get("entities").obj() ?: return emptyList()
+        return root.values.mapNotNull { e ->
+            val o = e.obj() ?: return@mapNotNull null
+            val id = o["id"].str() ?: return@mapNotNull null
+            val sl = o["sitelinks"].obj()
+            val ru = sl?.get("ruwiki").obj()?.get("title").str()
+            val en = sl?.get("enwiki").obj()?.get("title").str()
+            val label = o.label() ?: ru ?: en ?: return@mapNotNull null
+            val year = (o.claims("P577") + o.claims("P580")).mapNotNull { c ->
+                c.value().obj()?.get("time").str()?.let { Regex("^[+-](\\d{4})").find(it)?.groupValues?.get(1)?.toIntOrNull() }
+            }.minOrNull()
+            val cast = o.claims("P161").mapNotNull { c ->
+                val pid = c.value().obj()?.get("id").str() ?: return@mapNotNull null
+                val q = c["qualifiers"].obj()
+                val role = q?.get("P453").arr()?.firstOrNull().obj()?.get("datavalue").obj()?.get("value").obj()?.get("id").str()
+                    ?: q?.get("P4633").arr()?.firstOrNull().obj()?.get("datavalue").obj()?.get("value").str()
+                pid to role
+            }
+            WikiEntity(
+                id = id, label = label,
+                description = o["descriptions"].obj()?.let { d -> d["ru"].obj()?.get("value").str() ?: d["en"].obj()?.get("value").str() }.orEmpty(),
+                origTitle = o.claims("P1476").firstNotNullOfOrNull { it.value().obj()?.get("text").str() }.orEmpty(),
+                year = year, types = o.ids("P31").toSet(),
+                directors = o.ids("P57"), authors = o.ids("P50"), creators = o.ids("P170"), cast = cast,
+                genres = o.ids("P136"), countries = o.ids("P495"),
+                minutes = o.amount("P2047"), pages = o.amount("P1104"), seasons = o.amount("P2437"),
+                kpId = o.claims("P2603").firstNotNullOfOrNull { it.value().str() },
+                ruTitle = ru, enTitle = en,
+            )
+        }
+    }
+
+    /** Вид записи Викиданных: по «это частный случай» (P31), а если его нет — по описанию. */
+    fun wikiKind(e: WikiEntity): Int? {
+        if (e.types.any { it in SERIES_TYPES }) return SERIES
+        if (e.types.any { it in FILM_TYPES }) return MOVIE
+        if (e.types.any { it in BOOK_TYPES }) return BOOK
+        val d = e.description.lowercase()
+        return when {
+            "сериал" in d || "series" in d || "аниме" in d -> SERIES
+            "фильм" in d || "film" in d || "movie" in d -> MOVIE
+            listOf("роман", "книга", "повесть", "рассказ", "поэма", "novel", "book", "сборник").any { it in d } -> BOOK
+            else -> null
+        }
+    }
+
+    fun wikiLabels(text: String): Map<String, String> {
+        val root = json.parseToJsonElement(text).obj()?.get("entities").obj() ?: return emptyMap()
+        return root.values.mapNotNull { e -> val o = e.obj() ?: return@mapNotNull null; val id = o["id"].str() ?: return@mapNotNull null; o.label()?.let { id to it } }.toMap()
+    }
+
+    /** Ответ query (formatversion=2): картинка и первые предложения статьи по названию, с учётом перенаправлений. */
+    fun wikiPages(text: String): Map<String, Pair<String?, String?>> {
+        val q = json.parseToJsonElement(text).obj()?.get("query").obj() ?: return emptyMap()
+        val alias = HashMap<String, String>()
+        (q["normalized"].arr().orEmpty() + q["redirects"].arr().orEmpty()).forEach { r ->
+            val from = r.obj()?.get("from").str(); val to = r.obj()?.get("to").str()
+            if (from != null && to != null) alias[from] = to
+        }
+        val pages = q["pages"].arr().orEmpty().mapNotNull { p ->
+            val o = p.obj() ?: return@mapNotNull null
+            val t = o["title"].str() ?: return@mapNotNull null
+            t to (o["thumbnail"].obj()?.get("source").str() to o["extract"].str())
+        }.toMap()
+        val out = HashMap<String, Pair<String?, String?>>(pages)
+        alias.keys.forEach { from ->
+            var t = from; var guard = 0
+            while (alias[t] != null && guard++ < 4) t = alias.getValue(t)
+            pages[t]?.let { out[from] = it }
+        }
+        return out
+    }
+
+    fun wikiHit(e: WikiEntity, kind: Int, labels: Map<String, String>, ru: Pair<String?, String?>?, en: Pair<String?, String?>?): MediaHit {
+        fun names(ids: List<String>, n: Int) = ids.take(n).mapNotNull { labels[it] }.joinToString(", ")
+        val title = e.label
+        val creators = when (kind) {
+            BOOK -> names(e.authors, 4)
+            else -> names(e.directors, 3).ifBlank { names(e.creators, 3) }
+        }
+        val cast = e.cast.take(12).mapNotNull { (p, r) ->
+            val n = labels[p] ?: return@mapNotNull null
+            val role = r?.let { labels[it] ?: it.takeIf { x -> !x.matches(Regex("Q\\d+")) } }
+            if (role != null) "$n — $role" else n
+        }.joinToString("\n")
+        return MediaHit(
+            kind = kind, title = title,
+            originalTitle = e.origTitle.takeIf { it.isNotBlank() && !it.equals(title, true) }.orEmpty(),
+            year = e.year,
+            posterUrl = ru?.first ?: en?.first ?: "",
+            description = ru?.second ?: e.description,
+            genres = names(e.genres, 4),
+            creators = creators, cast = cast,
+            countries = names(e.countries, 3),
+            length = when {
+                kind == BOOK -> e.pages?.let { "$it стр." }.orEmpty()
+                kind == SERIES && e.seasons != null -> "${e.seasons} сез."
+                else -> minutes(e.minutes)
+            },
+            source = "Википедия", externalId = "wd:" + e.id,
+            url = e.ruTitle?.let { "https://ru.wikipedia.org/wiki/" + it.replace(' ', '_') } ?: "https://www.wikidata.org/wiki/${e.id}",
+        )
+    }
+
+    // ---------- Импорт со страниц Кинопоиска (оценки, папки, «Буду смотреть») ----------
+
+    data class KpItem(val id: String, val series: Boolean, val title: String, val year: Int?, val vote: Int?, val posterUrl: String)
+
+    /** Картинка Кинопоиска в большем размере и с протоколом. */
+    fun kpPoster(src: String): String {
+        if (src.isBlank() || src.startsWith("data:")) return ""
+        val u = if (src.startsWith("//")) "https:$src" else src
+        return u.replace(Regex("/\\d{2,3}x\\d{2,3}$"), "/300x450")
+    }
+
+    /** Разбор того, что собрал скрипт со страницы: [{id, type, title, text, img, vote}]. */
+    fun kpItems(text: String): List<KpItem> = json.parseToJsonElement(text).arr().orEmpty().mapNotNull { e ->
+        val o = e.obj() ?: return@mapNotNull null
+        val id = o["id"].str() ?: return@mapNotNull null
+        val raw = o["title"].str().orEmpty().lines().first().trim()
+        val body = o["text"].str().orEmpty()
+        val (t, y) = parseListLine(raw) ?: return@mapNotNull null
+        if (t.isBlank() || t.matches(Regex("[\\d.,\\s]+"))) return@mapNotNull null
+        val year = y ?: Regex("\\b((?:19|20)\\d{2})\\b").find(body)?.groupValues?.get(1)?.toInt()
+        val vote = o["vote"].str()?.trim()?.toIntOrNull()?.takeIf { it in 1..10 }
+            ?: Regex("(?:[Мм]оя оценка|[Вв]аша оценка)[:\\s]*(10|[1-9])\\b").find(body)?.groupValues?.get(1)?.toInt()
+        KpItem(id, o["type"].str() == "series", t, year, vote, kpPoster(o["img"].str().orEmpty()))
+    }
+
     /** Строка списка «Название (2010)» или «Название, 2010» → название и год. */
     fun parseListLine(line: String): Pair<String, Int?>? {
         val t = line.trim().trimStart('-', '•', '*', ' ').replace(Regex("^\\d+[.)]\\s*"), "").trim()

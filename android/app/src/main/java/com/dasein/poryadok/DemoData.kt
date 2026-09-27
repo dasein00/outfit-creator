@@ -73,6 +73,10 @@ object DemoData {
                 MediaItem(kind = MediaKind.BOOK, title = "Атомные привычки", creators = "Джеймс Клир", year = 2018, status = MediaStatus.IN_PROGRESS, createdAt = now - 1),
             ).forEach { x.upsertMedia(it) }
         }
+        if (x.allMediaLists().isEmpty()) {
+            val lid = x.upsertMediaList(com.dasein.poryadok.data.MediaList(name = "Пересмотреть", glyph = "ui:heart", createdAt = System.currentTimeMillis()))
+            x.allMedia().filter { it.favorite }.forEach { x.addToMediaList(com.dasein.poryadok.data.MediaListItem(lid, it.id)) }
+        }
         if (x.dayEnergyOf(Dates.today()) == null) x.upsertDayEnergy(DayEnergy(Dates.today(), 380, "пример"))
         if (x.bodyMetricsNow().isEmpty()) {
             val today = Dates.today()

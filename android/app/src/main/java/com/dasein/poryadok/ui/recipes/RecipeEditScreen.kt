@@ -169,9 +169,8 @@ private fun StepBasics(d: RecipeDraft) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val r = d.recipe
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        if (uri != null) scope.launch { Images.importUri(ctx, uri, "recipes")?.let { d.recipe = d.recipe.copy(photo = it) } }
-    }
+    val pickPhoto = com.dasein.poryadok.ui.common.rememberImagePickerWithCrop(1f, "recipes") { d.recipe = d.recipe.copy(photo = it) }
+    var recrop by remember { mutableStateOf(false) }
     TextInput(r.name, { d.recipe = r.copy(name = it) }, "Название")
     Gap(10.dp)
     var pickIllustration by remember { mutableStateOf(false) }
@@ -182,12 +181,16 @@ private fun StepBasics(d: RecipeDraft) {
             img?.let { Image(it, null, Modifier.size(72.dp).clip(RoundedCornerShape(14.dp)), contentScale = ContentScale.Crop); HGap(10.dp) }
         }
         Column {
-            OutlinedButton(onClick = { picker.launch("image/*") }) { Text(if (r.photo.isBlank() || r.photo.startsWith("dish/")) "Своё фото" else "Заменить фото") }
+            OutlinedButton(onClick = { pickPhoto() }) { Text(if (r.photo.isBlank() || r.photo.startsWith("dish/")) "Своё фото" else "Заменить фото") }
+            if (r.photo.startsWith("/")) OutlinedButton(onClick = { recrop = true }) { Text("Кадр превью") }
             OutlinedButton(onClick = { pickIllustration = true }) { Text("Иллюстрация") }
         }
         if (r.photo.isNotBlank()) TextButton(onClick = { d.recipe = r.copy(photo = "") }) { Text("Убрать") }
     }
-    if (pickIllustration) GlyphPickerDialog(r.photo, { pickIllustration = false }, dishes = true) { d.recipe = d.recipe.copy(photo = it) }
+    if (recrop) com.dasein.poryadok.ui.common.CropDialog(com.dasein.poryadok.ui.common.Crop.sourceFor(r.photo), 1f, "recipes", onDismiss = { recrop = false }) {
+        recrop = false; d.recipe = d.recipe.copy(photo = it)
+    }
+        if (pickIllustration) GlyphPickerDialog(r.photo, { pickIllustration = false }, dishes = true) { d.recipe = d.recipe.copy(photo = it) }
     SectionTitle("Категория")
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         RECIPE_CATEGORIES.forEach { c -> Pill(c, c == r.category) { d.recipe = r.copy(category = c) } }

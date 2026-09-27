@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.recipes
 
+import com.dasein.poryadok.ui.common.Hint
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -98,7 +99,7 @@ fun PresetsScreen(nav: NavHostController) {
     Screen("Шаблоны и повторы", onBack = { nav.popBackStack() }) { pad ->
         LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 40.dp)) {
             item {
-                Text("Шаблон — готовый день или неделя меню. Применяйте к любому периоду.", color = extra.dim, fontSize = 13.sp)
+                Hint("presets_about", "Шаблон — готовый день или неделя меню. Применяйте к любому периоду.", title = "Что такое шаблон")
                 Gap(8.dp)
                 Button(onClick = { newPreset = true }, Modifier.fillMaxWidth()) { Text("+ Новый шаблон") }
             }
@@ -128,7 +129,7 @@ fun PresetsScreen(nav: NavHostController) {
                 SectionTitle("Повторяющиеся блюда", action = "+ Добавить") {
                     editRepeat = MealRepeat(recipeId = 0, meal = MealType.BREAKFAST, fromDay = Dates.today())
                 }
-                Text("Например, овсянка на завтрак по будням. Блюдо само появится в меню на 5 недель вперёд.", fontSize = 12.sp, color = extra.dim)
+                Hint("repeats_about", "Например, овсянка на завтрак по будням. Блюдо само появится в меню на 5 недель вперёд.", title = "Повторяющиеся блюда")
             }
             items(repeats, key = { "r${it.id}" }) { r ->
                 Tile(Modifier.padding(top = 8.dp), onClick = { editRepeat = r }) {
@@ -387,7 +388,7 @@ private fun GenerateShoppingDialog(onDismiss: () -> Unit, onGo: (Long, Long) -> 
         title = { Text("Покупки по меню") },
         text = {
             Column {
-                Text("Ингредиенты блюд, которые ещё не съедены, сложатся по продуктам. Ручные позиции и отметки «куплено» сохранятся.", fontSize = 13.sp, color = LocalExtra.current.dim)
+                Hint("shopping_about", "Ингредиенты блюд, которые ещё не съедены, сложатся по продуктам. Ручные позиции и отметки «куплено» сохранятся.", title = "Как собирается список")
                 Gap(8.dp)
                 Row {
                     FieldButton("С", Dates.label(from), Modifier.weight(1f)) { pick = 1 }
