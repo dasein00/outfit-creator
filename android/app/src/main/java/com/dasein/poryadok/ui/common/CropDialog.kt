@@ -208,6 +208,7 @@ fun rememberImagePickerWithCrop(
     dir: String,
     round: Boolean = false,
     png: Boolean = false,
+    outW: Int = 900,
     onDone: (String) -> Unit,
 ): () -> Unit {
     val ctx = LocalContext.current
@@ -217,7 +218,7 @@ fun rememberImagePickerWithCrop(
         if (uri != null) scope.launch { source = Images.importUri(ctx, uri, "$dir/src") }
     }
     source?.let { src ->
-        CropDialog(src, aspect, dir, round, png, onDismiss = { source = null }) { path -> source = null; onDone(path) }
+        CropDialog(src, aspect, dir, round, png, outW, onDismiss = { source = null }) { path -> source = null; onDone(path) }
     }
     return { launcher.launch("image/*") }
 }
