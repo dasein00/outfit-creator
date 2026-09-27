@@ -1,7 +1,17 @@
 package com.dasein.poryadok.ui.health
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.Icon
+import com.dasein.poryadok.ui.common.InfoBox
+import com.dasein.poryadok.ui.common.UiState
+import com.dasein.poryadok.ui.common.rememberUiFlag
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.OutlinedButton
@@ -45,13 +55,13 @@ private val WHEN = SimpleDateFormat("d MMM, HH:mm", Locale("ru"))
  * [refresh] меняется после синхронизации, чтобы карточка перечитала состояние.
  */
 @Composable
-fun HcLinkCard(refresh: Int, onGranted: () -> Unit) {
+fun HcLinkCard(refresh: Int, syncing: Boolean, onSync: () -> Unit, onGranted: () -> Unit) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     val owner = LocalLifecycleOwner.current
     var diag by remember { mutableStateOf<Body.Diag?>(null) }
     var tick by remember { mutableIntStateOf(0) }
-    var open by remember { mutableStateOf(false) }
+    var expanded by rememberUiFlag("info_hc_link", UiState.infoDefault(ctx))
     LaunchedEffect(owner, refresh, tick) {
         owner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) { diag = Body.diagnose(ctx) }
     }
@@ -79,14 +89,19 @@ fun HcLinkCard(refresh: Int, onGranted: () -> Unit) {
     }
 
     Tile {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.clickable { expanded = !expanded }, verticalAlignment = Alignment.CenterVertically) {
             Glyph(Glyphs.SCALE, 24.dp)
             HGap(10.dp)
             Column(Modifier.weight(1f)) {
                 Text("Связь с весами", fontWeight = FontWeight.SemiBold)
-                Text("Весы → OKOK → Google Fit → Health Connect → DASEIN", fontSize = 12.sp, color = extra.dim)
+                Text(
+                    if (d?.lastAt != null) "Последнее в Health Connect: " + WHEN.format(Date(d.lastAt)) else "Весы → OKOK → Google Fit → Health Connect → DASEIN",
+                    fontSize = 12.sp, color = extra.dim,
+                )
             }
+            Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, if (expanded) "Свернуть" else "Развернуть", tint = extra.dim)
         }
+        AnimatedVisibility(expanded) { Column {
         if (d == null) {
             Text("Проверяю…", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
         } else {
@@ -120,10 +135,11 @@ fun HcLinkCard(refresh: Int, onGranted: () -> Unit) {
                 d.error?.let { Text("Ошибка чтения: $it", fontSize = 12.sp, color = extra.warn, modifier = Modifier.padding(top = 6.dp)) }
             }
         }
-        TextButton(onClick = { open = !open }, modifier = Modifier.padding(top = 4.dp)) {
-            Text(if (open) "Скрыть инструкцию" else "Как настроить, если вес не приходит")
+        if (d?.weightAllowed == true) OutlinedButton(onClick = onSync, enabled = !syncing, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            Text(if (syncing) "Синхронизация…" else "Синхронизировать сейчас")
         }
-        if (open) {
+        Gap(8.dp)
+        InfoBox("hc_setup", "Как настроить, если вес не приходит") {
             listOf(
                 "OKOK International → «Мой» → Google Fit → подключить (вы это уже сделали).",
                 "Google Fit → вкладка «Профиль» → шестерёнка → «Синхронизировать Fit с Health Connect» — включить. Без этого Google Fit хранит вес только у себя.",
@@ -148,5 +164,6 @@ fun HcLinkCard(refresh: Int, onGranted: () -> Unit) {
                 OutlinedButton(onClick = { SystemScreens.healthConnect(ctx) }, Modifier.weight(1f)) { Text("Health Connect", fontSize = 13.sp, maxLines = 1) }
             }
         }
+        } }
     }
 }

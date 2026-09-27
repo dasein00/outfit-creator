@@ -50,7 +50,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.health.connect.client.PermissionController
+import androidx.navigation.NavHostController
 import com.dasein.poryadok.Graph
+import com.dasein.poryadok.ui.Routes
+import com.dasein.poryadok.ui.common.Hint
 import com.dasein.poryadok.data.BodyMetric
 import com.dasein.poryadok.data.BodyProfile
 import com.dasein.poryadok.data.WeightEntry
@@ -98,10 +101,10 @@ fun toneColor(t: Tone?): Color = when (t) {
     null -> Color(0xFF9A9185)
 }
 
-private fun fmt(v: Double, d: Int = 1) = if (d == 0) "%.0f".format(v) else "%.${d}f".format(v).replace('.', ',')
-private fun signed(v: Double) = (if (v > 0) "+" else if (v < 0) "−" else "") + fmt(abs(v))
+internal fun fmt(v: Double, d: Int = 1) = if (d == 0) "%.0f".format(v) else "%.${d}f".format(v).replace('.', ',')
+internal fun signed(v: Double) = (if (v > 0) "+" else if (v < 0) "−" else "") + fmt(abs(v))
 /** Вес из прежних версий, без подробных показателей. */
-private const val LEGACY = "вес"
+internal const val LEGACY = "вес"
 
 @Composable
 private fun MetricField(state: androidx.compose.runtime.MutableState<Map<String, String>>, key: String, label: String, suffix: String) {
@@ -109,9 +112,9 @@ private fun MetricField(state: androidx.compose.runtime.MutableState<Map<String,
     Gap(4.dp)
 }
 
-private val TIME = SimpleDateFormat("d MMM yyyy, HH:mm", Locale("ru"))
+internal val TIME = SimpleDateFormat("d MMM yyyy, HH:mm", Locale("ru"))
 
-private fun BodyMetric.reading() = BodyReading(
+internal fun BodyMetric.reading() = BodyReading(
     weight, fatPct, musclePct, muscleKg, waterPct, proteinPct, boneKg, visceral, bmr, metabolicAge, subcutaneousPct, leanKg,
 )
 
@@ -158,25 +161,18 @@ fun StatusChip(label: String, tone: Tone?) {
 }
 
 @Composable
-fun BodyTab(profile: BodyProfile, weights: List<WeightEntry>) {
+fun BodyTab(nav: NavHostController, profile: BodyProfile, weights: List<WeightEntry>) {
     val extra = LocalExtra.current
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val metricsDb by observe(emptyList()) { Graph.extra.bodyMetrics() }
     var edit by remember { mutableStateOf<BodyMetric?>(null) }
+    var ruler by remember { mutableStateOf(false) }
     var syncing by remember { mutableStateOf(false) }
     var syncs by remember { mutableStateOf(0) }
-    var hcGranted by remember { mutableStateOf(emptySet<String>()) }
-    LaunchedEffect(Unit) { hcGranted = Body.granted(ctx) }
-    val person = Person(profile.male, profile.heightCm, profile.age)
     val goal = runCatching { CalorieGoal.valueOf(profile.goal) }.getOrDefault(CalorieGoal.DEFICIT)
 
-    // Взвешивания: полные записи + старые записи веса, для которых нет подробностей.
-    val readings = remember(metricsDb, weights) {
-        val days = metricsDb.map { it.day }.toSet()
-        (metricsDb + weights.filter { it.day !in days }.map { BodyMetric(at = Dates.millis(it.day, 8 * 60), day = it.day, weight = it.kg, source = LEGACY) })
-            .sortedBy { it.at }
-    }
+    val readings = remember(metricsDb, weights) { mergeReadings(metricsDb, weights) }
     val last = readings.lastOrNull()
 
     fun sync() {
@@ -185,70 +181,26 @@ fun BodyTab(profile: BodyProfile, weights: List<WeightEntry>) {
             val n = runCatching { Body.syncHealthConnect(ctx) }.getOrElse { -1 }
             syncing = false
             syncs++
-            hcGranted = Body.granted(ctx)
             Toast.makeText(ctx, if (n < 0) "Не удалось прочитать Health Connect" else if (n == 0) "Новых взвешиваний нет" else "Добавлено взвешиваний: $n", Toast.LENGTH_SHORT).show()
         }
-    }
-    val hcLauncher = rememberLauncherForActivityResult(PermissionController.createRequestPermissionResultContract()) { granted ->
-        hcGranted = granted.intersect(Body.PERMISSIONS)
-        if (hcGranted.isNotEmpty()) { io { Graph.prefs.update { it.copy(bodyHc = true) } }; sync() }
     }
 
     Gap(8.dp)
     if (last == null) {
         Empty(Glyphs.SCALE, "Нет взвешиваний", "Добавьте вес вручную — или подключите весы через Health Connect, и показатели будут подтягиваться сами.")
     } else {
-        val ws = BodyComp.weightScale(profile.heightCm)
-        val zone = ws.zone(last.weight)
-        Tile {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                StatusChip(ws.labels[zone], ws.tones[zone])
-                Box(Modifier.weight(1f))
-                Glyph(Glyphs.SCALE, 26.dp)
-            }
-            Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = 6.dp)) {
-                Text(fmt(last.weight), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.SemiBold)
-                Text(" кг", color = extra.dim, modifier = Modifier.padding(bottom = 6.dp))
-            }
-            Text(TIME.format(Date(last.at)) + " · " + last.source, fontSize = 12.sp, color = extra.dim)
-            Gap(10.dp)
-            ScaleBar(ws, last.weight, 2)
-            Gap(8.dp)
-            val prev = readings.dropLast(1).lastOrNull()
-            if (prev != null) Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
-                Text("По сравнению с прошлым разом (${Dates.short(prev.day)})", Modifier.weight(1f), fontSize = 13.sp)
-                Text(signed(last.weight - prev.weight), fontWeight = FontWeight.SemiBold)
-            }
-            val month = readings.filter { it.day > Dates.today() - 30 }
-            val best = if (goal == CalorieGoal.SURPLUS) month.maxByOrNull { it.weight } else month.minByOrNull { it.weight }
-            Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
-                Text("Лучший вес за 30 дней", Modifier.weight(1f), fontSize = 13.sp)
-                Text(best?.let { fmt(it.weight) } ?: "—", fontWeight = FontWeight.SemiBold)
-            }
-        }
+        BodyHeaderCard(last, readings, profile) { nav.navigate(Routes.bodyDetail(last.at)) }
     }
     Gap(8.dp)
     Row {
-        Button(onClick = { edit = BodyMetric(at = System.currentTimeMillis(), day = Dates.today(), weight = last?.weight ?: profile.startWeight) }, Modifier.weight(1f)) {
-            Text("+ Взвешивание")
-        }
+        Button(onClick = { ruler = true }, Modifier.weight(1f)) { Text("+ Взвешивание") }
         HGap(8.dp)
-        OutlinedButton(
-            onClick = { if (hcGranted.isEmpty()) hcLauncher.launch(Body.PERMISSIONS) else sync() },
-            enabled = !syncing && Steps.hcStatus(ctx) == Steps.HcStatus.AVAILABLE, modifier = Modifier.weight(1f),
-        ) { Text(if (syncing) "Синхронизация…" else if (hcGranted.isEmpty()) "Подключить весы" else "Синхронизировать") }
+        OutlinedButton(onClick = { nav.navigate(Routes.BODY_COMPARE) }, enabled = readings.size >= 2, modifier = Modifier.weight(1f)) { Text("Сравнить") }
     }
     Gap(8.dp)
-    HcLinkCard(syncs) { io { Graph.prefs.update { it.copy(bodyHc = true) } }; sync() }
-    Gap(4.dp)
-
-    if (last != null) {
-        val r = last.reading()
-        BodyComposition(r, person)
-        BodyTypeGrid(r, person)
-        MetricsList(BodyComp.metrics(r, person))
-        TrendSection(readings, profile)
-    }
+    WeightTrendCard(readings, { nav.navigate(Routes.WEIGHT_TREND) })
+    Gap(8.dp)
+    HcLinkCard(syncs, syncing, onSync = { sync() }) { io { Graph.prefs.update { it.copy(bodyHc = true) } }; sync() }
 
     SectionTitle("План и факт по неделям")
     Tile {
@@ -262,20 +214,22 @@ fun BodyTab(profile: BodyProfile, weights: List<WeightEntry>) {
     SectionTitle("История")
     readings.reversed().take(60).forEach { m ->
         Row(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { edit = m }.padding(vertical = 7.dp),
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { nav.navigate(Routes.bodyDetail(m.at)) }.padding(vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
                 Text("${fmt(m.weight)} кг" + (m.fatPct?.let { " · жир ${fmt(it)}%" } ?: ""), fontWeight = FontWeight.Medium)
                 Text(TIME.format(Date(m.at)) + " · " + m.source, fontSize = 12.sp, color = extra.dim)
             }
+            TextButton(onClick = { edit = m }) { Text("Изменить", fontSize = 12.sp) }
         }
     }
+    if (ruler) WeightRulerDialog(last?.weight ?: profile.startWeight, { ruler = false }) { m -> ruler = false; edit = m }
     edit?.let { BodyDialog(it) { edit = null } }
 }
 
 @Composable
-private fun BodyComposition(r: BodyReading, p: Person) {
+internal fun BodyComposition(r: BodyReading, p: Person) {
     val extra = LocalExtra.current
     val c = BodyComp.composition(r)
     val m = BodyComp.metrics(r, p).associateBy { it.key }
@@ -284,7 +238,7 @@ private fun BodyComposition(r: BodyReading, p: Person) {
         Text("Вес = Вода + Жир + Белок + Кость", fontSize = 12.sp, color = extra.dim)
         Gap(8.dp)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Glyph("train/16", 84.dp, badge = false)
+            ModelFigure(((r.waterPct ?: 50.0) / 100).toFloat(), Modifier.width(88.dp).height(250.dp))
             HGap(12.dp)
             Column(Modifier.weight(1f)) {
                 Text(fmt(r.weight) + " кг", style = MaterialTheme.typography.titleLarge, modifier = Modifier.align(Alignment.End))
@@ -305,15 +259,15 @@ private fun BodyComposition(r: BodyReading, p: Person) {
                 }
             }
         }
-        if (c.water == null && c.protein == null) Text(
-            "Воду и белок весы OKOK показывают в своём приложении — впишите их в «+ Взвешивание», и анализ станет полным.",
-            fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp),
+        if (c.water == null && c.protein == null) Hint(
+            "body_water", "Воду и белок весы OKOK показывают в своём приложении — впишите их в «Изменить», и анализ станет полным. Фигура — ваша модель из гардероба, заливка показывает долю воды.",
+            Modifier.padding(top = 8.dp),
         )
     }
 }
 
 @Composable
-private fun BodyTypeGrid(r: BodyReading, p: Person) {
+internal fun BodyTypeGrid(r: BodyReading, p: Person) {
     val extra = LocalExtra.current
     val cell = BodyComp.bodyType(r.weight, r.fatPct, p)
     SectionTitle("Анализ типа телосложения")
@@ -346,23 +300,24 @@ private fun BodyTypeGrid(r: BodyReading, p: Person) {
                 Text("Жир →", fontSize = 10.sp, color = extra.dim, modifier = Modifier.align(Alignment.End))
             }
         }
-        Text(
-            "Ваш тип: " + BodyComp.BODY_TYPES[cell.first][cell.second] + ". Строки — ИМТ (выше нормы, норма, ниже), столбцы — процент жира.",
-            fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp),
-        )
+        Text(BodyComp.BODY_TYPES[cell.first][cell.second], style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
+        Text(BodyComp.typeAbout(cell.first, cell.second), fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+        Hint("body_type_grid", "Строки — ИМТ (выше нормы, норма, ниже), столбцы — процент жира (мало, норма, много).", Modifier.padding(top = 8.dp), title = "Как читать таблицу")
     }
 }
 
 @Composable
-private fun MetricsList(list: List<BodyMetricView>) {
+internal fun MetricsList(list: List<BodyMetricView>, openAll: Boolean = false, title: String? = "Показатели тела") {
     val extra = LocalExtra.current
     var open by remember { mutableStateOf<String?>(null) }
     val icons = mapOf(
         "weight" to "sport/11", "bmi" to "train/28", "fat" to "train/26", "fatKg" to "train/27", "skeletal" to "sport/12",
         "muscleKg" to "train/05", "water" to "ui:drop", "protein" to "train/25", "bone" to "train/16", "visceral" to "sport/32",
         "subcut" to "train/26", "lean" to "sport/25", "bmr" to "sport/22", "metaAge" to "cal/12",
+        "skeletalKg" to "sport/12", "muscleRate" to "train/05", "waterKg" to "ui:drop", "obesity" to "train/27",
+        "age" to "cal/12", "height" to "train/28",
     )
-    SectionTitle("Показатели тела")
+    if (title != null) SectionTitle(title)
     Tile(padding = 6.dp) {
         list.forEach { v ->
             Column(
@@ -377,7 +332,7 @@ private fun MetricsList(list: List<BodyMetricView>) {
                         v.label?.let { Text(it, fontSize = 11.sp, color = toneColor(v.tone)) }
                     }
                 }
-                AnimatedVisibility(open == v.key) {
+                AnimatedVisibility(openAll || open == v.key) {
                     Column(Modifier.padding(top = 8.dp)) {
                         if (v.value != null && v.scale != null) ScaleBar(v.scale, v.value, v.decimals.coerceAtLeast(1))
                         Text(v.about, fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
@@ -392,7 +347,7 @@ private fun MetricsList(list: List<BodyMetricView>) {
 private enum class Period(val label: String) { DAY("День"), WEEK("Неделя"), MONTH("Месяц"), CUSTOM("Свои") }
 
 @Composable
-private fun TrendSection(readings: List<BodyMetric>, profile: BodyProfile) {
+internal fun TrendSection(readings: List<BodyMetric>, profile: BodyProfile) {
     val extra = LocalExtra.current
     var period by rememberSaveable { mutableStateOf(Period.MONTH) }
     var metric by rememberSaveable { mutableStateOf("weight") }
@@ -459,7 +414,7 @@ private fun TrendSection(readings: List<BodyMetric>, profile: BodyProfile) {
 
 /** Ввод всех показателей весов — в том же порядке, что на экране OKOK «Показатели тела». */
 @Composable
-private fun BodyDialog(m0: BodyMetric, onDismiss: () -> Unit) {
+internal fun BodyDialog(m0: BodyMetric, onDismiss: () -> Unit) {
     var m by remember { mutableStateOf(m0) }
     fun s(v: Double?) = v?.let { if (it == Math.floor(it)) it.toLong().toString() else it.toString().replace('.', ',') } ?: ""
     var weight by remember { mutableStateOf(s(m0.weight)) }

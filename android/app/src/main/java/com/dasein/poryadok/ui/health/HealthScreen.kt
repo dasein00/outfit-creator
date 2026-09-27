@@ -143,7 +143,7 @@ fun HealthScreen(nav: NavHostController, initialTab: Int) {
             Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
                 when (tab) {
                     0 -> FoodTab(nav, plan, profile)
-                    1 -> BodyTab(profile, weights)
+                    1 -> BodyTab(nav, profile, weights)
                     2 -> MeasureTab()
                     3 -> WorkoutTab()
                     4 -> CalcTab(profile, current, plan)

@@ -38,6 +38,32 @@ class BodyCompTest {
         assertEquals("Ожирение", BodyComp.BODY_TYPES[0][2])
     }
 
+    @Test fun idealWeightAndAdviceMatchOkok() {
+        // Экран OKOK: рост 173, вес 83,95, жир 27,5% → идеальный 65,1 кг, сбросить 18,8 кг, жира −12,0 кг, тучность 29%.
+        val p = Person(male = true, heightCm = 173.0, age = 31)
+        assertEquals(65.1, BodyComp.idealWeight(p), 0.01)
+        assertEquals(29.0, BodyComp.obesityPct(83.95, p), 0.1)
+        val a = BodyComp.advice(BodyReading(83.95, fatPct = 27.5, muscleKg = 57.8, boneKg = 3.0), p)
+        assertEquals(-18.85, a.weightDelta, 0.01)
+        assertEquals(-12.0, a.fatDelta!!, 0.1)
+        assertEquals(-6.9, a.muscleDelta!!, 0.2)
+        val m = BodyComp.metrics(BodyReading(83.95, fatPct = 27.5, waterPct = 52.0, musclePct = 36.5), p).associateBy { it.key }
+        assertEquals("Умеренная", m.getValue("obesity").label)
+        assertEquals(43.65, m.getValue("waterKg").value!!, 0.01)
+        assertEquals(30.64, m.getValue("skeletalKg").value!!, 0.01)
+    }
+
+    @Test fun compareMarksBetterAndWorse() {
+        val before = BodyReading(83.85, fatPct = 27.4, waterPct = 52.0)
+        val after = BodyReading(84.55, fatPct = 27.7, waterPct = 51.9)
+        val d = BodyComp.compare(before, after, man).associateBy { it.key }
+        assertEquals(0.70, d.getValue("weight").delta!!, 1e-9)
+        assertEquals(false, d.getValue("weight").better)
+        assertEquals(false, d.getValue("water").better)
+        assertNull(d["protein"])
+        assertNull(d["age"])
+    }
+
     @Test fun trendStats() {
         val pts = listOf(1L to 80.2, 3L to 80.0, 8L to 79.7, 30L to 78.4)
         val t = BodyComp.trend(pts, 0, 31)!!

@@ -99,6 +99,8 @@ object Routes {
     const val HEALTH_HUB = "healthHub"
     const val TOPS_HUB = "topsHub"
     const val MEDIA_SEARCH = "mediaSearch"
+    const val WEIGHT_TREND = "weightTrend"
+    const val BODY_COMPARE = "bodyCompare"
 
     fun task(id: Long, day: Long = -1, goal: Long = -1) = "task/$id?day=$day&goal=$goal"
     fun event(id: Long, day: Long = -1) = "event/$id?day=$day"
@@ -121,6 +123,7 @@ object Routes {
     fun topsHub(tab: Int) = "$TOPS_HUB?tab=$tab"
     fun media(id: Long, kind: Int = 0) = "media/$id?kind=$kind"
     fun mediaSearch(kind: Int) = "$MEDIA_SEARCH?kind=$kind"
+    fun bodyDetail(at: Long) = "bodyDetail/$at"
 }
 
 private data class Tab(val route: String, val label: String, val icon: String)
@@ -202,6 +205,11 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
                 "${Routes.MEDIA_SEARCH}?kind={kind}",
                 arguments = listOf(navArgument("kind") { type = NavType.IntType; defaultValue = 0 }),
             ) { MediaSearchScreen(nav, it.int("kind")) }
+            composable("bodyDetail/{at}", arguments = listOf(navArgument("at") { type = NavType.LongType })) {
+                com.dasein.poryadok.ui.health.BodyDetailScreen(nav, it.long("at"))
+            }
+            composable(Routes.WEIGHT_TREND) { com.dasein.poryadok.ui.health.WeightTrendScreen(nav) }
+            composable(Routes.BODY_COMPARE) { com.dasein.poryadok.ui.health.BodyCompareScreen(nav) }
             composable(Routes.MORE) { MoreScreen(nav) }
 
             composable(
