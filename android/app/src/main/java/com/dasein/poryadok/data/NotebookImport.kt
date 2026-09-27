@@ -45,10 +45,10 @@ object NotebookImport {
         val x = Graph.extra
         val now = System.currentTimeMillis()
         val account = dao.accountsNow().firstOrNull { it.name == ACCOUNT }?.id
-            ?: dao.upsertAccount(Account(name = ACCOUNT, emoji = "📒", color = 7, sort = 50))
+            ?: dao.upsertAccount(Account(name = ACCOUNT, emoji = "ui:notebook", color = 7, sort = 50))
         val cats = dao.categoriesNow()
         val salary = cats.firstOrNull { it.income && it.name.startsWith("Зарплата", ignoreCase = true) }?.id
-            ?: dao.upsertCategory(Category(name = "Зарплата/ежедневный доход", emoji = "💼", income = true, color = 3))
+            ?: dao.upsertCategory(Category(name = "Зарплата/ежедневный доход", emoji = "ui:coins", income = true, color = 3))
         var incAdded = 0; var incSkipped = 0; var notesAdded = 0; var notesSkipped = 0
         var written = 0; var expenses = 0; var off = 0
 

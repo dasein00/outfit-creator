@@ -12,6 +12,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dasein.poryadok.system.Body
+import com.dasein.poryadok.system.SleepTracker
 import com.dasein.poryadok.system.Steps
 import com.dasein.poryadok.ui.AppRoot
 import com.dasein.poryadok.ui.Routes
@@ -66,7 +68,11 @@ class MainActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         // Health Connect отдаёт данные только приложению на экране — подтягиваем шаги при каждом открытии.
-        Graph.scope.launch { runCatching { Steps.sync(applicationContext) } }
+        Graph.scope.launch {
+            runCatching { Steps.sync(applicationContext) }
+            runCatching { SleepTracker.run(applicationContext) }
+            if (Graph.prefs.now().bodyHc) runCatching { Body.syncHealthConnect(applicationContext, 30) }
+        }
     }
 
     /** Куда вести: явный маршрут, пояснение Health Connect или открытый файл тетради. */

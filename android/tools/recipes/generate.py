@@ -352,6 +352,23 @@ r("tomato_sauce", "Томатный соус без сахара", "Загото
    "Томите 25 минут, посолите и пробейте блендером.",
    "Разлейте по банкам: хранится в холодильнике неделю, в морозилке — 3 месяца."])
 
+IMAGES = {
+    "oatmeal_berries": "breakfast/09", "syrniki_oven": "russian/15", "omelet_veg": "healthy/05", "overnight_oats": "breakfast/17",
+    "egg_muffins": "healthy/04", "avocado_toast": "breakfast/22", "cottage_casserole": "healthy/53", "smoothie_bowl": "healthy/02",
+    "protein_pancakes": "healthy/13", "shakshuka": "breakfast/65", "chicken_buckwheat_soup": "healthy/18", "broccoli_cream_soup": "healthy/20",
+    "lentil_soup": "healthy/21", "shchi": "russian/04", "pumpkin_soup": "healthy/19", "borsch": "russian/00", "ukha": "dishes1/07",
+    "chicken_veg_bake": "healthy/27", "buckwheat_turkey": "russian/09", "turkey_meatballs": "dishes1/28", "salmon_broccoli": "healthy/30",
+    "cod_vegetables": "healthy/31", "chicken_plov": "russian/36", "pasta_chicken_spinach": "dishes1/19", "beef_goulash_bulgur": "dishes1/31",
+    "steamed_cutlets": "russian/18", "turkey_zucchini": "dishes1/39", "ratatouille": "dishes1/40", "quinoa_bowl": "healthy/37",
+    "chicken_thighs_sweetpotato": "dishes1/29", "stuffed_peppers": "healthy/40", "shrimp_wok": "healthy/42", "buckwheat_mushrooms": "dishes1/21",
+    "baked_potatoes": "dishes1/44", "cauliflower_mash": "dishes1/22", "greek_salad": "dishes1/08", "tuna_egg_salad": "dishes1/15",
+    "beet_walnut_salad": "dishes1/11", "cabbage_carrot_salad": "dishes1/12", "caesar_pp": "dishes1/09", "hummus": "breakfast/59",
+    "cottage_berries": "healthy/12", "energy_balls": "healthy/54", "lavash_rolls": "healthy/45", "baked_apples": "breakfast/36",
+    "chia_pudding": "healthy/55", "banana_icecream": "mixed/78", "cheesecake_pp": "healthy/60", "oat_banana_cookies": "healthy/61",
+    "banana_bread": "mixed/61", "green_smoothie": "healthy/15", "kefir_berry_shake": "healthy/16", "ginger_lemon": "breakfast/50",
+    "meal_prep_chicken": "healthy/28", "granola": "breakfast/40", "tomato_sauce": "dishes1/16",
+}
+
 def grams(prod, amount, unit):
     g = prod["gramsPerUnit"]
     return {"г": amount, "мл": amount, "кг": amount * 1000, "л": amount * 1000, "шт": amount * (g if g > 0 else 100),
@@ -367,6 +384,7 @@ for rec in R:
         ingr.append(dict(product=n, amount=a, unit=u, grams=round(g, 1)))
         for k in tot: tot[k] += p[k] * g / 100
     rec["ingredients"] = ingr
+    rec["image"] = "dish/" + IMAGES[rec["key"]]
     out.append(rec)
     ps = {k: round(v / rec["servings"]) for k, v in tot.items()}
     print(f'{rec["name"][:42]:42s} {rec["servings"]}п  {ps}')

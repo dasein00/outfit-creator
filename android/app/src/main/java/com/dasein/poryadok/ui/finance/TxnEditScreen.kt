@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.finance
 
 import androidx.activity.compose.BackHandler
+import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.IconAction
 import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.background
@@ -163,7 +164,7 @@ fun TxnEditScreen(nav: NavHostController, id: Long, income: Boolean, settings: S
                                 .clickable { t = t.copy(categoryId = c.id) }.padding(vertical = 8.dp, horizontal = 4.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            Text(c.emoji, fontSize = 22.sp)
+                            Glyph(c.emoji, 24.dp)
                             Text(c.name, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
                         }
                     }
@@ -172,13 +173,13 @@ fun TxnEditScreen(nav: NavHostController, id: Long, income: Boolean, settings: S
 
             SectionTitle(if (t.type == TxnType.TRANSFER) "Откуда" else "Счёт")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                accounts.forEach { a -> Pill("${a.emoji} ${a.name}", t.accountId == a.id) { t = t.copy(accountId = a.id) } }
+                accounts.forEach { a -> Pill(a.name, t.accountId == a.id, glyph = a.emoji) { t = t.copy(accountId = a.id) } }
             }
             if (t.type == TxnType.TRANSFER) {
                 SectionTitle("Куда")
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     accounts.filter { it.id != t.accountId }.forEach { a ->
-                        Pill("${a.emoji} ${a.name}", t.toAccountId == a.id) { t = t.copy(toAccountId = a.id) }
+                        Pill(a.name, t.toAccountId == a.id, glyph = a.emoji) { t = t.copy(toAccountId = a.id) }
                     }
                 }
             }

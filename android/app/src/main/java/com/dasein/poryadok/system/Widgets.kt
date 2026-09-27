@@ -99,7 +99,7 @@ class TodayWidget : GlanceAppWidget() {
             }
             Spacer(GlanceModifier.height(8.dp))
             if (d.tasks.isEmpty()) {
-                Text("Задач на сегодня нет ✨", style = TextStyle(color = ColorProvider(DIM), fontSize = 14.sp))
+                Text("Задач на сегодня нет", style = TextStyle(color = ColorProvider(DIM), fontSize = 14.sp))
             }
             d.tasks.forEach { t ->
                 Row(

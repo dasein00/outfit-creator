@@ -42,7 +42,7 @@ object Sber {
     private suspend fun accountId(): Long {
         val dao = Graph.dao
         return dao.accountsNow().firstOrNull { it.name == ACCOUNT }?.id
-            ?: dao.upsertAccount(Account(name = ACCOUNT, emoji = "🏦", color = 1, sort = 40))
+            ?: dao.upsertAccount(Account(name = ACCOUNT, emoji = "ui:bank", color = 1, sort = 40))
     }
 
     /** Сохраняет операцию, если такой ещё не было. Возвращает true, если добавлена. */

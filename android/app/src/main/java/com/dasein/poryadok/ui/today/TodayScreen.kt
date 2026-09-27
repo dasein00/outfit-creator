@@ -1,6 +1,9 @@
 package com.dasein.poryadok.ui.today
 
 import androidx.compose.foundation.background
+import com.dasein.poryadok.ui.common.MoodFace
+import com.dasein.poryadok.ui.common.Glyphs
+import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.IconAction
 import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.clickable
@@ -178,7 +181,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
             if (todayTasks.isEmpty()) item {
                 Tile {
                     Text(
-                        if (doneToday.isNotEmpty()) "Все задачи на сегодня выполнены 🎉" else "На сегодня задач нет. Нажмите «Задача», чтобы добавить.",
+                        if (doneToday.isNotEmpty()) "Все задачи на сегодня выполнены" else "На сегодня задач нет. Нажмите «Задача», чтобы добавить.",
                         color = extra.dim,
                     )
                 }
@@ -214,7 +217,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                                         Modifier.size(44.dp).clip(CircleShape)
                                             .background(if (done) color.copy(alpha = .3f) else extra.card),
                                         contentAlignment = Alignment.Center,
-                                    ) { Text(h.emoji, fontSize = 22.sp) }
+                                    ) { Glyph(h.emoji, 26.dp, badge = false) }
                                 }
                                 Text(h.name, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = if (done) extra.dim else MaterialTheme.colorScheme.onSurface)
                                 if (h.target > 1) Text("$v/${h.target}", fontSize = 10.sp, color = extra.dim)
@@ -258,7 +261,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.wellbeing(2)) }) {
-                        Text("💧 Вода", fontSize = 13.sp, color = extra.dim)
+                        Row(verticalAlignment = Alignment.CenterVertically) { Glyph(Glyphs.WATER, 18.dp, badge = false); Text("  Вода", fontSize = 13.sp, color = extra.dim) }
                         val ml = water?.waterMl ?: 0
                         Text("$ml / $waterGoal мл", style = MaterialTheme.typography.titleMedium)
                         Gap(6.dp)
@@ -281,17 +284,19 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                         }
                     }
                     Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.wellbeing(0)) }) {
-                        Text("🙂 Настроение", fontSize = 13.sp, color = extra.dim)
+                        Row(verticalAlignment = Alignment.CenterVertically) { Glyph("ui:smile", 18.dp, badge = false); Text("  Настроение", fontSize = 13.sp, color = extra.dim) }
                         if (moodToday != null) {
-                            val m = MOODS[moodToday.level - 1]
-                            Text("${m.first} ${m.second}", style = MaterialTheme.typography.titleMedium)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                MoodFace(moodToday.level, 24.dp)
+                                Text("  " + MOODS[moodToday.level - 1], style = MaterialTheme.typography.titleMedium)
+                            }
                             if (moodToday.tags.isNotBlank()) Text(moodToday.tags.replace(",", ", "), fontSize = 12.sp, color = extra.dim, maxLines = 2)
                         } else {
                             Text("Как вы сегодня?", style = MaterialTheme.typography.titleMedium)
                             Gap(6.dp)
                             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                                MOODS.forEachIndexed { i, (emoji, _) ->
-                                    Text(emoji, fontSize = 22.sp, modifier = Modifier.clip(CircleShape).clickable {
+                                MOODS.forEachIndexed { i, _ ->
+                                    MoodFace(i + 1, 24.dp, Modifier.clip(CircleShape).clickable {
                                         io { dao.upsertMood(MoodEntry(at = System.currentTimeMillis(), day = today, level = i + 1)) }
                                     })
                                 }
@@ -376,7 +381,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                     val pr = goalProgress(g, goalTasks.count { it.done }, goalTasks.size)
                     Tile(Modifier.padding(bottom = 8.dp), onClick = { nav.navigate(Routes.goal(g.id)) }) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(g.emoji, fontSize = 22.sp)
+                            Glyph(g.emoji, 24.dp)
                             Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
                                 Text(g.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Bar(pr, Palette.item(g.color), Modifier.padding(top = 6.dp))

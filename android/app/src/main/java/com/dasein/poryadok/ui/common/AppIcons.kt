@@ -77,6 +77,21 @@ object Ic {
     val cap = R.drawable.ic_cap
     val gift = R.drawable.ic_gift
     val trash = R.drawable.ic_trash
+
+    private val all by lazy {
+        mapOf(
+            "home" to home, "calendar" to calendar, "check" to check, "stats" to stats, "pie" to pie, "grid" to grid,
+            "search" to search, "settings" to settings, "flame" to flame, "target" to target, "timer" to timer, "salad" to salad,
+            "scale" to scale, "dumbbell" to dumbbell, "smile" to smile, "moon" to moon, "drop" to drop, "notebook" to notebook,
+            "trophy" to trophy, "hanger" to hanger, "wheel" to wheel, "review" to review, "bell" to bell, "sliders" to sliders,
+            "wallet" to wallet, "coins" to coins, "bank" to bank, "card" to card, "receipt" to receipt, "leaves" to leaves,
+            "heart" to heart, "people" to people, "cart" to cart, "globe" to globe, "pin" to pin, "map" to map, "camera" to camera,
+            "image" to image, "document" to document, "folder" to folder, "sun" to sun, "rain" to rain, "thermo" to thermo,
+            "book" to book, "bulb" to bulb, "cap" to cap, "gift" to gift, "trash" to trash,
+        )
+    }
+
+    fun byName(name: String): Int = all[name] ?: grid
 }
 
 /**
@@ -100,6 +115,12 @@ fun AppIcon(
     } else {
         Image(painterResource(res), null, modifier.size(size).alpha(a))
     }
+}
+
+/** Кнопка с иконкой фирменного набора по ключу (см. Glyphs). */
+@Composable
+fun IconAction(glyph: String, description: String, onClick: () -> Unit) {
+    IconButton(onClick = onClick) { Glyph(glyph, 24.dp, badge = false) }
 }
 
 /** Кнопка с иконкой набора для верхней панели. */

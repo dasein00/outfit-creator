@@ -3,6 +3,8 @@
 package com.dasein.poryadok.ui.health
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import com.dasein.poryadok.ui.common.Glyphs
+import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.Ic
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -105,7 +107,7 @@ import kotlin.math.roundToInt
 
 /** Названия приёмов пищи по индексу записи; порядок в течение дня — MealType.order. */
 val MEALS = MealType.names
-val WORKOUT_TYPES = listOf("🏋️ Силовая", "🏃 Бег", "🚴 Вело", "🏊 Плавание", "🧘 Йога", "🤸 Растяжка", "⚡ HIIT", "🚶 Ходьба", "⚽ Игры", "✨ Другое")
+val WORKOUT_TYPES: List<String> = Glyphs.WORKOUTS.keys.toList()
 
 fun BodyProfile.input(weight: Double) = BodyInput(
     male, heightCm, age, weight, activity,
@@ -136,7 +138,7 @@ fun HealthScreen(nav: NavHostController, initialTab: Int) {
             Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
                 when (tab) {
                     0 -> FoodTab(nav, plan, profile)
-                    1 -> WeightTab(profile, weights)
+                    1 -> BodyTab(profile, weights)
                     2 -> MeasureTab()
                     3 -> WorkoutTab()
                     4 -> CalcTab(profile, current, plan)
@@ -266,7 +268,7 @@ private fun FoodTab(nav: NavHostController, plan: NutritionPlan, profile: BodyPr
         }
         Text(
             when (Nutrition.level(pct)) {
-                Nutrition.Level.OK -> "$pct% от плана — в норме 👍"
+                Nutrition.Level.OK -> "$pct% от плана — в норме"
                 Nutrition.Level.WARN -> "$pct% от плана — " + if (pct < 100) "небольшой недобор" else "немного больше плана"
                 Nutrition.Level.BAD -> "$pct% от плана — " + if (pct < 100) "сильно недоели" else "переели"
             },
@@ -388,82 +390,6 @@ private fun FoodDialog(e0: FoodEntry, history: List<FoodEntry>, onDismiss: () ->
     )
 }
 
-@Composable
-private fun WeightTab(profile: BodyProfile, weights: List<WeightEntry>) {
-    val extra = LocalExtra.current
-    var add by remember { mutableStateOf(false) }
-    val goal = runCatching { CalorieGoal.valueOf(profile.goal) }.getOrDefault(CalorieGoal.DEFICIT)
-    val start = if (profile.startDay > 0) profile.startDay else weights.firstOrNull()?.day ?: Dates.today()
-    Gap(8.dp)
-    Button(onClick = { add = true }, modifier = Modifier.fillMaxWidth()) { Text("+ Взвеситься") }
-    Text(
-        "Взвешивайтесь раз в неделю, утром натощак, после туалета — тогда цифры сравнимы.",
-        fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(vertical = 8.dp),
-    )
-    val last = weights.lastOrNull()
-    if (last != null) {
-        val bmi = last.kg / ((profile.heightCm / 100) * (profile.heightCm / 100))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Stat("${last.kg.plain()} кг", "сейчас", Modifier.weight(1f))
-            val diff = last.kg - profile.startWeight
-            Stat("${if (diff > 0) "+" else ""}${"%.1f".format(diff)}", "от старта", Modifier.weight(1f), if ((diff < 0) == (goal == CalorieGoal.DEFICIT)) extra.ok else extra.warn)
-            Stat("%.1f".format(bmi), "ИМТ", Modifier.weight(1f))
-        }
-    }
-    SectionTitle("План и факт по неделям")
-    Tile {
-        val planPts = (0..12).map { Nutrition.plannedWeight(profile.startWeight, profile.changeKg, goal, it).toFloat() }
-        val factPts = (0..12).map { w ->
-            val from = start + w * 7L
-            weights.filter { it.day in from..(from + 6) }.lastOrNull()?.kg?.toFloat()
-        }
-        LineChart(
-            listOf(Series(planPts, extra.dim, dashed = true), Series(factPts, MaterialTheme.colorScheme.primary)),
-            labels = (0..12 step 2).map { "н${it + 1}" },
-        )
-        Row(Modifier.padding(top = 6.dp)) {
-            Text("— — план", fontSize = 12.sp, color = extra.dim)
-            Text("   ● факт", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
-        }
-    }
-    SectionTitle("Записи")
-    weights.reversed().forEach { w ->
-        val week = ((w.day - start) / 7).toInt()
-        val plan = Nutrition.plannedWeight(profile.startWeight, profile.changeKg, goal, week.coerceAtLeast(0))
-        Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("${w.kg.plain()} кг", fontWeight = FontWeight.Medium)
-                Text(if (week >= 0) "${Dates.label(w.day)} · неделя ${week + 1} · план ${"%.1f".format(plan)}" else "${Dates.label(w.day)} · до старта", fontSize = 12.sp, color = extra.dim)
-            }
-            IconButton(onClick = { io { Graph.dao.deleteWeight(w) } }) { Icon(Icons.Default.Close, "Удалить", tint = extra.dim) }
-        }
-    }
-    if (weights.isEmpty()) Empty(Ic.scale, "Нет взвешиваний", "Добавьте первое — и график оживёт.")
-    if (add) WeightDialog(weights.lastOrNull()?.kg ?: profile.startWeight) { add = false }
-}
-
-@Composable
-private fun WeightDialog(last: Double, onDismiss: () -> Unit) {
-    var day by remember { mutableStateOf(Dates.today()) }
-    var kg by remember { mutableStateOf(last.plain()) }
-    var pick by remember { mutableStateOf(false) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Взвешивание") },
-        text = {
-            Column {
-                FieldButton("Дата", Dates.label(day), Modifier.fillMaxWidth()) { pick = true }
-                Gap(8.dp)
-                NumberField(kg, { kg = it }, "Вес", suffix = "кг")
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { kg.num()?.let { v -> io { Graph.dao.upsertWeight(WeightEntry(day, v)) } }; onDismiss() }) { Text("Сохранить") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
-    )
-    if (pick) DatePickDialog(day, onDismiss = { pick = false }, onPick = { it?.let { d -> day = d } }, allowClear = false)
-}
 
 private val MEASURE_FIELDS = listOf("chest" to "Грудь", "waist" to "Талия", "belly" to "Низ живота", "hips" to "Бёдра", "arm" to "Плечо (бицепс)")
 
@@ -563,8 +489,9 @@ private fun WorkoutTab() {
     if (list.isEmpty()) Empty(Ic.dumbbell, "Тренировок пока нет", "Записывайте каждую — и смотрите, как растёт регулярность.")
     list.forEach { w ->
         Tile(Modifier.padding(bottom = 8.dp), onClick = { edit = w }) {
-            Row {
-                Text(w.type, Modifier.weight(1f), fontWeight = FontWeight.Medium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Glyph(Glyphs.workout(w.type), 20.dp)
+                Text("  " + Glyphs.stripEmoji(w.type), Modifier.weight(1f), fontWeight = FontWeight.Medium)
                 Text(Dates.label(w.day), color = extra.dim, fontSize = 13.sp)
             }
             Text(listOfNotNull(
@@ -586,7 +513,7 @@ private fun WorkoutTab() {
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        WORKOUT_TYPES.forEach { t -> Pill(t, w.type == t) { w = w.copy(type = t) } }
+                        WORKOUT_TYPES.forEach { t -> Pill(t, Glyphs.stripEmoji(w.type) == t, glyph = Glyphs.workout(t)) { w = w.copy(type = t) } }
                     }
                     Gap(8.dp)
                     FieldButton("Дата", Dates.label(w.day), Modifier.fillMaxWidth()) { pick = true }
@@ -673,7 +600,7 @@ private fun ProgressTab(weights: List<WeightEntry>) {
     OutlinedButton(
         onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
         modifier = Modifier.fillMaxWidth(),
-    ) { Text("📷 Добавить фото «$pose»") }
+    ) { Text("Добавить фото «$pose»") }
     Gap(8.dp)
     photos.groupBy { it.day }.forEach { (day, list) ->
         Text("${Dates.full(day)} · ${list.size} ${plural(list.size, "фото", "фото", "фото")}", fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(vertical = 6.dp))

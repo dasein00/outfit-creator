@@ -153,6 +153,7 @@ interface LifeDao {
     fun weights(): Flow<List<WeightEntry>>
     @Upsert suspend fun upsertWeight(w: WeightEntry)
     @Delete suspend fun deleteWeight(w: WeightEntry)
+    @Query("DELETE FROM weights WHERE day = :day") suspend fun deleteWeightOfDay(day: Long)
 
     @Query("SELECT * FROM measurements ORDER BY day")
     fun measurements(): Flow<List<Measurement>>
@@ -178,6 +179,7 @@ interface LifeDao {
 
     @Query("SELECT * FROM sleep ORDER BY day")
     fun sleep(): Flow<List<SleepEntry>>
+    @Query("SELECT * FROM sleep WHERE day = :day") suspend fun sleepNow(day: Long): SleepEntry?
     @Upsert suspend fun upsertSleep(s: SleepEntry)
     @Delete suspend fun deleteSleep(s: SleepEntry)
 

@@ -111,7 +111,7 @@ fun SettingsScreen(nav: NavHostController, s: Settings) {
                 if (s.pinHash.isEmpty()) {
                     Text("Приложение открывается без PIN")
                     Gap(8.dp)
-                    OutlinedButton(onClick = { pinStep = 1 }) { Text("🔒 Установить PIN-код") }
+                    OutlinedButton(onClick = { pinStep = 1 }) { Text("Установить PIN-код") }
                 } else {
                     Text("PIN-код установлен. Приложение блокируется, если свернуть его дольше чем на 30 секунд.", fontSize = 13.sp)
                     val bioAvailable = remember { (ctx as? FragmentActivity)?.let { Pin.canUseBiometric(it) } ?: false }

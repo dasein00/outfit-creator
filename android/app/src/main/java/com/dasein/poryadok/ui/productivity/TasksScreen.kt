@@ -3,6 +3,8 @@
 package com.dasein.poryadok.ui.productivity
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import com.dasein.poryadok.ui.common.Glyphs
+import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.IconAction
 import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.background
@@ -104,13 +106,13 @@ fun TasksScreen(nav: NavHostController) {
     ) { pad ->
         Column(Modifier.fillMaxSize().padding(pad)) {
             val chips = buildList {
-                add(Triple(L_TODAY, "☀️ Сегодня", open.count { it.dueDay != null && it.dueDay <= today }))
-                add(Triple(L_WEEK, "📅 7 дней", open.count { it.dueDay != null && it.dueDay in today..today + 6 }))
-                add(Triple(L_INBOX, "📥 Входящие", open.count { it.projectId == null }))
-                add(Triple(L_ALL, "🗂 Все", open.size))
-                add(Triple(L_MATRIX, "⊞ Матрица", -1))
-                projects.forEach { p -> add(Triple("p${p.id}", "${p.emoji} ${p.name}", open.count { it.projectId == p.id })) }
-                add(Triple(L_DONE, "✓ Выполнено", -1))
+                add(Triple(L_TODAY, "Сегодня", open.count { it.dueDay != null && it.dueDay <= today }))
+                add(Triple(L_WEEK, "7 дней", open.count { it.dueDay != null && it.dueDay in today..today + 6 }))
+                add(Triple(L_INBOX, "Входящие", open.count { it.projectId == null }))
+                add(Triple(L_ALL, "Все", open.size))
+                add(Triple(L_MATRIX, "Матрица", -1))
+                projects.forEach { p -> add(Triple("p${p.id}", p.name, open.count { it.projectId == p.id })) }
+                add(Triple(L_DONE, "Выполнено", -1))
             }
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 12.dp),
@@ -128,12 +130,19 @@ fun TasksScreen(nav: NavHostController) {
                             onLongClick = { if (project != null) editProject = project },
                         ),
                     ) {
-                        Text(
-                            if (count > 0) "$label  $count" else label,
-                            color = if (selected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp), fontSize = 14.sp,
-                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                        )
+                        Row(Modifier.padding(start = 8.dp, end = 14.dp, top = 5.dp, bottom = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Glyph(
+                                project?.emoji ?: when (id) {
+                                    L_TODAY -> "ui:sun"; L_WEEK -> "cal/10"; L_INBOX -> Glyphs.INBOX; L_MATRIX -> "cal/40"; L_DONE -> "ui:check"; else -> "ui:grid"
+                                },
+                                18.dp,
+                            )
+                            Text(
+                                if (count > 0) "  $label  $count" else "  $label",
+                                color = if (selected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface,
+                                fontSize = 14.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                            )
+                        }
                     }
                 }
                 item {
@@ -158,7 +167,7 @@ fun TasksScreen(nav: NavHostController) {
                             listOf("Позже" to open.filter { it.dueDay != null && it.dueDay > today + 6 })
                         L_INBOX -> listOf("" to open.filter { it.projectId == null })
                         L_ALL -> listOf("Входящие" to open.filter { it.projectId == null }) +
-                            projects.map { p -> "${p.emoji} ${p.name}" to open.filter { it.projectId == p.id } }
+                            projects.map { p -> p.name to open.filter { it.projectId == p.id } }
                         L_DONE -> listOf("" to tasks.filter { it.done }.sortedByDescending { it.doneAt ?: 0 })
                         else -> listOf(
                             "" to open.filter { it.projectId == selectedProject?.id },
@@ -168,7 +177,7 @@ fun TasksScreen(nav: NavHostController) {
 
                     if (groups.isEmpty()) {
                         Empty(
-                            if (list == L_DONE) "🗒" else "🌿",
+                            if (list == L_DONE) "ui:check" else "ui:leaves",
                             if (list == L_DONE) "Пока ничего не выполнено" else "Здесь чисто",
                             if (list == L_DONE) "Отмечайте задачи — они появятся здесь." else "Добавьте задачу кнопкой «+». Можно писать «завтра в 10 !2 #работа».",
                         )

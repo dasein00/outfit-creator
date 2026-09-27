@@ -1,6 +1,8 @@
 package com.dasein.poryadok.ui.productivity
 
 import androidx.activity.compose.BackHandler
+import com.dasein.poryadok.ui.common.Glyphs
+import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.IconAction
 import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.clickable
@@ -107,7 +109,7 @@ fun GoalsScreen(nav: NavHostController) {
             }
             if (shown.isEmpty()) item {
                 Empty(
-                    if (showDone) "🏆" else "🎯",
+                    if (showDone) Glyphs.TROPHY else Glyphs.TARGET,
                     if (showDone) "Пока без трофеев" else "Поставьте первую цель",
                     if (showDone) "Достигнутые цели будут собираться здесь." else "Разбейте её на этапы и задачи — прогресс посчитается сам.",
                 )
@@ -118,7 +120,7 @@ fun GoalsScreen(nav: NavHostController) {
                 val pr = goalProgress(g, gt.count { it.done }, gt.size, gm.count { it.done }, gm.size)
                 Tile(Modifier.padding(bottom = 10.dp), onClick = { nav.navigate(Routes.goal(g.id)) }) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        ProgressRing(pr, Palette.item(g.color), size = 52.dp) { Text(g.emoji, fontSize = 20.sp) }
+                        ProgressRing(pr, Palette.item(g.color), size = 52.dp) { Glyph(g.emoji, 24.dp, badge = false) }
                         Column(Modifier.weight(1f).padding(start = 12.dp)) {
                             Text(g.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             val parts = buildList {
@@ -196,7 +198,7 @@ fun GoalScreen(nav: NavHostController, id: Long) {
     ) { pad ->
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                ProgressRing(pr, Palette.item(g.color), size = 76.dp, stroke = 8.dp) { Text(g.emoji, fontSize = 30.sp) }
+                ProgressRing(pr, Palette.item(g.color), size = 76.dp, stroke = 8.dp) { Glyph(g.emoji, 36.dp, badge = false) }
                 Column(Modifier.padding(start = 14.dp).weight(1f)) {
                     Text("${(pr * 100).toInt()}%", style = MaterialTheme.typography.headlineMedium)
                     g.deadline?.let { Text("Срок: ${Dates.full(it)}", color = extra.dim, fontSize = 13.sp) }
@@ -280,7 +282,7 @@ fun GoalScreen(nav: NavHostController, id: Long) {
                 onClick = { g = g.copy(done = !g.done); val cur = current(); io { dao.upsertGoal(cur) } },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = if (g.done) extra.cardHigh else extra.ok),
-            ) { Text(if (g.done) "Вернуть в работу" else "🏆 Цель достигнута!") }
+            ) { Text(if (g.done) "Вернуть в работу" else "Цель достигнута!") }
             Gap(40.dp)
         }
     }

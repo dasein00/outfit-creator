@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.more
 
 import androidx.compose.foundation.clickable
+import com.dasein.poryadok.ui.common.Glyph
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -63,29 +64,29 @@ import com.dasein.poryadok.ui.health.sleepMinutes
 import com.dasein.poryadok.ui.theme.LocalExtra
 import com.dasein.poryadok.ui.theme.Palette
 
-private data class Hub(val icon: Int, val title: String, val sub: String, val route: String)
+private data class Hub(val icon: String, val title: String, val sub: String, val route: String)
 
 private val HUB = listOf(
-    Hub(Ic.salad, "Рецепты и меню", "ПП-блюда, план, покупки", Routes.RECIPES),
-    Hub(Ic.flame, "Привычки", "серии и статистика", Routes.HABITS),
-    Hub(Ic.target, "Цели", "этапы и прогресс", Routes.GOALS),
-    Hub(Ic.timer, "Фокус", "помодоро-таймер", Routes.FOCUS),
-    Hub(Ic.leaves, "Питание", "КБЖУ и калории", Routes.health(0)),
-    Hub(Ic.scale, "Вес и замеры", "план и факт", Routes.health(1)),
-    Hub(Ic.dumbbell, "Тренировки", "журнал нагрузок", Routes.health(3)),
-    Hub(Ic.heart, "Шаги", "синхронизация с телефоном", Routes.STEPS),
-    Hub(Ic.smile, "Настроение", "дневник и инсайты", Routes.wellbeing(0)),
-    Hub(Ic.moon, "Сон", "режим и качество", Routes.wellbeing(1)),
-    Hub(Ic.drop, "Вода", "норма на день", Routes.wellbeing(2)),
-    Hub(Ic.notebook, "Заметки", "мысли и списки", Routes.NOTES),
-    Hub(Ic.trophy, "Топы", "мои рейтинги", Routes.TOPS),
-    Hub(Ic.hanger, "Гардероб", "образы на манекене", Routes.WARDROBE),
-    Hub(Ic.wheel, "Колесо баланса", "8 сфер жизни", Routes.WHEEL),
-    Hub(Ic.review, "Итоги недели", "всё в одном отчёте", Routes.REVIEW),
-    Hub(Ic.bell, "Напоминалки", "по времени", Routes.calendar(1)),
-    Hub(Ic.bank, "Сбербанк", "операции из уведомлений", Routes.SBER),
-    Hub(Ic.document, "Тетрадь финансов", "импорт и месячные записи", Routes.FIN_NOTEBOOK),
-    Hub(Ic.settings, "Настройки", "тема, PIN, копия", Routes.SETTINGS),
+    Hub("food/00", "Рецепты и меню", "ПП-блюда, план, покупки", Routes.RECIPES),
+    Hub("sport/24", "Привычки", "серии и статистика", Routes.HABITS),
+    Hub("sport/21", "Цели", "этапы и прогресс", Routes.GOALS),
+    Hub("train/18", "Фокус", "помодоро-таймер", Routes.FOCUS),
+    Hub("food/02", "Питание", "КБЖУ и калории", Routes.health(0)),
+    Hub("sport/11", "Вес и состав тела", "весы, метрики, тренд", Routes.health(1)),
+    Hub("sport/00", "Тренировки", "журнал нагрузок", Routes.health(3)),
+    Hub("sport/19", "Шаги", "синхронизация с телефоном", Routes.STEPS),
+    Hub("ui:smile", "Настроение", "дневник и инсайты", Routes.wellbeing(0)),
+    Hub("sleep/00", "Сон", "автоопределение и режим", Routes.wellbeing(1)),
+    Hub("ui:drop", "Вода", "норма на день", Routes.wellbeing(2)),
+    Hub("habit/23", "Заметки", "мысли и списки", Routes.NOTES),
+    Hub("sport/27", "Топы", "мои рейтинги", Routes.TOPS),
+    Hub("ui:hanger", "Гардероб", "образы на манекене", Routes.WARDROBE),
+    Hub("ui:wheel", "Колесо баланса", "8 сфер жизни", Routes.WHEEL),
+    Hub("train/29", "Итоги недели", "всё в одном отчёте", Routes.REVIEW),
+    Hub("cal/23", "Напоминалки", "по времени", Routes.calendar(1)),
+    Hub("ui:bank", "Сбербанк", "операции из уведомлений", Routes.SBER),
+    Hub("ui:notebook", "Тетрадь финансов", "импорт и месячные записи", Routes.FIN_NOTEBOOK),
+    Hub("train/38", "Настройки", "тема, PIN, копия", Routes.SETTINGS),
 )
 
 @Composable
@@ -101,7 +102,7 @@ fun MoreScreen(nav: NavHostController) {
         ) {
             items(HUB) { h ->
                 Tile(onClick = { nav.navigate(h.route) }) {
-                    AppIcon(h.icon, 34.dp)
+                    Glyph(h.icon, 34.dp)
                     Gap(8.dp)
                     Text(h.title, fontWeight = FontWeight.SemiBold)
                     Text(h.sub, fontSize = 12.sp, color = extra.dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -231,7 +232,7 @@ fun ReviewScreen(nav: NavHostController, settings: Settings) {
                     if (spentPrev > 0) {
                         val d = ((spent - spentPrev) / spentPrev * 100).toInt()
                         Text(
-                            if (d <= 0) "На ${-d}% меньше, чем на прошлой неделе 👏" else "На $d% больше, чем на прошлой неделе",
+                            if (d <= 0) "На ${-d}% меньше, чем на прошлой неделе" else "На $d% больше, чем на прошлой неделе",
                             fontSize = 12.sp, color = if (d <= 0) extra.ok else extra.warn, modifier = Modifier.padding(top = 6.dp),
                         )
                     }
@@ -240,7 +241,7 @@ fun ReviewScreen(nav: NavHostController, settings: Settings) {
                 Tile {
                     if (weekMoods.isNotEmpty()) {
                         val avg = weekMoods.map { it.level }.average()
-                        Text("Настроение: ${MOODS[(avg.toInt() - 1).coerceIn(0, 4)].first} %.1f из 5".format(avg))
+                        Text("Настроение: ${MOODS[(avg.toInt() - 1).coerceIn(0, 4)].lowercase()}, %.1f из 5".format(avg))
                     }
                     if (weekSleep.isNotEmpty()) {
                         val avg = weekSleep.map { sleepMinutes(it) }.average().toInt()
@@ -254,7 +255,8 @@ fun ReviewScreen(nav: NavHostController, settings: Settings) {
             items(habits, key = { it.id }) { h ->
                 val sched = HabitSchedule(h.daysMask, h.timesPerWeek)
                 Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("${h.emoji} ${h.name}", Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Glyph(h.emoji, 16.dp)
+                    Text("  ${h.name}", Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     range.forEach { d ->
                         val ok = logs.any { it.habitId == h.id && it.day == d && it.value >= h.target }
                         Text(
@@ -298,19 +300,25 @@ fun SearchScreen(nav: NavHostController) {
             }
             fun String.hit() = contains(q, ignoreCase = true)
             val results = buildList {
-                tasks.filter { it.title.hit() || it.note.hit() }.forEach { add(Triple("✅ " + it.title, if (it.done) "выполнена" else "задача", Routes.task(it.id))) }
-                notes.filter { it.title.hit() || it.body.hit() }.forEach { add(Triple("📝 " + it.title.ifBlank { it.body.take(40) }, "заметка", Routes.note(it.id))) }
-                events.filter { it.title.hit() || it.note.hit() || it.location.hit() }.forEach { add(Triple("📅 " + it.title, Dates.label(it.day), Routes.event(it.id))) }
-                goals.filter { it.title.hit() || it.why.hit() }.forEach { add(Triple("🎯 " + it.title, "цель", Routes.goal(it.id))) }
-                txns.filter { it.note.hit() }.take(20).forEach { add(Triple("💸 " + it.note, Dates.label(it.day) + " · " + it.amount.toInt(), Routes.txn(it.id))) }
-                tops.filter { it.title.hit() || it.note.hit() }.forEach { add(Triple("🏆 " + it.title, "в топе", Routes.top(it.listId))) }
+                tasks.filter { it.title.hit() || it.note.hit() }.forEach { add(Triple("ui:check|" + it.title, if (it.done) "выполнена" else "задача", Routes.task(it.id))) }
+                notes.filter { it.title.hit() || it.body.hit() }.forEach { add(Triple("ui:notebook|" + it.title.ifBlank { it.body.take(40) }, "заметка", Routes.note(it.id))) }
+                events.filter { it.title.hit() || it.note.hit() || it.location.hit() }.forEach { add(Triple("cal/00|" + it.title, Dates.label(it.day), Routes.event(it.id))) }
+                goals.filter { it.title.hit() || it.why.hit() }.forEach { add(Triple("sport/21|" + it.title, "цель", Routes.goal(it.id))) }
+                txns.filter { it.note.hit() }.take(20).forEach { add(Triple("ui:wallet|" + it.note, Dates.label(it.day) + " · " + it.amount.toInt(), Routes.txn(it.id))) }
+                tops.filter { it.title.hit() || it.note.hit() }.forEach { add(Triple("ui:trophy|" + it.title, "в топе", Routes.top(it.listId))) }
             }
             if (results.isEmpty()) Text("Ничего не найдено", color = extra.dim, modifier = Modifier.padding(12.dp))
             LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
                 items(results) { (title, sub, route) ->
-                    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { nav.navigate(route) }.padding(10.dp)) {
-                        Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(sub, fontSize = 12.sp, color = extra.dim)
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { nav.navigate(route) }.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Glyph(title.substringBefore('|'), 20.dp)
+                        Column(Modifier.padding(start = 12.dp)) {
+                            Text(title.substringAfter('|'), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(sub, fontSize = 12.sp, color = extra.dim)
+                        }
                     }
                 }
             }

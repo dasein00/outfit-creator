@@ -25,7 +25,7 @@ private data class SeedIngredient(val product: String, val amount: Double, val u
 private data class SeedRecipe(
     val key: String, val name: String, val category: String, val meals: List<Int>, val tags: List<String>,
     val servings: Int, val prep: Int, val cook: Int, val difficulty: Int, val ingredients: List<SeedIngredient>,
-    val steps: List<String>, val tips: String = "", val notes: String = "",
+    val steps: List<String>, val tips: String = "", val notes: String = "", val image: String = "",
 )
 
 @Serializable
@@ -55,6 +55,11 @@ object RecipeRepo {
             ).let { it.copy(id = x.upsertProduct(it)) }
             ids[p.name] = prod
         }
+        // Иллюстрации для встроенных рецептов, добавленных до их появления.
+        val images = seed.recipes.associate { it.key to it.image }
+        x.recipesNow().filter { it.seedKey != null && it.photo.isBlank() }.forEach { r ->
+            images[r.seedKey]?.takeIf { it.isNotBlank() }?.let { x.upsertRecipe(r.copy(photo = it)) }
+        }
         val have = x.recipeSeedKeys().toSet()
         val now = System.currentTimeMillis()
         Graph.extraDb.withTransaction {
@@ -63,7 +68,7 @@ object RecipeRepo {
                     Recipe(
                         name = s.name, category = s.category, meals = s.meals.joinToString(","), tags = s.tags.joinToString(","),
                         servings = s.servings, prepMin = s.prep, cookMin = s.cook, difficulty = s.difficulty,
-                        tips = s.tips, notes = s.notes, seedKey = s.key, createdAt = now,
+                        tips = s.tips, notes = s.notes, seedKey = s.key, createdAt = now, photo = s.image,
                     )
                 )
                 x.insertIngredients(s.ingredients.mapIndexed { i, ing ->

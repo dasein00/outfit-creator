@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.recipes
 
 import androidx.compose.foundation.Image
+import com.dasein.poryadok.ui.common.Glyph
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -95,19 +96,19 @@ fun rememberNutritionPlan(): NutritionPlan {
     return remember(p, weights) { Nutrition.plan(p.input(weights.lastOrNull()?.kg ?: p.startWeight)) }
 }
 
-fun categoryIcon(cat: String): Int = when (cat) {
-    "Завтраки" -> Ic.sun
-    "Обеды" -> Ic.salad
-    "Ужины" -> Ic.moon
-    "Перекусы" -> Ic.leaves
-    "Супы" -> Ic.flame
-    "Салаты" -> Ic.leaves
-    "Гарниры" -> Ic.grid
-    "Десерты" -> Ic.heart
-    "Напитки" -> Ic.drop
-    "Выпечка" -> Ic.gift
-    "Заготовки" -> Ic.folder
-    else -> Ic.salad
+fun categoryIcon(cat: String): String = when (cat) {
+    "Завтраки" -> "food/08"
+    "Обеды" -> "food/10"
+    "Ужины" -> "food/09"
+    "Перекусы" -> "food/11"
+    "Супы" -> "dish/healthy/18"
+    "Салаты" -> "food/12"
+    "Гарниры" -> "food/03"
+    "Десерты" -> "fest/30"
+    "Напитки" -> "sleep/08"
+    "Выпечка" -> "fest/00"
+    "Заготовки" -> "food/30"
+    else -> "food/02"
 }
 
 fun kcal(v: Double) = "${v.roundToInt()} ккал"
@@ -118,6 +119,12 @@ fun Recipe.tagList() = tags.split(',').map { it.trim() }.filter { it.isNotEmpty(
 
 @Composable
 fun RecipeThumb(r: Recipe, size: Dp) {
+    if (r.photo.startsWith("dish/")) {
+        Box(Modifier.size(size).clip(RoundedCornerShape(14.dp)).background(LocalExtra.current.cardHigh), contentAlignment = Alignment.Center) {
+            Glyph(r.photo, size * .92f, badge = false)
+        }
+        return
+    }
     val img by rememberImage(r.photo.takeIf { it.isNotBlank() }, 400)
     val bmp = img
     if (bmp != null) {
@@ -126,7 +133,7 @@ fun RecipeThumb(r: Recipe, size: Dp) {
         Box(
             Modifier.size(size).clip(RoundedCornerShape(14.dp)).background(LocalExtra.current.cardHigh),
             contentAlignment = Alignment.Center,
-        ) { AppIcon(categoryIcon(r.category), size * .5f, badge = false) }
+        ) { Glyph(categoryIcon(r.category), size * .55f, badge = false) }
     }
 }
 

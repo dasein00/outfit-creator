@@ -11,6 +11,7 @@ import com.dasein.poryadok.data.ExtraDb
 import com.dasein.poryadok.data.LifeDao
 import com.dasein.poryadok.data.Prefs
 import com.dasein.poryadok.data.RecipeRepo
+import com.dasein.poryadok.system.SleepTracker
 import com.dasein.poryadok.system.Steps
 import android.util.Log
 import com.dasein.poryadok.system.Alarms
@@ -63,8 +64,10 @@ object Graph {
         Alarms.createChannels(app)
         scope.launch {
             Repo.seed()
+            runCatching { Repo.migrateGlyphs() }.onFailure { Log.e("DASEIN", "glyphs", it) }
             runCatching { RecipeRepo.seed(); RecipeRepo.materializeRepeats() }.onFailure { Log.e("DASEIN", "recipes seed", it) }
             runCatching { Steps.ensureScheduled(app) }.onFailure { Log.e("DASEIN", "steps", it) }
+            runCatching { SleepTracker.ensureScheduled(app) }.onFailure { Log.e("DASEIN", "sleep", it) }
             Repo.processRecurring()
             Alarms.rescheduleAll(app)
             Widgets.refresh(app)

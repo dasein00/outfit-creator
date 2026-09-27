@@ -235,7 +235,7 @@ fun WardrobeScreen(nav: NavHostController) {
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
             LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(SEASONS) { (id, label) -> Pill(label, season == id) { season = id } }
+                items(SEASONS) { (id, label) -> Pill(label, season == id, glyph = SEASON_GLYPHS[id]) { season = id } }
             }
             Gap(6.dp)
             BoxWithConstraints(

@@ -3,6 +3,8 @@
 package com.dasein.poryadok.ui.notes
 
 import androidx.activity.compose.BackHandler
+import com.dasein.poryadok.ui.common.GlyphRow
+import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.IconAction
 import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.background
@@ -291,8 +293,8 @@ fun NoteEditScreen(nav: NavHostController, id: Long) {
 /* ---------- топы ---------- */
 
 val TOP_IDEAS = listOf(
-    "🎬" to "Топ фильмов", "📚" to "Топ книг", "🎵" to "Любимые песни", "🍽" to "Лучшие рестораны",
-    "✈️" to "Места, где хочу побывать", "📺" to "Сериалы", "🎮" to "Игры", "🎁" to "Список желаний",
+    "habit/01" to "Топ фильмов", "habit/11" to "Топ книг", "habit/14" to "Любимые песни", "fest/29" to "Лучшие рестораны",
+    "cal/35" to "Места, где хочу побывать", "habit/03" to "Сериалы", "habit/20" to "Игры", "fest/01" to "Список желаний",
 )
 
 @Composable
@@ -310,14 +312,14 @@ fun TopsScreen(nav: NavHostController) {
             if (lists.isEmpty()) item {
                 Empty(Ic.trophy, "Ваши рейтинги", "Фильмы, книги, места, желания — соберите свои топы и расставьте места.")
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TOP_IDEAS.forEach { (e, t) -> Pill("$e $t", false) { io { Graph.dao.upsertTopList(TopList(title = t, emoji = e, sort = lists.size)) } } }
+                    TOP_IDEAS.forEach { (e, t) -> Pill(t, false, glyph = e) { io { Graph.dao.upsertTopList(TopList(title = t, emoji = e, sort = lists.size)) } } }
                 }
             }
             items(lists, key = { it.id }) { l ->
                 val mine = allItems.filter { it.listId == l.id }
                 Tile(Modifier.padding(bottom = 10.dp), onClick = { nav.navigate(Routes.top(l.id)) }) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(l.emoji, fontSize = 30.sp)
+                        Glyph(l.emoji, 30.dp)
                         Column(Modifier.padding(start = 12.dp).weight(1f)) {
                             Text(l.title, style = MaterialTheme.typography.titleMedium)
                             Text(
@@ -346,7 +348,7 @@ private fun TopListDialog(l: TopList, onDismiss: () -> Unit) {
                 TextInput(title, { title = it }, "Название")
                 Gap(8.dp)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("🏆", "🎬", "📚", "🎵", "🍽", "✈️", "📺", "🎮", "🎁", "⭐", "❤️", "🌍").forEach { e -> Pill(e, emoji == e) { emoji = e } }
+                    GlyphRow(listOf("ui:trophy", "habit/01", "habit/11", "habit/14", "fest/29", "cal/35", "habit/03", "habit/20", "fest/01", "habit/22", "habit/28", "habit/27", "books/12", "habit/08"), emoji) { emoji = it }
                 }
             }
         },
@@ -384,7 +386,7 @@ fun TopScreen(nav: NavHostController, id: Long) {
         io { Graph.dao.upsertTopItem(TopItem(listId = id, title = t, sort = entries.size)) }
     }
     Screen(
-        title = "${l.emoji} ${l.title}",
+        title = l.title,
         onBack = { nav.popBackStack() },
         actions = {
             IconButton(onClick = { editList = true }) { Icon(Icons.Default.Checklist, "Переименовать") }
@@ -404,13 +406,20 @@ fun TopScreen(nav: NavHostController, id: Long) {
             if (entries.isEmpty()) item { Text("Пока пусто — добавьте первый пункт.", color = extra.dim) }
             items(entries.size, key = { entries[it].id }) { i ->
                 val item = entries[i]
-                val medal = when (i) { 0 -> "🥇"; 1 -> "🥈"; 2 -> "🥉"; else -> "${i + 1}" }
+                val medal = when (i) { 0 -> Color(0xFFC79246); 1 -> Color(0xFFA7A9AC); 2 -> Color(0xFFB07A4F); else -> null }
                 Row(
                     Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(RoundedCornerShape(14.dp)).background(extra.card)
                         .clickable { edit = item }.padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(medal, fontSize = if (i < 3) 22.sp else 15.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(width = 34.dp, height = 28.dp))
+                    Box(Modifier.size(width = 34.dp, height = 28.dp), contentAlignment = Alignment.CenterStart) {
+                        Box(
+                            Modifier.size(26.dp).clip(CircleShape).background(medal ?: Color.Transparent),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("${i + 1}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = if (medal != null) Color(0xFF1B1812) else MaterialTheme.colorScheme.primary)
+                        }
+                    }
                     Column(Modifier.weight(1f)) {
                         Text(item.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         val sub = listOfNotNull(if (item.rating > 0) "★ ${item.rating}/10" else null, item.note.takeIf { n -> n.isNotBlank() }).joinToString(" · ")

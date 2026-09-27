@@ -74,7 +74,7 @@ fun OutfitsScreen(nav: NavHostController) {
         ) {
             item(span = { GridItemSpan(2) }) {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    rowItems(SEASONS) { (id, label) -> Pill(label, season == id) { season = id } }
+                    rowItems(SEASONS) { (id, label) -> Pill(label, season == id, glyph = SEASON_GLYPHS[id]) { season = id } }
                 }
             }
             if (forgotten.isNotEmpty() && season == "все") item(span = { GridItemSpan(2) }) {
@@ -138,7 +138,7 @@ fun OutfitsScreen(nav: NavHostController) {
                             val upd = o.copy(wornDays = days.joinToString(","))
                             io { Graph.dao.upsertOutfit(upd) }
                             open = upd
-                        }) { Text(if (today in worn) "Не ношу сегодня" else "👕 Ношу сегодня", fontWeight = FontWeight.SemiBold) }
+                        }) { Text(if (today in worn) "Не ношу сегодня" else "Ношу сегодня", fontWeight = FontWeight.SemiBold) }
                     }
                 }
             },

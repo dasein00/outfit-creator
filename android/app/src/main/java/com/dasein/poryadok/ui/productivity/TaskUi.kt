@@ -3,6 +3,8 @@
 package com.dasein.poryadok.ui.productivity
 
 import androidx.compose.foundation.clickable
+import com.dasein.poryadok.ui.common.Glyphs
+import com.dasein.poryadok.ui.common.Glyph
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -99,7 +101,7 @@ fun TaskRow(
             val meta = buildList {
                 t.whenText(today)?.let { add(it) }
                 if (subTotal > 0) add("☑ $subDone/$subTotal")
-                if (showProject && project != null) add("${project.emoji} ${project.name}")
+                if (showProject && project != null) add(project.name)
                 if (t.tags.isNotBlank()) add(t.tags.split(',').filter { it.isNotBlank() }.joinToString(" ") { "@$it" })
             }
             if (meta.isNotEmpty() || t.repeat != "none" || t.remind) Row(verticalAlignment = Alignment.CenterVertically) {
@@ -172,12 +174,12 @@ fun QuickAddSheet(onDismiss: () -> Unit, defaultDay: Long? = null, defaultProjec
                 modifier = Modifier.padding(top = 8.dp),
             ) {
                 val day = parsed.dueDay ?: defaultDay
-                if (day != null) AssistChip(onClick = {}, label = { Text("📅 " + Dates.label(day, today)) })
-                parsed.dueMin?.let { AssistChip(onClick = {}, label = { Text("⏰ " + Dates.time(it)) }) }
+                if (day != null) AssistChip(onClick = {}, label = { Text(Dates.label(day, today)) }, leadingIcon = { Glyph("cal/00", 14.dp, badge = false) })
+                parsed.dueMin?.let { AssistChip(onClick = {}, label = { Text(Dates.time(it)) }, leadingIcon = { Glyph("cal/13", 14.dp, badge = false) }) }
                 if (parsed.priority > 0) AssistChip(onClick = {}, label = { Text("⚑ " + listOf("", "низкий", "средний", "высокий")[parsed.priority]) })
                 parsed.project?.let { AssistChip(onClick = {}, label = { Text("# $it") }) }
                 parsed.tags.forEach { AssistChip(onClick = {}, label = { Text("@$it") }) }
-                if (parsed.repeat != Repeat.NONE) AssistChip(onClick = {}, label = { Text("🔁 " + parsed.repeat.label) })
+                if (parsed.repeat != Repeat.NONE) AssistChip(onClick = {}, label = { Text(parsed.repeat.label) }, leadingIcon = { Glyph(Glyphs.REPEAT, 14.dp, badge = false) })
             }
             Text(
                 "Enter — добавить и продолжить",

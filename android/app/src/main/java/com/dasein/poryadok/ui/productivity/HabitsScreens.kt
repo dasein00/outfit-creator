@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.productivity
 
 import androidx.activity.compose.BackHandler
+import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.IconAction
 import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.background
@@ -86,18 +87,18 @@ import java.time.YearMonth
 data class HabitTemplate(val name: String, val emoji: String, val target: Int = 1, val unit: String = "", val color: Int = 0)
 
 val HABIT_TEMPLATES = listOf(
-    HabitTemplate("Выпить воду", "💧", 8, "стаканов", 2),
-    HabitTemplate("Зарядка", "🤸", color = 1),
-    HabitTemplate("Чтение", "📚", 20, "минут", 4),
-    HabitTemplate("Медитация", "🧘", 10, "минут", 6),
-    HabitTemplate("10 000 шагов", "🚶", color = 5),
-    HabitTemplate("Без сахара", "🍎", color = 9),
-    HabitTemplate("Английский", "🇬🇧", 15, "минут", 3),
-    HabitTemplate("Лечь до 23:00", "😴", color = 11),
-    HabitTemplate("Витамины", "💊", color = 7),
-    HabitTemplate("Дневник благодарности", "🙏", color = 0),
-    HabitTemplate("Без соцсетей утром", "📵", color = 8),
-    HabitTemplate("Тренировка", "💪", color = 10),
+    HabitTemplate("Выпить воду", "ui:drop", 8, "стаканов", 2),
+    HabitTemplate("Зарядка", "sport/14", color = 1),
+    HabitTemplate("Чтение", "habit/12", 20, "минут", 4),
+    HabitTemplate("Медитация", "sport/04", 10, "минут", 6),
+    HabitTemplate("10 000 шагов", "sport/06", color = 5),
+    HabitTemplate("Без сахара", "food/11", color = 9),
+    HabitTemplate("Английский", "fest/15", 15, "минут", 3),
+    HabitTemplate("Лечь до 23:00", "sleep/00", color = 11),
+    HabitTemplate("Витамины", "train/10", color = 7),
+    HabitTemplate("Дневник благодарности", "ui:notebook", color = 0),
+    HabitTemplate("Без соцсетей утром", "sleep/15", color = 8),
+    HabitTemplate("Тренировка", "sport/12", color = 10),
 )
 
 private fun Habit.schedule() = HabitSchedule(daysMask, timesPerWeek)
@@ -128,7 +129,7 @@ fun HabitsScreen(nav: NavHostController) {
                 Empty(Ic.leaves, "Начните с одной привычки", "Выберите шаблон или создайте свою. Маленькие шаги каждый день работают лучше рывков.")
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     HABIT_TEMPLATES.forEach { tpl ->
-                        Pill("${tpl.emoji} ${tpl.name}", false) {
+                        Pill(tpl.name, false, glyph = tpl.emoji) {
                             io {
                                 dao.upsertHabit(
                                     Habit(name = tpl.name, emoji = tpl.emoji, target = tpl.target, unit = tpl.unit, color = tpl.color, createdDay = today)
@@ -178,7 +179,10 @@ fun HabitsScreen(nav: NavHostController) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.size(width = 116.dp, height = 44.dp)) {
-                        Text("${h.emoji} ${h.name}", maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 14.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Glyph(h.emoji, 16.dp)
+                            Text("  ${h.name}", maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 14.sp)
+                        }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.LocalFireDepartment, null, Modifier.size(14.dp), tint = if (summary.streak > 0) extra.warn else extra.dim)
                             Text(" ${summary.streak} ${summary.streakUnit}", fontSize = 12.sp, color = extra.dim)
@@ -245,7 +249,7 @@ fun HabitEditScreen(nav: NavHostController, id: Long) {
                 SectionTitle("Шаблоны")
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     HABIT_TEMPLATES.forEach { tpl ->
-                        Pill("${tpl.emoji} ${tpl.name}", h.name == tpl.name) {
+                        Pill(tpl.name, h.name == tpl.name, glyph = tpl.emoji) {
                             h = h.copy(name = tpl.name, emoji = tpl.emoji, unit = tpl.unit, color = tpl.color)
                             targetText = tpl.target.toString()
                         }
@@ -316,7 +320,7 @@ fun HabitDetailScreen(nav: NavHostController, id: Long) {
     val mine = logs.filter { it.habitId == h.id }
     val s = HabitStats.summary(h.schedule(), done, today, h.createdDay)
     Screen(
-        title = "${h.emoji} ${h.name}",
+        title = h.name,
         onBack = { nav.popBackStack() },
         actions = {
             IconButton(onClick = { nav.navigate(Routes.habitEdit(h.id)) }) { Icon(Icons.Default.Edit, "Изменить") }
@@ -330,8 +334,8 @@ fun HabitDetailScreen(nav: NavHostController, id: Long) {
             )
             Gap()
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Stat("🔥 ${s.streak}", "серия, ${s.streakUnit}", Modifier.weight(1f))
-                Stat("🏆 ${s.best}", "рекорд", Modifier.weight(1f))
+                Stat("${s.streak}", "серия, ${s.streakUnit}", Modifier.weight(1f))
+                Stat("${s.best}", "рекорд", Modifier.weight(1f))
                 Stat("${s.rate30}%", "за 30 дней", Modifier.weight(1f))
                 Stat("${s.totalDone}", "всего", Modifier.weight(1f))
             }

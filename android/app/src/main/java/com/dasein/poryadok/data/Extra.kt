@@ -13,7 +13,9 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Upsert
+import androidx.room.migration.Migration
 import androidx.room.withTransaction
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
 
@@ -235,6 +237,46 @@ data class ImportRecord(
     val at: Long,
 )
 
+/** Взвешивание со всеми показателями весов (или введёнными вручную). Проценты — от массы тела. */
+@Serializable
+@Entity(tableName = "body_metrics", indices = [Index("day"), Index("extId")])
+data class BodyMetric(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val at: Long,
+    val day: Long,
+    val weight: Double,
+    val fatPct: Double? = null,
+    val musclePct: Double? = null,
+    val muscleKg: Double? = null,
+    val waterPct: Double? = null,
+    val proteinPct: Double? = null,
+    val boneKg: Double? = null,
+    val visceral: Double? = null,
+    val bmr: Double? = null,
+    val metabolicAge: Double? = null,
+    val subcutaneousPct: Double? = null,
+    val leanKg: Double? = null,
+    val source: String = "вручную",
+    val extId: String? = null,
+)
+
+/** Сон, определённый по использованию телефона. day — утро. Исправления пользователя учат алгоритм. */
+@Serializable
+@Entity(tableName = "sleep_auto")
+data class SleepAuto(
+    @PrimaryKey val day: Long,
+    val lastUseAt: Long,
+    val firstUseAt: Long,
+    val sleepAt: Long,
+    val wakeAt: Long,
+    val awakenings: Int = 0,
+    val glances: Int = 0,
+    val confidence: Int = 0,
+    val applied: Boolean = false,
+    val userBedMin: Int? = null,
+    val userWakeMin: Int? = null,
+)
+
 @Dao
 interface ExtraDao {
     // Продукты
@@ -316,6 +358,19 @@ interface ExtraDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putImportRecord(r: ImportRecord)
     @Query("DELETE FROM import_records WHERE `key` = :key") suspend fun deleteImportRecord(key: String)
 
+    // Состав тела
+    @Query("SELECT * FROM body_metrics ORDER BY at") fun bodyMetrics(): Flow<List<BodyMetric>>
+    @Query("SELECT * FROM body_metrics ORDER BY at") suspend fun bodyMetricsNow(): List<BodyMetric>
+    @Query("SELECT COUNT(*) FROM body_metrics WHERE extId = :extId") suspend fun bodyExtCount(extId: String): Int
+    @Upsert suspend fun upsertBodyMetric(m: BodyMetric): Long
+    @Delete suspend fun deleteBodyMetric(m: BodyMetric)
+
+    // Автоопределение сна
+    @Query("SELECT * FROM sleep_auto ORDER BY day DESC") fun sleepAuto(): Flow<List<SleepAuto>>
+    @Query("SELECT * FROM sleep_auto ORDER BY day DESC") suspend fun sleepAutoNow(): List<SleepAuto>
+    @Query("SELECT * FROM sleep_auto WHERE day = :day") suspend fun sleepAutoOf(day: Long): SleepAuto?
+    @Upsert suspend fun upsertSleepAuto(s: SleepAuto)
+
     // Резервная копия
     @Query("SELECT * FROM products") suspend fun allProducts(): List<FoodProduct>
     @Query("SELECT * FROM recipes") suspend fun allRecipes(): List<Recipe>
@@ -354,23 +409,46 @@ interface ExtraDao {
     @Query("DELETE FROM cooking_history") suspend fun wipeHistory()
     @Query("DELETE FROM finance_notes") suspend fun wipeFinanceNotes()
     @Query("DELETE FROM import_records") suspend fun wipeImportRecords()
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putBodyMetrics(items: List<BodyMetric>)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putSleepAuto(items: List<SleepAuto>)
+    @Query("DELETE FROM body_metrics") suspend fun wipeBodyMetrics()
+    @Query("DELETE FROM sleep_auto") suspend fun wipeSleepAuto()
 }
 
 @Database(
     entities = [
         FoodProduct::class, Recipe::class, RecipeIngredient::class, RecipeStep::class, MealPlanItem::class,
         MealPreset::class, MealPresetItem::class, MealRepeat::class, ShoppingItem::class, CookingLog::class,
-        FinanceNote::class, ImportRecord::class,
+        FinanceNote::class, ImportRecord::class, BodyMetric::class, SleepAuto::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class ExtraDb : RoomDatabase() {
     abstract fun dao(): ExtraDao
 
     companion object {
+        /** v2: состав тела и автоопределение сна. */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `body_metrics` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `at` INTEGER NOT NULL, " +
+                        "`day` INTEGER NOT NULL, `weight` REAL NOT NULL, `fatPct` REAL, `musclePct` REAL, `muscleKg` REAL, `waterPct` REAL, " +
+                        "`proteinPct` REAL, `boneKg` REAL, `visceral` REAL, `bmr` REAL, `metabolicAge` REAL, `subcutaneousPct` REAL, " +
+                        "`leanKg` REAL, `source` TEXT NOT NULL, `extId` TEXT)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_body_metrics_day` ON `body_metrics` (`day`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_body_metrics_extId` ON `body_metrics` (`extId`)")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `sleep_auto` (`day` INTEGER NOT NULL, `lastUseAt` INTEGER NOT NULL, `firstUseAt` INTEGER NOT NULL, " +
+                        "`sleepAt` INTEGER NOT NULL, `wakeAt` INTEGER NOT NULL, `awakenings` INTEGER NOT NULL, `glances` INTEGER NOT NULL, " +
+                        "`confidence` INTEGER NOT NULL, `applied` INTEGER NOT NULL, `userBedMin` INTEGER, `userWakeMin` INTEGER, PRIMARY KEY(`day`))"
+                )
+            }
+        }
+
         fun create(context: Context): ExtraDb =
-            Room.databaseBuilder(context, ExtraDb::class.java, "dasein_extra.db").build()
+            Room.databaseBuilder(context, ExtraDb::class.java, "dasein_extra.db").addMigrations(MIGRATION_1_2).build()
     }
 }
 
@@ -388,6 +466,8 @@ data class ExtraBackup(
     val history: List<CookingLog> = emptyList(),
     val financeNotes: List<FinanceNote> = emptyList(),
     val importRecords: List<ImportRecord> = emptyList(),
+    val bodyMetrics: List<BodyMetric> = emptyList(),
+    val sleepAuto: List<SleepAuto> = emptyList(),
 )
 
 suspend fun ExtraDb.exportExtra(): ExtraBackup {
@@ -395,6 +475,7 @@ suspend fun ExtraDb.exportExtra(): ExtraBackup {
     return ExtraBackup(
         d.allProducts(), d.allRecipes(), d.allIngredients(), d.allSteps(), d.allPlan(), d.allPresets(),
         d.allPresetItems(), d.allRepeats(), d.allShopping(), d.allHistory(), d.financeNotesNow(), d.allImportRecords(),
+        d.bodyMetricsNow(), d.sleepAutoNow(),
     )
 }
 
@@ -413,5 +494,7 @@ suspend fun ExtraDb.importExtra(b: ExtraBackup) {
         d.wipeHistory(); d.putHistory(b.history)
         d.wipeFinanceNotes(); d.putFinanceNotes(b.financeNotes)
         d.wipeImportRecords(); d.putImportRecords(b.importRecords)
+        d.wipeBodyMetrics(); d.putBodyMetrics(b.bodyMetrics)
+        d.wipeSleepAuto(); d.putSleepAuto(b.sleepAuto)
     }
 }

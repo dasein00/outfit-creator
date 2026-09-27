@@ -12,7 +12,7 @@ import kotlinx.serialization.Serializable
 data class Project(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
-    val emoji: String = "📁",
+    val emoji: String = "ui:folder",
     val color: Int = 0,
     val sort: Int = 0,
     val archived: Boolean = false,
@@ -54,7 +54,7 @@ data class Goal(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
     val why: String = "",
-    val emoji: String = "🎯",
+    val emoji: String = "sport/21",
     val color: Int = 0,
     val deadline: Long? = null,
     val target: Double? = null,
@@ -92,7 +92,7 @@ data class FocusSession(
 data class Habit(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
-    val emoji: String = "✅",
+    val emoji: String = "ui:check",
     val color: Int = 0,
     val target: Int = 1,
     val unit: String = "",
@@ -147,7 +147,7 @@ data class Reminder(
 data class Account(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
-    val emoji: String = "💳",
+    val emoji: String = "ui:card",
     val initial: Double = 0.0,
     val color: Int = 0,
     val sort: Int = 0,
@@ -342,7 +342,7 @@ data class Note(
 data class TopList(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
-    val emoji: String = "🏆",
+    val emoji: String = "ui:trophy",
     val sort: Int = 0,
 )
 

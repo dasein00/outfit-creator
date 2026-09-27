@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui
 
 import androidx.compose.foundation.layout.Column
+import com.dasein.poryadok.ui.common.Glyph
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -112,14 +113,14 @@ object Routes {
     fun preset(id: Long) = "preset/$id"
 }
 
-private data class Tab(val route: String, val label: String, val icon: Int)
+private data class Tab(val route: String, val label: String, val icon: String)
 
 private val tabs = listOf(
-    Tab(Routes.TODAY, "Сегодня", Ic.sun),
-    Tab(Routes.TASKS, "Задачи", Ic.check),
-    Tab(Routes.CALENDAR, "Календарь", Ic.calendar),
-    Tab(Routes.FINANCE, "Финансы", Ic.wallet),
-    Tab(Routes.MORE, "Ещё", Ic.grid),
+    Tab(Routes.TODAY, "Сегодня", "ui:sun"),
+    Tab(Routes.TASKS, "Задачи", "cal/24"),
+    Tab(Routes.CALENDAR, "Календарь", "cal/00"),
+    Tab(Routes.FINANCE, "Финансы", "ui:wallet"),
+    Tab(Routes.MORE, "Ещё", "cal/40"),
 )
 
 private fun NavBackStackEntry.long(name: String): Long = arguments?.getLong(name) ?: -1L
@@ -257,7 +258,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
                     NavigationBarItem(
                         selected = current == t.route,
                         onClick = { nav.openTab(t.route) },
-                        icon = { AppIcon(t.icon, 24.dp, dimmed = current != t.route) },
+                        icon = { Glyph(t.icon, 24.dp, dimmed = current != t.route) },
                         label = { Text(t.label, fontSize = 11.sp, maxLines = 1) },
                         colors = NavigationBarItemDefaults.colors(
                             indicatorColor = MaterialTheme.colorScheme.primaryContainer,

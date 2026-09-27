@@ -44,6 +44,9 @@ data class Settings(
     val sberOn: Boolean = false,
     val sberImported: Int = 0,
     val sberLastAt: Long = 0L,
+    val glyphsMigrated: Boolean = false,
+    val sleepAuto: Boolean = false,
+    val bodyHc: Boolean = false,
 )
 
 class Prefs(private val context: Context) {
@@ -77,6 +80,9 @@ class Prefs(private val context: Context) {
         val sberOn = booleanPreferencesKey("sberOn")
         val sberImported = intPreferencesKey("sberImported")
         val sberLastAt = longPreferencesKey("sberLastAt")
+        val glyphsMigrated = booleanPreferencesKey("glyphsMigrated")
+        val sleepAuto = booleanPreferencesKey("sleepAuto")
+        val bodyHc = booleanPreferencesKey("bodyHc")
     }
 
     val settings: Flow<Settings> = context.store.data.map { p -> p.toSettings() }
@@ -113,6 +119,9 @@ class Prefs(private val context: Context) {
         sberOn = this[K.sberOn] ?: false,
         sberImported = this[K.sberImported] ?: 0,
         sberLastAt = this[K.sberLastAt] ?: 0L,
+        glyphsMigrated = this[K.glyphsMigrated] ?: false,
+        sleepAuto = this[K.sleepAuto] ?: false,
+        bodyHc = this[K.bodyHc] ?: false,
     )
 
     suspend fun update(block: (Settings) -> Settings) {
@@ -147,6 +156,9 @@ class Prefs(private val context: Context) {
             p[K.sberOn] = s.sberOn
             p[K.sberImported] = s.sberImported
             p[K.sberLastAt] = s.sberLastAt
+            p[K.glyphsMigrated] = s.glyphsMigrated
+            p[K.sleepAuto] = s.sleepAuto
+            p[K.bodyHc] = s.bodyHc
         }
     }
 }

@@ -64,6 +64,7 @@ import com.dasein.poryadok.logic.UNITS
 import com.dasein.poryadok.ui.Routes
 import com.dasein.poryadok.ui.common.ConfirmDialog
 import com.dasein.poryadok.ui.common.Gap
+import com.dasein.poryadok.ui.common.GlyphPickerDialog
 import com.dasein.poryadok.ui.common.HGap
 import com.dasein.poryadok.ui.common.Ic
 import com.dasein.poryadok.ui.common.IconAction
@@ -173,12 +174,20 @@ private fun StepBasics(d: RecipeDraft) {
     }
     TextInput(r.name, { d.recipe = r.copy(name = it) }, "Название")
     Gap(10.dp)
+    var pickIllustration by remember { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically) {
-        val img by rememberImage(r.photo.takeIf { it.isNotBlank() }, 400)
-        img?.let { Image(it, null, Modifier.size(72.dp).clip(RoundedCornerShape(14.dp)), contentScale = ContentScale.Crop); HGap(10.dp) }
-        OutlinedButton(onClick = { picker.launch("image/*") }) { Text(if (r.photo.isBlank()) "Добавить фото" else "Заменить фото") }
+        if (r.photo.startsWith("dish/")) { RecipeThumb(r, 72.dp); HGap(10.dp) }
+        else {
+            val img by rememberImage(r.photo.takeIf { it.isNotBlank() }, 400)
+            img?.let { Image(it, null, Modifier.size(72.dp).clip(RoundedCornerShape(14.dp)), contentScale = ContentScale.Crop); HGap(10.dp) }
+        }
+        Column {
+            OutlinedButton(onClick = { picker.launch("image/*") }) { Text(if (r.photo.isBlank() || r.photo.startsWith("dish/")) "Своё фото" else "Заменить фото") }
+            OutlinedButton(onClick = { pickIllustration = true }) { Text("Иллюстрация") }
+        }
         if (r.photo.isNotBlank()) TextButton(onClick = { d.recipe = r.copy(photo = "") }) { Text("Убрать") }
     }
+    if (pickIllustration) GlyphPickerDialog(r.photo, { pickIllustration = false }, dishes = true) { d.recipe = d.recipe.copy(photo = it) }
     SectionTitle("Категория")
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         RECIPE_CATEGORIES.forEach { c -> Pill(c, c == r.category) { d.recipe = r.copy(category = c) } }

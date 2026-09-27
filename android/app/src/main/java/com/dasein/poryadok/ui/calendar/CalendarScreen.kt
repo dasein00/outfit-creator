@@ -3,6 +3,8 @@
 package com.dasein.poryadok.ui.calendar
 
 import androidx.activity.compose.BackHandler
+import com.dasein.poryadok.ui.common.Glyphs
+import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.IconAction
 import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.background
@@ -106,9 +108,9 @@ fun CalendarScreen(nav: NavHostController, initialTab: Int) {
                     Icon(Icons.Default.Add, "Добавить")
                 }
                 DropdownMenu(expanded = addMenu, onDismissRequest = { addMenu = false }) {
-                    DropdownMenuItem(text = { Text("📅 Событие") }, onClick = { addMenu = false; nav.navigate(Routes.event(0, selected)) })
-                    DropdownMenuItem(text = { Text("✅ Задача") }, onClick = { addMenu = false; quickTask = true })
-                    DropdownMenuItem(text = { Text("⏰ Напоминалка") }, onClick = {
+                    DropdownMenuItem(text = { Text("Событие") }, leadingIcon = { Glyph(Glyphs.EVENT, 20.dp) }, onClick = { addMenu = false; nav.navigate(Routes.event(0, selected)) })
+                    DropdownMenuItem(text = { Text("Задача") }, leadingIcon = { Glyph(Glyphs.CHECK, 20.dp) }, onClick = { addMenu = false; quickTask = true })
+                    DropdownMenuItem(text = { Text("Напоминалка") }, leadingIcon = { Glyph(Glyphs.REMINDER, 20.dp) }, onClick = {
                         addMenu = false
                         editReminder = Reminder(title = "", day = selected, min = (Dates.nowMinutes() / 60 + 1).coerceAtMost(23) * 60)
                     })
@@ -210,7 +212,7 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
                         Text(e.title, fontWeight = FontWeight.Medium)
                         val time = e.startMin?.let { s -> Dates.time(s) + (e.endMin?.let { "–" + Dates.time(it) } ?: "") } ?: "Весь день"
                         Text(
-                            listOfNotNull(time, e.location.takeIf { it.isNotBlank() }, if (e.repeat != "none") "🔁" else null).joinToString(" · "),
+                            listOfNotNull(time, e.location.takeIf { it.isNotBlank() }, if (e.repeat != "none") "повтор" else null).joinToString(" · "),
                             fontSize = 12.sp, color = extra.dim,
                         )
                     }
@@ -244,7 +246,7 @@ private fun ReminderRow(r: Reminder, onEdit: () -> Unit) {
         Column(Modifier.padding(start = 12.dp).weight(1f)) {
             Text(r.title, textDecoration = if (r.done) TextDecoration.LineThrough else null, color = if (r.done) extra.dim else MaterialTheme.colorScheme.onSurface)
             Text(
-                "⏰ ${Dates.label(r.day)}, ${Dates.time(r.min)}" + if (r.repeat != "none") " · ${Repeat.of(r.repeat).label.lowercase()}" else "",
+                "${Dates.label(r.day)}, ${Dates.time(r.min)}" + if (r.repeat != "none") " · ${Repeat.of(r.repeat).label.lowercase()}" else "",
                 fontSize = 12.sp, color = if (!r.done && Dates.millis(r.day, r.min) < System.currentTimeMillis()) extra.danger else extra.dim,
             )
         }

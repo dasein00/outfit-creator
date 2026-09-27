@@ -36,7 +36,10 @@ const val MODEL_ID = "__model__"
 
 val CATEGORIES = listOf("верх", "низ", "обувь", "аксессуары")
 val Z_ORDER = mapOf("обувь" to 1, "низ" to 2, "верх" to 3, "аксессуары" to 4)
-val SEASONS = listOf("все" to "👕 Все", "зима" to "❄️ Зима", "осень" to "🍂 Осень", "весна" to "🌸 Весна", "лето" to "☀️ Лето")
+val SEASONS = listOf("все" to "Все", "зима" to "Зима", "осень" to "Осень", "весна" to "Весна", "лето" to "Лето")
+
+/** Иконки сезонов для фильтров гардероба. */
+val SEASON_GLYPHS = mapOf("все" to "ui:hanger", "зима" to "fest/08", "осень" to "ui:leaves", "весна" to "fest/12", "лето" to "ui:sun")
 
 @Serializable
 data class Stroke(val r: Float, val pts: List<Float>)

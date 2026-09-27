@@ -49,6 +49,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -133,8 +135,8 @@ fun Empty(emoji: String, title: String, text: String, modifier: Modifier = Modif
         modifier.fillMaxWidth().padding(vertical = 48.dp, horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(emoji, fontSize = 44.sp)
-        Spacer(Modifier.height(10.dp))
+        Glyph(emoji, 44.dp, badge = true)
+        Spacer(Modifier.height(12.dp))
         Text(title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
         Spacer(Modifier.height(4.dp))
         Text(text, color = LocalExtra.current.dim, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
@@ -176,24 +178,24 @@ fun ColorPicker(selected: Int, onSelect: (Int) -> Unit) {
     }
 }
 
-val EMOJIS = listOf(
-    "✅", "🎯", "📚", "💪", "🏃", "🧘", "💧", "🥗", "😴", "🚭", "💊", "🦷", "🧹", "🌱", "✍️", "🎸",
-    "🇬🇧", "💻", "🧠", "📖", "🙏", "☀️", "🚶", "🚴", "🏊", "🍎", "☕", "💰", "🏠", "👨‍👩‍👧", "❤️", "🎨",
-    "📁", "💼", "🛒", "✈️", "🎁", "🎬", "🎮", "🐶", "🌿", "⭐", "🔥", "🏆", "📝", "🎵", "📷", "🧺",
+/** Иконки для привычек, целей, списков и категорий — фирменный набор вместо эмодзи. */
+val GLYPH_CHOICES = listOf(
+    "ui:check", "sport/21", "habit/11", "sport/12", "sport/01", "sport/04", "ui:drop", "ui:salad", "sleep/00", "sleep/15",
+    "sport/18", "sport/14", "ui:home", "ui:leaves", "ui:notebook", "habit/14", "fest/15", "sleep/19", "habit/12", "ui:sun",
+    "sport/06", "sport/08", "sport/09", "food/11", "fest/29", "ui:wallet", "cal/33", "ui:heart", "ui:image", "ui:folder",
+    "cal/29", "food/24", "cal/35", "fest/01", "habit/01", "habit/20", "habit/22", "ui:flame", "ui:trophy", "fest/23",
+    "sport/15", "sport/03", "train/10", "sleep/08", "cal/31", "fest/12", "habit/03", "habit/27",
 )
 
+/** Выбор иконки: частые варианты сразу, весь набор — по кнопке «Все иконки». */
 @Composable
 fun EmojiPicker(selected: String, onSelect: (String) -> Unit) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        EMOJIS.forEach { e ->
-            Box(
-                Modifier.size(40.dp).clip(RoundedCornerShape(10.dp))
-                    .background(if (e == selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                    .clickable { onSelect(e) },
-                contentAlignment = Alignment.Center,
-            ) { Text(e, fontSize = 22.sp) }
-        }
+    var all by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    Column {
+        GlyphRow(GLYPH_CHOICES, selected, onSelect)
+        TextButton(onClick = { all = true }) { Text("Все иконки…") }
     }
+    if (all) GlyphPickerDialog(selected, { all = false }, onPick = onSelect)
 }
 
 @Composable
@@ -218,7 +220,7 @@ fun ChipRow(options: List<Pair<String, String>>, selected: String, onSelect: (St
 }
 
 @Composable
-fun Pill(text: String, selected: Boolean, onClick: () -> Unit) {
+fun Pill(text: String, selected: Boolean, glyph: String? = null, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     Surface(
         onClick = onClick,
@@ -226,11 +228,17 @@ fun Pill(text: String, selected: Boolean, onClick: () -> Unit) {
         color = if (selected) scheme.onSurface else Color.Transparent,
         border = if (selected) null else BorderStroke(1.dp, scheme.outline),
     ) {
-        Text(
-            text, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp), fontSize = 14.sp,
-            color = if (selected) scheme.surface else LocalExtra.current.dim,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-        )
+        Row(
+            Modifier.padding(start = if (glyph != null) 8.dp else 14.dp, end = 14.dp, top = if (glyph != null) 5.dp else 8.dp, bottom = if (glyph != null) 5.dp else 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (glyph != null) { Glyph(glyph, 18.dp); Spacer(Modifier.width(6.dp)) }
+            Text(
+                text, fontSize = 14.sp,
+                color = if (selected) scheme.surface else LocalExtra.current.dim,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            )
+        }
     }
 }
 
@@ -321,13 +329,17 @@ fun ConfirmDialog(title: String, text: String, confirm: String = "Удалить
 }
 
 @Composable
-fun FieldButton(label: String, value: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Column(
+fun FieldButton(label: String, value: String, modifier: Modifier = Modifier, glyph: String? = null, onClick: () -> Unit) {
+    Row(
         modifier.clip(RoundedCornerShape(14.dp)).border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 9.dp)
+            .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, fontSize = 12.sp, color = LocalExtra.current.dim)
-        Text(value, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (glyph != null) { Glyph(glyph, 20.dp); Spacer(Modifier.width(10.dp)) }
+        Column {
+            Text(label, fontSize = 12.sp, color = LocalExtra.current.dim)
+            Text(value, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 

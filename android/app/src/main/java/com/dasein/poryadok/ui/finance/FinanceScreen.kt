@@ -3,6 +3,9 @@
 package com.dasein.poryadok.ui.finance
 
 import androidx.compose.foundation.clickable
+import com.dasein.poryadok.ui.common.GlyphRow
+import com.dasein.poryadok.ui.common.Glyphs
+import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -226,10 +229,7 @@ fun TxnRow(t: Txn, cats: List<Category>, accounts: List<Account>, cur: String, o
             Modifier.clip(RoundedCornerShape(12.dp)).padding(2.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                if (t.type == TxnType.TRANSFER) "🔄" else c?.emoji ?: "💰", fontSize = 22.sp,
-                modifier = Modifier.clip(RoundedCornerShape(12.dp)).padding(6.dp),
-            )
+            Glyph(if (t.type == TxnType.TRANSFER) Glyphs.TRANSFER else c?.emoji ?: "ui:wallet", 24.dp, Modifier.padding(4.dp))
         }
         Column(Modifier.weight(1f).padding(start = 8.dp)) {
             Text(
@@ -273,7 +273,7 @@ private fun Overview(all: List<Txn>, month: List<Txn>, cats: List<Category>, ym:
                     byCat.take(6).forEachIndexed { i, (c, v) ->
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
                             Dot(Palette.item(c?.color ?: i), 9.dp)
-                            Text(" ${c?.emoji ?: ""} ${c?.name ?: "Без категории"}", fontSize = 12.sp, maxLines = 1, modifier = Modifier.weight(1f))
+                            Text(" ${c?.name ?: "Без категории"}", fontSize = 12.sp, maxLines = 1, modifier = Modifier.weight(1f))
                             Text(" ${if (total > 0) (v * 100 / total).toInt() else 0}%", fontSize = 12.sp, color = extra.dim)
                         }
                     }
@@ -285,8 +285,9 @@ private fun Overview(all: List<Txn>, month: List<Txn>, cats: List<Category>, ym:
             if (byCat.isEmpty()) Text("Нет расходов за этот месяц", color = extra.dim)
             byCat.forEachIndexed { i, (c, v) ->
                 Column(Modifier.padding(vertical = 6.dp).clickable(enabled = c != null) { c?.let(onCategory) }) {
-                    Row {
-                        Text("${c?.emoji ?: "💰"} ${c?.name ?: "Без категории"}", Modifier.weight(1f))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Glyph(c?.emoji ?: "ui:wallet", 18.dp)
+                        Text("  ${c?.name ?: "Без категории"}", Modifier.weight(1f))
                         Text(Money.format(v, cur), fontWeight = FontWeight.Medium)
                     }
                     Bar((v / (byCat.first().second)).toFloat(), Palette.item(c?.color ?: i), Modifier.padding(top = 4.dp), height = 6.dp)
@@ -317,8 +318,8 @@ private fun Overview(all: List<Txn>, month: List<Txn>, cats: List<Category>, ym:
         }
         SectionTitle("Категории")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            cats.forEach { c -> Pill("${c.emoji} ${c.name}", false) { onCategory(c) } }
-            Pill("+ Категория", false) { onCategory(Category(name = "", emoji = "📦")) }
+            cats.forEach { c -> Pill(c.name, false, glyph = c.emoji) { onCategory(c) } }
+            Pill("+ Категория", false) { onCategory(Category(name = "", emoji = "ui:grid")) }
         }
         Gap(96.dp)
     }
@@ -341,8 +342,9 @@ private fun Budgets(month: List<Txn>, cats: List<Category>, budgets: List<Budget
             val level = Money.budgetLevel(spent, b.monthly)
             val color = when (level) { Money.BudgetLevel.OK -> extra.ok; Money.BudgetLevel.NEAR -> extra.warn; Money.BudgetLevel.OVER -> extra.danger }
             Tile(Modifier.padding(bottom = 10.dp), onClick = { onEdit(b) }) {
-                Row {
-                    Text(if (b.categoryId == 0L) "💼 Общий бюджет" else "${c?.emoji ?: ""} ${c?.name ?: "?"}", Modifier.weight(1f), fontWeight = FontWeight.Medium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Glyph(if (b.categoryId == 0L) "ui:wallet" else c?.emoji ?: "ui:grid", 18.dp)
+                    Text("  " + if (b.categoryId == 0L) "Общий бюджет" else c?.name ?: "?", Modifier.weight(1f), fontWeight = FontWeight.Medium)
                     Text("${Money.format(spent, cur)} из ${Money.format(b.monthly, cur)}", fontSize = 13.sp, color = extra.dim)
                 }
                 Bar((spent / b.monthly).toFloat(), color, Modifier.padding(vertical = 8.dp))
@@ -381,7 +383,7 @@ private fun RecurringList(list: List<Recurring>, cats: List<Category>, accounts:
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { onEdit(r) }.padding(vertical = 10.dp, horizontal = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(c?.emoji ?: "🔁", fontSize = 22.sp)
+                Glyph(c?.emoji ?: Glyphs.REPEAT, 24.dp)
                 Column(Modifier.weight(1f).padding(start = 10.dp)) {
                     Text(r.title, color = if (r.active) MaterialTheme.colorScheme.onSurface else extra.dim)
                     Text(
@@ -411,7 +413,7 @@ private fun Accounts(accounts: List<Account>, txns: List<Txn>, cur: String, onEd
         items(accounts, key = { it.id }) { a ->
             Tile(Modifier.padding(bottom = 8.dp), onClick = { onEdit(a) }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(a.emoji, fontSize = 24.sp)
+                    Glyph(a.emoji, 26.dp)
                     Text(a.name, Modifier.weight(1f).padding(start = 12.dp))
                     val b = balanceOf(a, txns)
                     Text(Money.format(b, cur), fontWeight = FontWeight.SemiBold, color = if (b < 0) extra.danger else MaterialTheme.colorScheme.onSurface)
@@ -436,9 +438,7 @@ private fun AccountDialog(a: Account, onDismiss: () -> Unit) {
                 Gap(8.dp)
                 NumberField(initial, { initial = it }, "Начальный остаток")
                 Gap(8.dp)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("💳", "💵", "🏦", "💰", "🪙", "📈", "🐷", "💶", "💲").forEach { e -> Pill(e, emoji == e) { emoji = e } }
-                }
+                GlyphRow(listOf("ui:card", "ui:coins", "ui:bank", "ui:wallet", "ui:receipt", "cal/39", "ui:stats", "ui:pie", "ui:gift", "ui:notebook"), emoji) { emoji = it }
             }
         },
         confirmButton = {
@@ -474,12 +474,12 @@ private fun BudgetDialog(b: Budget, cats: List<Category>, cur: String, onDismiss
             Column {
                 Box {
                     val c = cats.firstOrNull { it.id == catId }
-                    FieldButton("Категория", if (catId == 0L) "💼 Все расходы" else "${c?.emoji} ${c?.name}", Modifier.fillMaxWidth()) {
+                    FieldButton("Категория", if (catId == 0L) "Все расходы" else c?.name ?: "", Modifier.fillMaxWidth(), glyph = if (catId == 0L) "ui:wallet" else c?.emoji) {
                         if (b.categoryId < 0) menu = true
                     }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                        DropdownMenuItem(text = { Text("💼 Все расходы") }, onClick = { catId = 0; menu = false })
-                        cats.forEach { cat -> DropdownMenuItem(text = { Text("${cat.emoji} ${cat.name}") }, onClick = { catId = cat.id; menu = false }) }
+                        DropdownMenuItem(text = { Text("Все расходы") }, leadingIcon = { Glyph("ui:wallet", 20.dp) }, onClick = { catId = 0; menu = false })
+                        cats.forEach { cat -> DropdownMenuItem(text = { Text(cat.name) }, leadingIcon = { Glyph(cat.emoji, 20.dp) }, onClick = { catId = cat.id; menu = false }) }
                     }
                 }
                 Gap(8.dp)
@@ -533,19 +533,19 @@ private fun RecurringDialog(r0: Recurring, cats: List<Category>, accounts: List<
                 Gap(8.dp)
                 Box {
                     val c = cats.firstOrNull { it.id == r.categoryId }
-                    FieldButton("Категория", c?.let { "${it.emoji} ${it.name}" } ?: "—", Modifier.fillMaxWidth()) { catMenu = true }
+                    FieldButton("Категория", c?.name ?: "—", Modifier.fillMaxWidth(), glyph = c?.emoji) { catMenu = true }
                     DropdownMenu(expanded = catMenu, onDismissRequest = { catMenu = false }) {
                         cats.filter { it.income == r.income }.forEach { cat ->
-                            DropdownMenuItem(text = { Text("${cat.emoji} ${cat.name}") }, onClick = { r = r.copy(categoryId = cat.id); catMenu = false })
+                            DropdownMenuItem(text = { Text(cat.name) }, leadingIcon = { Glyph(cat.emoji, 20.dp) }, onClick = { r = r.copy(categoryId = cat.id); catMenu = false })
                         }
                     }
                 }
                 Gap(8.dp)
                 Box {
                     val a = accounts.firstOrNull { it.id == r.accountId }
-                    FieldButton("Счёт", a?.let { "${it.emoji} ${it.name}" } ?: "—", Modifier.fillMaxWidth()) { accMenu = true }
+                    FieldButton("Счёт", a?.name ?: "—", Modifier.fillMaxWidth(), glyph = a?.emoji) { accMenu = true }
                     DropdownMenu(expanded = accMenu, onDismissRequest = { accMenu = false }) {
-                        accounts.forEach { acc -> DropdownMenuItem(text = { Text("${acc.emoji} ${acc.name}") }, onClick = { r = r.copy(accountId = acc.id); accMenu = false }) }
+                        accounts.forEach { acc -> DropdownMenuItem(text = { Text(acc.name) }, leadingIcon = { Glyph(acc.emoji, 20.dp) }, onClick = { r = r.copy(accountId = acc.id); accMenu = false }) }
                     }
                 }
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {

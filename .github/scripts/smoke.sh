@@ -3,9 +3,19 @@
 set -x
 PKG=com.dasein.poryadok
 mkdir -p shots
+# Проверка обновления: сначала ставим выпуск 1.0.7 с примером данных, потом новую сборку поверх.
+curl -sSL -o old.apk https://github.com/dasein00/outfit-creator/releases/download/android-v1.0.7/DASEIN.apk || true
+if [ -s old.apk ]; then
+  adb install old.apk
+  adb shell pm grant $PKG android.permission.POST_NOTIFICATIONS || true
+  adb shell am start -W -n $PKG/.MainActivity --ez demo true
+  sleep 20
+  adb exec-out screencap -p > shots/00_old_version.png
+  adb shell am force-stop $PKG
+fi
+adb logcat -c
 adb install -r apk/DASEIN.apk
 adb shell pm grant $PKG android.permission.POST_NOTIFICATIONS || true
-adb logcat -c
 
 adb shell am start -W -n $PKG/.MainActivity --ez demo true
 sleep 15
@@ -21,6 +31,7 @@ routes=(
   "recipes" "recipes?tab=1&mode=0" "recipes?tab=1&mode=1" "recipes?tab=1&mode=2" "recipes?tab=2" "recipes?tab=3"
   "recipe/1" "recipe/20" "recipeEdit/0" "menuCreate" "presets" "preset/1" "shopping" "cookHistory"
   "steps" "sber" "finNotebook"
+  "health?tab=1" "wellbeing?tab=1" "habitEdit/1" "tasks" "tops"
 )
 i=1
 for r in "${routes[@]}"; do

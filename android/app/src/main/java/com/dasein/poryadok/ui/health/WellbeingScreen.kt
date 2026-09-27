@@ -3,6 +3,20 @@
 package com.dasein.poryadok.ui.health
 
 import androidx.compose.foundation.background
+import kotlinx.coroutines.launch
+import com.dasein.poryadok.system.SleepTracker
+import com.dasein.poryadok.logic.SleepDetect
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material3.Switch
+import android.widget.Toast
+import android.provider.Settings
+import android.content.Intent
+import com.dasein.poryadok.ui.common.MoodFace
+import com.dasein.poryadok.ui.common.Glyphs
+import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -69,11 +83,9 @@ import com.dasein.poryadok.ui.common.observe
 import com.dasein.poryadok.ui.theme.LocalExtra
 import com.dasein.poryadok.ui.theme.Palette
 
-val MOODS = listOf("😢" to "Ужасно", "😕" to "Плохо", "😐" to "Нормально", "🙂" to "Хорошо", "😄" to "Отлично")
-val MOOD_TAGS = listOf(
-    "💼 Работа", "👨‍👩‍👧 Семья", "🫂 Друзья", "❤️ Свидание", "🏋️ Спорт", "🚶 Прогулка", "😴 Выспался", "🥱 Не выспался",
-    "🍽 Вкусно поел", "📚 Учёба", "🎮 Хобби", "🛋 Отдых", "✈️ Поездка", "🛍 Покупки", "🤒 Болезнь", "😤 Стресс", "☀️ Погода",
-)
+/** Уровни настроения 1..5; лицо рисуется MoodFace. */
+val MOODS = listOf("Ужасно", "Плохо", "Нормально", "Хорошо", "Отлично")
+val MOOD_TAGS: List<String> = Glyphs.MOOD_TAGS.keys.toList()
 
 @Composable
 fun WellbeingScreen(nav: NavHostController, initialTab: Int) {
@@ -106,15 +118,15 @@ private fun MoodTab() {
         Text("Как вы сейчас?", style = MaterialTheme.typography.titleMedium)
         Gap(8.dp)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            MOODS.forEachIndexed { i, (e, l) ->
+            MOODS.forEachIndexed { i, l ->
                 Column(
                     Modifier.clip(RoundedCornerShape(12.dp)).clickable {
                         edit = MoodEntry(at = System.currentTimeMillis(), day = today, level = i + 1)
                     }.padding(6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(e, fontSize = 32.sp)
-                    Text(l, fontSize = 10.sp, color = extra.dim)
+                    MoodFace(i + 1, 36.dp)
+                    Text(l, fontSize = 10.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
                 }
             }
         }
@@ -128,7 +140,7 @@ private fun MoodTab() {
     val avg = if (last30.isEmpty()) 0.0 else last30.map { it.level }.average()
     SectionTitle("30 дней")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Stat(if (avg > 0) MOODS[(avg.toInt() - 1).coerceIn(0, 4)].first + " %.1f".format(avg) else "—", "среднее", Modifier.weight(1f))
+        Stat(if (avg > 0) "%.1f".format(avg) else "—", "среднее из 5", Modifier.weight(1f))
         Stat("${last30.map { it.day }.distinct().size}", "дней с записью", Modifier.weight(1f))
         Stat("${last30.count { it.level >= 4 }}", "хороших", Modifier.weight(1f))
     }
@@ -151,8 +163,9 @@ private fun MoodTab() {
         SectionTitle("Что влияет на настроение")
         Tile {
             tagStats.forEach { (tag, delta, n) ->
-                Row(Modifier.padding(vertical = 4.dp)) {
-                    Text(tag, Modifier.weight(1f))
+                Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Glyph(Glyphs.moodTag(tag), 18.dp)
+                    Text("  $tag", Modifier.weight(1f))
                     Text(
                         (if (delta >= 0) "▲ +" else "▼ ") + "%.1f".format(delta),
                         color = if (delta >= 0.2) extra.ok else if (delta <= -0.2) extra.danger else extra.dim,
@@ -170,10 +183,10 @@ private fun MoodTab() {
             Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { edit = m }.padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(MOODS[m.level - 1].first, fontSize = 26.sp)
+            MoodFace(m.level, 30.dp)
             Column(Modifier.padding(start = 12.dp).weight(1f)) {
-                Text("${MOODS[m.level - 1].second} · ${Dates.label(m.day)}, ${Dates.time(Dates.minutesOf(m.at))}")
-                val sub = listOf(m.tags.replace(",", " "), m.note).filter { it.isNotBlank() }.joinToString(" — ")
+                Text("${MOODS[m.level - 1]} · ${Dates.label(m.day)}, ${Dates.time(Dates.minutesOf(m.at))}")
+                val sub = listOf(m.tags.replace(",", ", "), m.note).filter { it.isNotBlank() }.joinToString(" — ")
                 if (sub.isNotBlank()) Text(sub, fontSize = 12.sp, color = extra.dim, maxLines = 3)
             }
         }
@@ -187,15 +200,15 @@ private fun MoodDialog(m0: MoodEntry, onDismiss: () -> Unit) {
     val tags = m.tags.split(",").filter { it.isNotBlank() }.toMutableSet()
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("${MOODS[m.level - 1].first} ${MOODS[m.level - 1].second}") },
+        title = { Text(MOODS[m.level - 1]) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    MOODS.forEachIndexed { i, (e, _) ->
+                    MOODS.forEachIndexed { i, _ ->
                         Box(
                             Modifier.clip(CircleShape).background(if (m.level == i + 1) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
                                 .clickable { m = m.copy(level = i + 1) }.padding(6.dp),
-                        ) { Text(e, fontSize = 26.sp) }
+                        ) { MoodFace(i + 1, 32.dp, selected = m.level == i + 1) }
                     }
                 }
                 Gap(10.dp)
@@ -203,7 +216,7 @@ private fun MoodDialog(m0: MoodEntry, onDismiss: () -> Unit) {
                 Gap(6.dp)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     MOOD_TAGS.forEach { t ->
-                        Pill(t, t in tags) {
+                        Pill(t, t in tags, glyph = Glyphs.moodTag(t)) {
                             if (t in tags) tags.remove(t) else tags.add(t)
                             m = m.copy(tags = tags.joinToString(","))
                         }
@@ -234,12 +247,16 @@ private fun SleepTab() {
     val extra = LocalExtra.current
     val list by observe(emptyList()) { Graph.dao.sleep() }
     val profile by observe(null) { Graph.dao.profile() }
+    val autos by observe(emptyList()) { Graph.extra.sleepAuto() }
+    val autoDays = autos.associateBy { it.day }
     val goal = profile?.sleepGoalMin ?: 480
     var edit by remember { mutableStateOf<SleepEntry?>(null) }
     val today = Dates.today()
     Gap(10.dp)
+    SleepAutoCard()
+    Gap(8.dp)
     Button(onClick = { edit = list.firstOrNull { it.day == today } ?: SleepEntry(today, 23 * 60, 7 * 60) }, modifier = Modifier.fillMaxWidth()) {
-        Text("😴 Записать сон за эту ночь")
+        Text("Записать или исправить сон")
     }
     if (list.isEmpty()) { Empty(Ic.moon, "Сон пока не записан", "Отмечайте, во сколько легли и встали — увидите среднюю длительность и режим."); edit?.let { SleepDialog(it) { edit = null } }; return }
     val last14 = list.filter { it.day > today - 14 }
@@ -268,7 +285,11 @@ private fun SleepTab() {
         ) {
             Column(Modifier.weight(1f)) {
                 Text("${m / 60} ч ${m % 60} мин", fontWeight = FontWeight.Medium)
-                Text("${Dates.label(s.day)} · ${Dates.time(s.bedMin)} → ${Dates.time(s.wakeMin)}", fontSize = 12.sp, color = extra.dim)
+                Text(
+                    "${Dates.label(s.day)} · ${Dates.time(s.bedMin)} → ${Dates.time(s.wakeMin)}" +
+                        if (autoDays[s.day]?.applied == true && autoDays[s.day]?.userBedMin == null && autoDays[s.day]?.userWakeMin == null) " · авто" else "",
+                    fontSize = 12.sp, color = extra.dim,
+                )
             }
             Text("★".repeat(s.quality), color = MaterialTheme.colorScheme.primary)
         }
@@ -303,7 +324,11 @@ private fun SleepDialog(s0: SleepEntry, onDismiss: () -> Unit) {
         confirmButton = {
             TextButton(onClick = {
                 val cur = s
-                io { if (cur.day != s0.day) Graph.dao.deleteSleep(s0); Graph.dao.upsertSleep(cur) }
+                io {
+                    if (cur.day != s0.day) Graph.dao.deleteSleep(s0)
+                    Graph.dao.upsertSleep(cur)
+                    SleepTracker.onUserEdit(cur.day, cur.bedMin, cur.wakeMin)
+                }
                 onDismiss()
             }) { Text("Сохранить") }
         },
@@ -336,7 +361,7 @@ private fun WaterTab() {
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         ProgressRing(ml / goal.toFloat(), blue, size = 200.dp, stroke = 14.dp) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("💧", fontSize = 28.sp)
+                Glyph(Glyphs.WATER, 30.dp, badge = false)
                 Text("$ml мл", style = MaterialTheme.typography.headlineMedium)
                 Text("из $goal", color = extra.dim)
             }
@@ -348,7 +373,7 @@ private fun WaterTab() {
     }
     Gap(6.dp)
     OutlinedButton(onClick = { add(-250) }, modifier = Modifier.fillMaxWidth()) { Text("Отменить 250 мл") }
-    if (ml >= goal) Text("Норма на сегодня выполнена 🎉", color = extra.ok, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(8.dp))
+    if (ml >= goal) Text("Норма на сегодня выполнена", color = extra.ok, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(8.dp))
     SectionTitle("2 недели")
     Tile {
         val days = (13 downTo 0).map { today - it }
@@ -360,5 +385,89 @@ private fun WaterTab() {
         var d = if (ml >= goal) today else today - 1
         while ((logs.firstOrNull { it.day == d }?.waterMl ?: 0) >= goal) { streak++; d-- }
         Text("Литры по дням · серия выполнения нормы: $streak дн.", fontSize = 12.sp, color = extra.dim)
+    }
+}
+
+
+/** Автоопределение сна по использованию телефона. */
+@Composable
+private fun SleepAutoCard() {
+    val ctx = LocalContext.current
+    val extra = LocalExtra.current
+    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val scope = rememberCoroutineScope()
+    val settings by observe(null) { Graph.prefs.settings }
+    val autos by observe(emptyList()) { Graph.extra.sleepAuto() }
+    var access by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var cal by remember { mutableStateOf<SleepDetect.Calibration?>(null) }
+    LaunchedEffect(owner) {
+        owner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+            access = SleepTracker.hasAccess(ctx)
+            cal = SleepTracker.calibration()
+        }
+    }
+    val on = settings?.sleepAuto == true
+    fun detect() {
+        busy = true
+        scope.launch {
+            val r = runCatching { SleepTracker.run(ctx, 14) }.getOrNull()
+            busy = false
+            Toast.makeText(ctx, if (r != null) "Сон определён: ${Dates.time(Dates.minutesOf(r.sleepAt))} → ${Dates.time(Dates.minutesOf(r.wakeAt))}" else "Ночи обновлены", Toast.LENGTH_SHORT).show()
+        }
+    }
+    Tile {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Glyph(Glyphs.PHONE_OFF, 24.dp)
+            Column(Modifier.weight(1f).padding(start = 10.dp)) {
+                Text("Автоопределение сна", fontWeight = FontWeight.SemiBold)
+                Text("По тому, когда вы перестаёте и начинаете пользоваться телефоном", fontSize = 12.sp, color = extra.dim)
+            }
+            Switch(on && access, { v ->
+                if (v && !access) {
+                    try { ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) } catch (_: Exception) { ctx.startActivity(Intent(Settings.ACTION_SETTINGS)) }
+                }
+                io { Graph.prefs.update { it.copy(sleepAuto = v) }; SleepTracker.ensureScheduled(ctx); if (v) SleepTracker.run(ctx, 14) }
+            })
+        }
+        if (on && !access) {
+            Gap(6.dp)
+            Text("Нужен доступ к статистике использования: в открывшемся списке выберите DASEIN и включите «Разрешить доступ».", fontSize = 12.sp, color = extra.warn)
+            TextButton(onClick = { try { ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) } catch (_: Exception) {} }) { Text("Открыть настройки доступа") }
+        }
+        val last = autos.firstOrNull()
+        if (on && access && last != null) {
+            Gap(8.dp)
+            Row {
+                Column(Modifier.weight(1f)) {
+                    Text("Лёг ≈ ${Dates.time(Dates.minutesOf(last.sleepAt))}", style = MaterialTheme.typography.titleMedium)
+                    Text("телефон отложен в ${Dates.time(Dates.minutesOf(last.lastUseAt))}", fontSize = 12.sp, color = extra.dim)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Встал ≈ ${Dates.time(Dates.minutesOf(last.wakeAt))}", style = MaterialTheme.typography.titleMedium)
+                    Text(Dates.label(last.day), fontSize = 12.sp, color = extra.dim)
+                }
+            }
+            Text(
+                listOf(
+                    "уверенность: " + listOf("низкая", "средняя", "высокая")[last.confidence.coerceIn(0, 2)],
+                    if (last.awakenings > 0) "пробуждений: ${last.awakenings}" else null,
+                    if (last.glances > 0) "уведомлений ночью: ${last.glances}" else null,
+                ).filterNotNull().joinToString(" · "),
+                fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        if (on && access) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { detect() }, enabled = !busy) { Text(if (busy) "Определяю…" else "Определить сейчас") }
+                cal?.let { Text("засыпание ~${it.latencyMin} мин", fontSize = 12.sp, color = extra.dim) }
+            }
+        }
+        Text(
+            "Как это работает: ночью телефон не используют. Самая длинная пауза с 19:00 до 13:00 — это сон; короткие ночные проверки телефона " +
+                "считаются пробуждениями, экран от уведомлений и будильника не учитывается. Отбой = когда отложили телефон + время засыпания, " +
+                "подъём = первое использование утром. Если исправить время в записи, приложение подстроится под вас — после 3 исправлений точность обычно около 15–30 минут.",
+            fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp),
+        )
     }
 }

@@ -58,9 +58,9 @@ fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int) {
         title = "Рецепты",
         onBack = { nav.popBackStack() },
         actions = {
-            IconAction(Ic.cart, "Список покупок") { nav.navigate(Routes.SHOPPING) }
-            IconAction(Ic.book, "История готовки") { nav.navigate(Routes.COOK_HISTORY) }
-            IconAction(Ic.folder, "Шаблоны меню") { nav.navigate(Routes.PRESETS) }
+            IconAction("food/04", "Список покупок") { nav.navigate(Routes.SHOPPING) }
+            IconAction("food/22", "История готовки") { nav.navigate(Routes.COOK_HISTORY) }
+            IconAction("food/28", "Шаблоны меню") { nav.navigate(Routes.PRESETS) }
         },
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {

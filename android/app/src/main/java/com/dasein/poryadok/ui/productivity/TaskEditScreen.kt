@@ -3,6 +3,8 @@
 package com.dasein.poryadok.ui.productivity
 
 import androidx.activity.compose.BackHandler
+import com.dasein.poryadok.ui.common.Glyphs
+import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.IconAction
 import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.layout.Arrangement
@@ -197,21 +199,21 @@ fun TaskEditScreen(nav: NavHostController, id: Long, day: Long, goal: Long) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(Modifier.weight(1f)) {
                     val p = projects.firstOrNull { it.id == t.projectId }
-                    FieldButton("Список", p?.let { "${it.emoji} ${it.name}" } ?: "📥 Входящие", Modifier.fillMaxWidth()) { projectMenu = true }
+                    FieldButton("Список", p?.name ?: "Входящие", Modifier.fillMaxWidth(), glyph = p?.emoji ?: Glyphs.INBOX) { projectMenu = true }
                     DropdownMenu(expanded = projectMenu, onDismissRequest = { projectMenu = false }) {
-                        DropdownMenuItem(text = { Text("📥 Входящие") }, onClick = { t = t.copy(projectId = null); projectMenu = false })
+                        DropdownMenuItem(text = { Text("Входящие") }, leadingIcon = { Glyph(Glyphs.INBOX, 20.dp) }, onClick = { t = t.copy(projectId = null); projectMenu = false })
                         projects.forEach { pr ->
-                            DropdownMenuItem(text = { Text("${pr.emoji} ${pr.name}") }, onClick = { t = t.copy(projectId = pr.id); projectMenu = false })
+                            DropdownMenuItem(text = { Text(pr.name) }, leadingIcon = { Glyph(pr.emoji, 20.dp) }, onClick = { t = t.copy(projectId = pr.id); projectMenu = false })
                         }
                     }
                 }
                 Box(Modifier.weight(1f)) {
                     val g = goals.firstOrNull { it.id == t.goalId }
-                    FieldButton("Цель", g?.let { "${it.emoji} ${it.title}" } ?: "—", Modifier.fillMaxWidth()) { goalMenu = true }
+                    FieldButton("Цель", g?.title ?: "—", Modifier.fillMaxWidth(), glyph = g?.emoji) { goalMenu = true }
                     DropdownMenu(expanded = goalMenu, onDismissRequest = { goalMenu = false }) {
                         DropdownMenuItem(text = { Text("Без цели") }, onClick = { t = t.copy(goalId = null); goalMenu = false })
                         goals.filter { !it.done }.forEach { gl ->
-                            DropdownMenuItem(text = { Text("${gl.emoji} ${gl.title}") }, onClick = { t = t.copy(goalId = gl.id); goalMenu = false })
+                            DropdownMenuItem(text = { Text(gl.title) }, leadingIcon = { Glyph(gl.emoji, 20.dp) }, onClick = { t = t.copy(goalId = gl.id); goalMenu = false })
                         }
                     }
                 }

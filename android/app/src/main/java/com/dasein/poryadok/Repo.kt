@@ -8,7 +8,9 @@ import com.dasein.poryadok.data.Reminder
 import com.dasein.poryadok.data.TaskItem
 import com.dasein.poryadok.data.Txn
 import com.dasein.poryadok.data.TxnType
+import androidx.room.withTransaction
 import com.dasein.poryadok.logic.Dates
+import com.dasein.poryadok.ui.common.Glyphs
 import com.dasein.poryadok.logic.Repeat
 import com.dasein.poryadok.logic.nextOccurrence
 import com.dasein.poryadok.ui.wardrobe.WardrobeSeed
@@ -23,20 +25,43 @@ object Repo {
     suspend fun seed() = seedLock.withLock {
         if (dao.categoryCount() == 0) {
             val out = listOf(
-                "Продукты" to "🛒", "Кафе и рестораны" to "☕", "Транспорт" to "🚕", "Жильё и ЖКХ" to "🏠",
-                "Связь и интернет" to "📱", "Здоровье" to "💊", "Одежда" to "👕", "Развлечения" to "🎬",
-                "Подарки" to "🎁", "Образование" to "📚", "Спорт" to "🏋️", "Красота" to "💅",
-                "Путешествия" to "✈️", "Подписки" to "🔁", "Другое" to "📦",
+                "Продукты" to "food/24", "Кафе и рестораны" to "fest/29", "Транспорт" to "ui:map", "Жильё и ЖКХ" to "cal/37",
+                "Связь и интернет" to "ui:globe", "Здоровье" to "sport/18", "Одежда" to "ui:hanger", "Развлечения" to "habit/08",
+                "Подарки" to "fest/01", "Образование" to "fest/15", "Спорт" to "sport/00", "Красота" to "fest/12",
+                "Путешествия" to "cal/35", "Подписки" to "sport/34", "Другое" to "ui:grid",
             )
-            val inc = listOf("Зарплата" to "💼", "Подработка" to "💻", "Подарок" to "🎁", "Кэшбэк" to "💸", "Другое" to "💰")
+            val inc = listOf("Зарплата" to "ui:coins", "Подработка" to "ui:card", "Подарок" to "fest/01", "Кэшбэк" to "ui:receipt", "Другое" to "ui:wallet")
             out.forEachIndexed { i, (n, e) -> dao.upsertCategory(Category(name = n, emoji = e, color = i, income = false, sort = i)) }
             inc.forEachIndexed { i, (n, e) -> dao.upsertCategory(Category(name = n, emoji = e, color = i + 3, income = true, sort = i)) }
             if (dao.accountsNow().isEmpty()) {
-                dao.upsertAccount(Account(name = "Карта", emoji = "💳", color = 0, sort = 0))
-                dao.upsertAccount(Account(name = "Наличные", emoji = "💵", color = 2, sort = 1))
+                dao.upsertAccount(Account(name = "Карта", emoji = "ui:card", color = 0, sort = 0))
+                dao.upsertAccount(Account(name = "Наличные", emoji = "ui:coins", color = 2, sort = 1))
             }
         }
         WardrobeSeed.run()
+    }
+
+    /**
+     * Эмодзи прежних версий → фирменные иконки: в списках, целях, привычках, счетах, категориях и топах,
+     * а у тренировок и тегов настроения убирается эмодзи из подписи. Выполняется один раз.
+     */
+    suspend fun migrateGlyphs() {
+        if (Graph.prefs.now().glyphsMigrated) return
+        val b = Graph.db.backupDao()
+        fun g(v: String) = if (Glyphs.isKey(v)) v else Glyphs.normalize(v)
+        Graph.db.withTransaction {
+            b.putProject(b.allProject().map { it.copy(emoji = g(it.emoji)) })
+            b.putGoal(b.allGoal().map { it.copy(emoji = g(it.emoji)) })
+            b.putHabit(b.allHabit().map { it.copy(emoji = g(it.emoji)) })
+            b.putAccount(b.allAccount().map { it.copy(emoji = g(it.emoji)) })
+            b.putCategory(b.allCategory().map { it.copy(emoji = g(it.emoji)) })
+            b.putTopList(b.allTopList().map { it.copy(emoji = g(it.emoji)) })
+            b.putWorkout(b.allWorkout().map { it.copy(type = Glyphs.stripEmoji(it.type)) })
+            b.putMoodEntry(b.allMoodEntry().map { m ->
+                m.copy(tags = m.tags.split(",").map { Glyphs.stripEmoji(it) }.filter { it.isNotBlank() }.joinToString(","))
+            })
+        }
+        Graph.prefs.update { it.copy(glyphsMigrated = true) }
     }
 
     /** Отметить задачу. Повторяющаяся задача переносится на следующую дату, а не закрывается. */
