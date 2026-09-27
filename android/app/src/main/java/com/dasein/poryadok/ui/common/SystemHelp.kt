@@ -72,7 +72,7 @@ fun RestrictedSettingsHelp(access: String, onOpenAccess: () -> Unit) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(extra.line.copy(alpha = .5f)).padding(12.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(extra.warn.copy(alpha = .12f)).padding(12.dp),
     ) {
         Text("Пишет «Доступ для приложения запрещен»?", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         Text(
@@ -94,10 +94,7 @@ fun RestrictedSettingsHelp(access: String, onOpenAccess: () -> Unit) {
             "Если трёх точек нет, прокрутите экран приложения вниз: у некоторых производителей пункт называется «Разрешить ограниченные параметры».",
             fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp),
         )
-        Row(Modifier.padding(top = 8.dp)) {
-            OutlinedButton(onClick = { SystemScreens.appDetails(ctx) }, Modifier.weight(1f)) { Text("Настройки DASEIN", fontSize = 13.sp) }
-            HGap(8.dp)
-            OutlinedButton(onClick = onOpenAccess, Modifier.weight(1f)) { Text(access, fontSize = 13.sp, maxLines = 1) }
-        }
+        OutlinedButton(onClick = { SystemScreens.appDetails(ctx) }, Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Настройки DASEIN") }
+        OutlinedButton(onClick = onOpenAccess, Modifier.fillMaxWidth()) { Text(access) }
     }
 }

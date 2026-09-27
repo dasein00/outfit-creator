@@ -57,8 +57,9 @@ adb shell input text "Test"
 adb exec-out screencap -p > shots/98_recipe_wizard.png
 
 # Главная: метрики под первым экраном и плашка фактов внизу.
-adb shell am start -n $PKG/.MainActivity --es route "today"
-sleep 3
+adb shell am force-stop $PKG
+adb shell am start -W -n $PKG/.MainActivity
+sleep 6
 adb shell input swipe 540 1700 540 700 400
 sleep 2
 adb exec-out screencap -p > shots/96_today_metrics.png
