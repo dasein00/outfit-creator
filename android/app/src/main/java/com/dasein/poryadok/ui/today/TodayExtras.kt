@@ -64,7 +64,7 @@ import com.dasein.poryadok.ui.theme.Palette
 import java.time.LocalDate
 import kotlin.random.Random
 
-/** Картотека фактов из assets/facts/*.txt (строка: «Тема|Текст»). */
+/** Картотека фактов: текстовые файлы в assets/facts, строка — «Тема|Текст». */
 object FactsRepo {
     @Volatile private var cache: List<Fact>? = null
 
