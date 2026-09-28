@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -47,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -647,7 +649,7 @@ internal fun WeightRulerDialog(initial: Double, onDismiss: () -> Unit, onMore: (
                 Text("кг", color = color, fontWeight = FontWeight.SemiBold)
                 Gap(8.dp)
                 Canvas(
-                    Modifier.fillMaxWidth().height(90.dp).pointerInput(Unit) {
+                    Modifier.fillMaxWidth().height(90.dp).clipToBounds().pointerInput(Unit) {
                         detectHorizontalDragGestures { change, drag ->
                             change.consume()
                             value = (value - drag / 14.dp.toPx() * 0.1f).coerceIn(20f, 250f)
@@ -671,15 +673,19 @@ internal fun WeightRulerDialog(initial: Double, onDismiss: () -> Unit, onMore: (
                         }
                     }
                     // Стрелка-указатель.
-                    drawLine(Color.Black.copy(alpha = .85f), Offset(cx, 4.dp.toPx()), Offset(cx, 66.dp.toPx()), 7f)
+                    drawLine(color, Offset(cx, 4.dp.toPx()), Offset(cx, 66.dp.toPx()), 7f)
                     val arrow = Path().apply { moveTo(cx - 9.dp.toPx(), 14.dp.toPx()); lineTo(cx, 0f); lineTo(cx + 9.dp.toPx(), 14.dp.toPx()); close() }
-                    drawPath(arrow, Color.Black.copy(alpha = .85f))
+                    drawPath(arrow, color)
                 }
                 Text("Двигайте линейку влево и вправо", fontSize = 12.sp, color = extra.dim)
-                Row(Modifier.padding(top = 6.dp)) {
+                Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(-1.0f, -0.1f, 0.1f, 1.0f).forEach { d ->
-                        OutlinedButton(onClick = { value = (value + d).coerceIn(20f, 250f) }, Modifier.padding(horizontal = 3.dp)) {
-                            Text((if (d > 0) "+" else "−") + fmt(abs(d).toDouble()), fontSize = 12.sp)
+                        OutlinedButton(
+                            onClick = { value = (value + d).coerceIn(20f, 250f) },
+                            modifier = Modifier.weight(1f).height(40.dp),
+                            contentPadding = PaddingValues(horizontal = 2.dp),
+                        ) {
+                            Text((if (d > 0) "+" else "−") + fmt(abs(d).toDouble()), fontSize = 13.sp, maxLines = 1, softWrap = false)
                         }
                     }
                 }

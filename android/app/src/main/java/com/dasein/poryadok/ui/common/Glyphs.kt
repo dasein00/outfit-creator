@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -68,7 +68,8 @@ object Glyphs {
         "Цели" to "goals", "День" to "daily", "Жизнь" to "life", "Ночь" to "night",
     )
     val DISH_SETS = listOf(
-        "Полезное" to "healthy", "Завтраки" to "breakfast", "Основные блюда" to "dishes1", "Ещё блюда" to "dishes2",
+        "Курица" to "chicken", "Салаты и продукты" to "salads", "Паста и вок" to "pasta", "Блюда мира" to "world",
+        "Домашнее" to "own", "Полезное" to "healthy", "Завтраки" to "breakfast", "Основные блюда" to "dishes1", "Ещё блюда" to "dishes2",
         "Русская кухня" to "russian", "Кавказская кухня" to "caucasus", "Разное" to "mixed", "Выпечка" to "bakery",
         "Десерты" to "desserts", "Фастфуд" to "fastfood",
     )
@@ -210,7 +211,19 @@ fun Glyph(value: String, size: Dp = 24.dp, modifier: Modifier = Modifier, badge:
     } else inner(modifier.size(size).alpha(a))
 }
 
-/** Выбор иконки: базовые, наборы разделов и (по желанию) иллюстрации блюд. */
+/** Свои картинки, загруженные раньше (иконки, фото рецептов), без сохранённых исходников для перекадрирования. */
+private fun ownImages(ctx: Context, dishes: Boolean): List<String> =
+    (listOf("icons") + if (dishes) listOf("recipes") else emptyList()).flatMap { dir ->
+        java.io.File(ctx.filesDir, dir).listFiles().orEmpty()
+            .filter { it.isFile && !it.name.contains("_orig") && it.extension.lowercase() in setOf("png", "jpg", "jpeg", "webp") }
+    }.sortedByDescending { it.lastModified() }.map { it.absolutePath }
+
+private const val OWN_TAB = "own:"
+
+/**
+ * Выбор иконки или иллюстрации на весь экран: вкладки наборов — лентой сверху, сетка картинок занимает всё остальное место,
+ * поэтому даже при крупном шрифте телефона картинки видны.
+ */
 @Composable
 fun GlyphPickerDialog(
     selected: String,
@@ -219,46 +232,106 @@ fun GlyphPickerDialog(
     onPick: (String) -> Unit,
 ) {
     val ctx = LocalContext.current
+    val current = Glyphs.normalize(selected)
+    var ownVersion by remember { mutableStateOf(0) }
+    val own = remember(ownVersion) { ownImages(ctx, dishes) }
     val tabs = buildList {
+        if (own.isNotEmpty()) add("Мои картинки" to OWN_TAB)
         if (dishes) Glyphs.DISH_SETS.forEach { (t, s) -> add(t to "dish:$s") }
         add("Основные" to "ui")
         Glyphs.SETS.forEach { add(it) }
     }
-    var tab by remember { mutableStateOf(tabs.first().second) }
-    val keys = remember(tab) {
+    val initial = remember {
         when {
+            current.startsWith("/") && own.isNotEmpty() -> OWN_TAB
+            current.startsWith("dish/") -> "dish:" + current.removePrefix("dish/").substringBefore('/')
+            current.startsWith("ui:") -> "ui"
+            '/' in current && !dishes -> current.substringBefore('/')
+            else -> tabs.first { it.second != OWN_TAB }.second
+        }
+    }
+    var tab by remember { mutableStateOf(initial) }
+    val keys = remember(tab, own) {
+        when {
+            tab == OWN_TAB -> own
             tab == "ui" -> Glyphs.UI.map { "ui:$it" }
             tab.startsWith("dish:") -> Glyphs.dishKeysOf(ctx, tab.removePrefix("dish:"))
             else -> Glyphs.keysOf(ctx, tab)
         }
     }
-    val current = Glyphs.normalize(selected)
     val pickOwn = rememberImagePickerWithCrop(1f, "icons", round = !dishes, png = !dishes, outW = if (dishes) 900 else 320) { path ->
+        ownVersion++
         onPick(path); onDismiss()
     }
-    AlertDialog(
+    val tabsState = androidx.compose.foundation.lazy.rememberLazyListState(
+        initialFirstVisibleItemIndex = tabs.indexOfFirst { it.second == initial }.coerceAtLeast(0),
+    )
+    val big = dishes || tab == OWN_TAB
+    androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (dishes) "Иллюстрация" else "Иконка") },
-        text = {
-            Column {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    tabs.forEach { (t, s) -> Pill(t, s == tab) { tab = s } }
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        androidx.compose.material3.Surface(
+            Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 24.dp),
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            Column(Modifier.padding(vertical = 16.dp)) {
+                androidx.compose.foundation.layout.Row(
+                    Modifier.padding(horizontal = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        if (dishes) "Иллюстрация" else "Иконка",
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onDismiss) { Text("Закрыть") }
                 }
-                TextButton(onClick = { pickOwn() }) { Text("+ Своя картинка из галереи") }
-                LazyVerticalGrid(GridCells.Adaptive(52.dp), Modifier.heightIn(max = 360.dp).padding(top = 10.dp)) {
+                androidx.compose.foundation.lazy.LazyRow(
+                    state = tabsState,
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(top = 8.dp),
+                ) {
+                    items(tabs.size) { i -> val (t, s) = tabs[i]; Pill(t, s == tab) { tab = s } }
+                }
+                TextButton(onClick = { pickOwn() }, modifier = Modifier.padding(start = 8.dp)) { Text("+ Своя картинка из галереи") }
+                if (keys.isEmpty()) {
+                    Text(
+                        "В этом наборе пока нет картинок",
+                        color = LocalExtra.current.dim,
+                        modifier = Modifier.padding(20.dp),
+                    )
+                }
+                LazyVerticalGrid(
+                    GridCells.Adaptive(if (big) 84.dp else 60.dp),
+                    Modifier.weight(1f).padding(horizontal = 12.dp),
+                ) {
                     items(keys, key = { it }) { k ->
                         Box(
-                            Modifier.padding(3.dp).size(50.dp).clip(RoundedCornerShape(12.dp))
-                                .then(if (k == current) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)) else Modifier)
+                            Modifier.padding(4.dp).aspectRatio(1f).clip(RoundedCornerShape(14.dp))
+                                .then(
+                                    if (k == current) Modifier.border(3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(14.dp))
+                                    else Modifier,
+                                )
                                 .clickable { onPick(k); onDismiss() },
                             contentAlignment = Alignment.Center,
-                        ) { Glyph(k, if (k.startsWith("dish/")) 42.dp else 28.dp) }
+                        ) {
+                            when {
+                                k.startsWith("/") -> {
+                                    val img by rememberImage(k, 256)
+                                    img?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+                                }
+                                k.startsWith("dish/") -> Glyph(k, 72.dp)
+                                else -> Glyph(k, 30.dp)
+                            }
+                        }
                     }
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Закрыть") } },
-    )
+        }
+    }
 }
 
 /** Кнопка «иконка» в формах: показывает текущую, по нажатию открывает выбор. */
