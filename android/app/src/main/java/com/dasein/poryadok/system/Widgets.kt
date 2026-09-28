@@ -75,6 +75,8 @@ private data class WidgetTask(val id: Long, val title: String, val time: String,
 private data class WidgetData(
     val tasks: List<WidgetTask>, val more: Int, val habitsDone: Int, val habitsTotal: Int, val date: String,
     val steps: Int, val stepsGoal: Int, val burned: Int,
+    /** Вес: последнее значение, изменение за неделю и точки за 2 недели для мини-графика. */
+    val weight: Double?, val weightDelta: Double?, val weightPoints: List<Double>,
 )
 
 private val TaskIdKey = ActionParameters.Key<Long>("taskId")
@@ -86,6 +88,7 @@ private val TEXT = Color(0xFFF0ECE3)
 private val DIM = Color(0xFFA79E90)
 private val BRASS = Color(0xFFC79246)
 private val DANGER = Color(0xFFD27A63)
+private val GOOD = Color(0xFF8CC46E)
 
 class TodayWidget : GlanceAppWidget() {
     override val sizeMode: SizeMode = SizeMode.Exact
@@ -104,6 +107,9 @@ class TodayWidget : GlanceAppWidget() {
         val logs = dao.habitLogsOn(today).associateBy { it.habitId }
         val done = habits.count { h -> (logs[h.id]?.value ?: 0) >= h.target }
         val steps = dao.dayLogNow(today)?.steps ?: 0
+        val recent = dao.weightsSince(today - 13)
+        val last = recent.lastOrNull() ?: dao.lastWeight()
+        val weekAgo = dao.weightsSince(today - 30).lastOrNull { it.day <= (last?.day ?: today) - 7 } ?: recent.firstOrNull()?.takeIf { it.day < (last?.day ?: today) }
         return WidgetData(
             tasks.take(5).map { t ->
                 WidgetTask(t.id, t.title, t.dueMin?.let { Dates.time(it) } ?: "", (t.dueDay ?: today) < today)
@@ -112,6 +118,7 @@ class TodayWidget : GlanceAppWidget() {
             "${Dates.weekdayShort(today)}, ${Dates.short(today)}",
             steps, dao.profileNow()?.stepsGoal ?: 8000,
             Energy.burned(steps, dao.lastWeight()?.kg ?: dao.profileNow()?.startWeight ?: 70.0, dao.workoutKcalOn(today), Graph.extra.dayEnergyOf(today)?.activeKcal).total,
+            last?.kg, weekAgo?.let { w -> last?.let { it.kg - w.kg } }, recent.map { it.kg },
         )
     }
 
@@ -148,6 +155,31 @@ class TodayWidget : GlanceAppWidget() {
                 )
                 Spacer(GlanceModifier.width(10.dp))
                 Column(GlanceModifier.defaultWeight()) {
+                    if (d.weight != null) {
+                        Row(
+                            GlanceModifier.fillMaxWidth().clickable(actionStartActivity<MainActivity>(actionParametersOf(RouteKey to Routes.WEIGHT_TREND))),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Image(ImageProvider(com.dasein.poryadok.R.drawable.ic_v_weight), "Вес", modifier = GlanceModifier.size(26.dp))
+                            Spacer(GlanceModifier.width(6.dp))
+                            Text(
+                                "%.1f".format(d.weight).replace('.', ',') + " кг",
+                                style = TextStyle(color = ColorProvider(TEXT), fontSize = 22.sp, fontWeight = FontWeight.Bold),
+                            )
+                            Spacer(GlanceModifier.width(6.dp))
+                            d.weightDelta?.let { dw ->
+                                Text(
+                                    (if (dw > 0.05) "▲ +" else if (dw < -0.05) "▼ " else "") + "%.1f".format(dw).replace('.', ',') + " за нед.",
+                                    style = TextStyle(color = ColorProvider(if (dw > 0.05) DANGER else GOOD), fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                                )
+                            }
+                        }
+                        if (!compact && d.weightPoints.size >= 2) {
+                            val spark = remember(d.weightPoints) { WidgetRing.spark(d.weightPoints) }
+                            Image(ImageProvider(spark), "Вес за 2 недели", modifier = GlanceModifier.fillMaxWidth().height(34.dp))
+                        }
+                        Spacer(GlanceModifier.height(4.dp))
+                    }
                     if (compact && d.habitsTotal > 0) Text(
                         "Привычки ${d.habitsDone}/${d.habitsTotal}",
                         style = TextStyle(color = ColorProvider(BRASS), fontSize = 14.sp, fontWeight = FontWeight.Bold),
@@ -155,7 +187,7 @@ class TodayWidget : GlanceAppWidget() {
                     if (d.tasks.isEmpty()) {
                         Text("Задач на сегодня нет", style = TextStyle(color = ColorProvider(DIM), fontSize = 16.sp))
                     }
-                    d.tasks.forEach { t ->
+                    d.tasks.take(if (d.weight != null) (if (compact) 1 else 2) else 5).forEach { t ->
                         Row(
                             GlanceModifier.fillMaxWidth().padding(vertical = 5.dp)
                                 .clickable(actionRunCallback<ToggleTaskAction>(actionParametersOf(TaskIdKey to t.id))),
@@ -189,6 +221,31 @@ object WidgetRing {
         p.textSize = size
         val w = p.measureText(text)
         if (w > maxW) p.textSize = size * maxW / w
+    }
+
+    /** Мини-график веса: линия, заливка и точка последнего взвешивания. */
+    fun spark(values: List<Double>, w: Int = 600, h: Int = 110): Bitmap {
+        val b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val c = Canvas(b)
+        var lo = values.min(); var hi = values.max()
+        if (hi - lo < 0.6) { val m = (hi + lo) / 2; lo = m - 0.3; hi = m + 0.3 }
+        val pad = 10f
+        fun x(i: Int) = pad + i * (w - 2 * pad) / (values.size - 1)
+        fun y(v: Double) = (pad + (hi - v) / (hi - lo) * (h - 2 * pad)).toFloat()
+        val path = android.graphics.Path()
+        values.forEachIndexed { i, v -> if (i == 0) path.moveTo(x(i), y(v)) else path.lineTo(x(i), y(v)) }
+        val area = android.graphics.Path(path).apply { lineTo(x(values.lastIndex), h.toFloat()); lineTo(x(0), h.toFloat()); close() }
+        val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = android.graphics.LinearGradient(0f, 0f, 0f, h.toFloat(), 0x55E0A04A, 0x00E0A04A, android.graphics.Shader.TileMode.CLAMP)
+        }
+        c.drawPath(area, fill)
+        val line = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 6f; color = 0xFFE0A04A.toInt(); strokeJoin = Paint.Join.ROUND; strokeCap = Paint.Cap.ROUND }
+        c.drawPath(path, line)
+        val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() }
+        c.drawCircle(x(values.lastIndex), y(values.last()), 9f, dot)
+        dot.color = 0xFFE0A04A.toInt()
+        c.drawCircle(x(values.lastIndex), y(values.last()), 6f, dot)
+        return b
     }
 
     fun render(ctx: Context, steps: Int, goal: Int, burned: Int): Bitmap {

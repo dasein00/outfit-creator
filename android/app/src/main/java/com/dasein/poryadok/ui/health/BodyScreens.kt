@@ -202,6 +202,55 @@ fun WeightTrendCard(readings: List<BodyMetric>, onClick: () -> Unit, modifier: M
     }
 }
 
+private val WD = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
+
+/**
+ * Вес за неделю для главной: реальное значение каждого дня (последнее взвешивание дня),
+ * изменение за неделю, минимум и максимум. Если за неделю взвешиваний мало — последние 7.
+ */
+@Composable
+fun WeekWeightCard(readings: List<BodyMetric>, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val extra = LocalExtra.current
+    val today = Dates.today()
+    val byDay = readings.groupBy { it.day }.mapValues { (_, l) -> l.maxBy { it.at }.weight }
+    val week = (today - 6..today).mapNotNull { d -> byDay[d]?.let { d to it } }
+    val pts = if (week.size >= 2) week else byDay.entries.sortedBy { it.key }.takeLast(7).map { it.key to it.value }
+    val isWeek = week.size >= 2
+    Tile(modifier, onClick = onClick, padding = 12.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Glyph("ui:v_weight", 22.dp)
+            Column(Modifier.weight(1f).padding(start = 10.dp)) {
+                Text(if (isWeek) "Вес за неделю" else "Последние взвешивания", fontWeight = FontWeight.SemiBold)
+                Text(if (isWeek) "${Dates.short(today - 6)} — ${Dates.short(today)}" else "за неделю меньше двух замеров", fontSize = 11.sp, color = extra.dim)
+            }
+            pts.lastOrNull()?.let { Text(fmt(it.second) + " кг", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
+        }
+        if (pts.size >= 2) {
+            val change = pts.last().second - pts.first().second
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                @Composable
+                fun Stat(value: String, label: String, color: Color = MaterialTheme.colorScheme.onSurface, mod: Modifier) {
+                    Column(mod) {
+                        Text(value, fontWeight = FontWeight.SemiBold, color = color)
+                        Text(label, fontSize = 11.sp, color = extra.dim)
+                    }
+                }
+                Stat(
+                    (if (abs(change) < 0.05) "0,0" else signed(change)) + " кг", "изменение",
+                    if (change > 0.05) extra.warn else if (change < -0.05) extra.ok else MaterialTheme.colorScheme.onSurface, Modifier.weight(1f),
+                )
+                Stat(fmt(pts.minOf { it.second }), "минимум", mod = Modifier.weight(1f))
+                Stat(fmt(pts.maxOf { it.second }), "максимум", mod = Modifier.weight(1f))
+                Stat("${pts.size}", "замеров", mod = Modifier.weight(.7f))
+            }
+            TrendChart(
+                pts, false, Modifier.fillMaxWidth().height(170.dp).padding(top = 6.dp),
+                dayLabels = { d -> val x = Dates.day(d); WD[x.dayOfWeek.value - 1] + " " + x.dayOfMonth },
+            )
+        } else Text("Добавьте хотя бы два взвешивания — здесь появится график.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
+    }
+}
+
 @Composable
 fun Sparkline(values: List<Float>, modifier: Modifier) {
     val color = MaterialTheme.colorScheme.primary
@@ -430,7 +479,7 @@ fun WeightTrendScreen(nav: NavHostController) {
 
 /** График с плавной линией, заливкой, точками и подписями значений. */
 @Composable
-fun TrendChart(points: List<Pair<Long, Double>>, monthLabels: Boolean, modifier: Modifier) {
+fun TrendChart(points: List<Pair<Long, Double>>, monthLabels: Boolean, modifier: Modifier, dayLabels: ((Long) -> String)? = null) {
     val color = MaterialTheme.colorScheme.primary
     val extra = LocalExtra.current
     val measurer = rememberTextMeasurer()
@@ -477,10 +526,10 @@ fun TrendChart(points: List<Pair<Long, Double>>, monthLabels: Boolean, modifier:
                 drawText(t, topLeft = Offset((c.x - t.size.width / 2).coerceIn(0f, size.width - t.size.width), c.y - t.size.height - 6f))
             }
         }
-        // Подписи дат: первая, середина, последняя.
-        listOf(0, points.size / 2, points.lastIndex).distinct().forEach { i ->
+        // Подписи дат: каждая точка, если задан формат дня, иначе первая, середина и последняя.
+        (if (dayLabels != null) points.indices.toList() else listOf(0, points.size / 2, points.lastIndex).distinct()).forEach { i ->
             val d = Dates.day(points[i].first)
-            val s = if (monthLabels) "%02d.%02d".format(d.monthValue, d.year % 100) else "%02d.%02d".format(d.dayOfMonth, d.monthValue)
+            val s = dayLabels?.invoke(points[i].first) ?: if (monthLabels) "%02d.%02d".format(d.monthValue, d.year % 100) else "%02d.%02d".format(d.dayOfMonth, d.monthValue)
             val t = measurer.measure(s, labelStyle)
             drawText(t, topLeft = Offset((x(i) - t.size.width / 2).coerceIn(0f, size.width - t.size.width), top + h + 6f))
         }

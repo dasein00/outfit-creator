@@ -65,6 +65,7 @@ object Glyphs {
     val SETS = listOf(
         "Спорт" to "sport", "Тренировки" to "train", "Сон" to "sleep", "Питание" to "food",
         "Календарь" to "cal", "Праздники" to "fest", "Кино и книги" to "habit", "Медиа" to "books",
+        "Цели" to "goals", "День" to "daily", "Жизнь" to "life", "Ночь" to "night",
     )
     val DISH_SETS = listOf(
         "Полезное" to "healthy", "Завтраки" to "breakfast", "Основные блюда" to "dishes1", "Ещё блюда" to "dishes2",
@@ -72,6 +73,7 @@ object Glyphs {
         "Десерты" to "desserts", "Фастфуд" to "fastfood",
     )
     val UI = listOf(
+        "v_film", "v_pot", "v_pulse", "v_plan", "v_bookopen", "v_steps", "v_weight", "v_mountain", "v_spark", "v_chart",
         "home", "calendar", "check", "stats", "pie", "grid", "search", "settings", "flame", "target", "timer", "salad",
         "scale", "dumbbell", "smile", "moon", "drop", "notebook", "trophy", "hanger", "wheel", "review", "bell", "sliders",
         "wallet", "coins", "bank", "card", "receipt", "leaves", "heart", "people", "cart", "globe", "pin", "map", "camera",

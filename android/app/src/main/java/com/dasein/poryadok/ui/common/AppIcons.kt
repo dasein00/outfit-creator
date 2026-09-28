@@ -88,6 +88,11 @@ object Ic {
             "heart" to heart, "people" to people, "cart" to cart, "globe" to globe, "pin" to pin, "map" to map, "camera" to camera,
             "image" to image, "document" to document, "folder" to folder, "sun" to sun, "rain" to rain, "thermo" to thermo,
             "book" to book, "bulb" to bulb, "cap" to cap, "gift" to gift, "trash" to trash,
+            // Нарисованы вручную векторами.
+            "v_film" to R.drawable.ic_v_film, "v_pot" to R.drawable.ic_v_pot, "v_pulse" to R.drawable.ic_v_pulse,
+            "v_plan" to R.drawable.ic_v_plan, "v_bookopen" to R.drawable.ic_v_bookopen, "v_steps" to R.drawable.ic_v_steps,
+            "v_weight" to R.drawable.ic_v_weight, "v_mountain" to R.drawable.ic_v_mountain, "v_spark" to R.drawable.ic_v_spark,
+            "v_chart" to R.drawable.ic_v_chart,
         )
     }
 

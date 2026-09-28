@@ -94,6 +94,7 @@ private val HUB = listOf(
 @Composable
 fun MoreScreen(nav: NavHostController) {
     val extra = LocalExtra.current
+    var editing by remember { mutableStateOf<Hub?>(null) }
     Screen(title = "Все разделы") { pad ->
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
@@ -103,18 +104,23 @@ fun MoreScreen(nav: NavHostController) {
             modifier = Modifier.padding(pad),
         ) {
             items(HUB) { h ->
-                Tile(onClick = { nav.navigate(h.route) }) {
-                    Glyph(h.icon, 34.dp)
+                val look = com.dasein.poryadok.ui.common.rememberSection(h.route, h.title, h.icon)
+                Tile(onClick = { nav.navigate(h.route) }, onLongClick = { editing = h }) {
+                    Glyph(look.icon, 34.dp)
                     Gap(8.dp)
-                    Text(h.title, fontWeight = FontWeight.SemiBold)
+                    Text(look.name, fontWeight = FontWeight.SemiBold)
                     Text(h.sub, fontSize = 12.sp, color = extra.dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             item(span = { GridItemSpan(2) }) {
                 Hint("more_data", "Все данные хранятся только на этом телефоне. Делайте резервную копию в настройках.", Modifier.padding(8.dp), title = "Где хранятся данные")
             }
+            item(span = { GridItemSpan(2) }) {
+                Text("Удерживайте раздел, чтобы сменить его название и иконку.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(horizontal = 8.dp))
+            }
         }
     }
+    editing?.let { h -> com.dasein.poryadok.ui.common.SectionEditDialog(h.route, h.title, h.icon) { editing = null } }
 }
 
 val WHEEL_AREAS = listOf("Здоровье", "Карьера", "Финансы", "Отношения", "Друзья", "Развитие", "Отдых", "Духовность")

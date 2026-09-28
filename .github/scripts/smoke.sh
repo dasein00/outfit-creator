@@ -4,7 +4,7 @@ set -x
 PKG=com.dasein.poryadok
 mkdir -p shots
 # Проверка обновления: сначала ставим предыдущий выпуск с примером данных, потом новую сборку поверх.
-curl -sSL -o old.apk https://github.com/dasein00/outfit-creator/releases/download/android-v1.0.16/DASEIN.apk || true
+curl -sSL -o old.apk https://github.com/dasein00/outfit-creator/releases/download/android-v1.0.20/DASEIN.apk || true
 if [ -s old.apk ]; then
   adb install old.apk
   adb shell pm grant $PKG android.permission.POST_NOTIFICATIONS || true

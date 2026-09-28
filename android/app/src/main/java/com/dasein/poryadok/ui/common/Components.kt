@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 
 package com.dasein.poryadok.ui.common
 
@@ -6,6 +6,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -99,11 +100,16 @@ fun Tile(
     onClick: (() -> Unit)? = null,
     color: Color = LocalExtra.current.card,
     padding: Dp = 14.dp,
+    onLongClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).let {
-            if (onClick != null) it.clickable(onClick = onClick) else it
+            when {
+                onLongClick != null -> it.combinedClickable(onClick = onClick ?: {}, onLongClick = onLongClick)
+                onClick != null -> it.clickable(onClick = onClick)
+                else -> it
+            }
         },
         color = color,
         shape = RoundedCornerShape(18.dp),

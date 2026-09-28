@@ -186,7 +186,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                 Gap(8.dp)
                 val body = com.dasein.poryadok.ui.health.rememberBodyData()
                 if (body.readings.isNotEmpty()) {
-                    com.dasein.poryadok.ui.health.WeightTrendCard(body.readings, { nav.navigate(Routes.WEIGHT_TREND) })
+                    com.dasein.poryadok.ui.health.WeekWeightCard(body.readings, { nav.navigate(Routes.WEIGHT_TREND) })
                     Gap(8.dp)
                 }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

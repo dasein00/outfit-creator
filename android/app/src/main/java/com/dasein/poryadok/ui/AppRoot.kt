@@ -1,6 +1,20 @@
 package com.dasein.poryadok.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import com.dasein.poryadok.ui.common.Glyph
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -301,21 +315,38 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable(Routes.FIN_NOTEBOOK) { NotebookScreen(nav, settings) }
         }
         if (showBar) {
+            var editTab by remember { mutableStateOf<Tab?>(null) }
             NavigationBar(containerColor = MaterialTheme.colorScheme.background, tonalElevation = 0.dp) {
                 tabs.forEach { t ->
-                    NavigationBarItem(
-                        selected = current == t.route,
-                        onClick = { nav.openTab(t.route) },
-                        icon = { Glyph(t.icon, 24.dp, dimmed = current != t.route) },
-                        label = { Text(t.label, fontSize = 11.sp, maxLines = 1) },
-                        colors = NavigationBarItemDefaults.colors(
-                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                        ),
-                    )
+                    TabButton(t, current == t.route, { nav.openTab(t.route) }) { editTab = t }
                 }
             }
+            editTab?.let { t -> com.dasein.poryadok.ui.common.SectionEditDialog(t.route, t.label, t.icon) { editTab = null } }
         }
+    }
+}
+
+/** Кнопка нижней панели: нажатие — открыть раздел, долгое нажатие — сменить название и иконку. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun RowScope.TabButton(t: Tab, selected: Boolean, onClick: () -> Unit, onLongClick: () -> Unit) {
+    val look = com.dasein.poryadok.ui.common.rememberSection(t.route, t.label, t.icon)
+    val primary = MaterialTheme.colorScheme.primary
+    Column(
+        Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(16.dp))
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick, onLongClickLabel = "Изменить раздел"),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Box(
+            Modifier.clip(RoundedCornerShape(16.dp))
+                .background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                .padding(horizontal = 14.dp, vertical = 4.dp),
+            contentAlignment = Alignment.Center,
+        ) { Glyph(look.icon, 24.dp, dimmed = !selected) }
+        Text(
+            look.name, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            color = if (selected) primary else MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 4.dp),
+        )
     }
 }

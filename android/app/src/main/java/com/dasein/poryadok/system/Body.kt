@@ -96,6 +96,7 @@ object Body {
     suspend fun save(m: BodyMetric): Long {
         val id = Graph.extra.upsertBodyMetric(m)
         syncWeightOfDay(m.day)
+        runCatching { Widgets.refresh(Graph.app) }
         return id
     }
 

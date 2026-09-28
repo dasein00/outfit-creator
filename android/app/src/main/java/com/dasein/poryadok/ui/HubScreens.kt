@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -127,6 +128,8 @@ fun HealthHubScreen(nav: NavHostController) {
         HealthTile("train/03", "Калькулятор", "КБЖУ", "норма калорий", null, Routes.health(4)),
         HealthTile("fest/23", "Фото прогресса", "до/после", "анфас, профиль", null, Routes.health(5)),
     )
+    var editing by remember { mutableStateOf<HealthTile?>(null) }
+    editing?.let { t -> com.dasein.poryadok.ui.common.SectionEditDialog(t.route, t.title, t.icon) { editing = null } }
     Screen(title = "Здоровье") { pad ->
         LazyVerticalGrid(
             GridCells.Fixed(2), Modifier.padding(pad),
@@ -153,10 +156,11 @@ fun HealthHubScreen(nav: NavHostController) {
                 }
             }
             items(tiles) { t ->
-                Tile(onClick = { nav.navigate(t.route) }, padding = 12.dp) {
+                val look = com.dasein.poryadok.ui.common.rememberSection(t.route, t.title, t.icon)
+                Tile(onClick = { nav.navigate(t.route) }, padding = 12.dp, onLongClick = { editing = t }) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Glyph(t.icon, 22.dp)
-                        Text("  " + t.title, fontSize = 13.sp, color = extra.dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Glyph(look.icon, 22.dp)
+                        Text("  " + look.name, fontSize = 13.sp, color = extra.dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Text(t.value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp), maxLines = 1)
                     Text(t.sub, fontSize = 11.sp, color = extra.dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
