@@ -6,7 +6,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -333,7 +333,7 @@ private fun RowScope.TabButton(t: Tab, selected: Boolean, onClick: () -> Unit, o
     val look = com.dasein.poryadok.ui.common.rememberSection(t.route, t.label, t.icon)
     val primary = MaterialTheme.colorScheme.primary
     Column(
-        Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(16.dp))
+        Modifier.weight(1f).height(72.dp).clip(RoundedCornerShape(16.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick, onLongClickLabel = "Изменить раздел"),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
