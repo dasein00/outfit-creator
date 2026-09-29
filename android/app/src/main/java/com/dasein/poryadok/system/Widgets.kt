@@ -240,17 +240,17 @@ object WidgetRing {
         return b
     }
 
-    fun render(ctx: Context, steps: Int, goal: Int, burned: Int, style: RingStyle = RingStyle()): Bitmap {
+    fun render(ctx: Context, steps: Int, goal: Int, burned: Int, ringStyle: RingStyle = RingStyle()): Bitmap {
         val b = Bitmap.createBitmap(S, S, Bitmap.Config.ARGB_8888)
         val c = Canvas(b)
         val cx = S / 2f
         val stroke = S * 0.08f
         val oval = RectF(stroke / 2 + 2, stroke / 2 + 2, S - stroke / 2 - 2, S - stroke / 2 - 2)
         val arc = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = stroke; strokeCap = Paint.Cap.ROUND }
-        arc.color = style.track
+        arc.color = ringStyle.track
         c.drawArc(oval, 0f, 360f, false, arc)
         val frac = (steps.toFloat() / goal.coerceAtLeast(1)).coerceIn(0f, 1f)
-        arc.color = if (frac >= 1f) style.done else style.progress
+        arc.color = if (frac >= 1f) ringStyle.done else ringStyle.progress
         if (frac > 0f) c.drawArc(oval, -90f, (360f * frac).coerceAtLeast(4f), false, arc)
 
         val bold = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
@@ -263,19 +263,19 @@ object WidgetRing {
         icon(ctx, "sport/19")?.let { c.drawBitmap(it, null, RectF(cx - 36, 76f, cx + 36, 148f), src) }
 
         val stepsText = steps.toString().reversed().chunked(3).joinToString(" ").reversed()
-        text.color = style.steps
+        text.color = ringStyle.steps
         fit(text, stepsText, 330f, 104f)
-        c.drawText(stepsText, cx, if (style.showGoal) 244f else 262f, text)
+        c.drawText(stepsText, cx, if (ringStyle.showGoal) 244f else 262f, text)
         text.typeface = Typeface.DEFAULT
-        text.color = style.dim
-        if (style.showGoal) {
+        text.color = ringStyle.dim
+        if (ringStyle.showGoal) {
             fit(text, "из $goal", 300f, 36f)
             c.drawText("из $goal", cx, 286f, text)
         }
 
         val kcal = "$burned"
         text.typeface = bold
-        text.color = style.kcal
+        text.color = ringStyle.kcal
         fit(text, kcal, 210f, 78f)
         val w = text.measureText(kcal)
         val iconSize = 62f
@@ -285,9 +285,9 @@ object WidgetRing {
         c.drawText(kcal, left + iconSize + 8, 366f, text)
         text.textAlign = Paint.Align.CENTER
         text.typeface = Typeface.DEFAULT
-        text.color = style.dim
-        fit(text, style.kcalLabel, 300f, 32f)
-        if (style.kcalLabel.isNotBlank()) c.drawText(style.kcalLabel, cx, 404f, text)
+        text.color = ringStyle.dim
+        fit(text, ringStyle.kcalLabel, 300f, 32f)
+        if (ringStyle.kcalLabel.isNotBlank()) c.drawText(ringStyle.kcalLabel, cx, 404f, text)
         return b
     }
 }
