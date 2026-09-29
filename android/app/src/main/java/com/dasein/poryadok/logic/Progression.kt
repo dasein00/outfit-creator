@@ -46,7 +46,7 @@ object Progression {
                     allSets && minReps >= t.repMax ->
                         NextTarget(t.copy(reps = t.reps + 1, repMax = t.repMax + 1), "Максимум подходов — растим повторы")
                     allSets && minReps >= t.reps ->
-                        NextTarget(t.copy(reps = (t.reps + 1).coerceAtMost(t.repMax)), "Цель выполнена — +1 повтор")
+                        NextTarget(t.copy(reps = (minReps + 1).coerceAtMost(t.repMax)), "Цель выполнена — на повтор больше, чем в самом слабом подходе")
                     else -> NextTarget(t, "Цель не выполнена — повторите её")
                 }
             }
@@ -57,7 +57,7 @@ object Progression {
                     allSets && minReps >= t.repMax ->
                         NextTarget(t.copy(weight = roundTo(w + t.weightStep, t.weightStep), reps = t.repMin), "Верх диапазона во всех подходах — +${fmt(t.weightStep)} кг, повторы с ${t.repMin}")
                     allSets && minReps >= t.reps ->
-                        NextTarget(t.copy(weight = w, reps = (t.reps + 1).coerceAtMost(t.repMax)), "Цель выполнена — +1 повтор")
+                        NextTarget(t.copy(weight = w, reps = (minReps + 1).coerceAtMost(t.repMax)), "Цель выполнена — на повтор больше, чем в самом слабом подходе")
                     minReps < t.repMin && failedBefore && w > 0 ->
                         NextTarget(t.copy(weight = roundTo(w * 0.9, t.weightStep), reps = t.repMin), "Дважды ниже диапазона — разгрузка −10%")
                     else -> NextTarget(t.copy(weight = w), "Цель не выполнена — повторите её")

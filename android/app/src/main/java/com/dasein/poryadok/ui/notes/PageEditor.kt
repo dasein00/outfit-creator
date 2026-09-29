@@ -379,10 +379,12 @@ fun PageScreen(nav: NavHostController, id: Long) {
                 imageFor = target; pickImage()
             }
             BlockType.PAGE -> {
-                val empty = st.plain(target).isBlank()
+                val i = st.index(target)
+                val empty = st.plain(target).isBlank() || st.plain(target).startsWith("/")
+                val after = if (empty) st.blocks.getOrNull(i - 1)?.id else target
                 st.values[target] = TextFieldValue(ZWS, TextRange(1))
-                if (empty) st.remove(target)
-                addSubpage(if (empty) st.blocks.getOrNull((st.index(target) - 1).coerceAtLeast(0))?.id else target)
+                if (empty && st.blocks.size > 1) st.remove(target)
+                addSubpage(after ?: if (empty) null else target)
             }
             BlockType.DIVIDER -> {
                 st.values[target] = TextFieldValue(ZWS, TextRange(1))

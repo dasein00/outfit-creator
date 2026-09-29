@@ -1,6 +1,7 @@
 package com.dasein.poryadok.data
 
 import androidx.room.withTransaction
+import kotlinx.coroutines.sync.withLock
 import com.dasein.poryadok.Graph
 import com.dasein.poryadok.logic.Dates
 import com.dasein.poryadok.logic.DoneSet
@@ -134,7 +135,11 @@ object TrainingRepo {
         ),
     )
 
-    suspend fun seed() {
+    private val seedLock = kotlinx.coroutines.sync.Mutex()
+
+    suspend fun seed() = seedLock.withLock { seedLocked() }
+
+    private suspend fun seedLocked() {
         val t = Graph.training
         val now = System.currentTimeMillis()
         val have = t.exerciseSeedKeys().toSet()

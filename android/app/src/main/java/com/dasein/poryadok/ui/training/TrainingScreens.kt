@@ -145,7 +145,11 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
         },
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
-            Segments(listOf(0 to "Программы", 1 to "Упражнения", 2 to "История", 3 to "Прогресс"), tab, { tab = it }, Modifier.padding(horizontal = 12.dp))
+            androidx.compose.material3.ScrollableTabRow(selectedTabIndex = tab, edgePadding = 12.dp, containerColor = MaterialTheme.colorScheme.background) {
+                listOf("Программы", "Упражнения", "История", "Прогресс").forEachIndexed { i, label ->
+                    androidx.compose.material3.Tab(tab == i, onClick = { tab = i }, text = { Text(label) })
+                }
+            }
             active?.let { s ->
                 Tile(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), onClick = { nav.navigate(Routes.session(s.id)) }, color = MaterialTheme.colorScheme.primary.copy(alpha = .15f)) {
                     Text("Идёт тренировка: ${s.title}", fontWeight = FontWeight.SemiBold)

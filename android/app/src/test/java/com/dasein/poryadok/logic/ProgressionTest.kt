@@ -13,6 +13,7 @@ class ProgressionTest {
         val a = Progression.next(squat, sets(8, 8, 8))
         assertEquals(9, a.target.reps)
         assertEquals(60.0, a.target.weight, 0.0)
+        assertEquals(11, Progression.next(squat, sets(10, 10, 11)).target.reps)
         val b = Progression.next(squat.copy(reps = 12), sets(12, 12, 12))
         assertEquals(62.5, b.target.weight, 0.0)
         assertEquals(8, b.target.reps)
