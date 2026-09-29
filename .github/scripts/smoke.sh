@@ -80,6 +80,14 @@ b=$(adb shell cat /sdcard/ui.xml | grep -o 'text="+ Взвешивание"[^>]*
 if [ -n "$b" ]; then set -- $b; adb shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 )); sleep 3; fi
 adb exec-out screencap -p > shots/94_add_weight.png
 
+# Погода: даём эмулятору координаты несколько раз и ждём загрузки прогноза.
+adb shell am start -n $PKG/.MainActivity --es route "weather"
+for k in 1 2 3 4 5 6; do adb emu geo fix 44.51 40.18 || true; sleep 4; done
+adb exec-out screencap -p > shots/90_weather_loaded.png
+adb shell input swipe 540 1700 540 500 400
+sleep 2
+adb exec-out screencap -p > shots/90_weather_loaded_2.png
+
 # Праздники: раскрыть первый праздник в списке (нажатие по строке со стрелкой ▾).
 adb shell am start -n $PKG/.MainActivity --es route "calendar?tab=2"
 sleep 4

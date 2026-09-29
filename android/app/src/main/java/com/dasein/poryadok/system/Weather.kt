@@ -91,24 +91,30 @@ object Weather {
     private suspend fun location(ctx: Context): Location? {
         if (!hasLocationPermission(ctx)) return null
         val lm = ctx.getSystemService(LocationManager::class.java) ?: return null
-        val providers = buildList {
-            if (Build.VERSION.SDK_INT >= 31) add("fused")
-            add(LocationManager.NETWORK_PROVIDER); add(LocationManager.GPS_PROVIDER); add(LocationManager.PASSIVE_PROVIDER)
-        }.filter { runCatching { lm.isProviderEnabled(it) }.getOrDefault(false) || it == LocationManager.PASSIVE_PROVIDER }
-        val last = providers.mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }.maxByOrNull { it.time }
+        val all = runCatching { lm.getProviders(true) }.getOrDefault(emptyList())
+        val last = (all + LocationManager.PASSIVE_PROVIDER).distinct()
+            .mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }.maxByOrNull { it.time }
         if (last != null && System.currentTimeMillis() - last.time < 3 * 3600_000L) return last
-        if (Build.VERSION.SDK_INT >= 30) {
-            val p = providers.firstOrNull { it != LocationManager.PASSIVE_PROVIDER } ?: return last
-            val fresh = withTimeoutOrNull(12_000) {
-                suspendCancellableCoroutine<Location?> { cont ->
-                    val signal = android.os.CancellationSignal()
-                    cont.invokeOnCancellation { signal.cancel() }
-                    runCatching { lm.getCurrentLocation(p, signal, ctx.mainExecutor) { if (cont.isActive) cont.resume(it) } }.onFailure { if (cont.isActive) cont.resume(null) }
+        // Свежие координаты: слушаем все включённые источники (GPS, сеть, fused) и берём первый ответ.
+        val active = all.filter { it != LocationManager.PASSIVE_PROVIDER }
+        if (active.isEmpty()) return last
+        val fresh = withTimeoutOrNull(20_000) {
+            suspendCancellableCoroutine<Location?> { cont ->
+                val listener = object : android.location.LocationListener {
+                    override fun onLocationChanged(l: Location) {
+                        runCatching { lm.removeUpdates(this) }
+                        if (cont.isActive) cont.resume(l)
+                    }
+                    @Deprecated("Deprecated in Java")
+                    override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
+                    override fun onProviderEnabled(provider: String) {}
+                    override fun onProviderDisabled(provider: String) {}
                 }
+                active.forEach { p -> runCatching { lm.requestLocationUpdates(p, 0L, 0f, listener, android.os.Looper.getMainLooper()) } }
+                cont.invokeOnCancellation { runCatching { lm.removeUpdates(listener) } }
             }
-            return fresh ?: last
         }
-        return last
+        return fresh ?: last
     }
 
     private fun placeName(ctx: Context, lat: Double, lon: Double): String = runCatching {
