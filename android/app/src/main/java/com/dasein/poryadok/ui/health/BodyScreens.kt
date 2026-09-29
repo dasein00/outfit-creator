@@ -114,7 +114,8 @@ internal fun mergeReadings(metrics: List<BodyMetric>, weights: List<WeightEntry>
 }
 
 internal data class BodyData(val profile: BodyProfile, val readings: List<BodyMetric>) {
-    val person get() = Person(profile.male, profile.heightCm, profile.age)
+    /** Рост берётся из последнего замера, где его указали, иначе из профиля. */
+    val person get() = Person(profile.male, readings.asReversed().firstNotNullOfOrNull { it.heightCm } ?: profile.heightCm, profile.age)
 }
 
 @Composable
@@ -623,8 +624,9 @@ fun BodyCompareScreen(nav: NavHostController) {
 
 /** Быстрое добавление веса линейкой, как в приложении весов. «Подробнее» открывает все показатели. */
 @Composable
-internal fun WeightRulerDialog(initial: Double, onDismiss: () -> Unit, onMore: (BodyMetric) -> Unit) {
+internal fun WeightRulerDialog(initial: Double, onDismiss: () -> Unit, heightCm: Double? = null, onMore: (BodyMetric) -> Unit) {
     val extra = LocalExtra.current
+    var height by remember { mutableStateOf(heightCm?.takeIf { it > 0 }?.let { if (it == Math.floor(it)) it.toLong().toString() else it.toString().replace('.', ',') } ?: "") }
     var value by remember { mutableFloatStateOf(((initial * 10).roundToInt() / 10.0).toFloat()) }
     var at by remember { mutableStateOf(System.currentTimeMillis()) }
     var pickDay by remember { mutableStateOf(false) }
@@ -633,7 +635,10 @@ internal fun WeightRulerDialog(initial: Double, onDismiss: () -> Unit, onMore: (
     val measurer = rememberTextMeasurer()
     val labelStyle = TextStyle(fontSize = 12.sp, color = extra.dim)
     fun snapped() = (value * 10).roundToInt() / 10.0
-    fun metric() = BodyMetric(at = at, day = Dates.dayOf(at), weight = snapped(), source = "вручную")
+    fun metric() = BodyMetric(
+        at = at, day = Dates.dayOf(at), weight = snapped(), source = "вручную",
+        heightCm = height.replace(',', '.').toDoubleOrNull()?.takeIf { it in 100.0..250.0 },
+    )
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Добавить вес", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
@@ -678,6 +683,9 @@ internal fun WeightRulerDialog(initial: Double, onDismiss: () -> Unit, onMore: (
                     drawPath(arrow, color)
                 }
                 Text("Двигайте линейку влево и вправо", fontSize = 12.sp, color = extra.dim)
+                com.dasein.poryadok.ui.common.NumberField(
+                    height, { height = it }, "Рост при замере", Modifier.padding(top = 8.dp), suffix = "см",
+                )
                 Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(-1.0f, -0.1f, 0.1f, 1.0f).forEach { d ->
                         OutlinedButton(
@@ -692,7 +700,14 @@ internal fun WeightRulerDialog(initial: Double, onDismiss: () -> Unit, onMore: (
             }
         },
         confirmButton = {
-            Button(onClick = { val m = metric(); io { Body.save(m) }; onDismiss() }) { Text("Подтвердить") }
+            Button(onClick = {
+                val m = metric()
+                io {
+                    Body.save(m)
+                    m.heightCm?.let { h -> Graph.dao.profileNow()?.let { p -> if (p.heightCm != h) Graph.dao.upsertProfile(p.copy(heightCm = h)) } }
+                }
+                onDismiss()
+            }) { Text("Подтвердить") }
         },
         dismissButton = {
             Row {

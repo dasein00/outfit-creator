@@ -198,6 +198,17 @@ fun BodyTab(nav: NavHostController, profile: BodyProfile, weights: List<WeightEn
         OutlinedButton(onClick = { nav.navigate(Routes.BODY_COMPARE) }, enabled = readings.size >= 2, modifier = Modifier.weight(1f)) { Text("Сравнить") }
     }
     Gap(8.dp)
+    Tile(onClick = { nav.navigate(Routes.BODY_SCIENCE) }) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Glyph("ui:v_chart", 26.dp)
+            HGap(10.dp)
+            Column(Modifier.weight(1f)) {
+                Text("Научный анализ по росту и весу", fontWeight = FontWeight.SemiBold)
+                Text("ИМТ по ВОЗ, талия/рост, процент жира, базовый обмен, белок и вода — с источниками", fontSize = 12.sp, color = extra.dim)
+            }
+        }
+    }
+    Gap(8.dp)
     WeightTrendCard(readings, { nav.navigate(Routes.WEIGHT_TREND) })
     Gap(8.dp)
     HcLinkCard(syncs, syncing, onSync = { sync() }) { io { Graph.prefs.update { it.copy(bodyHc = true) } }; sync() }
@@ -224,7 +235,10 @@ fun BodyTab(nav: NavHostController, profile: BodyProfile, weights: List<WeightEn
             TextButton(onClick = { edit = m }) { Text("Изменить", fontSize = 12.sp) }
         }
     }
-    if (ruler) WeightRulerDialog(last?.weight ?: profile.startWeight, { ruler = false }) { m -> ruler = false; edit = m }
+    if (ruler) WeightRulerDialog(
+        last?.weight ?: profile.startWeight, { ruler = false },
+        heightCm = readings.asReversed().firstNotNullOfOrNull { it.heightCm } ?: profile.heightCm,
+    ) { m -> ruler = false; edit = m }
     edit?.let { BodyDialog(it) { edit = null } }
 }
 
@@ -424,6 +438,7 @@ internal fun BodyDialog(m0: BodyMetric, onDismiss: () -> Unit) {
                 "fat" to s(m0.fatPct), "musclePct" to s(m0.musclePct), "muscleKg" to s(m0.muscleKg), "water" to s(m0.waterPct),
                 "protein" to s(m0.proteinPct), "bone" to s(m0.boneKg), "visceral" to s(m0.visceral), "bmr" to s(m0.bmr),
                 "age" to s(m0.metabolicAge), "subcut" to s(m0.subcutaneousPct),
+                "height" to s(m0.heightCm), "waist" to s(m0.waistCm), "hip" to s(m0.hipCm), "neck" to s(m0.neckCm),
             )
         )
     }
@@ -442,6 +457,11 @@ internal fun BodyDialog(m0: BodyMetric, onDismiss: () -> Unit) {
                 }
                 Gap(6.dp)
                 NumberField(weight, { weight = it }, "Вес", suffix = "кг")
+                Text("Рост и обхваты — для научных показателей (ИМТ, талия/рост, жир по формуле ВМС США):", fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(vertical = 6.dp))
+                MetricField(f, "height", "Рост", "см")
+                MetricField(f, "waist", "Талия", "см")
+                MetricField(f, "hip", "Бёдра", "см")
+                MetricField(f, "neck", "Шея", "см")
                 Text("Остальное — по желанию, с экрана весов:", fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(vertical = 6.dp))
                 MetricField(f, "fat", "Жир", "%")
                 MetricField(f, "musclePct", "Скелетная мускулатура", "%")
@@ -462,9 +482,13 @@ internal fun BodyDialog(m0: BodyMetric, onDismiss: () -> Unit) {
                 val out = m.copy(
                     weight = w, fatPct = v["fat"], musclePct = v["musclePct"], muscleKg = v["muscleKg"], waterPct = v["water"],
                     proteinPct = v["protein"], boneKg = v["bone"], visceral = v["visceral"], bmr = v["bmr"], metabolicAge = v["age"],
-                    subcutaneousPct = v["subcut"], source = if (m.source.isBlank() || m.source == LEGACY || m.source.startsWith("вручную")) "вручную" else m.source,
+                    subcutaneousPct = v["subcut"], heightCm = v["height"]?.takeIf { it in 100.0..250.0 }, waistCm = v["waist"],
+                    hipCm = v["hip"], neckCm = v["neck"], source = if (m.source.isBlank() || m.source == LEGACY || m.source.startsWith("вручную")) "вручную" else m.source,
                 )
-                io { Body.save(out) }
+                io {
+                    Body.save(out)
+                    out.heightCm?.let { h -> Graph.dao.profileNow()?.let { p -> if (p.heightCm != h) Graph.dao.upsertProfile(p.copy(heightCm = h)) } }
+                }
                 onDismiss()
             }) { Text("Сохранить") }
         },

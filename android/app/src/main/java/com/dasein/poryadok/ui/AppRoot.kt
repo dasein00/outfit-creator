@@ -115,6 +115,9 @@ object Routes {
     const val MEDIA_SEARCH = "mediaSearch"
     const val WEIGHT_TREND = "weightTrend"
     const val BODY_COMPARE = "bodyCompare"
+    const val BODY_SCIENCE = "bodyScience"
+    const val WIDGET_EDITOR = "widgetEditor"
+    const val TRAINING = "training"
 
     fun task(id: Long, day: Long = -1, goal: Long = -1) = "task/$id?day=$day&goal=$goal"
     fun event(id: Long, day: Long = -1) = "event/$id?day=$day"
@@ -139,6 +142,11 @@ object Routes {
     fun mediaSearch(kind: Int) = "$MEDIA_SEARCH?kind=$kind"
     fun bodyDetail(at: Long) = "bodyDetail/$at"
     fun kpImport(kind: Int) = "kpImport?kind=$kind"
+    fun page(id: Long) = "page/$id"
+    fun training(tab: Int = 0) = "$TRAINING?tab=$tab"
+    fun trainingPlan(id: Long) = "trainingPlan/$id"
+    fun exercise(id: Long) = "exercise/$id"
+    fun session(id: Long) = "session/$id"
 }
 
 private data class Tab(val route: String, val label: String, val icon: String)
@@ -272,7 +280,25 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
                 "${Routes.WELLBEING}?tab={tab}",
                 arguments = listOf(navArgument("tab") { type = NavType.IntType; defaultValue = 0 }),
             ) { WellbeingScreen(nav, it.int("tab")) }
-            composable(Routes.NOTES) { NotesScreen(nav) }
+            composable(Routes.NOTES) { com.dasein.poryadok.ui.notes.PagesHome(nav) }
+            composable("page/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
+                com.dasein.poryadok.ui.notes.PageScreen(nav, it.long("id"))
+            }
+            composable(Routes.BODY_SCIENCE) { com.dasein.poryadok.ui.health.BodyScienceScreen(nav) }
+            composable(Routes.WIDGET_EDITOR) { com.dasein.poryadok.ui.more.WidgetEditorScreen(nav) }
+            composable(
+                "${Routes.TRAINING}?tab={tab}",
+                arguments = listOf(navArgument("tab") { type = NavType.IntType; defaultValue = 0 }),
+            ) { com.dasein.poryadok.ui.training.TrainingScreen(nav, it.int("tab")) }
+            composable("trainingPlan/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
+                com.dasein.poryadok.ui.training.PlanEditScreen(nav, it.long("id"))
+            }
+            composable("exercise/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
+                com.dasein.poryadok.ui.training.ExerciseScreen(nav, it.long("id"))
+            }
+            composable("session/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
+                com.dasein.poryadok.ui.training.SessionScreen(nav, it.long("id"))
+            }
             composable("note/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
                 NoteEditScreen(nav, it.long("id"))
             }

@@ -75,12 +75,12 @@ private val HUB = listOf(
     Hub("train/18", "Фокус", "помодоро-таймер", Routes.FOCUS),
     Hub("food/02", "Питание", "КБЖУ и калории", Routes.health(0)),
     Hub("sport/11", "Вес и состав тела", "весы, метрики, тренд", Routes.health(1)),
-    Hub("sport/00", "Тренировки", "журнал нагрузок", Routes.health(3)),
+    Hub("sport/00", "Тренировки", "программы, подходы, прогресс", Routes.training(0)),
     Hub("sport/19", "Шаги", "синхронизация с телефоном", Routes.STEPS),
     Hub("ui:smile", "Настроение", "дневник и инсайты", Routes.wellbeing(0)),
     Hub("sleep/00", "Сон", "автоопределение и режим", Routes.wellbeing(1)),
     Hub("ui:drop", "Вода", "норма на день", Routes.wellbeing(2)),
-    Hub("habit/23", "Заметки", "мысли и списки", Routes.NOTES),
+    Hub("habit/23", "Заметки", "страницы, статьи, картинки", Routes.NOTES),
     Hub("habit/01", "Фильмы, сериалы, книги", "коллекция и отзывы", Routes.topsHub(0)),
     Hub("ui:hanger", "Гардероб", "образы на манекене", Routes.WARDROBE),
     Hub("ui:wheel", "Колесо баланса", "8 сфер жизни", Routes.WHEEL),
@@ -88,6 +88,7 @@ private val HUB = listOf(
     Hub("cal/23", "Напоминалки", "по времени", Routes.calendar(1)),
     Hub("ui:bank", "Сбербанк", "операции из уведомлений", Routes.SBER),
     Hub("ui:notebook", "Тетрадь финансов", "импорт и месячные записи", Routes.FIN_NOTEBOOK),
+    Hub("ui:v_chart", "Виджет", "что показывать на рабочем столе", Routes.WIDGET_EDITOR),
     Hub("train/38", "Настройки", "тема, PIN, копия", Routes.SETTINGS),
 )
 
@@ -288,7 +289,8 @@ fun SearchScreen(nav: NavHostController) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
     val tasks by observe(emptyList()) { dao.tasks() }
-    val notes by observe(emptyList()) { dao.notes() }
+    val pages by observe(emptyList()) { Graph.pages.pages() }
+    val pageText by observe(emptyList()) { Graph.pages.textBlocks() }
     val events by observe(emptyList()) { dao.events() }
     val goals by observe(emptyList()) { dao.goals() }
     val txns by observe(emptyList()) { dao.txns() }
@@ -306,7 +308,8 @@ fun SearchScreen(nav: NavHostController) {
             fun String.hit() = contains(q, ignoreCase = true)
             val results = buildList {
                 tasks.filter { it.title.hit() || it.note.hit() }.forEach { add(Triple("ui:check|" + it.title, if (it.done) "выполнена" else "задача", Routes.task(it.id))) }
-                notes.filter { it.title.hit() || it.body.hit() }.forEach { add(Triple("ui:notebook|" + it.title.ifBlank { it.body.take(40) }, "заметка", Routes.note(it.id))) }
+                val textHits = pageText.filter { it.text.hit() }.map { it.pageId }.toSet()
+                pages.filter { !it.archived && (it.title.hit() || it.id in textHits) }.forEach { add(Triple("ui:notebook|" + it.title.ifBlank { "Без названия" }, "заметка", Routes.page(it.id))) }
                 events.filter { it.title.hit() || it.note.hit() || it.location.hit() }.forEach { add(Triple("cal/00|" + it.title, Dates.label(it.day), Routes.event(it.id))) }
                 goals.filter { it.title.hit() || it.why.hit() }.forEach { add(Triple("sport/21|" + it.title, "цель", Routes.goal(it.id))) }
                 txns.filter { it.note.hit() }.take(20).forEach { add(Triple("ui:wallet|" + it.note, Dates.label(it.day) + " · " + it.amount.toInt(), Routes.txn(it.id))) }

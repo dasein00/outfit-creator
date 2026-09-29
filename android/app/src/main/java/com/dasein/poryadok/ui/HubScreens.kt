@@ -48,7 +48,6 @@ import com.dasein.poryadok.ui.common.observe
 import com.dasein.poryadok.ui.health.sleepMinutes
 import com.dasein.poryadok.ui.media.MediaListScreen
 import com.dasein.poryadok.ui.notes.TopsScreen
-import com.dasein.poryadok.ui.productivity.GoalsScreen
 import com.dasein.poryadok.ui.productivity.TasksScreen
 import com.dasein.poryadok.ui.recipes.rememberNutritionPlan
 import com.dasein.poryadok.ui.theme.LocalExtra
@@ -63,15 +62,15 @@ private fun TabbedHost(options: List<Pair<Int, String>>, tab: Int, onTab: (Int) 
     }
 }
 
-/** «График»: календарь, задачи и цели. */
+/** «График»: календарь, задачи и заметки (цели — в разделе «Ещё»). */
 @Composable
 fun PlanScreen(nav: NavHostController, initialTab: Int) {
     var tab by rememberSaveable(initialTab) { mutableStateOf(initialTab) }
-    TabbedHost(listOf(0 to "Календарь", 1 to "Задачи", 2 to "Цели"), tab, { tab = it }) { t ->
+    TabbedHost(listOf(0 to "Календарь", 1 to "Задачи", 2 to "Заметки"), tab, { tab = it }) { t ->
         when (t) {
             0 -> CalendarScreen(nav, 0)
             1 -> TasksScreen(nav)
-            else -> GoalsScreen(nav, embedded = true)
+            else -> com.dasein.poryadok.ui.notes.PagesHome(nav, embedded = true)
         }
     }
 }
@@ -121,7 +120,7 @@ fun HealthHubScreen(nav: NavHostController) {
             lastSleep?.let { "${Dates.time(it.bedMin)} → ${Dates.time(it.wakeMin)}" } ?: "нет записи", lastSleep?.let { sleepMinutes(it) / (profile?.sleepGoalMin ?: 480).toFloat() }, Routes.wellbeing(1)),
         HealthTile("sport/11", "Вес", weight?.let { "%.1f кг".format(it.kg).replace('.', ',') } ?: "—", weight?.let { Dates.label(it.day) } ?: "нет взвешиваний", null, Routes.health(1)),
         HealthTile("sport/19", "Шаги", "$steps", "из $stepsGoal", steps / stepsGoal.coerceAtLeast(1).toFloat(), Routes.STEPS),
-        HealthTile("sport/00", "Тренировки", "${workouts.count { it.day >= weekStart }}", "на этой неделе", null, Routes.health(3)),
+        HealthTile("sport/00", "Тренировки", "${workouts.count { it.day >= weekStart }}", "на этой неделе", null, Routes.training(0)),
         HealthTile("ui:drop", "Вода", "${log?.waterMl ?: 0} мл", "из $waterGoal", (log?.waterMl ?: 0) / waterGoal.toFloat(), Routes.wellbeing(2)),
         HealthTile("train/27", "Замеры", "см", "талия, бёдра…", null, Routes.health(2)),
         HealthTile("ui:smile", "Настроение", "дневник", "и инсайты", null, Routes.wellbeing(0)),

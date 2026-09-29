@@ -20,11 +20,11 @@ class BodyCompTest {
 
     @Test fun bmiAndStatuses() {
         assertEquals(26.2, BodyComp.bmi(78.4, 173.0), 0.05)
-        val m = BodyComp.metrics(BodyReading(78.4, fatPct = 25.0, waterPct = 53.1, boneKg = 3.1, visceral = 9.0), man).associateBy { it.key }
+        val m = BodyComp.metrics(BodyReading(78.4, fatPct = 23.0, waterPct = 53.1, boneKg = 3.1, visceral = 9.0), man).associateBy { it.key }
         assertEquals("Высокий", m.getValue("bmi").label)
-        assertEquals("Высокий", m.getValue("fat").label)
-        assertEquals(19.6, m.getValue("fatKg").value!!, 0.01)
-        assertEquals(58.8, m.getValue("lean").value!!, 0.01)
+        assertEquals("Избыточный", m.getValue("fat").label)
+        assertEquals(18.03, m.getValue("fatKg").value!!, 0.01)
+        assertEquals(60.37, m.getValue("lean").value!!, 0.01)
         assertEquals("Низкий", m.getValue("water").label)
         assertEquals("Здоровый", m.getValue("visceral").label)
         assertNull(m.getValue("protein").value)
@@ -33,20 +33,19 @@ class BodyCompTest {
     @Test fun bodyTypeGrid() {
         assertEquals(0 to 2, BodyComp.bodyType(78.4, 25.0, man))  // высокий ИМТ + много жира = ожирение
         assertEquals(1 to 1, BodyComp.bodyType(68.0, 15.0, man))  // здоровый тип
-        assertEquals(0 to 0, BodyComp.bodyType(85.0, 9.0, man))   // спортсмен
+        assertEquals(0 to 0, BodyComp.bodyType(85.0, 7.0, man))   // спортсмен
         assertNull(BodyComp.bodyType(70.0, null, man))
         assertEquals("Ожирение", BodyComp.BODY_TYPES[0][2])
     }
 
-    @Test fun idealWeightAndAdviceMatchOkok() {
-        // Экран OKOK: рост 173, вес 83,95, жир 27,5% → идеальный 65,1 кг, сбросить 18,8 кг, жира −12,0 кг, тучность 29%.
+    @Test fun idealWeightFromBmi22AndAdvice() {
+        // Рост 173 см: ориентир ИМТ 22 → 65,84 кг; здоровый жир у мужчины 31 года — до 20% (Gallagher 2000).
         val p = Person(male = true, heightCm = 173.0, age = 31)
-        assertEquals(65.1, BodyComp.idealWeight(p), 0.01)
-        assertEquals(29.0, BodyComp.obesityPct(83.95, p), 0.1)
+        assertEquals(65.84, BodyComp.idealWeight(p), 0.01)
+        assertEquals(27.5, BodyComp.obesityPct(83.95, p), 0.1)
         val a = BodyComp.advice(BodyReading(83.95, fatPct = 27.5, muscleKg = 57.8, boneKg = 3.0), p)
-        assertEquals(-18.85, a.weightDelta, 0.01)
-        assertEquals(-12.0, a.fatDelta!!, 0.1)
-        assertEquals(-6.9, a.muscleDelta!!, 0.2)
+        assertEquals(-18.11, a.weightDelta, 0.01)
+        assertEquals(-9.92, a.fatDelta!!, 0.05)
         val m = BodyComp.metrics(BodyReading(83.95, fatPct = 27.5, waterPct = 52.0, musclePct = 36.5), p).associateBy { it.key }
         assertEquals("Умеренная", m.getValue("obesity").label)
         assertEquals(43.65, m.getValue("waterKg").value!!, 0.01)

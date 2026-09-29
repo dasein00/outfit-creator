@@ -404,7 +404,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
 
             val activeGoals = goals.filter { !it.done }.take(3)
             if (activeGoals.isNotEmpty()) {
-                item { SectionTitle("Цели", action = "Все") { nav.goTab(Routes.plan(2)) } }
+                item { SectionTitle("Цели", action = "Все") { nav.navigate(Routes.GOALS) } }
                 items(activeGoals, key = { "g" + it.id }) { g ->
                     val goalTasks = tasks.filter { it.goalId == g.id }
                     val pr = goalProgress(g, goalTasks.count { it.done }, goalTasks.size)

@@ -258,6 +258,11 @@ data class BodyMetric(
     val leanKg: Double? = null,
     val source: String = "вручную",
     val extId: String? = null,
+    /** Рост и обхваты в момент замера — для научных показателей (ИМТ, талия/рост, жир по ВМС США). */
+    val heightCm: Double? = null,
+    val waistCm: Double? = null,
+    val hipCm: Double? = null,
+    val neckCm: Double? = null,
 )
 
 /** Сон, определённый по использованию телефона. day — утро. Исправления пользователя учат алгоритм. */
@@ -535,13 +540,16 @@ interface ExtraDao {
         FoodProduct::class, Recipe::class, RecipeIngredient::class, RecipeStep::class, MealPlanItem::class,
         MealPreset::class, MealPresetItem::class, MealRepeat::class, ShoppingItem::class, CookingLog::class,
         FinanceNote::class, ImportRecord::class, BodyMetric::class, SleepAuto::class, DayEnergy::class, MediaItem::class,
-        MediaList::class, MediaListItem::class,
+        MediaList::class, MediaListItem::class, Page::class, PageBlock::class, Exercise::class, WorkoutPlan::class,
+        PlanExercise::class, WorkoutSession::class, SetLog::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class ExtraDb : RoomDatabase() {
     abstract fun dao(): ExtraDao
+    abstract fun pages(): PageDao
+    abstract fun training(): TrainingDao
 
     companion object {
         /** v2: состав тела и автоопределение сна. */
@@ -595,8 +603,57 @@ abstract class ExtraDb : RoomDatabase() {
             }
         }
 
+        /** v5: рост и обхваты в замерах, страницы заметок, тренировки с подходами. */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                listOf("heightCm", "waistCm", "hipCm", "neckCm").forEach { db.execSQL("ALTER TABLE `body_metrics` ADD COLUMN `$it` REAL") }
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `pages` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `parentId` INTEGER, `title` TEXT NOT NULL, " +
+                        "`icon` TEXT NOT NULL, `cover` TEXT NOT NULL, `favorite` INTEGER NOT NULL, `archived` INTEGER NOT NULL, `sort` INTEGER NOT NULL, " +
+                        "`createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_pages_parentId` ON `pages` (`parentId`)")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `page_blocks` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `pageId` INTEGER NOT NULL, `pos` INTEGER NOT NULL, " +
+                        "`type` TEXT NOT NULL, `text` TEXT NOT NULL, `checked` INTEGER NOT NULL, `media` TEXT NOT NULL, `indent` INTEGER NOT NULL)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_page_blocks_pageId` ON `page_blocks` (`pageId`)")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `exercises` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `muscle` TEXT NOT NULL, " +
+                        "`equipment` TEXT NOT NULL, `description` TEXT NOT NULL, `media` TEXT NOT NULL, `kind` INTEGER NOT NULL, `glyph` TEXT NOT NULL, " +
+                        "`custom` INTEGER NOT NULL, `seedKey` TEXT, `createdAt` INTEGER NOT NULL)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_exercises_seedKey` ON `exercises` (`seedKey`)")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `workout_plans` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `description` TEXT NOT NULL, " +
+                        "`glyph` TEXT NOT NULL, `cover` TEXT NOT NULL, `daysMask` INTEGER NOT NULL, `sort` INTEGER NOT NULL, `archived` INTEGER NOT NULL, " +
+                        "`seedKey` TEXT, `createdAt` INTEGER NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `plan_exercises` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `planId` INTEGER NOT NULL, `exerciseId` INTEGER NOT NULL, " +
+                        "`pos` INTEGER NOT NULL, `sets` INTEGER NOT NULL, `reps` INTEGER NOT NULL, `weight` REAL NOT NULL, `seconds` INTEGER NOT NULL, " +
+                        "`restSec` INTEGER NOT NULL, `repMin` INTEGER NOT NULL, `repMax` INTEGER NOT NULL, `weightStep` REAL NOT NULL, `maxSets` INTEGER NOT NULL, " +
+                        "`note` TEXT NOT NULL)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_plan_exercises_planId` ON `plan_exercises` (`planId`)")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `workout_sessions` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `planId` INTEGER, `title` TEXT NOT NULL, " +
+                        "`day` INTEGER NOT NULL, `startedAt` INTEGER NOT NULL, `finishedAt` INTEGER, `note` TEXT NOT NULL, `feel` INTEGER NOT NULL, `workoutId` INTEGER)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_workout_sessions_day` ON `workout_sessions` (`day`)")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `set_logs` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sessionId` INTEGER NOT NULL, `exerciseId` INTEGER NOT NULL, " +
+                        "`planExerciseId` INTEGER, `setIndex` INTEGER NOT NULL, `reps` INTEGER NOT NULL, `weight` REAL NOT NULL, `seconds` INTEGER NOT NULL, " +
+                        "`done` INTEGER NOT NULL, `at` INTEGER NOT NULL)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_set_logs_sessionId` ON `set_logs` (`sessionId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_set_logs_exerciseId` ON `set_logs` (`exerciseId`)")
+            }
+        }
+
         fun create(context: Context): ExtraDb =
-            Room.databaseBuilder(context, ExtraDb::class.java, "dasein_extra.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build()
+            Room.databaseBuilder(context, ExtraDb::class.java, "dasein_extra.db")
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build()
     }
 }
 
@@ -620,14 +677,24 @@ data class ExtraBackup(
     val media: List<MediaItem> = emptyList(),
     val mediaLists: List<MediaList> = emptyList(),
     val mediaListItems: List<MediaListItem> = emptyList(),
+    val pages: List<Page> = emptyList(),
+    val pageBlocks: List<PageBlock> = emptyList(),
+    val exercises: List<Exercise> = emptyList(),
+    val workoutPlans: List<WorkoutPlan> = emptyList(),
+    val planExercises: List<PlanExercise> = emptyList(),
+    val workoutSessions: List<WorkoutSession> = emptyList(),
+    val setLogs: List<SetLog> = emptyList(),
 )
 
 suspend fun ExtraDb.exportExtra(): ExtraBackup {
     val d = dao()
+    val p = pages()
+    val t = training()
     return ExtraBackup(
         d.allProducts(), d.allRecipes(), d.allIngredients(), d.allSteps(), d.allPlan(), d.allPresets(),
         d.allPresetItems(), d.allRepeats(), d.allShopping(), d.allHistory(), d.financeNotesNow(), d.allImportRecords(),
         d.bodyMetricsNow(), d.sleepAutoNow(), d.allDayEnergy(), d.allMedia(), d.allMediaLists(), d.allMediaListItems(),
+        p.pagesNow(), p.allBlocks(), t.exercisesNow(), t.plansNow(), t.allPlanExercises(), t.sessionsNow(), t.allSets(),
     )
 }
 
@@ -652,5 +719,16 @@ suspend fun ExtraDb.importExtra(b: ExtraBackup) {
         d.wipeMedia(); d.putMedia(b.media)
         d.wipeMediaLists(); d.putMediaLists(b.mediaLists)
         d.wipeMediaListItems(); d.putMediaListItems(b.mediaListItems)
+        // Старые копии без заметок и тренировок не стирают то, что уже есть.
+        val p = pages()
+        val t = training()
+        if (b.pages.isNotEmpty() || b.pageBlocks.isNotEmpty()) { p.wipePages(); p.putPages(b.pages); p.wipeBlocks(); p.putBlocks(b.pageBlocks) }
+        if (b.exercises.isNotEmpty() || b.workoutPlans.isNotEmpty()) {
+            t.wipeExercises(); t.putExercises(b.exercises)
+            t.wipePlans(); t.putPlans(b.workoutPlans)
+            t.wipePlanExercises(); t.putPlanExercises(b.planExercises)
+            t.wipeSessions(); t.putSessions(b.workoutSessions)
+            t.wipeSets(); t.putSets(b.setLogs)
+        }
     }
 }

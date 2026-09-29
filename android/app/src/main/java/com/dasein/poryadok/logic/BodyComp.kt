@@ -60,11 +60,8 @@ object BodyComp {
 
     fun bmiScale() = Scale(listOf(18.5, 24.9, 29.9), WEIGHT_LABELS, WEIGHT_TONES)
 
-    fun fatScale(p: Person): Scale {
-        val add = if (p.age >= 40) 2.0 else 0.0
-        val b = if (p.male) listOf(11.0, 17.0, 27.0) else listOf(21.0, 31.0, 36.0) // мужские границы — как у весов OKOK
-        return Scale(b.map { it + add }, listOf("Низкий", "Здоровый", "Высокий", "Ожирение"), WEIGHT_TONES)
-    }
+    /** Здоровые диапазоны жира по возрасту и полу — Gallagher et al., Am J Clin Nutr 2000. */
+    fun fatScale(p: Person): Scale = BodyScience.fatScale(p.male, p.age)
 
     fun waterScale(p: Person) = Scale(if (p.male) listOf(55.0, 65.0) else listOf(45.0, 60.0), listOf("Низкий", "Здоровый", "Высокий"), listOf(Tone.BLUE, Tone.GREEN, Tone.GREEN))
     fun proteinScale() = Scale(listOf(16.0, 20.0), listOf("Низкий", "Здоровый", "Отличный"), listOf(Tone.BLUE, Tone.GREEN, Tone.GREEN))
@@ -116,7 +113,7 @@ object BodyComp {
             BodyMetricView("bone", "Костная масса", r.boneKg, "кг", 1, boneScale(p, r.weight), "Масса костных минералов в скелете. Растёт до 20–30 лет, затем постепенно снижается. Поддерживают её силовые нагрузки, кальций, витамин D и белок; достаточная костная масса снижает риск переломов и остеопороза."),
             BodyMetricView("bmr", "Базовый обмен", r.bmr, "ккал", 0, bmrScale(p, r.weight), "Базовый обмен (BMR) — минимум калорий, который нужен телу в покое на дыхание, кровообращение, температуру и восстановление клеток. Основа для расчёта суточной нормы; растёт вместе с мышечной массой."),
             BodyMetricView("protein", "Белок", r.proteinPct, "%", 1, proteinScale(), "Доля белка в массе тела. Белок — строительный материал мышц, кожи, органов и ферментов. Поддерживайте его едой, особенно при тренировках."),
-            BodyMetricView("obesity", "Тучность", obesityPct(r.weight, p), "%", 1, obesityScale(), "Степень ожирения — насколько вес выше идеального: (вес − идеальный вес) / идеальный вес × 100%. Идеальный вес для вашего роста — ${"%.1f".format(idealWeight(p)).replace('.', ',')} кг."),
+            BodyMetricView("obesity", "Тучность", obesityPct(r.weight, p), "%", 1, obesityScale(), "Степень ожирения — насколько вес выше идеального: (вес − идеальный вес) / идеальный вес × 100%. Ориентир веса для вашего роста (ИМТ 22, середина нормы ВОЗ) — ${"%.1f".format(idealWeight(p)).replace('.', ',')} кг."),
             BodyMetricView("subcut", "Подкожный жир", r.subcutaneousPct, "%", 1, subcutaneousScale(p), "Жир под кожей, доля от массы тела. Менее опасен, чем висцеральный, но его избыток тоже нагружает организм."),
             BodyMetricView("metaAge", "Метаболический возраст", r.metabolicAge, "лет", 0, metabolicAgeScale(p), "Возраст, которому соответствует ваш базовый обмен. Если он ниже фактического — обмен веществ «моложе» вас; снижают его мышцы и активность."),
             BodyMetricView("lean", "Безжировая масса (LBM)", lean, "кг", 1, null, "Вес тела без жира: мышцы, кости, вода и органы. Чем больше развиты мышцы, тем лучше физическая форма."),
@@ -150,8 +147,8 @@ object BodyComp {
         return row to col
     }
 
-    /** Идеальный вес по формуле, которой пользуются весы OKOK: (рост − 80) × 0,7 у мужчин, (рост − 70) × 0,6 у женщин. */
-    fun idealWeight(p: Person): Double = if (p.male) (p.heightCm - 80) * 0.7 else (p.heightCm - 70) * 0.6
+    /** Ориентир веса — ИМТ 22, середина нормы ВОЗ (Lemmens et al., Obes Surg 2005). Раньше здесь была формула весов OKOK без научного обоснования. */
+    fun idealWeight(p: Person): Double = 22 * (p.heightCm / 100) * (p.heightCm / 100)
 
     /** Тучность: насколько вес выше идеального, в процентах. */
     fun obesityPct(weight: Double, p: Person): Double = (weight - idealWeight(p)) / idealWeight(p) * 100

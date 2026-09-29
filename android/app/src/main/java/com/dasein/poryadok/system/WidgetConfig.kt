@@ -1,0 +1,221 @@
+package com.dasein.poryadok.system
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import com.dasein.poryadok.Graph
+import com.dasein.poryadok.data.TxnType
+import com.dasein.poryadok.logic.Dates
+import com.dasein.poryadok.logic.Energy
+import com.dasein.poryadok.logic.HabitSchedule
+import com.dasein.poryadok.logic.Nutrition
+import com.dasein.poryadok.ui.Routes
+import com.dasein.poryadok.ui.health.input
+import com.dasein.poryadok.ui.health.sleepMinutes
+import kotlinx.coroutines.flow.first
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlin.math.roundToInt
+
+/** Один блок на виджете: тип, вид (0 — текст, 1 — полоса или график) и количество строк (для задач и событий). */
+@Serializable
+data class WidgetBlock(val type: String, val style: Int = 0, val count: Int = 2, val on: Boolean = true)
+
+/** Как выглядит виджет: тема, заголовок, кольцо шагов слева, крупный шрифт и блоки справа в выбранном порядке. */
+@Serializable
+data class WidgetConfig(
+    val theme: Int = 0,
+    val header: Boolean = true,
+    val ring: Boolean = true,
+    val large: Boolean = false,
+    val blocks: List<WidgetBlock> = DEFAULT_BLOCKS,
+) {
+    /** Все известные блоки: сохранённые в выбранном порядке, затем новые — выключенными. */
+    fun normalized(): WidgetConfig {
+        val known = WIDGET_BLOCK_TYPES.map { it.type }
+        val kept = blocks.filter { it.type in known }.distinctBy { it.type }
+        val missing = WIDGET_BLOCK_TYPES.filter { t -> kept.none { it.type == t.type } }.map { WidgetBlock(it.type, on = false) }
+        return copy(blocks = kept + missing)
+    }
+
+    companion object {
+        val DEFAULT_BLOCKS = listOf(WidgetBlock("weight", 1), WidgetBlock("tasks", 0, 2))
+    }
+}
+
+data class WidgetBlockType(val type: String, val title: String, val styles: List<String>, val counted: Boolean = false)
+
+val WIDGET_BLOCK_TYPES = listOf(
+    WidgetBlockType("weight", "Вес", listOf("Число и изменение", "С графиком за 2 недели")),
+    WidgetBlockType("tasks", "Задачи на сегодня", listOf("Список"), counted = true),
+    WidgetBlockType("habits", "Привычки", listOf("Счётчик", "Полоса прогресса")),
+    WidgetBlockType("food", "Съедено калорий", listOf("Текст", "Полоса к норме")),
+    WidgetBlockType("water", "Вода", listOf("Текст", "Полоса к норме")),
+    WidgetBlockType("steps", "Шаги", listOf("Текст", "Полоса к цели")),
+    WidgetBlockType("burned", "Сожжено калорий", listOf("Текст")),
+    WidgetBlockType("sleep", "Сон прошлой ночью", listOf("Текст", "Полоса к норме")),
+    WidgetBlockType("events", "События сегодня", listOf("Список"), counted = true),
+    WidgetBlockType("focus", "Фокус сегодня", listOf("Текст")),
+    WidgetBlockType("workout", "Тренировка", listOf("Текст")),
+    WidgetBlockType("budget", "Расходы за месяц", listOf("Текст", "Полоса к бюджету")),
+    WidgetBlockType("note", "Избранная заметка", listOf("Заголовок")),
+)
+
+object WidgetPrefs {
+    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    private fun sp(ctx: Context) = ctx.getSharedPreferences("widget", Context.MODE_PRIVATE)
+
+    fun load(ctx: Context): WidgetConfig =
+        runCatching { sp(ctx).getString("config", null)?.let { json.decodeFromString(WidgetConfig.serializer(), it) } }.getOrNull()?.normalized()
+            ?: WidgetConfig().normalized()
+
+    fun save(ctx: Context, cfg: WidgetConfig) {
+        sp(ctx).edit().putString("config", json.encodeToString(WidgetConfig.serializer(), cfg)).apply()
+    }
+}
+
+/**
+ * Строка виджета. kind: 0 — текст, 1 — текст с полосой, 2 — текст с графиком, 3 — задача (кружок-отметка).
+ * Одинаково рисуется и в самом виджете, и в предпросмотре в приложении.
+ */
+data class WRow(
+    val kind: Int,
+    val icon: String?,
+    val title: String,
+    val value: String = "",
+    val sub: String = "",
+    val tone: Int = 0,
+    val progress: Float? = null,
+    val spark: List<Double> = emptyList(),
+    val route: String? = null,
+    val taskId: Long? = null,
+)
+
+/** Всё, что нужно для отрисовки: заголовок, кольцо и строки. */
+data class WidgetModel(
+    val cfg: WidgetConfig,
+    val date: String,
+    val habitsText: String?,
+    val steps: Int,
+    val stepsGoal: Int,
+    val burned: Int,
+    val rows: List<WRow>,
+)
+
+object WidgetModels {
+    const val TONE_TEXT = 0
+    const val TONE_GOOD = 1
+    const val TONE_BAD = 2
+    const val TONE_ACCENT = 3
+    const val TONE_DIM = 4
+
+    private fun fmt1(v: Double) = "%.1f".format(v).replace('.', ',')
+    private fun thousands(n: Int) = n.toString().reversed().chunked(3).joinToString(" ").reversed()
+
+    fun icon(ctx: Context, key: String): Bitmap? =
+        runCatching { ctx.assets.open("glyphs/$key.webp").use { BitmapFactory.decodeStream(it) } }.getOrNull()
+
+    suspend fun load(ctx: Context, cfg: WidgetConfig = WidgetPrefs.load(ctx)): WidgetModel {
+        val dao = Graph.dao
+        val today = Dates.today()
+        val profile = dao.profileNow()
+        val habits = dao.habitsNow().filter { HabitSchedule(it.daysMask, it.timesPerWeek).isScheduled(today) }
+        val logs = dao.habitLogsOn(today).associateBy { it.habitId }
+        val habitsDone = habits.count { h -> (logs[h.id]?.value ?: 0) >= h.target }
+        val log = dao.dayLogNow(today)
+        val steps = log?.steps ?: 0
+        val stepsGoal = profile?.stepsGoal ?: 8000
+        val lastW = dao.lastWeight()
+        val burned = Energy.burned(steps, lastW?.kg ?: profile?.startWeight ?: 70.0, dao.workoutKcalOn(today), Graph.extra.dayEnergyOf(today)?.activeKcal).total
+
+        val rows = mutableListOf<WRow>()
+        for (b in cfg.blocks.filter { it.on }) {
+            when (b.type) {
+                "weight" -> {
+                    val recent = dao.weightsSince(today - 13)
+                    val last = recent.lastOrNull() ?: lastW ?: continue
+                    val weekAgo = dao.weightsSince(today - 30).lastOrNull { it.day <= last.day - 7 } ?: recent.firstOrNull()?.takeIf { it.day < last.day }
+                    val d = weekAgo?.let { last.kg - it.kg }
+                    val sub = d?.let { (if (it > 0.05) "▲ +" else if (it < -0.05) "▼ " else "") + fmt1(it) + " за нед." } ?: ""
+                    val tone = when { d == null -> TONE_DIM; d > 0.05 -> TONE_BAD; d < -0.05 -> TONE_GOOD; else -> TONE_DIM }
+                    rows += WRow(if (b.style == 1 && recent.size >= 2) 2 else 0, "sport/11", "Вес", fmt1(last.kg) + " кг", sub, tone, spark = recent.map { it.kg }, route = Routes.WEIGHT_TREND)
+                }
+                "tasks" -> {
+                    val tasks = dao.openTasksUntil(today).sortedWith(compareBy({ it.dueDay }, { it.dueMin ?: 9999 }, { -it.priority }))
+                    if (tasks.isEmpty()) rows += WRow(0, "ui:check", "Задач на сегодня нет", tone = TONE_DIM, route = Routes.TASKS)
+                    tasks.take(b.count.coerceIn(1, 5)).forEach { t ->
+                        rows += WRow(3, null, t.title, t.dueMin?.let { Dates.time(it) } ?: "", tone = if ((t.dueDay ?: today) < today) TONE_BAD else TONE_TEXT, taskId = t.id)
+                    }
+                    if (tasks.size > b.count) rows += WRow(0, null, "и ещё ${tasks.size - b.count}", tone = TONE_DIM, route = Routes.TASKS)
+                }
+                "habits" -> if (habits.isNotEmpty()) rows += WRow(
+                    if (b.style == 1) 1 else 0, "sport/24", "Привычки", "$habitsDone из ${habits.size}",
+                    tone = if (habitsDone == habits.size) TONE_GOOD else TONE_ACCENT, progress = habitsDone / habits.size.toFloat(), route = Routes.HABITS,
+                )
+                "food" -> {
+                    val eaten = dao.food().first().filter { it.day == today }.sumOf { it.kcal }
+                    val p = profile ?: com.dasein.poryadok.data.BodyProfile()
+                    val target = Nutrition.plan(p.input(lastW?.kg ?: p.startWeight)).targetKcal
+                    rows += WRow(if (b.style == 1) 1 else 0, "food/02", "Съедено", "$eaten ккал", "из $target", if (eaten > target * 1.1) TONE_BAD else TONE_TEXT, eaten / target.coerceAtLeast(1).toFloat(), route = Routes.health(0))
+                }
+                "water" -> {
+                    val ml = log?.waterMl ?: 0
+                    val goal = profile?.waterGoalMl ?: 2000
+                    rows += WRow(if (b.style == 1) 1 else 0, null, "Вода", fmt1(ml / 1000.0) + " л", "из " + fmt1(goal / 1000.0), if (ml >= goal) TONE_GOOD else TONE_TEXT, ml / goal.toFloat(), route = Routes.wellbeing(2))
+                }
+                "steps" -> rows += WRow(if (b.style == 1) 1 else 0, "sport/19", "Шаги", thousands(steps), "из ${thousands(stepsGoal)}", if (steps >= stepsGoal) TONE_GOOD else TONE_TEXT, steps / stepsGoal.coerceAtLeast(1).toFloat(), route = Routes.STEPS)
+                "burned" -> rows += WRow(0, "sport/22", "Сожжено", "$burned ккал", route = Routes.STEPS)
+                "sleep" -> {
+                    val s = dao.sleepNow(today) ?: dao.sleepNow(today - 1)
+                    if (s != null) {
+                        val m = sleepMinutes(s)
+                        val goal = profile?.sleepGoalMin ?: 480
+                        rows += WRow(if (b.style == 1) 1 else 0, "sleep/00", "Сон", "${m / 60} ч ${m % 60} мин", "${Dates.time(s.bedMin)}–${Dates.time(s.wakeMin)}", if (m >= goal * 0.9) TONE_GOOD else TONE_ACCENT, m / goal.toFloat(), route = Routes.wellbeing(1))
+                    } else rows += WRow(0, "sleep/00", "Сон", "нет записи", tone = TONE_DIM, route = Routes.wellbeing(1))
+                }
+                "events" -> {
+                    val events = dao.eventsNow().filter { it.day == today }.sortedBy { it.startMin ?: -1 }
+                    if (events.isEmpty()) rows += WRow(0, "cal/00", "Событий сегодня нет", tone = TONE_DIM, route = Routes.calendar(0))
+                    events.take(b.count.coerceIn(1, 5)).forEach { e -> rows += WRow(0, "cal/00", "Событие", e.title, e.startMin?.let { Dates.time(it) } ?: "весь день", route = Routes.event(e.id)) }
+                }
+                "focus" -> {
+                    val min = dao.focusSessions().first().filter { it.day == today }.sumOf { it.minutes }
+                    rows += WRow(0, "train/18", "Фокус", "$min мин", route = Routes.FOCUS)
+                }
+                "workout" -> {
+                    val t = Graph.training
+                    val dow = (java.time.LocalDate.ofEpochDay(today).dayOfWeek.value - 1)
+                    val plan = t.plansNow().filter { !it.archived && it.daysMask and (1 shl dow) != 0 }.minByOrNull { it.sort }
+                    val doneToday = t.sessionsNow().any { it.day == today && it.finishedAt != null }
+                    rows += when {
+                        doneToday -> WRow(0, "sport/15", "Тренировка", "Тренировка", "выполнена", TONE_GOOD, route = Routes.training(2))
+                        plan != null -> WRow(0, "sport/15", "Тренировка", plan.name, "сегодня", TONE_ACCENT, route = Routes.trainingPlan(plan.id))
+                        else -> WRow(0, "sport/15", "Тренировка", "Отдых", "по плану", TONE_DIM, route = Routes.training(0))
+                    }
+                }
+                "budget" -> {
+                    val from = Dates.day(today).withDayOfMonth(1).toEpochDay()
+                    val spent = dao.txnsNow().filter { it.type == TxnType.EXPENSE && it.day >= from && it.day <= today }.sumOf { it.amount }
+                    val limit = dao.budgets().first().firstOrNull { it.categoryId == 0L }?.monthly
+                    rows += WRow(
+                        if (b.style == 1 && limit != null) 1 else 0, null, "Расходы", thousands(spent.roundToInt()) + " ₽",
+                        limit?.let { "из " + thousands(it.roundToInt()) } ?: "за месяц",
+                        if (limit != null && spent > limit) TONE_BAD else TONE_TEXT, limit?.let { (spent / it).toFloat() }, route = Routes.finance(0),
+                    )
+                }
+                "note" -> {
+                    val page = Graph.pages.pagesNow().filter { it.favorite && !it.archived }.maxByOrNull { it.updatedAt }
+                    if (page != null) rows += WRow(0, "ui:notebook", "Заметка", page.title.ifBlank { "Без названия" }, route = Routes.page(page.id))
+                }
+            }
+        }
+        return WidgetModel(
+            cfg, "${Dates.weekdayShort(today)}, ${Dates.short(today)}",
+            if (habits.isNotEmpty()) "Привычки $habitsDone/${habits.size}" else null,
+            steps, stepsGoal, burned, rows,
+        )
+    }
+
+    /** Примерная высота строки в dp — чтобы на виджете оказалось столько строк, сколько помещается. */
+    fun rowHeight(r: WRow, large: Boolean): Int = (if (large) 6 else 0) + when (r.kind) { 1 -> 40; 2 -> 64; 3 -> 30; else -> 28 }
+}

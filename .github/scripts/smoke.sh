@@ -35,6 +35,8 @@ routes=(
   "healthHub" "plan?tab=0" "plan?tab=1" "plan?tab=2" "topsHub?tab=0" "topsHub?tab=1" "topsHub?tab=2" "topsHub?tab=3"
   "media/0?kind=0" "media/1?kind=0" "mediaSearch?kind=0" "mediaSearch?kind=2" "recipe/5" "health?tab=0"
   "bodyDetail/0" "weightTrend" "bodyCompare" "kpImport?kind=0" "topsHub?tab=0" "recipeEdit/1"
+  "bodyScience" "widgetEditor" "plan?tab=2" "notes" "page/1" "page/2"
+  "training?tab=0" "training?tab=1" "training?tab=2" "training?tab=3" "trainingPlan/1" "exercise/1" "session/1"
 )
 i=1
 for r in "${routes[@]}"; do
@@ -56,6 +58,22 @@ adb shell am start -n $PKG/.MainActivity --es route "recipeEdit/0"
 sleep 3
 adb shell input text "Test"
 adb exec-out screencap -p > shots/98_recipe_wizard.png
+
+# Выбор иллюстрации рецепта: окно на весь экран с сеткой картинок.
+adb shell am start -n $PKG/.MainActivity --es route "recipeEdit/1"
+sleep 4
+adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
+b=$(adb shell cat /sdcard/ui.xml | grep -o 'text="Иллюстрация"[^>]*bounds="[^"]*"' | grep -o 'bounds="[^"]*"' | head -1 | grep -o '[0-9]\+' | tr '\n' ' ')
+if [ -n "$b" ]; then set -- $b; adb shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 )); sleep 3; fi
+adb exec-out screencap -p > shots/95_illustration_picker.png
+
+# Добавить вес: кнопки шага на одной строке.
+adb shell am start -n $PKG/.MainActivity --es route "health?tab=1"
+sleep 4
+adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
+b=$(adb shell cat /sdcard/ui.xml | grep -o 'text="+ Взвешивание"[^>]*bounds="[^"]*"' | grep -o 'bounds="[^"]*"' | head -1 | grep -o '[0-9]\+' | tr '\n' ' ')
+if [ -n "$b" ]; then set -- $b; adb shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 )); sleep 3; fi
+adb exec-out screencap -p > shots/94_add_weight.png
 
 # Главная: метрики под первым экраном и плашка фактов внизу.
 adb shell am force-stop $PKG

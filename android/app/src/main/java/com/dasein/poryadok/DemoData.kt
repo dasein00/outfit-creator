@@ -78,6 +78,43 @@ object DemoData {
             x.allMedia().filter { it.favorite }.forEach { x.addToMediaList(com.dasein.poryadok.data.MediaListItem(lid, it.id)) }
         }
         if (x.dayEnergyOf(Dates.today()) == null) x.upsertDayEnergy(DayEnergy(Dates.today(), 380, "пример"))
+        if (Graph.pages.pagesNow().isEmpty()) {
+            val B = com.dasein.poryadok.data.BlockType
+            fun b(type: String, text: String = "", checked: Boolean = false) = com.dasein.poryadok.data.PageBlock(pageId = 0, type = type, text = text, checked = checked)
+            val root = com.dasein.poryadok.data.PagesRepo.create(
+                null, "О привычках и порядке",
+                listOf(
+                    b(B.CALLOUT, "Порядок снаружи помогает **порядку внутри**."),
+                    b(B.H2, "Главные мысли"),
+                    b(B.BULLET, "Маленькие шаги каждый день важнее *героических* усилий"),
+                    b(B.BULLET, "Среда сильнее силы воли — ==уберите лишнее из виду=="),
+                    b(B.QUOTE, "Мы — то, что мы делаем постоянно."),
+                    b(B.H2, "Что попробовать"),
+                    b(B.TODO, "Вечером готовить одежду на завтра", true),
+                    b(B.TODO, "Телефон — в другой комнате за час до сна"),
+                    b(B.DIVIDER),
+                    b(B.TEXT, "Подробнее — в подстранице ниже."),
+                ),
+            )
+            com.dasein.poryadok.data.PagesRepo.create(root, "Конспект: «Атомные привычки»", listOf(b(B.H3, "Четыре закона"), b(B.NUMBER, "Сделай очевидным"), b(B.NUMBER, "Сделай привлекательным"), b(B.NUMBER, "Сделай простым"), b(B.NUMBER, "Сделай приносящим удовольствие")))
+            Graph.pages.pageNow(root)?.let { Graph.pages.upsertPage(it.copy(favorite = true, icon = "habit/23")) }
+            com.dasein.poryadok.data.PagesRepo.create(null, "Идеи для отпуска", listOf(b(B.BULLET, "Грузия в октябре"), b(B.BULLET, "Казань на выходные"), b(B.BULLET, "Алтай летом")))
+        }
+        com.dasein.poryadok.data.TrainingRepo.seed()
+        val t = Graph.training
+        if (t.sessionsNow().isEmpty()) {
+            val plan = t.plansNow().firstOrNull { it.seedKey == "full_body" }
+            if (plan != null) {
+                // Три прошлые тренировки с растущими повторами — чтобы показать историю и прогресс.
+                listOf(9L, 5L, 2L).forEachIndexed { k, ago ->
+                    val sid = com.dasein.poryadok.data.TrainingRepo.start(plan.id)
+                    val start = Dates.millis(Dates.today() - ago, 18 * 60)
+                    t.sessionNow(sid)?.let { t.upsertSession(it.copy(day = Dates.today() - ago, startedAt = start)) }
+                    t.upsertSets(t.setsOfNow(sid).map { it.copy(done = true, reps = it.reps + k, at = start + it.setIndex * 120_000L) })
+                    com.dasein.poryadok.data.TrainingRepo.finish(sid, 4, "", start + 50 * 60_000L)
+                }
+            }
+        }
         if (x.bodyMetricsNow().isEmpty()) {
             val today = Dates.today()
             val base = listOf(80.2, 80.0, 79.7, 79.8, 80.0, 78.5, 78.4)

@@ -146,7 +146,7 @@ fun HealthScreen(nav: NavHostController, initialTab: Int) {
                     0 -> FoodTab(nav, plan, profile)
                     1 -> BodyTab(nav, profile, weights)
                     2 -> MeasureTab()
-                    3 -> WorkoutTab()
+                    3 -> WorkoutTab(nav)
                     4 -> CalcTab(profile, current, plan)
                     5 -> ProgressTab(weights)
                 }
@@ -519,7 +519,7 @@ private fun MeasureTab() {
 }
 
 @Composable
-private fun WorkoutTab() {
+private fun WorkoutTab(nav: NavHostController) {
     val extra = LocalExtra.current
     val list by observe(emptyList()) { Graph.dao.workouts() }
     var edit by remember { mutableStateOf<Workout?>(null) }
@@ -527,7 +527,12 @@ private fun WorkoutTab() {
     val weekStart = Dates.weekStart(today)
     val thisWeek = list.filter { it.day >= weekStart }
     Gap(8.dp)
-    Button(onClick = { edit = Workout(day = today, type = WORKOUT_TYPES.first()) }, modifier = Modifier.fillMaxWidth()) { Text("+ Тренировка") }
+    Tile(onClick = { nav.navigate(com.dasein.poryadok.ui.Routes.training(0)) }, color = MaterialTheme.colorScheme.primary.copy(alpha = .12f)) {
+        Text("Программы, подходы и прогрессия", fontWeight = FontWeight.SemiBold)
+        Text("Силовые с весом и повторами, фото и видео техники, таймер отдыха, рост нагрузки по дням", fontSize = 12.sp, color = extra.dim)
+    }
+    Gap(8.dp)
+    Button(onClick = { edit = Workout(day = today, type = WORKOUT_TYPES.first()) }, modifier = Modifier.fillMaxWidth()) { Text("+ Быстрая запись тренировки") }
     Gap(8.dp)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Stat("${thisWeek.size}", "на этой неделе", Modifier.weight(1f))

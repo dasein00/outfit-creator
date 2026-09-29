@@ -28,6 +28,7 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.LinearProgressIndicator
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.updateAll
@@ -71,14 +72,6 @@ object Widgets {
     }
 }
 
-private data class WidgetTask(val id: Long, val title: String, val time: String, val overdue: Boolean)
-private data class WidgetData(
-    val tasks: List<WidgetTask>, val more: Int, val habitsDone: Int, val habitsTotal: Int, val date: String,
-    val steps: Int, val stepsGoal: Int, val burned: Int,
-    /** Вес: последнее значение, изменение за неделю и точки за 2 недели для мини-графика. */
-    val weight: Double?, val weightDelta: Double?, val weightPoints: List<Double>,
-)
-
 private val TaskIdKey = ActionParameters.Key<Long>("taskId")
 private val RouteKey = ActionParameters.Key<String>(MainActivity.EXTRA_ROUTE)
 
@@ -90,121 +83,134 @@ private val BRASS = Color(0xFFC79246)
 private val DANGER = Color(0xFFD27A63)
 private val GOOD = Color(0xFF8CC46E)
 
+/** Цвета темы виджета: фон, текст, приглушённый текст. */
+private data class WPal(val bg: Color, val text: Color, val dim: Color, val track: Color)
+
+private fun palette(theme: Int) = when (theme) {
+    1 -> WPal(Color(0xFFF6F1E7), Color(0xFF211D18), Color(0xFF7A7064), Color(0xFFE2D8C6))
+    2 -> WPal(Color(0x99141210), TEXT, Color(0xFFD5CDBF), Color(0x55FFFFFF))
+    else -> WPal(INK, TEXT, DIM, Color(0xFF3D362C))
+}
+
+private fun toneColor(tone: Int, pal: WPal): Color = when (tone) {
+    WidgetModels.TONE_GOOD -> GOOD
+    WidgetModels.TONE_BAD -> DANGER
+    WidgetModels.TONE_ACCENT -> BRASS
+    WidgetModels.TONE_DIM -> pal.dim
+    else -> pal.text
+}
+
 class TodayWidget : GlanceAppWidget() {
     override val sizeMode: SizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         Graph.init(context)
-        val data = load()
-        provideContent { Content(data) }
-    }
-
-    private suspend fun load(): WidgetData {
-        val dao = Graph.dao
-        val today = Dates.today()
-        val tasks = dao.openTasksUntil(today).sortedWith(compareBy({ it.dueDay }, { it.dueMin ?: 9999 }, { -it.priority }))
-        val habits = dao.habitsNow().filter { HabitSchedule(it.daysMask, it.timesPerWeek).isScheduled(today) }
-        val logs = dao.habitLogsOn(today).associateBy { it.habitId }
-        val done = habits.count { h -> (logs[h.id]?.value ?: 0) >= h.target }
-        val steps = dao.dayLogNow(today)?.steps ?: 0
-        val recent = dao.weightsSince(today - 13)
-        val last = recent.lastOrNull() ?: dao.lastWeight()
-        val weekAgo = dao.weightsSince(today - 30).lastOrNull { it.day <= (last?.day ?: today) - 7 } ?: recent.firstOrNull()?.takeIf { it.day < (last?.day ?: today) }
-        return WidgetData(
-            tasks.take(5).map { t ->
-                WidgetTask(t.id, t.title, t.dueMin?.let { Dates.time(it) } ?: "", (t.dueDay ?: today) < today)
-            },
-            (tasks.size - 5).coerceAtLeast(0), done, habits.size,
-            "${Dates.weekdayShort(today)}, ${Dates.short(today)}",
-            steps, dao.profileNow()?.stepsGoal ?: 8000,
-            Energy.burned(steps, dao.lastWeight()?.kg ?: dao.profileNow()?.startWeight ?: 70.0, dao.workoutKcalOn(today), Graph.extra.dayEnergyOf(today)?.activeKcal).total,
-            last?.kg, weekAgo?.let { w -> last?.let { it.kg - w.kg } }, recent.map { it.kg },
-        )
+        val model = WidgetModels.load(context)
+        val icons = model.rows.mapNotNull { it.icon }.distinct().associateWith { WidgetModels.icon(context, it) }
+        provideContent { Content(model, icons) }
     }
 
     @Composable
-    private fun Content(d: WidgetData) {
+    private fun Content(m: WidgetModel, icons: Map<String, Bitmap?>) {
         val size = LocalSize.current
         val context = LocalContext.current
+        val cfg = m.cfg
+        val pal = palette(cfg.theme)
+        val k = if (cfg.large) 1.2f else 1f
         val compact = size.height < 140.dp
-        // Кольцо занимает всю высоту под заголовком, но не больше половины ширины.
-        val ringDp = ((if (compact) size.height - 20.dp else size.height - 56.dp).value)
+        val header = cfg.header && !compact
+        val avail = size.height.value - 20 - (if (header) 34 else 0)
+        val ringDp = (if (compact) size.height.value - 20 else size.height.value - 56)
             .coerceAtMost(size.width.value * 0.5f).coerceAtLeast(72f)
-        val ring = remember(d.steps, d.stepsGoal, d.burned) { WidgetRing.render(context, d.steps, d.stepsGoal, d.burned) }
+        val ring = remember(m.steps, m.stepsGoal, m.burned) { WidgetRing.render(context, m.steps, m.stepsGoal, m.burned) }
+        val visible = buildList {
+            var used = 0
+            for (r in m.rows) {
+                val h = (WidgetModels.rowHeight(r, cfg.large))
+                if (used + h > avail && isNotEmpty()) break
+                used += h
+                add(r)
+            }
+        }.take(8)
         Column(
-            GlanceModifier.fillMaxSize().background(ColorProvider(INK)).cornerRadius(20.dp).padding(10.dp)
+            GlanceModifier.fillMaxSize().background(ColorProvider(pal.bg)).cornerRadius(20.dp).padding(10.dp)
                 .clickable(actionStartActivity<MainActivity>()),
         ) {
-            if (!compact) {
+            if (header) {
                 Row(GlanceModifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Сегодня", style = TextStyle(color = ColorProvider(TEXT), fontSize = 19.sp, fontWeight = FontWeight.Bold))
+                    Text("Сегодня", style = TextStyle(color = ColorProvider(pal.text), fontSize = (19 * k).sp, fontWeight = FontWeight.Bold))
                     Spacer(GlanceModifier.width(8.dp))
-                    Text(d.date, style = TextStyle(color = ColorProvider(DIM), fontSize = 14.sp))
+                    Text(m.date, style = TextStyle(color = ColorProvider(pal.dim), fontSize = (14 * k).sp))
                     Spacer(GlanceModifier.defaultWeight())
-                    if (d.habitsTotal > 0) Text(
-                        "Привычки ${d.habitsDone}/${d.habitsTotal}",
-                        style = TextStyle(color = ColorProvider(BRASS), fontSize = 14.sp, fontWeight = FontWeight.Bold),
+                    if (m.habitsText != null && m.rows.none { it.route == Routes.HABITS }) Text(
+                        m.habitsText, style = TextStyle(color = ColorProvider(BRASS), fontSize = (14 * k).sp, fontWeight = FontWeight.Bold),
                     )
                 }
                 Spacer(GlanceModifier.height(6.dp))
             }
             Row(GlanceModifier.fillMaxWidth().defaultWeight(), verticalAlignment = Alignment.CenterVertically) {
-                Image(
-                    ImageProvider(ring), contentDescription = "${d.steps} шагов из ${d.stepsGoal}, ${d.burned} ккал сожжено",
-                    modifier = GlanceModifier.size(ringDp.dp).clickable(actionStartActivity<MainActivity>(actionParametersOf(RouteKey to Routes.STEPS))),
-                )
-                Spacer(GlanceModifier.width(10.dp))
-                Column(GlanceModifier.defaultWeight()) {
-                    if (d.weight != null) {
-                        Row(
-                            GlanceModifier.fillMaxWidth().clickable(actionStartActivity<MainActivity>(actionParametersOf(RouteKey to Routes.WEIGHT_TREND))),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Image(ImageProvider(com.dasein.poryadok.R.drawable.ic_v_weight), "Вес", modifier = GlanceModifier.size(26.dp))
-                            Spacer(GlanceModifier.width(6.dp))
-                            Text(
-                                "%.1f".format(d.weight).replace('.', ',') + " кг",
-                                style = TextStyle(color = ColorProvider(TEXT), fontSize = 22.sp, fontWeight = FontWeight.Bold),
-                            )
-                            Spacer(GlanceModifier.width(6.dp))
-                            d.weightDelta?.let { dw ->
-                                Text(
-                                    (if (dw > 0.05) "▲ +" else if (dw < -0.05) "▼ " else "") + "%.1f".format(dw).replace('.', ',') + " за нед.",
-                                    style = TextStyle(color = ColorProvider(if (dw > 0.05) DANGER else GOOD), fontSize = 13.sp, fontWeight = FontWeight.Bold),
-                                )
-                            }
-                        }
-                        if (!compact && d.weightPoints.size >= 2) {
-                            val spark = remember(d.weightPoints) { WidgetRing.spark(d.weightPoints) }
-                            Image(ImageProvider(spark), "Вес за 2 недели", modifier = GlanceModifier.fillMaxWidth().height(34.dp))
-                        }
-                        Spacer(GlanceModifier.height(4.dp))
-                    }
-                    if (compact && d.habitsTotal > 0) Text(
-                        "Привычки ${d.habitsDone}/${d.habitsTotal}",
-                        style = TextStyle(color = ColorProvider(BRASS), fontSize = 14.sp, fontWeight = FontWeight.Bold),
+                if (cfg.ring) {
+                    Image(
+                        ImageProvider(ring), contentDescription = "${m.steps} шагов из ${m.stepsGoal}, ${m.burned} ккал сожжено",
+                        modifier = GlanceModifier.size(ringDp.dp).clickable(actionStartActivity<MainActivity>(actionParametersOf(RouteKey to Routes.STEPS))),
                     )
-                    if (d.tasks.isEmpty()) {
-                        Text("Задач на сегодня нет", style = TextStyle(color = ColorProvider(DIM), fontSize = 16.sp))
-                    }
-                    d.tasks.take(if (d.weight != null) (if (compact) 1 else 2) else 5).forEach { t ->
-                        Row(
-                            GlanceModifier.fillMaxWidth().padding(vertical = 5.dp)
-                                .clickable(actionRunCallback<ToggleTaskAction>(actionParametersOf(TaskIdKey to t.id))),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text("○", style = TextStyle(color = ColorProvider(BRASS), fontSize = 18.sp, fontWeight = FontWeight.Bold))
-                            Spacer(GlanceModifier.width(6.dp))
-                            Text(
-                                t.title, maxLines = 1,
-                                style = TextStyle(color = ColorProvider(if (t.overdue) DANGER else TEXT), fontSize = 16.sp, fontWeight = FontWeight.Medium),
-                                modifier = GlanceModifier.defaultWeight(),
-                            )
-                            if (t.time.isNotEmpty()) Text(" " + t.time, style = TextStyle(color = ColorProvider(DIM), fontSize = 14.sp))
-                        }
-                    }
-                    if (d.more > 0) Text("и ещё ${d.more}", style = TextStyle(color = ColorProvider(DIM), fontSize = 14.sp))
+                    Spacer(GlanceModifier.width(10.dp))
                 }
+                Column(GlanceModifier.defaultWeight()) {
+                    if (visible.isEmpty()) Text(
+                        "Выберите блоки в настройках виджета", style = TextStyle(color = ColorProvider(pal.dim), fontSize = (14 * k).sp),
+                        modifier = GlanceModifier.clickable(actionStartActivity<MainActivity>(actionParametersOf(RouteKey to Routes.WIDGET_EDITOR))),
+                    )
+                    visible.forEach { r -> RowView(r, icons[r.icon ?: ""], pal, k) }
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun RowView(r: WRow, icon: Bitmap?, pal: WPal, k: Float) {
+        if (r.kind == 3) {
+            Row(
+                GlanceModifier.fillMaxWidth().padding(vertical = 4.dp).clickable(actionRunCallback<ToggleTaskAction>(actionParametersOf(TaskIdKey to (r.taskId ?: 0L)))),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("○", style = TextStyle(color = ColorProvider(BRASS), fontSize = (18 * k).sp, fontWeight = FontWeight.Bold))
+                Spacer(GlanceModifier.width(6.dp))
+                Text(r.title, maxLines = 1, style = TextStyle(color = ColorProvider(toneColor(r.tone, pal)), fontSize = (16 * k).sp, fontWeight = FontWeight.Medium), modifier = GlanceModifier.defaultWeight())
+                if (r.value.isNotEmpty()) Text(" " + r.value, style = TextStyle(color = ColorProvider(pal.dim), fontSize = (14 * k).sp))
+            }
+            return
+        }
+        val open = r.route?.let { actionStartActivity<MainActivity>(actionParametersOf(RouteKey to it)) } ?: actionStartActivity<MainActivity>()
+        Column(GlanceModifier.fillMaxWidth().padding(vertical = 2.dp).clickable(open)) {
+            Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                if (icon != null) {
+                    Image(ImageProvider(icon), r.title, modifier = GlanceModifier.size((22 * k).dp))
+                    Spacer(GlanceModifier.width(6.dp))
+                }
+                if (r.value.isBlank()) {
+                    Text(r.title, maxLines = 1, style = TextStyle(color = ColorProvider(toneColor(r.tone, pal)), fontSize = (15 * k).sp, fontWeight = FontWeight.Medium))
+                } else {
+                    if (icon == null) {
+                        Text(r.title + " ", maxLines = 1, style = TextStyle(color = ColorProvider(pal.dim), fontSize = (14 * k).sp))
+                    }
+                    Text(r.value, maxLines = 1, style = TextStyle(color = ColorProvider(pal.text), fontSize = (18 * k).sp, fontWeight = FontWeight.Bold))
+                }
+                if (r.sub.isNotBlank()) {
+                    Spacer(GlanceModifier.width(6.dp))
+                    Text(r.sub, maxLines = 1, style = TextStyle(color = ColorProvider(if (r.tone == WidgetModels.TONE_TEXT) pal.dim else toneColor(r.tone, pal)), fontSize = (13 * k).sp, fontWeight = FontWeight.Bold))
+                }
+            }
+            if (r.kind == 1 && r.progress != null) {
+                Spacer(GlanceModifier.height(3.dp))
+                LinearProgressIndicator(
+                    progress = r.progress.coerceIn(0f, 1f), modifier = GlanceModifier.fillMaxWidth().height(6.dp),
+                    color = ColorProvider(if (r.progress >= 1f) GOOD else BRASS), backgroundColor = ColorProvider(pal.track),
+                )
+            }
+            if (r.kind == 2 && r.spark.size >= 2) {
+                val spark = remember(r.spark) { WidgetRing.spark(r.spark) }
+                Image(ImageProvider(spark), "График", modifier = GlanceModifier.fillMaxWidth().height(34.dp))
             }
         }
     }

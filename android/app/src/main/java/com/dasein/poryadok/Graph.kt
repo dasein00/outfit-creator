@@ -49,6 +49,8 @@ object Graph {
         private set
     val dao: LifeDao get() = db.dao()
     val extra: ExtraDao get() = extraDb.dao()
+    val pages: com.dasein.poryadok.data.PageDao get() = extraDb.pages()
+    val training: com.dasein.poryadok.data.TrainingDao get() = extraDb.training()
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var ready = false
 
@@ -66,6 +68,8 @@ object Graph {
             Repo.seed()
             runCatching { Repo.migrateGlyphs() }.onFailure { Log.e("DASEIN", "glyphs", it) }
             runCatching { RecipeRepo.seed(); RecipeRepo.materializeRepeats() }.onFailure { Log.e("DASEIN", "recipes seed", it) }
+            runCatching { com.dasein.poryadok.data.TrainingRepo.seed() }.onFailure { Log.e("DASEIN", "training seed", it) }
+            runCatching { com.dasein.poryadok.data.PagesRepo.migrateOldNotes(app) }.onFailure { Log.e("DASEIN", "pages", it) }
             runCatching { Steps.ensureScheduled(app) }.onFailure { Log.e("DASEIN", "steps", it) }
             runCatching { SleepTracker.ensureScheduled(app) }.onFailure { Log.e("DASEIN", "sleep", it) }
             Repo.processRecurring()
