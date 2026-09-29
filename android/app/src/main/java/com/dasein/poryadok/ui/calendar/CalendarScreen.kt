@@ -279,7 +279,8 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
             Tile(padding = 10.dp) {
                 dayReminders.forEach { r -> ReminderRow(r, onEdit = { onReminder(r) }) }
             }
-        }        item {
+        }
+        item {
             val st = com.dasein.poryadok.logic.ProdCalendar.month(ym.year, ym.monthValue)
             Tile(Modifier.padding(top = 10.dp), padding = 10.dp) {
                 Text("Производственный календарь · ${Dates.monthTitle(ym)}", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
