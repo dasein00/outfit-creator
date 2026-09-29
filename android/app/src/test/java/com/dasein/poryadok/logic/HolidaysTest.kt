@@ -40,7 +40,7 @@ class HolidaysTest {
             "/home/user/outfit-creator/android/app/src/main/assets/holidays/holidays.json").map { File(it) }.firstOrNull { it.exists() } ?: return
         val list = HolidayRules.parse(f.readText())
         assertTrue(list.size > 150)
-        list.forEach { h -> assertTrue(h.id, HolidayRules.dateIn(h.rule, 2026) != null && h.about.isNotBlank()) }
+        list.forEach { h -> assertTrue(h.id, HolidayRules.dateIn(h.rule, 2026) != null && h.about.isNotBlank() && h.how.isNotBlank() && h.facts.isNotBlank()) }
         val jan7 = HolidayRules.on(list, d(2026, 1, 7)).map { it.id }
         assertTrue("or_christmas" in jan7)
     }

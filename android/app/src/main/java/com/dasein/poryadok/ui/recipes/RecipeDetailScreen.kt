@@ -38,6 +38,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -123,10 +125,16 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
         onBack = { nav.popBackStack() },
         actions = {
             IconAction(Ic.heart, if (r.favorite) "Убрать из избранного" else "В избранное") { io { x.setFavorite(r.id, !r.favorite) } }
+            IconAction(Ic.folder, if (r.archived) "Вернуть из архива" else "Убрать в архив") {
+                io { x.setArchived(r.id, !r.archived) }
+                Toast.makeText(ctx, if (r.archived) "Рецепт возвращён в каталог" else "Рецепт в архиве — вернуть можно в каталоге, категория «Архив»", Toast.LENGTH_LONG).show()
+            }
             IconAction(Ic.sliders, "Изменить") { nav.navigate(Routes.recipeEdit(r.id)) }
         },
     ) { pad ->
-        Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+        val scroll = rememberScrollState()
+        var videoY by remember { mutableStateOf(0) }
+        Column(Modifier.padding(pad).verticalScroll(scroll).padding(horizontal = 16.dp)) {
             if (r.archived) {
                 Tile(color = extra.warn.copy(alpha = .18f)) {
                     Text("Рецепт в архиве", fontWeight = FontWeight.SemiBold)
@@ -155,6 +163,12 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                     if (meals.isNotEmpty()) Text("Подходит: " + meals.joinToString { MealType.name(it).lowercase() }, fontSize = 12.sp, color = extra.dim)
                 }
             }
+            val videoCount = RecipeVideos.list(r).size
+            Text(
+                if (videoCount > 0) "▶ Видео рецепта: $videoCount — смотреть" else "▶ Добавить видео рецепта",
+                color = MaterialTheme.colorScheme.primary, fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(top = 8.dp).clip(RoundedCornerShape(8.dp)).clickable { scope.launch { scroll.animateScrollTo(videoY) } }.padding(vertical = 4.dp),
+            )
             if (r.tagList().isNotEmpty()) {
                 Gap(8.dp)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -228,7 +242,7 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                 }
             }
             if (steps.isEmpty()) Text("Шаги не добавлены", color = extra.dim)
-            RecipeVideosSection(r)
+            Column(Modifier.onGloballyPositioned { videoY = it.positionInParent().y.toInt() }) { RecipeVideosSection(r) }
 
             if (r.notes.isNotBlank()) { SectionTitle("Заметки"); Text(r.notes) }
             if (r.tips.isNotBlank()) { SectionTitle("Советы"); Text(r.tips) }
@@ -264,6 +278,10 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                     Toast.makeText(ctx, "Ингредиенты добавлены в список покупок", Toast.LENGTH_SHORT).show()
                 }
             }, Modifier.fillMaxWidth()) { Text("Ингредиенты в список покупок") }
+            OutlinedButton(onClick = {
+                io { x.setArchived(r.id, !r.archived) }
+                Toast.makeText(ctx, if (r.archived) "Рецепт возвращён в каталог" else "Рецепт в архиве — вернуть можно в каталоге, категория «Архив»", Toast.LENGTH_LONG).show()
+            }, Modifier.fillMaxWidth()) { Text(if (r.archived) "Вернуть из архива" else "Убрать в архив") }
             Row {
                 OutlinedButton(onClick = { io { x.setFavorite(r.id, !r.favorite) } }, Modifier.weight(1f)) { Text(if (r.favorite) "В избранном ✓" else "В избранное") }
                 HGap(8.dp)
@@ -282,10 +300,6 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                         nav.navigate(Routes.recipe(newId))
                     }
                 }) { Text("Сохранить с заменами") }
-                TextButton(onClick = {
-                    io { x.setArchived(r.id, !r.archived) }
-                    Toast.makeText(ctx, if (r.archived) "Рецепт возвращён в каталог" else "Рецепт убран в архив — вернуть можно в каталоге, вкладка «Архив»", Toast.LENGTH_LONG).show()
-                }) { Text(if (r.archived) "Вернуть из архива" else "В архив") }
                 if (r.custom) TextButton(onClick = { confirmDelete = true }) { Text("Удалить", color = extra.danger) }
             }
             Gap(40.dp)

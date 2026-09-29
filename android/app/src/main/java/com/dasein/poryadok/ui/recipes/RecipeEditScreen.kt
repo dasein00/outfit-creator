@@ -191,6 +191,7 @@ private fun StepBasics(d: RecipeDraft) {
         recrop = false; d.recipe = d.recipe.copy(photo = it)
     }
         if (pickIllustration) GlyphPickerDialog(r.photo, { pickIllustration = false }, dishes = true) { d.recipe = d.recipe.copy(photo = it) }
+    RecipeVideosEditor(r.id, RecipeVideos.list(r), deleteFiles = false) { list -> d.recipe = d.recipe.copy(videos = list.joinToString("\n")) }
     SectionTitle("Категория")
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         RECIPE_CATEGORIES.forEach { c -> Pill(c, c == r.category) { d.recipe = r.copy(category = c) } }

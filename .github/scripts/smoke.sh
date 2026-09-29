@@ -37,7 +37,7 @@ routes=(
   "bodyDetail/0" "weightTrend" "bodyCompare" "kpImport?kind=0" "topsHub?tab=0" "recipeEdit/1"
   "bodyScience" "widgetEditor" "plan?tab=2" "notes" "page/1" "page/2"
   "training?tab=0" "training?tab=1" "training?tab=2" "training?tab=3" "trainingPlan/1" "exercise/1" "session/1"
-  "calendar?tab=2" "holiday/ru_newyear" "holiday/arm_vardavar" "health?tab=2" "bodyScience" "weightTrend" "recipe/3" "tasks"
+  "calendar?tab=2" "holiday/ru_newyear" "holiday/arm_vardavar" "health?tab=2" "bodyScience" "weightTrend" "recipe/3" "recipe/140" "recipe/170" "tasks"
 )
 i=1
 for r in "${routes[@]}"; do
@@ -75,6 +75,25 @@ adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
 b=$(adb shell cat /sdcard/ui.xml | grep -o 'text="+ Взвешивание"[^>]*bounds="[^"]*"' | grep -o 'bounds="[^"]*"' | head -1 | grep -o '[0-9]\+' | tr '\n' ' ')
 if [ -n "$b" ]; then set -- $b; adb shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 )); sleep 3; fi
 adb exec-out screencap -p > shots/94_add_weight.png
+
+# Праздники: раскрыть первый праздник в списке (нажатие по строке со стрелкой ▾).
+adb shell am start -n $PKG/.MainActivity --es route "calendar?tab=2"
+sleep 4
+adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
+b=$(adb shell cat /sdcard/ui.xml | grep -o 'text="▾"[^>]*bounds="[^"]*"' | grep -o 'bounds="[^"]*"' | head -1 | grep -o '[0-9]\+' | tr '\n' ' ')
+if [ -n "$b" ]; then set -- $b; adb shell input tap $(( ($1 + $3) / 2 - 300 )) $(( ($2 + $4) / 2 )); sleep 3; fi
+adb exec-out screencap -p > shots/92_holiday_expanded.png
+adb shell input swipe 540 1700 540 700 400
+sleep 2
+adb exec-out screencap -p > shots/92_holiday_expanded_2.png
+
+# Рецепт: ссылка «Добавить видео рецепта» прокручивает к разделу видео.
+adb shell am start -n $PKG/.MainActivity --es route "recipe/3"
+sleep 4
+adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
+b=$(adb shell cat /sdcard/ui.xml | grep -o 'text="▶ [^"]*"[^>]*bounds="[^"]*"' | grep -o 'bounds="[^"]*"' | head -1 | grep -o '[0-9]\+' | tr '\n' ' ')
+if [ -n "$b" ]; then set -- $b; adb shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 )); sleep 3; fi
+adb exec-out screencap -p > shots/91_recipe_videos.png
 
 # Главная: метрики под первым экраном и плашка фактов внизу.
 adb shell am force-stop $PKG

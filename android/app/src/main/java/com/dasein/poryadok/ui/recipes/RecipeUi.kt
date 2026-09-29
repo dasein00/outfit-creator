@@ -106,6 +106,7 @@ fun categoryIcon(cat: String): String = when (cat) {
     "Обеды" -> "food/10"
     "Ужины" -> "food/09"
     "Перекусы" -> "food/11"
+    "Кухни мира" -> "dish/caucasus/14"
     "Супы" -> "dish/healthy/18"
     "Салаты" -> "food/12"
     "Гарниры" -> "food/03"
@@ -143,9 +144,9 @@ fun RecipeThumb(r: Recipe, size: Dp) {
 }
 
 @Composable
-fun RecipeCard(r: Recipe, m: Macros, onClick: () -> Unit, onFavorite: () -> Unit) {
+fun RecipeCard(r: Recipe, m: Macros, onClick: () -> Unit, onFavorite: () -> Unit, onLongClick: (() -> Unit)? = null) {
     val extra = LocalExtra.current
-    Tile(Modifier.padding(bottom = 8.dp), onClick = onClick, padding = 10.dp) {
+    Tile(Modifier.padding(bottom = 8.dp), onClick = onClick, padding = 10.dp, onLongClick = onLongClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             RecipeThumb(r, 64.dp)
             Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {

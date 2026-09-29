@@ -28,7 +28,14 @@ object MealType {
     fun parse(csv: String): List<Int> = csv.split(',').mapNotNull { it.trim().toIntOrNull() }.filter { it in names.indices }
 }
 
-val RECIPE_CATEGORIES = listOf("Завтраки", "Обеды", "Ужины", "Перекусы", "Супы", "Салаты", "Гарниры", "Десерты", "Напитки", "Выпечка", "Заготовки")
+val RECIPE_CATEGORIES = listOf("Завтраки", "Обеды", "Ужины", "Перекусы", "Кухни мира", "Супы", "Салаты", "Гарниры", "Десерты", "Напитки", "Выпечка", "Заготовки")
+
+/** Категория блюд национальных кухонь; кухня указана тегом «… кухня». */
+const val WORLD_CATEGORY = "Кухни мира"
+
+/** Кухни, найденные в тегах рецептов: «грузинская кухня» → «Грузинская». */
+fun cuisineOf(tags: String): String? = tags.split(',').map { it.trim() }.firstOrNull { it.endsWith(" кухня") }
+    ?.removeSuffix(" кухня")?.replaceFirstChar { it.uppercase() }
 val SHOP_CATEGORIES = listOf("Овощи", "Фрукты", "Мясо", "Рыба", "Молочные продукты", "Крупы", "Бакалея", "Заморозка", "Другое")
 val UNITS = listOf("г", "кг", "мл", "л", "шт", "ст.л.", "ч.л.", "стакан", "щепотка", "по вкусу")
 val DIFFICULTY = listOf("Легко", "Средне", "Сложно")

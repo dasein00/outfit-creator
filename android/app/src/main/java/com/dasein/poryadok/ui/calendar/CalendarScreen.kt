@@ -158,7 +158,8 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
             Triple(
                 com.dasein.poryadok.logic.ProdCalendar.kind(ld),
                 com.dasein.poryadok.data.HolidayRepo.highlight(ctx, ld, custom, marks),
-                com.dasein.poryadok.logic.HolidayRules.on(com.dasein.poryadok.data.HolidayRepo.base(ctx), ld).isNotEmpty() || custom.any { com.dasein.poryadok.data.HolidayRepo.occurs(it, ld) },
+                // Точкой отмечаются только свои дни и праздники, которые вы выделили цветом.
+                com.dasein.poryadok.data.HolidayRepo.highlight(ctx, ld, custom, marks) != null,
             )
         }
     }
@@ -232,23 +233,6 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
             }
         }
 
-        item {
-            val st = com.dasein.poryadok.logic.ProdCalendar.month(ym.year, ym.monthValue)
-            Tile(Modifier.padding(top = 6.dp), padding = 10.dp) {
-                Text("Производственный календарь", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                Text(
-                    "Рабочих дней ${st.workDays} · выходных и праздничных ${st.offDays}" + (if (st.shortDays > 0) " · сокращённых ${st.shortDays}" else "") +
-                        " · норма ${st.hours40} ч при 40-часовой неделе",
-                    fontSize = 12.sp, color = extra.dim,
-                )
-                Text(
-                    "Красным — выходные и праздники, * — сокращённый на час предпраздничный день. " +
-                        if (com.dasein.poryadok.logic.ProdCalendar.exact(ym.year)) "С учётом переносов по постановлению Правительства РФ." else "Переносы на этот год ещё не утверждены — расчёт по общим правилам ТК РФ.",
-                    fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 2.dp),
-                )
-            }
-        }
-
         val dayEvents = eventsOn(events, selected)
         val dayTasks = tasks.filter { it.dueDay == selected }
         val dayReminders = remindersOn(reminders, selected)
@@ -264,9 +248,7 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
             )
         }
         val dayHolidays = com.dasein.poryadok.data.HolidayRepo.entries(ctx, Dates.day(selected), custom, marks, hiddenCats(ctx))
-        items(dayHolidays, key = { "h" + it.key }) { e ->
-            EntryRow(e, { if (e.custom == null) nav.navigate(Routes.holiday(e.key)) })
-        }
+        items(dayHolidays, key = { "h" + it.key }) { e -> ExpandableEntry(e, selected) }
         if (dayEvents.isEmpty() && dayTasks.isEmpty() && dayReminders.isEmpty() && dayHolidays.isEmpty()) item {
             Tile { Text("Свободный день. Нажмите «+», чтобы запланировать.", color = extra.dim) }
         }
@@ -296,6 +278,21 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
         if (dayReminders.isNotEmpty()) item {
             Tile(padding = 10.dp) {
                 dayReminders.forEach { r -> ReminderRow(r, onEdit = { onReminder(r) }) }
+            }
+        }        item {
+            val st = com.dasein.poryadok.logic.ProdCalendar.month(ym.year, ym.monthValue)
+            Tile(Modifier.padding(top = 10.dp), padding = 10.dp) {
+                Text("Производственный календарь · ${Dates.monthTitle(ym)}", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(
+                    "Рабочих дней ${st.workDays} · выходных и праздничных ${st.offDays}" + (if (st.shortDays > 0) " · сокращённых ${st.shortDays}" else "") +
+                        " · норма ${st.hours40} ч при 40-часовой неделе",
+                    fontSize = 12.sp, color = extra.dim,
+                )
+                Text(
+                    "Красным — выходные и праздники, * — сокращённый на час предпраздничный день. Точкой отмечены ваши дни и праздники, выделенные цветом. " +
+                        if (com.dasein.poryadok.logic.ProdCalendar.exact(ym.year)) "С учётом переносов по постановлению Правительства РФ." else "Переносы на этот год ещё не утверждены — расчёт по общим правилам ТК РФ.",
+                    fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 2.dp),
+                )
             }
         }
     }

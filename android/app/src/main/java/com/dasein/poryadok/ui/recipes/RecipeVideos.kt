@@ -74,15 +74,23 @@ object RecipeVideos {
     }
 }
 
+/** Видео в карточке рецепта: изменения сразу сохраняются в базе. */
 @Composable
 fun RecipeVideosSection(r: Recipe) {
+    RecipeVideosEditor(r.id, RecipeVideos.list(r), deleteFiles = true) { list ->
+        io { Graph.extra.setVideos(r.id, list.joinToString("\n")) }
+    }
+}
+
+/** Список видео рецепта с добавлением из галереи и по ссылке. [deleteFiles] — удалять файл при удалении из списка. */
+@Composable
+fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolean, onChange: (List<String>) -> Unit) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     val scope = rememberCoroutineScope()
-    val videos = RecipeVideos.list(r)
     var addLink by remember { mutableStateOf(false) }
     var remove by remember { mutableStateOf<String?>(null) }
-    fun save(list: List<String>) = io { Graph.extra.setVideos(r.id, list.distinct().joinToString("\n")) }
+    fun save(list: List<String>) = onChange(list.distinct())
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) scope.launch {
@@ -150,14 +158,14 @@ fun RecipeVideosSection(r: Recipe) {
     remove?.let { v ->
         ConfirmDialog(
             title = "Убрать видео?",
-            text = if (RecipeVideos.isLink(v)) "Ссылка будет удалена из рецепта." else "Файл видео будет удалён из приложения.",
+            text = if (RecipeVideos.isLink(v) || !deleteFiles) "Видео будет убрано из рецепта." else "Файл видео будет удалён из приложения.",
             confirm = "Убрать",
             onDismiss = { remove = null },
         ) {
             save(videos - v)
             // Файл удаляем, только если он не прикреплён к другому рецепту (например, к копии).
-            if (!RecipeVideos.isLink(v)) io {
-                if (Graph.extra.recipesNow().none { it.id != r.id && v in RecipeVideos.list(it) }) runCatching { File(v).delete() }
+            if (deleteFiles && !RecipeVideos.isLink(v)) io {
+                if (Graph.extra.recipesNow().none { it.id != recipeId && v in RecipeVideos.list(it) }) runCatching { File(v).delete() }
             }
             remove = null
         }

@@ -8,7 +8,15 @@ import java.time.temporal.TemporalAdjusters
 
 /** Праздник из встроенной базы. rule — правило даты (см. tools/holidays/generate.py), off — нерабочий день в своей стране. */
 @Serializable
-data class Holiday(val id: String, val name: String, val cat: String, val rule: String, val off: Boolean = false, val about: String = "")
+data class Holiday(
+    val id: String, val name: String, val cat: String, val rule: String, val off: Boolean = false,
+    /** Откуда появился праздник. */
+    val about: String = "",
+    /** Как отмечают, традиции. */
+    val how: String = "",
+    /** Любопытные факты. */
+    val facts: String = "",
+)
 
 @Serializable
 data class HolidayBase(val version: Int = 1, val holidays: List<Holiday> = emptyList())

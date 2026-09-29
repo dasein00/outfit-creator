@@ -835,6 +835,10 @@ IMAGES = {
     "meal_prep_chicken": "healthy/28", "granola": "breakfast/40", "tomato_sauce": "dishes1/16",
 }
 
+# Кухни мира — в отдельном файле.
+import world
+IMAGES.update(world.register(r, B, L, D, S, BR, AF, T))
+
 def grams(prod, amount, unit):
     g = prod["gramsPerUnit"]
     return {"г": amount, "мл": amount, "кг": amount * 1000, "л": amount * 1000, "шт": amount * (g if g > 0 else 100),

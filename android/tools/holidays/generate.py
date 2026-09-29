@@ -348,6 +348,20 @@ h("or_spirit", "Духов день", "orth", "eo:50",
 h("or_dmitry", "Дмитриевская родительская суббота", "orth", "before:11-08:6",
   "Суббота перед днём Дмитрия Солунского (8 ноября). Установлена Дмитрием Донским в память о павших на Куликовом поле в 1380 году; сегодня — день поминовения всех усопших.")
 
+# «Как отмечают» и «Интересно знать» — в отдельных файлах.
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from more_ru import MORE as M1
+from more_am import MORE as M2
+from more_orth import MORE as M3
+MORE = {**M1, **M2, **M3}
+for x in H:
+    how, facts = MORE.get(x["id"], ("", ""))
+    x["how"], x["facts"] = how, facts
+missing = [x["id"] for x in H if not x["how"]]
+assert not missing, missing
+assert not set(MORE) - {x["id"] for x in H}, set(MORE) - {x["id"] for x in H}
+
 ids = [x["id"] for x in H]
 assert len(ids) == len(set(ids)), "дубли id"
 out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../app/src/main/assets/holidays/holidays.json")
