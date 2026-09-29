@@ -8,11 +8,14 @@
     root: true, title: "Все разделы",
     render() {
       const items = [
-        ["tasks", "📝", "Задачи"], ["habits", "✅", "Привычки"], ["reminders", "🔔", "Напоминания"],
-        ["health", "❤", "Здоровье и активность"], ["food", "🍎", "Питание"], ["workouts", "🏋", "Тренировки"],
+        ["summary", "🗒", "Сводка дня"], ["tasks", "📝", "Задачи"], ["projects", "📁", "Проекты"],
+        ["habits", "✅", "Привычки"], ["reminders", "🔔", "Напоминания"], ["calendar/month", "📅", "Календарь"],
+        ["health", "❤", "Здоровье и вес"], ["food", "🍎", "Дневник питания"], ["recipes", "🍲", "Рецепты и меню"],
+        ["recipes/shop", "🛒", "Список покупок"], ["workouts", "🏋", "Тренировки"], ["health/balance", "☸", "Баланс жизни"],
         ["money", "💰", "Финансы"], ["learn", "🎓", "Обучение"], ["hobbies", "🎨", "Хобби"],
         ["culture", "📚", "Книги / фильмы / сериалы"], ["piano", "🎹", "Пианино"], ["tarot", "🃏", "Таро"],
-        ["ketu", "🌿", "Кету"], ["bazi", "☯", "Бацзы"], ["stats", "📊", "Статистика"],
+        ["ketu", "🌿", "Кету"], ["bazi", "☯", "Бацзы"], ["english", "🇬🇧", "Английский"],
+        ["latin", "🏛", "Латынь"], ["piano/songs", "🎸", "Песни на пианино"], ["stats", "📊", "Статистика"],
         ["book", "📘", "Книга PRIME ERA"], ["ideas", "💡", "Идеи"], ["settings", "⚙", "Настройки"]
       ];
       return '<div class="card hero" style="padding:14px"><div class="row" style="justify-content:center;gap:12px"><img src="img/logo-192.png" width="54" height="54" alt="" style="border-radius:50%"><div style="text-align:left"><div class="date" style="font-size:20px">Путь жизни</div><div class="small muted">' + esc(A.db().profile.name ? "Привет, " + A.db().profile.name + " 💜" : "Живу и не жалею") + "</div></div></div></div>" +
@@ -80,6 +83,7 @@
         if (A.native) h += '<div class="card row"><div class="grow small">Системные уведомления: <b>' + (A.native.notificationsAllowed() ? "разрешены" : "выключены") + '</b></div><button class="btn sm" data-a="perm">Разрешить</button><button class="btn sm" data-a="test">Тест</button></div>';
         else h += '<div class="warn" style="margin-bottom:12px">Системные уведомления доступны в Android-приложении.</div>';
         h += '<div class="card">' + kinds.map(([k, l]) => '<label class="switch"><input type="checkbox" data-c="notif" data-k="' + k + '"' + (n[k] !== false ? " checked" : "") + "><span></span>" + l + "</label>").join("") + '<p class="small muted">Без спама: уведомления приходят только для того, что ты сама настроила. Время — локальное время телефона.</p><a class="link" href="#/reminders">Мои напоминания →</a></div>';
+        if (A.native) h += '<div class="card"><h3>Фоновые процессы</h3><label class="switch"><input type="checkbox" data-c="pb" data-k="hc"' + (p.hc ? " checked" : "") + '><span></span>Health Connect: шаги, вес, сон, тренировки (при запуске и каждые 15 минут)</label><label class="switch"><input type="checkbox" data-c="pb" data-k="smsImport"' + (p.smsImport ? " checked" : "") + '><span></span>Автоимпорт операций из SMS 900</label><label class="switch"><input type="checkbox" data-c="pb" data-k="sleepAuto"' + (p.sleepAuto ? " checked" : "") + '><span></span>Определять сон по использованию телефона</label><div class="btns"><button class="btn sm" data-a="hcPerm">Разрешения Health Connect</button><button class="btn sm" data-a="smsPerm">Разрешить SMS</button><button class="btn sm" data-a="usagePerm">Доступ к истории использования</button></div><p class="small muted">Виджет «Путь жизни» можно добавить на главный экран телефона: долгое нажатие на рабочем столе → Виджеты.</p></div>';
         return h;
       }
       if (sec === "security") {
@@ -92,7 +96,8 @@
         const saved = A.db().savedAt ? new Date(A.db().savedAt).toLocaleString("ru-RU") : "—";
         let backups = "";
         if (A.native) { const list = (A.native.listBackups() || "").split(",").filter(Boolean).reverse(); backups = '<div class="card"><h3>Автоматические копии</h3><p class="small muted">Ежедневно сохраняются во внутренней памяти приложения (последние 14 дней).</p>' + (list.length ? list.map((d) => '<div class="item"><div class="tx"><b>' + fmtDate(d) + '</b></div><button class="btn sm" data-a="restoreDay" data-d="' + d + '">Восстановить</button></div>').join("") : A.empty("Пока нет")) + "</div>"; }
-        return '<div class="card"><h3>Экспорт</h3><p class="small muted">Последнее сохранение: ' + esc(saved) + '</p><div class="list">' + Object.entries(EXPORTS).map(([k, [n]]) => '<div class="item"><div class="tx"><b>' + esc(n) + '</b></div><button class="btn sm" data-a="exp" data-k="' + k + '">Сохранить</button></div>').join("") + '</div><div class="btns"><a class="btn" href="#/stats/month">PDF: месячный отчёт</a><a class="btn" href="#/stats/year">PDF: год</a></div><p class="small muted">PDF создаётся через печать: кнопка ⎙ → «Сохранить как PDF».</p></div>' +
+        return '<div class="card"><h3>Резервная копия</h3><div class="btns" style="margin-top:0"><button class="btn primary" data-a="backupNow">Сделать копию сейчас</button><button class="btn" data-a="exp" data-k="all">Экспорт в JSON</button><button class="btn" data-a="import">Импорт из JSON</button></div><label class="switch" style="margin-top:8px"><input type="checkbox" data-c="pb" data-k="autoBackup"' + (p.autoBackup !== false ? " checked" : "") + '><span></span>Автоматическое ежедневное резервное копирование</label><p class="small muted">Фото хранятся отдельно в памяти приложения и в JSON не входят.</p></div>' +
+          '<div class="card"><h3>Экспорт</h3><p class="small muted">Последнее сохранение: ' + esc(saved) + '</p><div class="list">' + Object.entries(EXPORTS).map(([k, [n]]) => '<div class="item"><div class="tx"><b>' + esc(n) + '</b></div><button class="btn sm" data-a="exp" data-k="' + k + '">Сохранить</button></div>').join("") + '</div><div class="btns"><a class="btn" href="#/stats/month">PDF: месячный отчёт</a><a class="btn" href="#/stats/year">PDF: год</a></div><p class="small muted">PDF создаётся через печать: кнопка ⎙ → «Сохранить как PDF».</p></div>' +
           '<div class="card"><h3>Восстановление</h3><p class="small">Загрузить полную резервную копию из файла (JSON). Текущие данные будут заменены.</p><button class="btn" data-a="import">Выбрать файл</button></div>' + backups +
           '<div class="card" style="border:1px solid var(--bad)"><h3 style="color:var(--bad)">Полное удаление данных</h3><p class="small">Удаляет все записи, настройки, автоматические копии и напоминания без возможности восстановления. Сначала сохраните резервную копию.</p><button class="btn danger" data-a="wipe">Удалить все данные</button></div>';
       }
@@ -125,6 +130,9 @@
         up(b) { const i = +b.dataset.i; if (i > 0) { [p.cards[i - 1], p.cards[i]] = [p.cards[i], p.cards[i - 1]]; A.save(); A.refresh(); } },
         down(b) { const i = +b.dataset.i; if (i < p.cards.length - 1) { [p.cards[i + 1], p.cards[i]] = [p.cards[i], p.cards[i + 1]]; A.save(); A.refresh(); } },
         notif(b) { p.notif[b.dataset.k] = b.checked; A.save(); A.syncReminders(); },
+        hcPerm() { A.syncHealth(true); },
+        smsPerm() { A.smsImport(true); },
+        usagePerm() { A.native.openUsageSettings(); },
         perm() { A.nativeCall("notif", () => A.native.requestNotifications()).then(() => A.refresh()); },
         test() { A.native.testNotification("Путь жизни", "Уведомления работают 💜"); },
         setPin() {
@@ -135,6 +143,7 @@
           }, { after: (w) => w.querySelectorAll("input").forEach((i) => i.setAttribute("inputmode", "numeric")) });
         },
         delPin() { A.confirm("Убрать PIN-код?", () => { p.pin = ""; p.bio = false; A.save(); A.refresh(); }); },
+        backupNow() { A.saveNow(); if (A.native) { A.native.backupNow(JSON.stringify(A.db())); A.toast("Копия сохранена в памяти приложения"); A.refresh(); } else { const [name, mime, content] = EXPORTS.all[1](); A.download(name, mime, content); } },
         exp(b) { const [name, mime, content] = EXPORTS[b.dataset.k][1](); A.download(name, mime, content); },
         async import() {
           const text = await A.pickFile(); if (!text) return;

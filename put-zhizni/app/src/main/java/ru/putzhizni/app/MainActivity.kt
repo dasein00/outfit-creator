@@ -55,6 +55,11 @@ class MainActivity : Activity() {
                 val url = request.url
                 if (url.host != HOST) return null
                 var path = url.path ?: "/"
+                if (path.startsWith("/photos/")) {
+                    val f = Photos.file(this@MainActivity, path.removePrefix("/photos/"))
+                    return if (f != null) WebResourceResponse("image/jpeg", null, f.inputStream())
+                    else WebResourceResponse("text/plain", "utf-8", 404, "Not Found", emptyMap(), ByteArrayInputStream(ByteArray(0)))
+                }
                 if (path == "/" || path.isEmpty()) path = "/index.html"
                 return try {
                     val stream = assets.open("www" + path)
@@ -104,8 +109,20 @@ class MainActivity : Activity() {
             }
         }
 
-        if (savedInstanceState != null) web.restoreState(savedInstanceState)
-        else web.loadUrl("https://$HOST/index.html")
+        val route = intent?.getStringExtra("route").orEmpty()
+        if (savedInstanceState != null && route.isEmpty()) web.restoreState(savedInstanceState)
+        else web.loadUrl("https://$HOST/index.html" + if (route.isNotEmpty()) "#/$route" else "")
+        Background.schedule(this)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val route = intent.getStringExtra("route").orEmpty()
+        if (route.isNotEmpty()) {
+            if (web.url?.contains("index.html") == true) js("window.__openRoute&&window.__openRoute(" + org.json.JSONObject.quote(route) + ")")
+            else web.loadUrl("https://$HOST/index.html#/$route")
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -163,6 +180,7 @@ class MainActivity : Activity() {
         val ok = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
         when (requestCode) {
             REQ_NOTIF -> bridge.callback("notif", ok.toString())
+            REQ_SMS -> if (ok) bridge.smsRead() else bridge.callback("sms", "")
             REQ_STEPS -> {
                 bridge.callback("stepsPerm", ok.toString())
                 if (ok) bridge.requestSteps()
@@ -182,6 +200,7 @@ class MainActivity : Activity() {
             }
             REQ_SAVE -> bridge.onSaveResult(uri)
             REQ_OPEN -> bridge.onOpenResult(uri)
+            REQ_HC -> bridge.onHcPermissionResult()
         }
     }
 
@@ -192,6 +211,8 @@ class MainActivity : Activity() {
         const val REQ_OPEN = 13
         const val REQ_NOTIF = 21
         const val REQ_STEPS = 22
+        const val REQ_SMS = 23
+        const val REQ_HC = 14
         val PERM_NOTIF = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.POST_NOTIFICATIONS else ""
         val PERM_STEPS = if (Build.VERSION.SDK_INT >= 29) Manifest.permission.ACTIVITY_RECOGNITION else ""
 
@@ -204,6 +225,7 @@ class MainActivity : Activity() {
             "json" -> "application/json"
             "webp" -> "image/webp"
             "jpg", "jpeg" -> "image/jpeg"
+            "woff2" -> "font/woff2"
             else -> "application/octet-stream"
         }
 

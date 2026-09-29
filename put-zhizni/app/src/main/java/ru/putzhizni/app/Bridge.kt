@@ -20,6 +20,9 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * Мост между интерфейсом (JavaScript, объект window.Android) и системой Android.
@@ -193,6 +196,94 @@ class Bridge(private val act: MainActivity) {
                 override fun onAuthenticationError(code: Int, msg: CharSequence?) = callback("auth", "false")
             })
         } catch (e: Exception) { callback("auth", "false") }
+    }
+
+
+    // ---------- Фото ----------
+
+    @JavascriptInterface fun savePhoto(id: String, b64: String) {
+        try { Photos.save(act, id, Base64.decode(b64, Base64.DEFAULT)) } catch (_: Exception) {}
+    }
+
+    @JavascriptInterface fun deletePhoto(id: String) = Photos.delete(act, id)
+
+    @JavascriptInterface fun backupNow(json: String) = backup(json)
+
+    // ---------- Виджет ----------
+
+    @JavascriptInterface fun updateWidget(json: String) {
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        act.getSharedPreferences("widget", Context.MODE_PRIVATE).edit().putString("data", json).putString("dataDate", today).apply()
+        LifeWidget.render(act)
+    }
+
+    // ---------- Health Connect ----------
+
+    private var hcDays = 14
+
+    @JavascriptInterface fun hcAvailable(): Boolean = HealthSync.available(act)
+
+    @JavascriptInterface fun hcSync(days: Int) {
+        hcDays = days
+        setFlag("hc", true)
+        if (!HealthSync.available(act)) { callback("hc", JSONObject().put("error", "Health Connect не установлен").toString()); return }
+        CoroutineScope(Dispatchers.IO).launch {
+            if (HealthSync.hasPermissions(act)) readHc()
+            else act.runOnUiThread {
+                try {
+                    @Suppress("DEPRECATION")
+                    act.startActivityForResult(HealthSync.permissionIntent(act), MainActivity.REQ_HC)
+                } catch (e: Exception) { callback("hc", JSONObject().put("error", "не удалось открыть разрешения").toString()) }
+            }
+        }
+    }
+
+    fun onHcPermissionResult() {
+        CoroutineScope(Dispatchers.IO).launch {
+            if (HealthSync.hasPermissions(act)) readHc()
+            else callback("hc", JSONObject().put("error", "доступ не выдан").toString())
+        }
+    }
+
+    private suspend fun readHc() {
+        val r = try { HealthSync.read(act, hcDays).toString() } catch (e: Throwable) { JSONObject().put("error", e.message ?: "ошибка").toString() }
+        callback("hc", r)
+    }
+
+    // ---------- SMS 900 ----------
+
+    private var smsDays = 3
+
+    @JavascriptInterface fun smsList(days: Int) {
+        smsDays = days
+        setFlag("sms", true)
+        act.runOnUiThread {
+            if (!act.askPermission(android.Manifest.permission.READ_SMS, MainActivity.REQ_SMS)) return@runOnUiThread
+            if (act.checkSelfPermission(android.Manifest.permission.RECEIVE_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
+                act.requestPermissions(arrayOf(android.Manifest.permission.RECEIVE_SMS), MainActivity.REQ_SMS + 1)
+            smsRead()
+        }
+    }
+
+    fun smsRead() {
+        val r = try { SmsReader.list(act, smsDays) } catch (e: Exception) { "" }
+        callback("sms", r)
+    }
+
+    // ---------- Сон по использованию телефона ----------
+
+    @JavascriptInterface fun usageAllowed(): Boolean = SleepDetector.allowed(act)
+
+    @JavascriptInterface fun openUsageSettings() = act.runOnUiThread {
+        try { act.startActivity(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS)) } catch (_: Exception) {}
+    }
+
+    @JavascriptInterface fun detectSleep(date: String): String = try { SleepDetector.detect(act, date) } catch (e: Exception) { "" }
+
+    private fun setFlag(k: String, v: Boolean) = act.getSharedPreferences("flags", Context.MODE_PRIVATE).edit().putBoolean(k, v).apply()
+
+    @JavascriptInterface fun setFlags(hc: Boolean, sms: Boolean) {
+        act.getSharedPreferences("flags", Context.MODE_PRIVATE).edit().putBoolean("hc", hc).putBoolean("sms", sms).apply()
     }
 
     // ---------- Прочее ----------

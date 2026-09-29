@@ -86,6 +86,8 @@
   };
   const noteMidi = (clef, idx) => { const base = clef === "treble" ? 60 : 36; const oct = Math.floor(idx / 7), st = [0, 2, 4, 5, 7, 9, 11][idx % 7]; return base + oct * 12 + st; };
 
+  /* ---------- Таро: иллюстрации колоды Райдера — Уэйта (1909, общественное достояние) ---------- */
+  A.tarotImg = (id) => { const m = /^([MWCSP])(\d+)$/.exec(id); if (!m) return ""; return "img/tarot/" + (m[1] === "M" ? "m" : m[1].toLowerCase()) + String(m[2]).padStart(2, "0") + ".jpg"; };
   /* ---------- Таро: карта дня ---------- */
   A.tarotDaily = (d) => {
     const T = A.db().tarot;
@@ -106,7 +108,7 @@
       const box = w.querySelector("#fc");
       if (i >= queue.length) { box.innerHTML = '<div class="empty"><p class="big">' + okN + " / " + queue.length + '</p><p>Сессия завершена. Отлично!</p></div>'; return; }
       const c = queue[i];
-      box.innerHTML = '<div class="small muted">' + (i + 1) + " из " + queue.length + " · коробка " + ((store.box[c.id] || {}).b || 0) + '</div><div class="tcard" style="margin:10px 0"><div class="tn">' + esc(c.front) + "</div>" + (shown ? '<div style="margin-top:8px">' + esc(c.back) + "</div>" : "") + "</div>" +
+      box.innerHTML = '<div class="small muted">' + (i + 1) + " из " + queue.length + " · коробка " + ((store.box[c.id] || {}).b || 0) + '</div><div class="tcard" style="margin:10px 0">' + (c.img ? '<img src="' + c.img + '" alt="" style="width:120px;margin:0 auto;border-radius:8px">' : "") + '<div class="tn">' + esc(c.front) + "</div>" + (shown ? '<div style="margin-top:8px">' + esc(c.back) + "</div>" : "") + "</div>" +
         (shown ? '<div class="btns"><button class="btn" data-g="0" style="flex:1">Не помню</button><button class="btn primary" data-g="1" style="flex:1">Знаю</button></div>' : '<button class="btn primary block" data-show>Показать ответ</button>');
     };
     w.querySelector("#fc").addEventListener("click", (e) => {
@@ -131,7 +133,7 @@
       const q = qs[i];
       const wrong = deck.filter((c) => c.back !== q.back).sort(() => Math.random() - 0.5).slice(0, 3).map((c) => c.back);
       const opts = wrong.concat(q.back).sort(() => Math.random() - 0.5);
-      box.innerHTML = '<div class="small muted">Вопрос ' + (i + 1) + " из " + qs.length + '</div><div class="tcard" style="margin:10px 0;min-height:90px"><div class="tn">' + esc(q.front) + '</div></div><div class="list">' + opts.map((o) => '<button class="btn block" style="margin:4px 0;justify-content:flex-start;text-align:left;min-height:48px;height:auto;padding:8px 12px" data-o="' + esc(o) + '">' + esc(o) + "</button>").join("") + "</div>";
+      box.innerHTML = '<div class="small muted">Вопрос ' + (i + 1) + " из " + qs.length + '</div><div class="tcard" style="margin:10px 0;min-height:90px">' + (q.img ? '<img src="' + q.img + '" alt="" style="width:100px;margin:0 auto;border-radius:8px">' : "") + '<div class="tn">' + esc(q.front) + '</div></div><div class="list">' + opts.map((o) => '<button class="btn block" style="margin:4px 0;justify-content:flex-start;text-align:left;min-height:48px;height:auto;padding:8px 12px" data-o="' + esc(o) + '">' + esc(o) + "</button>").join("") + "</div>";
     };
     w.querySelector("#qz").addEventListener("click", (e) => {
       const b = e.target.closest("[data-o]"); if (!b || b.disabled) return;
@@ -154,7 +156,7 @@
   };
 
   /* ---------- колоды ---------- */
-  const tarotDeck = () => L().TAROT.map((c) => ({ id: c.id, front: c.name, back: c.up }));
+  const tarotDeck = () => L().TAROT.map((c) => ({ id: c.id, front: c.name, back: c.up, img: A.tarotImg(c.id) }));
   const ketuDeck = () => {
     const K = L().KETU;
     return K.terms.map((t, i) => ({ id: "kt" + i, front: t[0], back: t[1] }))
@@ -219,7 +221,7 @@
           sec(b) { A.go(r.name + "/" + b.dataset.v, true); },
           lesson(b) {
             const l = content.lessons.find((x) => x.id === b.dataset.id);
-            A.sheet(l.title, '<div class="book"><p>' + esc(l.text) + "</p></div>", { buttons: [{ label: st.lessons[l.id] ? "Отметить непройденным" : "Урок пройден", cls: "primary", onClick: () => { if (st.lessons[l.id]) delete st.lessons[l.id]; else st.lessons[l.id] = today(); A.save(); A.refresh(); } }] });
+            A.sheet(l.title, '<div class="book">' + l.text.split("\n").map((x) => "<p>" + esc(x) + "</p>").join("") + "</div>", { buttons: [{ label: st.lessons[l.id] ? "Отметить непройденным" : "Урок пройден", cls: "primary", onClick: () => { if (st.lessons[l.id]) delete st.lessons[l.id]; else st.lessons[l.id] = today(); A.save(); A.refresh(); } }] });
           },
           flash() { flashSession(title + ": карточки", st, deck()); },
           quiz() { quizSession(title + ": тест", st, deck()); },
@@ -289,7 +291,7 @@
       if (sec === "card") {
         const c = cards.find((x) => x.id === r.args[1]) || cards[0];
         const i = cards.indexOf(c);
-        return '<div class="tcard"><div class="small muted">' + esc(c.arcana + (c.suit ? " · " + c.suit + " · " + c.el : " · " + c.num)) + '</div><div class="tn">' + esc(c.name) + "</div></div>" +
+        return '<img class="tarot-img" src="' + A.tarotImg(c.id) + '" alt="' + esc(c.name) + '"><div class="tcard" style="margin-top:12px;min-height:0"><div class="small muted">' + esc(c.arcana + (c.suit ? " · " + c.suit + " · " + c.el : " · " + c.num)) + '</div><div class="tn">' + esc(c.name) + "</div></div>" +
           '<div class="card" style="margin-top:12px"><h3>Традиционное значение</h3><p>' + esc(c.up) + '</p><h3 style="margin-top:10px">Перевёрнутое (опционально)</h3><p class="muted">' + esc(c.rev) + '</p><h3 style="margin-top:10px">Символика</h3><p>' + esc(c.sym) + "</p></div>" +
           '<div class="card tint"><h3>Вопрос для рефлексии</h3><p><i>' + esc(c.q) + "</i></p></div>" +
           '<div class="card"><h3>Мои заметки</h3><textarea rows="5" data-c="cnote" data-live data-id="' + c.id + '">' + esc(T.notes[c.id] || "") + "</textarea></div>" +
@@ -299,7 +301,7 @@
       if (sec === "home") {
         const id = T.daily[today()], c = id && cards.find((x) => x.id === id);
         h += '<div class="warn" style="margin-bottom:12px">Образовательный модуль. Карты — инструмент для размышлений, а не достоверное предсказание будущего.</div>';
-        h += '<div class="card"><h3>Карта дня</h3>' + (c ? '<div class="tcard" data-a="open" data-id="' + c.id + '"><div class="tn">' + esc(c.name) + "</div><div>" + esc(c.up) + '</div><div class="small"><i>' + esc(c.q) + "</i></div></div>" + '<textarea rows="3" style="margin-top:10px" placeholder="Как тема проявилась сегодня?" data-c="dnote" data-live>' + esc(T.notes["day:" + today()] || "") + "</textarea>" : '<button class="btn primary block" data-a="draw">Вытянуть карту дня</button>') + "</div>";
+        h += '<div class="card"><h3>Карта дня</h3>' + (c ? '<div class="row" data-a="open" data-id="' + c.id + '" style="align-items:flex-start"><img src="' + A.tarotImg(c.id) + '" alt="" style="width:110px;border-radius:10px;flex:0 0 auto"><div class="grow"><div class="tn" style="font-family:var(--serif);font-size:20px">' + esc(c.name) + "</div><div>" + esc(c.up) + '</div><div class="small" style="margin-top:6px"><i>' + esc(c.q) + "</i></div></div></div>" + '<textarea rows="3" style="margin-top:10px" placeholder="Как тема проявилась сегодня?" data-c="dnote" data-live>' + esc(T.notes["day:" + today()] || "") + "</textarea>" : '<button class="btn primary block" data-a="draw">Вытянуть карту дня</button>') + "</div>";
         h += memStats(T, tarotDeck());
         h += '<div class="btns" style="margin-top:12px"><button class="btn primary" style="flex:1" data-a="flash">Карточки</button><button class="btn" style="flex:1" data-a="quiz">Тест</button></div>';
         const hist = Object.entries(T.daily).sort((a, b) => (b[0] > a[0] ? 1 : -1)).slice(0, 10);
@@ -310,7 +312,7 @@
         const f = r.params.f || "all";
         h += '<div class="chips" style="margin-bottom:10px">' + [["all", "Все"], ["major", "Старшие"]].concat(L().SUITS.map((s) => [s.name, s.name])).map(([k, n]) => '<button class="chip' + (f === k ? " on" : "") + '" data-a="filter" data-v="' + k + '">' + n + "</button>").join("") + "</div>";
         const list = cards.filter((c) => f === "all" || (f === "major" ? c.arcana === "Старший аркан" : c.suit === f));
-        h += '<div class="card"><div class="list">' + list.map((c) => { const b = (T.box[c.id] || {}).b || 0; return '<div class="item" data-a="open" data-id="' + c.id + '"><div class="ic">' + (c.arcana === "Старший аркан" ? c.num : "✦") + '</div><div class="tx"><b>' + esc(c.name) + "</b><small>" + esc(c.up) + "</small></div><small>" + "●".repeat(b) + '<span style="opacity:.2">' + "●".repeat(5 - b) + "</span></small></div>"; }).join("") + "</div></div>";
+        h += '<div class="card"><div class="list">' + list.map((c) => { const b = (T.box[c.id] || {}).b || 0; return '<div class="item" data-a="open" data-id="' + c.id + '"><img class="tarot-mini" src="' + A.tarotImg(c.id) + '" alt="" loading="lazy"><div class="tx"><b>' + esc(c.name) + "</b><small>" + esc(c.up) + "</small></div><small>" + "●".repeat(b) + '<span style="opacity:.2">' + "●".repeat(5 - b) + "</span></small></div>"; }).join("") + "</div></div>";
       } else if (sec === "study") {
         h += memStats(T, tarotDeck());
         h += '<div class="btns" style="margin-top:12px"><button class="btn primary" style="flex:1" data-a="flash">Карточки повторения</button><button class="btn" style="flex:1" data-a="quiz">Тест 10 вопросов</button></div><p class="small muted">Карточки работают по системе Лейтнера: чем лучше знаешь карту, тем реже она повторяется.</p>';
@@ -343,7 +345,7 @@
         },
         jopen(b) {
           const j = T.journal.find((x) => x.id === b.dataset.id);
-          const body = '<p class="muted">' + esc(j.question || "") + "</p>" + j.cards.map((x) => { const c = cards.find((k) => k.id === x.id); return '<div class="card tint"><div class="small muted">' + esc(x.pos) + (x.rev ? " · перевёрнута" : "") + "</div><b>" + esc(c.name) + '</b><div class="small">' + esc(x.rev ? c.rev : c.up) + '</div><div class="small"><i>' + esc(c.q) + "</i></div></div>"; }).join("") + '<label class="small muted">Мои мысли</label><textarea id="jn" rows="5">' + esc(j.notes || "") + "</textarea>";
+          const body = '<p class="muted">' + esc(j.question || "") + "</p>" + j.cards.map((x) => { const c = cards.find((k) => k.id === x.id); return '<div class="card tint"><img src="' + A.tarotImg(c.id) + '" alt="" style="width:70px;float:right;border-radius:6px;margin-left:8px;' + (x.rev ? "transform:rotate(180deg)" : "") + '"><div class="small muted">' + esc(x.pos) + (x.rev ? " · перевёрнута" : "") + "</div><b>" + esc(c.name) + '</b><div class="small">' + esc(x.rev ? c.rev : c.up) + '</div><div class="small"><i>' + esc(c.q) + "</i></div></div>"; }).join("") + '<label class="small muted">Мои мысли</label><textarea id="jn" rows="5">' + esc(j.notes || "") + "</textarea>";
           A.sheet("Расклад · " + fmtShort(j.date), body, { buttons: [{ label: "Удалить", cls: "danger ghost", onClick: () => { T.journal.splice(T.journal.indexOf(j), 1); A.save(); A.refresh(); } }, { label: "Сохранить", cls: "primary", onClick: (w) => { j.notes = w.querySelector("#jn").value; A.save(); } }] });
         }
       });
@@ -357,7 +359,7 @@
     render(el, r) {
       const P = A.db().piano, lessons = L().PIANO;
       const sec = r.args[0] || "course";
-      let h = A.seg([["course", "Курс"], ["keys", "Клавиатура"], ["read", "Ноты"], ["metro", "Метроном"], ["log", "Практика"]], sec === "lesson" ? "course" : sec, "sec");
+      let h = A.seg([["course", "Курс"], ["songs", "Песни"], ["keys", "Клавиатура"], ["read", "Ноты"], ["metro", "Метроном"], ["log", "Практика"]], sec === "lesson" ? "course" : sec === "song" ? "songs" : sec, "sec");
       if (sec === "course") {
         const done = Object.keys(P.done).length;
         const wk = sum(A.col("psess").filter((s) => s.date > addDays(today(), -7)).map((s) => s.min)), mo = sum(A.col("psess").filter((s) => s.date.slice(0, 7) === today().slice(0, 7)).map((s) => s.min));
@@ -376,6 +378,20 @@
           '<div class="card"><h3>Заметки</h3><textarea rows="4" data-c="lnote" data-live data-id="' + l.id + '">' + esc(P.notes[l.id] || "") + "</textarea></div>" +
           '<div class="btns"><button class="btn" data-a="setCur" data-id="' + l.id + '">Сделать текущим</button><button class="btn" data-a="practice" data-id="' + l.id + '">+ практика</button><button class="btn primary" data-a="lessonDone" data-id="' + l.id + '">' + (P.done[l.id] ? "Отменить завершение" : "Урок завершён ✓") + "</button></div>" +
           '<div class="row between" style="margin-top:12px">' + (i > 0 ? '<a class="link" href="#/piano/lesson/' + lessons[i - 1].id + '">‹ назад</a>' : "<span></span>") + (i < lessons.length - 1 ? '<a class="link" href="#/piano/lesson/' + lessons[i + 1].id + '">следующий ›</a>' : "") + "</div>";
+      } else if (sec === "songs") {
+        const SG = window.SONGS.list, done = P.songs || {};
+        const groups = [["en", "🇬🇧 Англоязычный рок"], ["ru", "🇷🇺 Русский рок"], ["theory", "🎓 Приём для всех песен"]];
+        h += '<div class="card tint"><p class="small">Разбор для чайников: аккорды, из каких нот они состоят, структура, ритм и пошаговый план. Нажмите на аккорд — он прозвучит и подсветится на клавиатуре. Тексты песен не приводятся — подпевайте по памяти.</p></div>';
+        groups.forEach(([g, n]) => { const list = SG.filter((x) => x.lang === g); h += '<div class="sec-t">' + n + '</div><div class="card"><div class="list">' + list.map((x) => '<a class="item" style="text-decoration:none;color:inherit" href="#/piano/song/' + x.id + '"><div class="ic" style="' + (done[x.id] ? "background:var(--sage2)" : "") + '">' + (done[x.id] ? "✓" : "🎸") + '</div><div class="tx"><b>' + esc(x.title) + "</b><small>" + esc(x.artist) + " · " + "★".repeat(x.level) + '<span style="opacity:.3">' + "★".repeat(3 - x.level) + "</span> · " + x.chords.join(" ") + "</small></div></a>").join("") + "</div></div>"; });
+      } else if (sec === "song") {
+        const x = window.SONGS.list.find((k) => k.id === r.args[1]) || window.SONGS.list[0];
+        const done = (P.songs || {})[x.id];
+        h += '<div class="card peach"><div class="small muted">' + esc(x.artist) + '</div><h2 style="font-size:22px">' + esc(x.title) + '</h2><div class="kv" style="margin-top:6px"><b>Тональность</b><span>' + esc(x.key) + "</span><b>Темп</b><span>" + esc(x.tempo) + "</span><b>Размер</b><span>" + esc(x.meter) + "</span><b>Сложность</b><span>" + "★".repeat(x.level) + '<span style="opacity:.3">' + "★".repeat(3 - x.level) + "</span></span></div>" + (x.note ? '<p class="small muted" style="margin-top:8px">' + esc(x.note) + "</p>" : "") + "</div>";
+        h += '<div class="card"><h3>Аккорды песни</h3><div>' + x.chords.map((c) => { const ch = window.SONGS.chord(c); return '<span class="chord" data-a="chord" data-v="' + esc(c) + '">' + esc(c) + '<small style="display:block;font-weight:400;font-size:11px">' + (ch ? ch.notes.map((n) => NAMES[n % 12]).join("-") : "") + "</small></span>"; }).join("") + "</div>" + A.keyboard(48, 3) + '<p class="small muted">Левая рука берёт нижнюю подсвеченную ноту (бас), правая — аккорд.</p></div>';
+        h += '<div class="card"><h3>Структура</h3>' + x.sections.map(([n, bars]) => '<div style="margin:8px 0"><b class="small">' + esc(n) + '</b><div class="formula" style="margin-top:4px">' + esc(bars) + "</div></div>").join("") + "</div>";
+        h += '<div class="card"><h3>Ритм и как играть</h3><p>' + esc(x.rhythm) + '</p><h3 style="margin-top:10px">Пошагово</h3><ol>' + x.steps.map((k) => '<li style="margin:5px 0">' + esc(k) + "</li>").join("") + "</ol></div>";
+        h += '<div class="card sage"><h3>💡 Совет</h3><p>' + esc(x.tips) + "</p></div>";
+        h += '<div class="btns"><a class="btn" href="#/piano/metro">Метроном</a><button class="btn" data-a="songPractice" data-id="' + x.id + '">+ практика</button><button class="btn primary" data-a="songDone" data-id="' + x.id + '">' + (done ? "Выучено ✓" : "Отметить выученной") + "</button></div>";
       } else if (sec === "keys") {
         h += '<div class="card"><h3>Интерактивная клавиатура</h3>' + A.keyboard(48, 3) + '<p class="small muted">Звук синтезируется телефоном. Прокручивайте клавиатуру вбок.</p></div>' +
           '<div class="card"><h3>Найди ноту</h3><p id="findQ" class="big" style="text-align:center">—</p><div class="btns"><button class="btn primary block" data-a="findNew">Новая нота</button></div><p id="findR" class="small muted" style="text-align:center"></p></div>';
@@ -416,6 +432,14 @@
       A.bind(el, {
         sec(b) { if (metroT) { clearInterval(metroT); metroT = null; } A.go("piano/" + b.dataset.v, true); },
         lesson(b) { A.go("piano/lesson/" + b.dataset.id); },
+        chord(b) {
+          const ch = window.SONGS.chord(b.dataset.v); if (!ch) return;
+          el.querySelectorAll(".pk.lit").forEach((k) => k.classList.remove("lit"));
+          [ch.bass].concat(ch.notes).forEach((m, i) => { const k = el.querySelector('.pk[data-m="' + m + '"]'); if (k) k.classList.add("lit"); setTimeout(() => A.playNote(m, 1.4), i === 0 ? 0 : 40 * i); });
+          const nm = el.querySelector("#pkName"); if (nm) nm.textContent = b.dataset.v + ": бас " + NAMES[ch.bass % 12] + " + " + ch.notes.map((n) => NAMES[n % 12]).join(" – ");
+        },
+        songDone(b) { P.songs = P.songs || {}; if (P.songs[b.dataset.id]) delete P.songs[b.dataset.id]; else { P.songs[b.dataset.id] = today(); A.toast("Ещё одна песня в репертуаре 🎸"); } A.save(); A.refresh(); },
+        songPractice(b) { const x = window.SONGS.list.find((k) => k.id === b.dataset.id); A.edit.practice({ item: x.artist + " — " + x.title }); },
         setCur(b) { P.cur = b.dataset.id; A.save(); A.toast("Текущий урок выбран"); A.refresh(); },
         lessonDone(b) { const id = b.dataset.id; if (P.done[id]) delete P.done[id]; else { P.done[id] = today(); const i = L().PIANO.findIndex((x) => x.id === id); if (L().PIANO[i + 1] && P.cur === id) P.cur = L().PIANO[i + 1].id; A.toast("Урок завершён 🎹"); } A.save(); A.refresh(); },
         lnote(b) { P.notes[b.dataset.id] = b.value; A.save(); },
@@ -446,6 +470,13 @@
   });
   window.addEventListener("hashchange", () => { if (metroT && !location.hash.includes("piano/metro")) { clearInterval(metroT); metroT = null; } });
 
+
+  /* ---------- иностранные языки ---------- */
+  const langDeck = (C, pre) => () => { const out = []; Object.entries(C.vocab).forEach(([g, words]) => words.forEach((w, i) => out.push({ id: pre + g.slice(0, 3) + i, front: w[0], back: w[1] }))); return out; };
+  const langRef = (C) => () => Object.entries(C.vocab).map(([g, words]) => '<div class="card"><h3>' + esc(g) + '</h3><table class="tbl">' + words.map((w) => "<tr><td><b>" + esc(w[0]) + '</b></td><td class="muted">' + esc(w[1]) + "</td></tr>").join("") + "</table></div>").join("");
+  A.view("english", studyModule("english", "Английский язык", window.LANG.EN, langDeck(window.LANG.EN, "en"), langRef(window.LANG.EN)));
+  A.view("latin", studyModule("latin", "Латынь", window.LANG.LA, langDeck(window.LANG.LA, "la"), langRef(window.LANG.LA)));
+
   /* ---------- центр обучения ---------- */
   A.view("learn", {
     title: "Обучение", tab: "more",
@@ -458,6 +489,9 @@
         ["tarot", "🃏", "Обучатель по Таро", L().TAROT.filter((c) => (T.box[c.id] || {}).b >= 3).length + "/78 карт выучено"],
         ["ketu", "🌿", "Модуль Кету", Object.keys(A.db().ketu.lessons).length + "/" + L().KETU.lessons.length + " уроков"],
         ["bazi", "☯", "Обучатель по Бацзы", Object.keys(A.db().bazi.lessons).length + "/" + L().BAZI.lessons.length + " уроков"],
+        ["piano/songs", "🎸", "Рок-песни на пианино", Object.keys(P.songs || {}).length + "/" + window.SONGS.list.length + " выучено"],
+        ["english", "🇬🇧", "Английский язык", Object.keys(A.db().english.lessons).length + "/" + window.LANG.EN.lessons.length + " уроков"],
+        ["latin", "🏛", "Латынь", Object.keys(A.db().latin.lessons).length + "/" + window.LANG.LA.lessons.length + " уроков"],
         ["book", "📘", "Книга PRIME ERA", Object.keys(A.db().bookDone).length + "/13 блоков"]
       ];
       let h = '<div class="card"><div class="list">' + mods.map((m) => '<a class="item" style="text-decoration:none;color:inherit" href="#/' + m[0] + '"><div class="ic">' + m[1] + '</div><div class="tx"><b>' + m[2] + "</b><small>" + esc(m[3]) + "</small></div><span class=\"muted\">›</span></a>").join("") + "</div></div>";

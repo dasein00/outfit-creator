@@ -11,30 +11,48 @@
   A.edit.meal = (m) => {
     const isNew = !m.id;
     const foods = A.col("foods").slice().sort((a, b) => (b.used || 0) - (a.used || 0) || a.name.localeCompare(b.name));
+    // Недавние блюда: последние уникальные записи дневника — повторное добавление одним нажатием.
+    const seen = {}, recent = A.col("meals").slice().reverse().filter((x) => { const k = x.name.toLowerCase(); if (seen[k]) return false; seen[k] = 1; return true; }).slice(0, 12);
     const body = '<div class="form"><div class="fld full"><label>Приём пищи</label>' + '<div class="chips" data-field="type" data-multi="0">' + A.MEALS.map(([k, n]) => '<button type="button" class="chip' + ((m.type || "breakfast") === k ? " on" : "") + '" data-v="' + k + '">' + n + "</button>").join("") + "</div></div>" +
-      '<div class="fld full"><label>Продукт из базы</label><input id="fq" placeholder="Поиск: гречка, яйцо…" autocomplete="off"><div id="fl" class="list" style="max-height:200px;overflow:auto"></div></div>' +
-      '<div class="fld"><label>Масса, г</label><input id="fg" type="number" inputmode="decimal" value="' + esc(m.g || 100) + '"></div><div class="fld"><label>Название</label><input id="fn" value="' + esc(m.name || "") + '"></div>' +
-      '<div class="fsec full">КБЖУ порции (посчитается из базы или введите вручную)</div>' +
+      (isNew && recent.length ? '<div class="fld full"><label>Недавнее — добавить так же</label><div class="chips" id="rec">' + recent.map((x, i) => '<button type="button" class="chip" data-r="' + i + '">' + esc(x.name) + " · " + Math.round(x.kcal) + "</button>").join("") + "</div></div>" : "") +
+      '<div class="fld full"><label>Поиск: продукт из базы или рецепт 📖</label><input id="fq" placeholder="гречка, омлет, борщ…" autocomplete="off"><div id="fl" class="list" style="max-height:220px;overflow:auto"></div></div>' +
+      '<div class="fld"><label id="gl">Масса, г</label><input id="fg" type="number" inputmode="decimal" value="' + esc(m.g || 100) + '"></div><div class="fld"><label>Название</label><input id="fn" value="' + esc(m.name || "") + '"></div>' +
+      '<div class="fsec full">КБЖУ (посчитается автоматически или введите вручную)</div>' +
       ["kcal:Ккал", "p:Белки, г", "f:Жиры, г", "c:Углеводы, г", "fib:Клетчатка, г"].map((x) => { const [k, l] = x.split(":"); return '<div class="fld"><label>' + l + '</label><input id="m_' + k + '" type="number" inputmode="decimal" value="' + esc(m[k] ?? "") + '"></div>'; }).join("") + "</div>";
-    let sel = m.foodId ? A.byId("foods", m.foodId) : null;
+    let sel = m.foodId ? A.byId("foods", m.foodId) : null, selR = m.recipeId ? A.recipe(m.recipeId) : null;
     const w = A.sheet(isNew ? "Добавить еду" : "Приём пищи", body, {
       buttons: [].concat(isNew ? [] : [{ label: "Удалить", cls: "danger ghost", onClick: () => { A.remove("meals", m.id); A.refresh(); } }], [{ label: "Сохранить", cls: "primary", onClick: (w) => {
-        const g = A.num(w.querySelector("#fg").value, 0);
-        const o = { id: m.id, date: m.date, type: w.querySelector('.chips[data-field="type"] .chip.on')?.dataset.v || "snack", foodId: sel ? sel.id : "", name: w.querySelector("#fn").value.trim() || (sel ? sel.name : "Еда"), g };
+        const qv = A.num(w.querySelector("#fg").value, 0);
+        const o = { id: m.id, date: m.date, type: w.querySelector('.chips[data-field="type"] .chip.on')?.dataset.v || "snack", foodId: sel ? sel.id : "", recipeId: selR ? selR.id : "", name: w.querySelector("#fn").value.trim() || (sel ? sel.name : "Еда"), g: selR ? Math.round(A.recipeMacros(selR).g * qv) : qv, servings: selR ? qv : null };
         ["kcal", "p", "f", "c", "fib"].forEach((k) => (o[k] = A.num(w.querySelector("#m_" + k).value, 0)));
         if (sel) sel.used = (sel.used || 0) + 1;
         A.upsert("meals", o); A.refresh();
       } }])
     });
     A.wireForm(w);
-    const list = w.querySelector("#fl"), q = w.querySelector("#fq"), gi = w.querySelector("#fg");
-    const fill = () => { if (!sel) return; const r = calc(sel, A.num(gi.value, 0)); ["kcal", "p", "f", "c", "fib"].forEach((k) => (w.querySelector("#m_" + k).value = r[k])); w.querySelector("#fn").value = sel.name; };
+    const list = w.querySelector("#fl"), q = w.querySelector("#fq"), gi = w.querySelector("#fg"), gl = w.querySelector("#gl");
+    const setV = (o) => ["kcal", "p", "f", "c", "fib"].forEach((k) => (w.querySelector("#m_" + k).value = o[k] ?? 0));
+    const fill = () => {
+      if (selR) { const mm = A.recipeMacros(selR), n = A.num(gi.value, 1); setV({ kcal: Math.round(mm.kcal * n), p: round(mm.p * n, 1), f: round(mm.f * n, 1), c: round(mm.c * n, 1), fib: 0 }); w.querySelector("#fn").value = selR.name + (n !== 1 ? " × " + n : ""); return; }
+      if (!sel) return; setV(calc(sel, A.num(gi.value, 0))); w.querySelector("#fn").value = sel.name;
+    };
     const show = () => {
       const s = q.value.trim().toLowerCase();
-      const res = foods.filter((f) => !s || f.name.toLowerCase().includes(s)).slice(0, 30);
-      list.innerHTML = res.map((f) => '<div class="item" data-id="' + f.id + '" style="min-height:40px;padding:6px 2px;' + (sel && sel.id === f.id ? "background:var(--accent2);border-radius:8px" : "") + '"><div class="tx"><b>' + esc(f.name) + "</b><small>" + f.kcal + " ккал · Б " + f.p + " Ж " + f.f + " У " + f.c + " на 100 г</small></div></div>").join("") || '<div class="small muted">Нет в базе — введите КБЖУ вручную или добавьте продукт в базу.</div>';
+      const res = foods.filter((f) => !s || f.name.toLowerCase().includes(s)).slice(0, 25);
+      const rs = s ? A.allRecipes().filter((r) => r.name.toLowerCase().includes(s)).slice(0, 8) : [];
+      list.innerHTML = rs.map((r) => '<div class="item" data-rid="' + r.id + '" style="min-height:40px;padding:6px 2px;' + (selR && selR.id === r.id ? "background:var(--accent2);border-radius:8px" : "") + '"><div class="tx"><b>📖 ' + esc(r.name) + "</b><small>рецепт · " + A.recipeMacros(r).kcal + " ккал на порцию</small></div></div>").join("") +
+        res.map((f) => '<div class="item" data-id="' + f.id + '" style="min-height:40px;padding:6px 2px;' + (sel && sel.id === f.id ? "background:var(--accent2);border-radius:8px" : "") + '"><div class="tx"><b>' + esc(f.name) + "</b><small>" + f.kcal + " ккал · Б " + f.p + " Ж " + f.f + " У " + f.c + " на 100 г</small></div></div>").join("") || '<div class="small muted">Нет в базе — введите КБЖУ вручную или добавьте продукт в базу.</div>';
     };
-    list.addEventListener("click", (e) => { const it = e.target.closest("[data-id]"); if (!it) return; sel = A.byId("foods", it.dataset.id); fill(); show(); });
+    list.addEventListener("click", (e) => {
+      const ir = e.target.closest("[data-rid]"), it = e.target.closest("[data-id]");
+      if (ir) { selR = A.recipe(ir.dataset.rid); sel = null; gl.textContent = "Количество порций"; gi.value = 1; }
+      else if (it) { sel = A.byId("foods", it.dataset.id); selR = null; gl.textContent = "Масса, г"; if (!gi.value || +gi.value < 5) gi.value = 100; }
+      else return;
+      fill(); show();
+    });
+    const rec = w.querySelector("#rec");
+    if (rec) rec.addEventListener("click", (e) => { const c = e.target.closest("[data-r]"); if (!c) return; const x = recent[+c.dataset.r]; sel = x.foodId ? A.byId("foods", x.foodId) : null; selR = x.recipeId ? A.recipe(x.recipeId) : null; gi.value = selR ? (x.servings || 1) : x.g; gl.textContent = selR ? "Количество порций" : "Масса, г"; w.querySelector("#fn").value = x.name; setV(x); });
+    if (selR) { gl.textContent = "Количество порций"; gi.value = m.servings || 1; }
     q.addEventListener("input", show); gi.addEventListener("input", fill);
     show();
   };

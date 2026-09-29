@@ -27,11 +27,12 @@ object Notifications {
 
     fun allowed(ctx: Context): Boolean = ctx.getSystemService(NotificationManager::class.java).areNotificationsEnabled()
 
-    fun show(ctx: Context, id: Int, title: String, text: String) {
+    fun show(ctx: Context, id: Int, title: String, text: String, route: String = "") {
         ensureChannel(ctx)
         if (!allowed(ctx)) return
+        // Нажатие открывает нужный раздел приложения (deep link).
         val open = PendingIntent.getActivity(
-            ctx, 0, Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            ctx, id, Intent(ctx, MainActivity::class.java).putExtra("route", route).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         val n = Notification.Builder(ctx, CHANNEL)
@@ -172,7 +173,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val id = r.optString("id")
         // Показываем, только если напоминание всё ещё в актуальном списке.
         val current = ReminderScheduler.find(ctx, id) ?: return
-        Notifications.show(ctx, id.hashCode(), current.optString("title", "Путь жизни"), current.optString("text", ""))
+        Notifications.show(ctx, id.hashCode(), current.optString("title", "Путь жизни"), current.optString("text", ""), current.optString("route", ""))
         val next = ReminderScheduler.nextTime(current, System.currentTimeMillis() + 30_000)
         if (next != null) ReminderScheduler.schedule(ctx, id.hashCode(), next, current.toString())
     }
@@ -182,5 +183,6 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         ReminderScheduler.rescheduleAll(ctx)
         StepCounter.scheduleMidnight(ctx)
+        Background.schedule(ctx)
     }
 }

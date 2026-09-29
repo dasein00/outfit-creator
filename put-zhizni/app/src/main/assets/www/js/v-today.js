@@ -5,7 +5,7 @@
   const { esc, today, addDays, fmtDate, fmtN, fmtDur, hm2min, nowHM } = A;
 
   A.CARD_NAMES = {
-    main: "Главное дело дня", state: "Состояние", schedule: "Расписание", habits: "Привычки", tasks: "Задачи",
+    dash: "Статистика дня", weight: "Вес и тренд", tasks5: "Задачи на сегодня (5)", facts: "Мои достижения", esoteric: "Приметы, эзотерика, веды, алхимия", main: "Главное дело дня", state: "Состояние", schedule: "Расписание", habits: "Привычки", tasks: "Задачи",
     water: "Вода", sleep: "Сон", steps: "Шаги", weather: "Погода", food: "Питание и КБЖУ", workout: "Тренировка",
     learn: "Чтение и пианино", tarot: "Карта дня", money: "Финансы", reminders: "Напоминания", evening: "Вечерняя сверка"
   };
@@ -52,7 +52,7 @@
     const en = day.energy || {};
     const epart = A._epart || part;
     return '<div class="card"><h3>💜 Состояние<span class="sp"></span><button class="link" data-a="feelings">' + (day.feelings && day.feelings.length ? esc(day.feelings.slice(0, 2).join(", ")) + (day.feelings.length > 2 ? "…" : "") : "+ чувства") + "</button></h3>" +
-      '<div class="small muted">Настроение ' + (day.mood != null ? "<b>" + day.mood + "</b>" : "") + "</div>" + A.scale("mood", day.mood) +
+      '<div class="small muted row">Настроение ' + (day.mood != null ? "<b>" + day.mood + "</b>" : "") + ((day.moods || []).length > 1 ? " · записей: " + day.moods.length : "") + '<span class="grow"></span><button class="link" data-a="moodEntry">+ запись с эмоциями</button></div>' + A.scale("mood", (day.moods || []).length ? day.moods[day.moods.length - 1].v : day.mood) +
       '<div class="small muted" style="margin-top:8px">Энергия' + A.seg([["m", "утро " + (en.m ?? "")], ["d", "день " + (en.d ?? "")], ["e", "вечер " + (en.e ?? "")]], epart, "epart").replace('class="seg"', 'class="seg" style="margin:4px 0"') + "</div>" + A.scale("energy", en[epart]) +
       '<div class="small muted" style="margin-top:8px">Стресс ' + (day.stress != null ? "<b>" + day.stress + "</b>" : "") + (day.stressSrc && day.stressSrc.length ? " · " + esc(day.stressSrc.join(", ")) : "") + ' <button class="link" data-a="stressSrc">источник</button></div>' + A.scale("stress", day.stress) +
       '<div class="row" style="margin-top:10px"><div class="grow small muted">Тревожность: ' + (day.anx && day.anx.length ? day.anx.map((a) => "<b>" + a.v + "</b> " + esc(a.t || "")).join(", ") : "нет записей") + '</div><button class="btn sm" data-a="anx">+ запись</button></div>' +
@@ -77,12 +77,12 @@
     const hs = A.col("habits").filter((h) => A.habitPlanned(h, d));
     const done = hs.filter((h) => A.hs(h.id, d) === "done").length;
     return '<div class="card"><h3>✅ Привычки<span class="sp"></span><small>' + done + " из " + hs.length + '</small></h3><div class="list">' +
-      (hs.length ? hs.map((h) => { const st = A.hs(h.id, d), S = st ? A.HSTATUS[st] : null; return '<div class="item"><div class="ic">' + esc(h.icon || "•") + '</div><div class="tx"><b>' + esc(h.name) + "</b><small>" + (h.min ? "мин.: " + esc(h.min) + " · " : "") + "серия " + A.habitStreak(h, d) + '</small></div><button class="hbtn" data-a="habit" data-id="' + h.id + '" style="' + (S ? "background:" + S[2] + ";border-color:" + S[2] + ";color:" + (st === "none" ? "var(--ink2)" : "#fff") : "") + '" aria-label="' + esc(S ? S[0] : "Отметить") + '">' + (S ? S[1] : "") + "</button></div>"; }).join("") : A.empty("На сегодня привычек нет")) +
+      (hs.length ? hs.map((h) => { const st = A.hs(h.id, d), S = st ? A.HSTATUS[st] : null; const nv = h.type === "num" ? (A.hv(h.id, d) || 0) : null; return '<div class="item"><div class="ic">' + esc(h.icon || "•") + '</div><div class="tx"><b>' + esc(h.name) + "</b><small>" + (nv != null ? fmtN(nv, 1) + " / " + (h.target || 1) + " " + esc(h.unit || "") + " · " : h.min ? "мин.: " + esc(h.min) + " · " : "") + "серия " + A.habitStreak(h, d) + "</small>" + (nv != null ? A.bar(nv / (h.target || 1), "var(--sage)") : "") + '</div><button class="hbtn" data-a="habit" data-id="' + h.id + '" style="' + (S ? "background:" + S[2] + ";border-color:" + S[2] + ";color:" + (st === "none" ? "var(--ink2)" : "#fff") : "") + '" aria-label="' + esc(S ? S[0] : "Отметить") + '">' + (S ? S[1] : "") + "</button></div>"; }).join("") : A.empty("На сегодня привычек нет")) +
       '</div><p class="small muted">Нажатие: ✓ выполнено → ½ частично → × пропуск → – не планировалось. Пропуск — не провал.</p><a class="link" href="#/habits">Все привычки →</a></div>';
   };
 
   C.tasks = (d) => {
-    const t = A.col("tasks").filter((x) => (x.date === d) || (!x.done && x.date && x.date < d && d === today()));
+    const t = A.col("tasks").filter((x) => !x.archived && ((x.date === d) || (!x.done && x.date && x.date < d && d === today())));
     t.sort((a, b) => (a.done - b.done) || ((a.prio || 2) - (b.prio || 2)));
     return '<div class="card"><h3>📝 Задачи<span class="sp"></span><small>' + t.filter((x) => x.done).length + "/" + t.length + "</small></h3>" +
       '<div class="inline-add"><input id="qtask" placeholder="Новая задача на день"><button class="btn primary" data-a="qtask">+</button></div><div class="list">' +
@@ -100,7 +100,7 @@
   C.sleep = (d, day) => {
     const s = day.sleep || {}, h = A.sleepH(d);
     return '<div class="card"><h3>🌙 Сон<span class="sp"></span><button class="link" data-a="sleep">' + (h ? "изменить" : "+ записать") + "</button></h3>" +
-      (h ? '<div class="row"><div class="big">' + fmtDur(h * 60) + '</div><div class="grow small muted">' + esc((s.bed || "?") + " → " + (s.wake || "?")) + "<br>качество " + (s.q ?? "—") + "/10 · восстановление " + (s.rec ?? "—") + "/10" + (s.wakeups ? " · пробуждений " + s.wakeups : "") + "</div></div>" : '<p class="muted small">Во сколько легла и проснулась? Цель: ' + A.db().profile.sleepMin + "–" + A.db().profile.sleepMax + " ч.</p>") + "</div>";
+      (h ? '<div class="row"><div class="big">' + fmtDur(h * 60) + '</div><div class="grow small muted">' + esc((s.bed || "?") + " → " + (s.wake || "?")) + "<br>" + (s.q ? "★".repeat(s.q) + "☆".repeat(5 - s.q) : "качество —") + (s.tags && s.tags.length ? " · " + esc(s.tags.join(", ")) : "") + (s.auto ? " · авто" : "") + "</div></div>" : '<p class="muted small">Во сколько легла и проснулась? Цель: ' + (A.db().profile.sleepGoal || 8) + " ч.</p>") + "</div>";
   };
 
   C.steps = (d, day) => {
@@ -160,7 +160,7 @@
 
   C.reminders = (d) => {
     const rs = A.col("reminders").filter((r) => r.on && A.reminderOn(r, d)).sort((a, b) => (a.time > b.time ? 1 : -1));
-    return '<div class="card"><h3>🔔 Напоминания<span class="sp"></span><a class="link" href="#/reminders">все</a></h3>' + (rs.length ? rs.map((r) => '<div class="item"><div class="ic">🔔</div><div class="tx"><b>' + esc(r.title) + "</b><small>" + esc(r.time + (r.text ? " · " + r.text : "")) + "</small></div></div>").join("") : A.empty("На сегодня напоминаний нет")) + "</div>";
+    return '<div class="card"><h3>🔔 Напоминания<span class="sp"></span><a class="link" href="#/reminders">все</a></h3>' + (rs.length ? rs.map((r) => { const done = A.col("remLog").some((x) => x.rid === r.id && x.date === d); return '<div class="item' + (done ? " done" : "") + '"><button class="check' + (done ? " on" : "") + '" data-a="rdone" data-id="' + r.id + '" aria-label="Выполнено">' + (done ? "✓" : "") + '</button><div class="tx"><b>' + esc(r.title) + "</b><small>" + esc(r.time + (r.text ? " · " + r.text : "")) + "</small></div></div>"; }).join("") : A.empty("На сегодня напоминаний нет")) + "</div>";
   };
 
   C.evening = (d, day) => '<div class="card sage"><h3>🌿 Вечерняя сверка</h3>' +
@@ -170,10 +170,57 @@
     '<div class="fld full"><label>Заметка / благодарность</label><textarea data-c="dayF" data-k="note" rows="2">' + esc(day.note || "") + "</textarea></div></div>" +
     '<p class="small muted" style="margin-top:8px"><i>«Мои действия сегодня были похожи на жизнь, которую я хочу?»</i> Если сорвалась — ничего не компенсировать, возврат начинается со следующего доступного действия.</p></div>';
 
+
+  /* ---------- дашборд ---------- */
+  const goBtn = (route, inner, cls) => '<div class="' + (cls || "") + ' tap" data-a="go" data-v="' + route + '">' + inner + "</div>";
+  C.dash = (d, day) => {
+    const p = A.db().profile, steps = day.steps || 0, burn = A.burnDay(d), eaten = A.kcalDay(d) || 0, water = day.water || 0;
+    const hp = A.habitsDayPct(d);
+    const parts = [Math.min(1, steps / (p.stepsGoal || 8000)), Math.min(1, water / (p.waterGoal || 2000)), eaten ? Math.min(1, eaten / p.kcal) : 0].concat(hp != null ? [hp] : []);
+    const prog = A.avg(parts) || 0;
+    return '<div class="card"><h3>📊 Статистика дня<span class="sp"></span><small>' + Math.round(prog * 100) + "%</small></h3>" + A.bar(prog, "linear-gradient(90deg,var(--sage),var(--accent))") +
+      '<div class="grid3" style="margin-top:12px">' +
+      goBtn("health/steps", '<small>👟 Шаги</small><b>' + fmtN(steps) + '</b><small>' + Math.round((steps / (p.stepsGoal || 8000)) * 100) + "% цели</small>", "stat") +
+      goBtn("workouts", '<small>🔥 Потрачено</small><b>' + fmtN(burn) + '</b><small>ккал активности</small>', "stat") +
+      goBtn("food?d=" + d, '<small>🍎 Съедено</small><b>' + fmtN(eaten) + '</b><small>из ' + fmtN(p.kcal) + " ккал</small>", "stat") +
+      goBtn("health/water", '<small>💧 Вода</small><b>' + fmtN(water) + '</b><small>из ' + fmtN(p.waterGoal) + " мл</small>", "stat") +
+      goBtn("habits", '<small>✅ Привычки</small><b>' + (hp == null ? "—" : Math.round(hp * 100) + "%") + "</b><small>выполнено</small>", "stat") +
+      goBtn("health/sleep", '<small>🌙 Сон</small><b>' + (A.sleepH(d) ? fmtDur(A.sleepH(d) * 60) : "—") + "</b><small>цель " + (p.sleepGoal || 8) + " ч</small>", "stat") +
+      "</div>" + goBtn("summary?d=" + d, '<span class="link">Сводка дня целиком →</span>', "") + "</div>";
+  };
+  C.weight = (d, day) => {
+    const days = A.lastDays(7, d), t = A.weightTrend(14, d), cur = A.lastWeight(d), tgt = A.db().profile.body.targetWeight;
+    const cls = t.arrow === "↑" ? "up" : t.arrow === "↓" ? "down" : "flat";
+    return '<div class="card"><h3>⚖ Вес<span class="sp"></span><button class="btn sm" data-a="weightAdd">+ вес</button></h3>' +
+      goBtn("health/weight", '<div class="row"><div class="big">' + (cur ? fmtN(cur, 1) + " кг" : "—") + '</div><div class="trend ' + cls + '" title="' + esc(t.word) + '">' + t.arrow + '</div><div class="grow small muted">' + esc(t.word) + (t.wk != null ? " · " + (t.wk > 0 ? "+" : "") + t.wk.toFixed(2) + " кг/нед" : "") + (tgt ? "<br>цель " + fmtN(tgt, 1) + " кг" : "") + "</div></div>" +
+      A.charts.line([{ name: "Вес", color: "#6C9FD3", data: days.map((x) => ({ x: A.DOW[A.dow(x) - 1], v: (A.dayGet(x) || {}).weight ?? null })) }], { h: 110, title: "Вес за неделю" }), "") + "</div>";
+  };
+  C.tasks5 = (d) => {
+    const t = A.col("tasks").filter((x) => !x.archived && !x.done && x.date && x.date <= d).sort((a, b) => (a.prio || 2) - (b.prio || 2) || (a.time || "99") > (b.time || "99") ? 1 : -1).slice(0, 5);
+    return '<div class="card"><h3>📝 Задачи на сегодня<span class="sp"></span><a class="link" href="#/tasks">все</a></h3><div class="list">' + (t.length ? t.map((x) => A.taskRow(x, d)).join("") : A.empty("Задач на сегодня нет 💜")) + '</div><div class="inline-add" style="margin-top:8px"><input id="qtask" placeholder="Быстрая задача"><button class="btn primary" data-a="qtask">+</button></div></div>';
+  };
+  let rot = [];
+  const rotator = (id, items, ms) => { let i = 0; rot.push(setInterval(() => { const el = document.getElementById(id); if (!el) return; el.classList.add("fade"); setTimeout(() => { i = (i + 1) % items.length; el.innerHTML = items[i]; el.classList.remove("fade"); const dots = document.getElementById(id + "d"); if (dots) dots.innerHTML = items.map((_, k) => '<i class="' + (k === i ? "on" : "") + '"></i>').join(""); }, 350); }, ms)); };
+  A._clearRot = () => { rot.forEach(clearInterval); rot = []; };
+  C.facts = () => {
+    const a = A.achievements();
+    A._rotAch = a;
+    return '<div class="card tint"><h3>🏆 Мои достижения</h3><div class="fact" id="achF">' + esc(a[0]) + '</div>' + (a.length > 1 ? '<div class="dots-nav" id="achFd">' + a.map((_, k) => '<i class="' + (k ? "" : "on") + '"></i>').join("") + "</div>" : "") + "</div>";
+  };
+  C.esoteric = (d) => {
+    const F = window.FACTS, start = (A.diffDays("2026-01-01", d) * 3 + F.length * 10) % F.length;
+    const f = F[start];
+    return '<div class="card peach"><h3>✨ Интересно знать<span class="sp"></span><button class="link" data-a="factNext" data-i="' + start + '">ещё →</button></h3><div class="fact" id="esoF"><span style="font-size:26px">' + f[1] + '</span><div><div class="small muted">' + esc(f[0]) + "</div>" + esc(f[2]) + "</div></div></div>";
+  };
+
   A.todayCards = C;
 
   /* ---------- общие строки ---------- */
-  A.taskRow = (x, d) => '<div class="item' + (x.done ? " done" : "") + '"><button class="check' + (x.done ? " on" : "") + '" data-a="taskDone" data-id="' + x.id + '" aria-label="Выполнено">' + (x.done ? "✓" : "") + '</button><div class="tx" data-a="task" data-id="' + x.id + '"><b>' + (x.prio === 1 ? "❗ " : "") + esc(x.title) + "</b><small>" + [x.date && x.date < (d || today()) && !x.done ? "⏰ просрочено " + A.fmtShort(x.date) : "", x.time || "", x.must ? "обязательно" : "", x.minVer ? "мин.: " + esc(x.minVer) : ""].filter(Boolean).join(" · ") + "</small></div></div>";
+  A.taskRow = (x, d) => {
+    const pr = A.project(x.projectId), subs = x.subtasks || [];
+    const meta = [x.date && x.date < (d || today()) && !x.done ? "⏰ просрочено " + A.fmtShort(x.date) : x.date && x.date !== (d || today()) ? A.fmtShort(x.date) : "", x.time || "", pr ? '<span style="color:' + pr.color + '">● ' + esc(pr.name) + "</span>" : "", subs.length ? "☑ " + subs.filter((s) => s.done).length + "/" + subs.length : "", (x.tags || []).map((t) => "#" + esc(t)).join(" "), x.repeat && x.repeat !== "none" ? "↻" : "", x.minVer ? "мин.: " + esc(x.minVer) : ""].filter(Boolean).join(" · ");
+    return '<div class="item' + (x.done ? " done" : "") + '" style="border-left:3px solid ' + (A.PRIO[x.prio || 2] || A.PRIO[2])[1] + ';padding-left:8px"><button class="check' + (x.done ? " on" : "") + '" data-a="taskDone" data-id="' + x.id + '" aria-label="Выполнено">' + (x.done ? "✓" : "") + '</button><div class="tx" data-a="task" data-id="' + x.id + '"><b>' + esc(x.title) + "</b><small>" + meta + "</small></div></div>";
+  };
   A.reminderOn = (r, d) => {
     switch (r.type) {
       case "once": return r.date === d;
@@ -189,6 +236,7 @@
   A.dayHandlers = (getD) => ({
     scale(el) {
       const d = getD(), day = A.day(d), k = el.dataset.k, v = +el.dataset.v;
+      if (k === "mood") { A.addMood(d, v); A.vibe(); A.refresh(); return; }
       if (k === "energy") { const part = A._epart || (new Date().getHours() < 12 ? "m" : new Date().getHours() < 17 ? "d" : "e"); day.energy = day.energy || {}; day.energy[part] = day.energy[part] === v ? null : v; }
       else day[k] = day[k] === v ? null : v;
       A.save(); A.vibe(); A.refresh();
@@ -203,14 +251,15 @@
       A.formSheet("Источник стресса", [{ k: "stressSrc", type: "multi", opts: A.STRESS_SRC }, { k: "stressNote", label: "Что произошло", type: "textarea" }], day, (o) => { Object.assign(day, o); A.save(); A.refresh(); });
     },
     anx() { A.edit.anxiety(getD()); },
+    moodEntry() { A.edit.mood(getD()); },
     mainSet(el) { const day = A.day(getD()); const had = !!day.main; day.main = el.value.trim(); A.save(); if (had !== !!day.main) A.refresh(); },
     mainMin(el) { const day = A.day(getD()); day.mainMin = el.value.trim(); A.save(); },
     mainDone() { const day = A.day(getD()); day.mainDone = !day.mainDone; A.save(); A.vibe(20); if (day.mainDone) A.toast("Главное сделано 💜"); A.refresh(); },
-    habit(el) { const h = A.byId("habits", el.dataset.id); A.cycleHs(h, getD()); A.vibe(); A.refresh(); },
+    habit(el) { const h = A.byId("habits", el.dataset.id); if (h.type === "num") return A.edit.habitValue(h, getD()); A.cycleHs(h, getD()); A.vibe(); A.refresh(); },
     qtask(el) { const i = document.getElementById("qtask"); const v = i.value.trim(); if (!v) return; A.upsert("tasks", { title: v, date: getD(), prio: 2, done: false, created: today() }); A.refresh(); },
     taskDone(el) { A.completeTask(A.byId("tasks", el.dataset.id)); A.vibe(); A.refresh(); },
     task(el) { A.edit.task(A.byId("tasks", el.dataset.id)); },
-    water(el) { const day = A.day(getD()); day.water = Math.max(0, (day.water || 0) + +el.dataset.v); A.save(); A.vibe(); A.refresh(); },
+    water(el) { const day = A.day(getD()), v = +el.dataset.v; day.water = Math.max(0, (day.water || 0) + v); (day.waterLog = day.waterLog || []).push({ t: A.nowHM(), ml: v }); A.save(); A.vibe(); A.refresh(); },
     sleep() { A.edit.sleep(getD()); },
     steps() { A.edit.steps(getD()); },
     stepsSync() { A.syncSteps(true); },
@@ -230,6 +279,7 @@
     addExp() { A.edit.tx({ kind: "out", date: getD() }); },
     addInc() { A.edit.tx({ kind: "in", date: getD() }); },
     tx(el) { A.edit.tx(A.byId("tx", el.dataset.id)); },
+    rdone(el) { const d = getD(), L = A.col("remLog"), i = L.findIndex((x) => x.rid === el.dataset.id && x.date === d); if (i >= 0) L.splice(i, 1); else L.push({ id: A.uid(), rid: el.dataset.id, date: d, at: A.nowHM() }); A.save(); A.refresh(); },
     dayF(el) { const day = A.day(getD()); day[el.dataset.k] = el.value.trim(); A.save(); }
   });
 
@@ -243,7 +293,8 @@
       const p = A.db().profile;
       const ps = A.primeScore(d);
       let html = A.dateNav(d) + timerBanner();
-      html += '<div class="card hero"><div class="date">' + esc(A.DOW_FULL[A.dow(d) - 1][0].toUpperCase() + A.DOW_FULL[A.dow(d) - 1].slice(1)) + ", " + esc(fmtDate(d)) + '</div><div class="phrase">' + esc(p.phrase) + "</div>" +
+      const hr = new Date().getHours(), greet = hr < 5 ? "Доброй ночи" : hr < 12 ? "Доброе утро" : hr < 17 ? "Добрый день" : hr < 23 ? "Добрый вечер" : "Доброй ночи";
+      html += '<div class="card hero nocollapse"><div class="greet">' + esc(greet + (p.name ? ", " + p.name : "")) + ' 💜</div><div class="date" style="font-size:17px;margin-top:4px">' + esc(A.DOW_FULL[A.dow(d) - 1][0].toUpperCase() + A.DOW_FULL[A.dow(d) - 1].slice(1)) + ", " + esc(fmtDate(d, { year: true })) + '</div><div class="phrase">' + esc(p.phrase) + "</div>" +
         (ps.score != null ? '<div style="margin-top:10px"><a href="#/stats/prime" class="tag" style="font-size:13px;padding:4px 12px">◈ PRIME SCORE ' + ps.score + "</a></div>" : "") + "</div>";
       p.cards.filter((k) => !p.hidden.includes(k) && C[k]).forEach((k) => { html += C[k](d, day); });
       html += '<p class="small muted" style="text-align:center;margin:18px 0 6px">' + esc(p.principle) + "</p>";
@@ -252,8 +303,13 @@
     bind(el, r) {
       const getD = () => A.route().params.d || today();
       A.bind(el, Object.assign(A.dayHandlers(getD), {
+        go(b) { A.go(b.dataset.v); },
+        weightAdd() { A.edit.weight(getD()); },
+        factNext(b) { const F = window.FACTS, i = (+b.dataset.i + 1) % F.length; b.dataset.i = i; const f = F[i]; el.querySelector("#esoF").innerHTML = '<span style="font-size:26px">' + f[1] + '</span><div><div class="small muted">' + esc(f[0]) + "</div>" + esc(f[2]) + "</div>"; },
         dnav(b) { const d = getD(); if (b.dataset.v === "pick") return A.pickDate(d, (v) => A.go("today?d=" + v)); const nd = addDays(d, +b.dataset.v); A.go(nd === today() ? "today" : "today?d=" + nd, true); }
       }));
+      A._clearRot();
+      if (A._rotAch && A._rotAch.length > 1) rotator("achF", A._rotAch.map(esc), 6000);
       const q = el.querySelector("#qtask");
       if (q) q.addEventListener("keydown", (e) => { if (e.key === "Enter") el.querySelector('[data-a="qtask"]').click(); });
     }

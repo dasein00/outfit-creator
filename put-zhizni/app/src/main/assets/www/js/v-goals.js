@@ -6,6 +6,8 @@
   A.edit = A.edit || {};
 
   A.goalProgress = (g) => {
+    if (g.status === "done") return 1;
+    if (g.target) { const st = +g.startVal || 0, d = (+g.target - st); return d ? A.clamp(((+g.current || 0) - st) / d, 0, 1) : 0; }
     if (g.stages && g.stages.length) return g.stages.filter((s) => s.done).length / g.stages.length;
     const ts = A.col("tasks").filter((t) => t.goalId === g.id);
     if (ts.length && g.progress == null) return ts.filter((t) => t.done).length / ts.length;
@@ -14,7 +16,7 @@
 
   A.edit.goal = (g, level) => {
     const isNew = !g;
-    g = g || { level: level || "m", title: "", why: "", value: "", start: today(), deadline: "", measure: "", stages: [], habits: [], progress: null, result: "", note: "", status: "active" };
+    g = g || { level: level || "m", title: "", why: "", value: "", start: today(), deadline: "", measure: "", stages: [], habits: [], progress: null, result: "", note: "", status: "active", prio: "mid" };
     const stages = (g.stages || []).map((s) => Object.assign({}, s));
     const fields = [
       { k: "level", label: "Горизонт", type: "chips", opts: A.GOAL_LEVELS },
@@ -23,6 +25,9 @@
       { k: "value", label: "Какую ценность обслуживает", type: "select", opts: [["", "—"]].concat(A.db().profile.values.map((v) => [v, v])), full: true },
       { k: "start", label: "Начало", type: "date" }, { k: "deadline", label: "Дедлайн", type: "date" },
       { k: "measure", label: "Измеримый результат", full: true },
+      { k: "startVal", label: "Старт (значение)", type: "number", step: "any" }, { k: "target", label: "Целевое значение", type: "number", step: "any" },
+      { k: "current", label: "Текущее значение", type: "number", step: "any" }, { k: "unit", label: "Единица", ph: "кг, ₽, книг, км" },
+      { k: "prio", label: "Приоритет", type: "chips", opts: [["high", "🔴 высокий"], ["mid", "🟠 средний"], ["low", "🟢 низкий"]] },
       { k: "habits", label: "Связанные привычки", type: "multi", opts: () => A.col("habits").filter((h) => !h.archived).map((h) => [h.id, (h.icon || "") + " " + h.name]) },
       { k: "progress", label: "Прогресс вручную, % (если нет этапов)", type: "number", min: 0, max: 100 },
       { k: "status", label: "Статус", type: "chips", opts: [["active", "В работе"], ["done", "Достигнута"], ["paused", "Пауза"], ["closed", "Закрыта"]] },
@@ -51,12 +56,22 @@
     });
   };
 
+  const PRIO_C = { high: "#D2555E", mid: "#F0A45B", low: "#7F9C7A" };
+  A.goalPace = (g) => {
+    if (!g.target || !g.deadline) return null;
+    const left = diffDays(today(), g.deadline); const rest = +g.target - (+g.current || 0);
+    if (left <= 0) return { left, rest, per: null };
+    return { left, rest, perDay: rest / left, perWeek: (rest / left) * 7, perMonth: (rest / left) * 30.4 };
+  };
   const goalCard = (g) => {
-    const p = A.goalProgress(g);
+    const p = A.goalProgress(g), pace = A.goalPace(g);
     const left = g.deadline ? diffDays(today(), g.deadline) : null;
     const ts = A.col("tasks").filter((t) => t.goalId === g.id);
-    return '<div class="card" data-a="goal" data-id="' + g.id + '"><div class="row"><div class="grow"><b>' + esc(g.title) + "</b>" + (g.status !== "active" ? ' <span class="tag">' + { done: "достигнута", paused: "пауза", closed: "закрыта" }[g.status] + "</span>" : "") + '<div class="small muted">' + esc([g.value && "♡ " + g.value, g.measure, g.deadline && (left >= 0 ? "осталось " + left + " дн." : "срок прошёл")].filter(Boolean).join(" · ")) + "</div></div><b>" + Math.round(p * 100) + "%</b></div>" + A.bar(p, g.status === "done" ? "var(--good)" : "var(--accent)") +
-      ((g.stages || []).length || ts.length || (g.habits || []).length ? '<div class="small muted" style="margin-top:6px">' + [g.stages.length ? "этапы " + g.stages.filter((s) => s.done).length + "/" + g.stages.length : "", ts.length ? "задачи " + ts.filter((t) => t.done).length + "/" + ts.length : "", (g.habits || []).length ? "привычки: " + g.habits.map((id) => (A.byId("habits", id) || {}).name).filter(Boolean).join(", ") : ""].filter(Boolean).join(" · ") + "</div>" : "") + "</div>";
+    return '<div class="card nocollapse" data-a="goal" data-id="' + g.id + '" style="border-left:5px solid ' + (PRIO_C[g.prio] || PRIO_C.mid) + '"><div class="row"><div class="grow"><b>' + esc(g.title) + "</b>" + (g.status !== "active" ? ' <span class="tag">' + { done: "достигнута", paused: "пауза", closed: "закрыта" }[g.status] + "</span>" : "") + '<div class="small muted">' + esc([g.value && "♡ " + g.value, g.measure, g.deadline && (left >= 0 ? "осталось " + left + " дн." : "срок прошёл")].filter(Boolean).join(" · ")) + "</div></div><b>" + Math.round(p * 100) + "%</b></div>" + A.bar(p, g.status === "done" ? "var(--good)" : "var(--accent)") +
+      ((g.stages || []).length || ts.length || (g.habits || []).length ? '<div class="small muted" style="margin-top:6px">' + [g.stages.length ? "этапы " + g.stages.filter((s) => s.done).length + "/" + g.stages.length : "", ts.length ? "задачи " + ts.filter((t) => t.done).length + "/" + ts.length : "", (g.habits || []).length ? "привычки: " + g.habits.map((id) => (A.byId("habits", id) || {}).name).filter(Boolean).join(", ") : ""].filter(Boolean).join(" · ") + "</div>" : "") +
+      (g.target ? '<div class="small" style="margin-top:6px"><b>' + A.fmtN(+g.current || 0, 1) + " / " + A.fmtN(+g.target, 1) + " " + esc(g.unit || "") + "</b>" + (pace && pace.left > 0 && pace.rest > 0 ? " · нужно " + A.fmtN(pace.perWeek, 1) + " " + esc(g.unit || "") + " в неделю (" + A.fmtN(pace.perDay, 2) + " в день)" : "") + "</div>" : "") +
+      (g.why ? '<div class="small muted" style="margin-top:4px"><i>' + esc(g.why) + "</i></div>" : "") +
+      (g.status !== "done" ? '<div class="btns" style="margin-top:6px">' + (g.target ? '<button class="btn sm" data-a="goalVal" data-id="' + g.id + '">обновить прогресс</button>' : "") + '<button class="btn sm ghost" data-a="goalDone" data-id="' + g.id + '">✓ выполнена</button></div>' : "") + "</div>";
   };
 
   A.view("goals", {
@@ -117,6 +132,8 @@
         lvl(b) { A.go("goals/list?l=" + b.dataset.v, true); },
         new() { A.edit.goal(null, A.route().params.l && A.route().params.l !== "all" ? A.route().params.l : "m"); },
         goal(b) { A.edit.goal(A.byId("goals", b.dataset.id)); },
+        goalVal(b) { const g = A.byId("goals", b.dataset.id); A.formSheet(g.title, [{ k: "current", label: "Текущее значение, " + (g.unit || ""), type: "number", step: "any", full: true }], g, (o) => { g.current = o.current; (g.log = g.log || []).push({ date: today(), v: o.current }); if (+g.current >= +g.target && +g.target > (+g.startVal || 0)) { g.status = "done"; g.doneAt = today(); A.toast("Цель достигнута! 🎉"); } A.save(); A.refresh(); }); },
+        goalDone(b) { const g = A.byId("goals", b.dataset.id); g.status = "done"; g.doneAt = today(); A.save(); A.toast("Поздравляю! Цель выполнена 🎉"); A.refresh(); },
         era(b) { const e = A.db().profile.era; e[b.dataset.k] = b.value; A.save(); if (b.dataset.k === "start") A.refresh(); },
         mnav(b) { let [y, m] = mk().split("-").map(Number); m += +b.dataset.v; if (m < 1) { m = 12; y--; } if (m > 12) { m = 1; y++; } A.go("goals/review?m=" + y + "-" + A.pad(m), true); },
         rate(b) { const R = A.db().reviews[mk()]; R.ratings[b.dataset.k] = R.ratings[b.dataset.k] === +b.dataset.v ? 0 : +b.dataset.v; A.save(); A.refresh(); },

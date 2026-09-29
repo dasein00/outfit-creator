@@ -76,7 +76,7 @@
     db.savedAt = new Date().toISOString();
     const s = JSON.stringify(db);
     try { localStorage.setItem(KEY, s); } catch (e) { App.toast("Не удалось сохранить в память браузера — используйте резервную копию"); }
-    if (N) { try { N.backup(s); } catch (e) {} }
+    if (N && db.profile.autoBackup !== false) { try { N.backup(s); } catch (e) {} }
     App.emit("saved");
   }
   App.save = () => { clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 250); };
@@ -130,6 +130,8 @@
       if (typeof out === "string") box.innerHTML = out;
       if (v.actions) v.actions(actions, r);
       if (v.bind) v.bind(box, r);
+      App.collapsible(box, r.name);
+      App.hydratePhotos(box);
     } catch (e) {
       console.error(e);
       main.innerHTML = '<div class="card"><b>Ошибка экрана.</b><p class="muted">' + esc(e.message) + "</p></div>";
@@ -137,6 +139,7 @@
     main.scrollTop = sc;
   };
   App.refresh = () => App.render(true);
+  window.__openRoute = (route) => { if (route) App.go(route); };
   App.current = () => current;
   window.addEventListener("hashchange", () => { App.closeSheet(true); App.render(); });
 
@@ -332,6 +335,74 @@
     return "﻿" + [cols.join(";")].concat(rows.map((r) => cols.map((c) => q(r[c])).join(";"))).join("\n");
   };
   App.print = (title) => { if (N) N.print(title || "Путь жизни"); else window.print(); };
+
+
+  /* ---------- сворачиваемые блоки: состояние сохраняется для каждого экрана ---------- */
+  App.collapsible = (root, screen) => {
+    const st = (db.profile.collapsed = db.profile.collapsed || {});
+    root.querySelectorAll(".card > h3:first-child").forEach((h) => {
+      const card = h.parentElement;
+      if (card.classList.contains("nocollapse")) return;
+      const key = screen + ":" + h.textContent.replace(/\s+/g, " ").trim().slice(0, 40);
+      const btn = document.createElement("button");
+      btn.className = "coll"; btn.type = "button"; btn.setAttribute("aria-label", "Свернуть или развернуть");
+      btn.textContent = "▾";
+      h.appendChild(btn);
+      if (st[key]) card.classList.add("collapsed");
+      h.addEventListener("click", (e) => {
+        if (e.target !== btn && e.target.closest("button,a,input,select,label")) return;
+        const c = card.classList.toggle("collapsed");
+        if (c) st[key] = 1; else delete st[key];
+        App.save();
+      });
+    });
+  };
+
+  /* ---------- фотографии: в Android — файлы приложения, в браузере — IndexedDB ---------- */
+  const idb = () => new Promise((res, rej) => { const r = indexedDB.open("pz-photos", 1); r.onupgradeneeded = () => r.result.createObjectStore("p"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+  App.photos = {
+    async put(id, dataUrl) {
+      if (N) { N.savePhoto(id, dataUrl.split(",")[1]); return; }
+      const d = await idb(); await new Promise((res) => { const tx = d.transaction("p", "readwrite"); tx.objectStore("p").put(dataUrl, id); tx.oncomplete = res; });
+    },
+    async get(id) {
+      if (N) return "https://putzhizni.local/photos/" + id + ".jpg";
+      try { const d = await idb(); return await new Promise((res) => { const r = d.transaction("p").objectStore("p").get(id); r.onsuccess = () => res(r.result || ""); r.onerror = () => res(""); }); } catch (e) { return ""; }
+    },
+    async del(id) {
+      if (N) { N.deletePhoto(id); return; }
+      try { const d = await idb(); d.transaction("p", "readwrite").objectStore("p").delete(id); } catch (e) {}
+    }
+  };
+  App.hydratePhotos = (root) => root.querySelectorAll("img[data-photo]").forEach(async (im) => { const u = await App.photos.get(im.dataset.photo); if (u) im.src = u; else im.style.visibility = "hidden"; });
+  // Выбор фото с обрезкой по пропорции aspect (ширина / высота), результат — JPEG data URL.
+  App.pickPhoto = (aspect = 4 / 3, maxW = 900) => new Promise((res) => {
+    const i = document.createElement("input"); i.type = "file"; i.accept = "image/*";
+    i.onchange = () => {
+      const f = i.files[0]; if (!f) return res("");
+      const url = URL.createObjectURL(f), img = new Image();
+      img.onload = () => {
+        // Лист обрезки: ползунки масштаба и сдвига.
+        const W = 300, H = Math.round(W / aspect);
+        const w = App.sheet("Обрезка фото", '<canvas id="cr" width="' + W + '" height="' + H + '" style="width:100%;border-radius:12px;background:#000"></canvas><div class="form" style="margin-top:8px"><div class="fld full"><label>Масштаб</label><input type="range" id="cz" min="1" max="3" step="0.01" value="1"></div><div class="fld"><label>Сдвиг ←→</label><input type="range" id="cx" min="-1" max="1" step="0.01" value="0"></div><div class="fld"><label>Сдвиг ↑↓</label><input type="range" id="cy" min="-1" max="1" step="0.01" value="0"></div></div>', {
+          buttons: [{ label: "Отмена", cls: "ghost", onClick: () => res("") }, { label: "Готово", cls: "primary", onClick: (w) => res(render(w, maxW)) }]
+        });
+        const draw = (cv, outW) => {
+          const z = +w.querySelector("#cz").value, dx = +w.querySelector("#cx").value, dy = +w.querySelector("#cy").value;
+          const ow = outW, oh = Math.round(outW / aspect); cv.width = ow; cv.height = oh;
+          const base = Math.max(ow / img.width, oh / img.height) * z;
+          const iw = img.width * base, ih = img.height * base;
+          const x = (ow - iw) / 2 + dx * (iw - ow) / 2, y = (oh - ih) / 2 + dy * (ih - oh) / 2;
+          cv.getContext("2d").drawImage(img, x, y, iw, ih);
+        };
+        const render = (w2, outW) => { const c = document.createElement("canvas"); draw(c, outW); return c.toDataURL("image/jpeg", 0.8); };
+        const cv = w.querySelector("#cr"); const upd = () => draw(cv, W); upd();
+        w.querySelectorAll("input[type=range]").forEach((r) => r.addEventListener("input", upd));
+      };
+      img.src = url;
+    };
+    i.click();
+  });
 
   /* ---------- хеш PIN ---------- */
   App.sha256 = async (s) => {

@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <TextView
+        android:id="@+id/w_date"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Путь жизни"
+        android:textColor="#2E2A36"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <FrameLayout
+            android:id="@+id/w_steps_box"
+            android:layout_width="72dp"
+            android:layout_height="72dp">
+
+            <ProgressBar
+                android:id="@+id/w_ring"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:indeterminate="false"
+                android:max="100"
+                android:progress="0"
+                android:progressDrawable="@drawable/widget_ring" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/w_steps"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0"
+                    android:textColor="#2E2A36"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/w_goal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="шагов"
+                    android:textColor="#6D6679"
+                    android:textSize="9sp" />
+            </LinearLayout>
+        </FrameLayout>
+
+        <LinearLayout
+            android:id="@+id/w_weight_box"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/w_burn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🔥 0 ккал"
+                android:textColor="#2E2A36"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/w_weight"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⚖ —"
+                android:textColor="#2E2A36"
+                android:textSize="13sp" />
+
+            <ImageView
+                android:id="@+id/w_spark"
+                android:layout_width="match_parent"
+                android:layout_height="30dp"
+                android:scaleType="fitXY"
+                android:contentDescription="Вес за неделю" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/w_tasks_box"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/w_task1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="#2E2A36"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/w_task2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="#2E2A36"
+            android:textSize="13sp" />
+    </LinearLayout>
+</LinearLayout>

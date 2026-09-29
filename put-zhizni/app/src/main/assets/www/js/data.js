@@ -21,11 +21,12 @@
   A.cat = (k) => { const c = A.CATS.find((x) => x[0] === k) || A.CATS[A.CATS.length - 1]; return { k: c[0], name: c[1], icon: c[2], color: c[3] }; };
   A.catOpts = () => A.CATS.map((c) => [c[0], c[2] + " " + c[1]]);
 
+  A.PAL = ["#8E7CC3", "#7F9C7A", "#EFA984", "#C9A45C", "#E3899A", "#7DB0D6", "#B6A6D9", "#9CC5A1", "#F3C29F", "#D8C08A", "#EBB0BC", "#A9CBE5", "#C9C3D3"];
   A.EXP_CATS = ["Жильё", "Еда", "Транспорт", "Здоровье", "Одежда", "Красота", "Развлечения", "Хобби", "Обучение", "Подписки", "Подарки", "Дом", "Другое"];
   A.INC_CATS = ["Зарплата", "Подработка", "Подарок", "Проценты / кешбэк", "Продажа", "Другое"];
   A.FEELINGS = ["радость", "спокойствие", "энергичность", "вдохновение", "уверенность", "усталость", "грусть", "раздражение", "злость", "страх", "тревога", "апатия"];
   A.STRESS_SRC = ["работа", "дом", "отношения", "деньги", "здоровье", "учёба", "люди", "другое"];
-  A.WORKOUT_TYPES = [["strength", "Силовая"], ["cardio", "Кардио"], ["walk", "Ходьба"], ["stretch", "Растяжка"], ["yoga", "Йога"], ["home", "Домашняя"], ["dance", "Танцы"], ["run", "Бег"], ["other", "Другое"]];
+  A.WORKOUT_TYPES = [["strength", "Силовая"], ["gym", "Тренажёры"], ["cardio", "Кардио"], ["walk", "Ходьба"], ["stretch", "Растяжка"], ["yoga", "Йога"], ["home", "Домашняя"], ["dance", "Танцы"], ["run", "Бег"], ["other", "Другое"]];
   A.MEALS = [["breakfast", "Завтрак"], ["lunch", "Обед"], ["dinner", "Ужин"], ["snack", "Перекус"]];
   A.GOAL_LEVELS = [["10y", "10 лет"], ["3y", "3 года"], ["1y", "Год"], ["q", "Квартал"], ["m", "Месяц"], ["w", "Неделя"], ["d", "День"]];
   A.WEATHER = [
@@ -55,12 +56,14 @@
         waterGoal: 2000, stepsGoal: 8000, sleepMin: 7, sleepMax: 9, kcal: 1800, prot: 110, fat: 65, carb: 190, fiber: 30, workoutsWeek: 3,
         city: "", lat: null, lon: null,
         theme: "system", accent: "lavender",
-        cards: ["main", "state", "schedule", "habits", "tasks", "water", "sleep", "steps", "weather", "food", "workout", "learn", "tarot", "money", "reminders", "evening"],
+        cards: ["dash", "weight", "tasks5", "facts", "main", "state", "habits", "schedule", "water", "sleep", "steps", "weather", "food", "workout", "learn", "tarot", "money", "reminders", "esoteric", "evening"],
         hidden: [],
         notif: { general: true, habits: true, payments: true, workouts: true, reading: true, piano: true, study: true, events: true },
         stepsSensor: false, pin: "", bio: false, points: false,
         weights: { sleep: 3, move: 2, food: 2, workout: 2, habits: 3, learn: 2, money: 1, culture: 1, rest: 2, goals: 3 },
-        era: { start: t }
+        era: { start: t },
+        collapsed: {}, autoBackup: true, hc: false, smsImport: false, sleepAuto: false, sleepGoal: 8, factsOn: true,
+        body: { height: 165, sex: "f", age: 30, startWeight: null, targetWeight: null, goal: "keep", activity: 1.375, protKg: 1.6, fatKg: 0.9, monthChange: 2 }
       },
       days: {},
       habits: [
@@ -119,7 +122,12 @@
       ketu: { box: {}, quiz: [], notes: "", lessons: {} },
       bazi: { box: {}, quiz: [], notes: "", lessons: {} },
       learn: [],
-      goals: [], weeks: {}, reviews: {}, rewards: [], bookDone: {}, checklist: {}
+      goals: [], weeks: {}, reviews: {}, rewards: [], bookDone: {}, checklist: {},
+      projects: [{ id: uid(), name: "Личное", color: "#8E7CC3", order: 0, archived: false }, { id: uid(), name: "Работа", color: "#6FA4C9", order: 1, archived: false }, { id: uid(), name: "Дом", color: "#C4A77D", order: 2, archived: false }],
+      hval: {}, measures: [], photos: [], wheel: [], remLog: [],
+      recipes: [], favs: {}, menu: {}, menuPresets: [], menuRecur: [], shopping: [], cookLog: [],
+      cats: { out: A.EXP_CATS.map((n, i) => ({ name: n, color: A.PAL[i % A.PAL.length] })), in: A.INC_CATS.map((n, i) => ({ name: n, color: A.PAL[(i + 5) % A.PAL.length] })) },
+      importLog: [], english: { box: {}, quiz: [], notes: "", lessons: {} }, latin: { box: {}, quiz: [], notes: "", lessons: {} }
     };
   };
 
@@ -129,6 +137,10 @@
     for (const k of Object.keys(def.profile)) if (db.profile[k] == null) db.profile[k] = def.profile[k];
     for (const k of Object.keys(def.profile.notif)) if (db.profile.notif[k] == null) db.profile.notif[k] = true;
     for (const k of Object.keys(def.profile.weights)) if (db.profile.weights[k] == null) db.profile.weights[k] = def.profile.weights[k];
+    for (const k of Object.keys(def.profile.body)) if (db.profile.body[k] === undefined) db.profile.body[k] = def.profile.body[k];
+    if (!db.profile.cards.includes("dash")) db.profile.cards.unshift("dash");
+    if (db.profile.cards.includes("tasks") && !db.profile.hidden.includes("tasks") && !db.profile.__t5) { db.profile.hidden.push("tasks"); db.profile.__t5 = 1; }
+    ["weight", "tasks5", "facts", "esoteric"].forEach((c) => { if (!db.profile.cards.includes(c)) db.profile.cards.splice(2, 0, c); });
     def.profile.cards.forEach((c) => { if (!db.profile.cards.includes(c)) db.profile.cards.push(c); });
     db.v = 1;
     return db;
@@ -198,6 +210,16 @@
     }
     return n;
   };
+  A.bestStreak = (h) => {
+    let best = 0, cur = 0;
+    const keys = Object.keys(A.db().hlog).filter((k) => k.startsWith(h.id + "|")).map((k) => k.split("|")[1]).sort();
+    if (!keys.length) return 0;
+    for (const d of A.range(keys[0], today())) {
+      const st = A.hs(h.id, d);
+      if (st === "done" || st === "part") { cur++; best = Math.max(best, cur); } else if (st === "none" || !A.habitPlanned(h, d)) { /* пропуск по плану */ } else cur = 0;
+    }
+    return best;
+  };
   A.habitStats = (h, from, to) => {
     let plan = 0, done = 0;
     for (const d of A.range(from, to)) {
@@ -241,8 +263,10 @@
   // Все показатели для аналитики и матриц.
   A.METRICS = {
     sleep: { name: "Сон, ч", get: A.sleepH },
-    sleepQ: { name: "Качество сна", get: (d) => ((A.dayGet(d) || {}).sleep || {}).q ?? null },
+    sleepQ: { name: "Качество сна (1–5)", get: (d) => ((A.dayGet(d) || {}).sleep || {}).q ?? null },
     mood: { name: "Настроение", get: (d) => (A.dayGet(d) || {}).mood ?? null },
+    weight: { name: "Вес, кг", get: (d) => (A.dayGet(d) || {}).weight ?? null },
+    burn: { name: "Потрачено ккал", get: (d) => A.burnDay(d) || null },
     energy: { name: "Энергия", get: A.energyAvg },
     stress: { name: "Стресс", get: (d) => (A.dayGet(d) || {}).stress ?? null },
     anx: { name: "Тревожность", get: A.anxVal },
@@ -262,6 +286,9 @@
   };
 
   /* ---------- финансы ---------- */
+  A.expCats = () => (A.db().cats && A.db().cats.out.length ? A.db().cats.out.map((c) => c.name) : A.EXP_CATS);
+  A.incCats = () => (A.db().cats && A.db().cats.in.length ? A.db().cats.in.map((c) => c.name) : A.INC_CATS);
+  A.catColor = (name) => { const c = A.db().cats; const x = c && (c.out.concat(c.in)).find((k) => k.name === name); return x ? x.color : "#A9A3B5"; };
   A.accBalance = (acc) => { let b = +acc.start || 0; A.col("tx").forEach((t) => { if (t.acc === acc.id) b += t.kind === "in" ? t.amt : -t.amt; if (t.kind === "move" && t.to === acc.id) b += t.amt; }); return b; };
   A.monthTx = (mk) => A.col("tx").filter((t) => t.date.slice(0, 7) === mk);
   // Регулярные платежи: создаём будущие записи, когда наступил срок (если включено авто), иначе напоминаем.
@@ -290,11 +317,11 @@
     if (n.general !== false) A.col("reminders").forEach((r) => {
       if (!r.on) return;
       if (r.kind && n[r.kind] === false) return;
-      push({ id: "r:" + r.id, title: r.title, text: r.text || "", type: r.type === "weekly" ? "weekdays" : r.type, time: r.time || "09:00", date: r.date || "", days: r.type === "weekly" ? [r.days && r.days[0] || 1] : r.days || [], dom: r.dom || 1 });
+      push({ id: "r:" + r.id, route: "reminders", title: r.title, text: r.text || "", type: r.type === "weekly" ? "weekdays" : r.type, time: r.time || "09:00", date: r.date || "", days: r.type === "weekly" ? [r.days && r.days[0] || 1] : r.days || [], dom: r.dom || 1 });
     });
     if (n.habits !== false) A.col("habits").forEach((h) => {
       if (!h.remind || !h.time || h.archived) return;
-      push({ id: "h:" + h.id, title: (h.icon || "") + " " + h.name, text: h.min ? "Минимальная версия: " + h.min : "Время для привычки", type: h.freq === "weekdays" ? "weekdays" : "daily", time: h.time, days: h.days || [] });
+      push({ id: "h:" + h.id, route: "habits", title: (h.icon || "") + " " + h.name, text: h.min ? "Минимальная версия: " + h.min : "Время для привычки", type: h.freq === "weekdays" ? "weekdays" : "daily", time: h.time, days: h.days || [] });
     });
     if (n.events !== false) {
       const t = today();
@@ -306,17 +333,18 @@
           if (kindOff) return;
           const m = hm2min(e.start) - (+e.remind || 0);
           let dd = d, mm = m; if (mm < 0) { dd = addDays(d, -1); mm += 1440; }
-          push({ id: "e:" + e.id + ":" + d, title: A.cat(e.cat).icon + " " + e.title, text: (+e.remind ? "Через " + A.fmtDur(+e.remind) : "Сейчас") + " · " + e.start + (e.end ? "–" + e.end : ""), type: "once", date: dd, time: A.min2hm(mm) });
+          push({ id: "e:" + e.id + ":" + d, route: "calendar/day?d=" + d, title: A.cat(e.cat).icon + " " + e.title, text: (+e.remind ? "Через " + A.fmtDur(+e.remind) : "Сейчас") + " · " + e.start + (e.end ? "–" + e.end : ""), type: "once", date: dd, time: A.min2hm(mm) });
         });
       }
     }
     if (n.payments !== false) A.col("recurring").forEach((r) => {
-      if (!r.active || !r.next || r.auto) return;
-      push({ id: "p:" + r.id + ":" + r.next, title: "💳 Платёж: " + r.name, text: A.money(r.amt) + " — срок сегодня", type: "once", date: r.next, time: "10:00" });
+      if (!r.active || !r.next) return;
+      const nd = +r.notifyDays || 0, when = addDays(r.next, -nd);
+      push({ id: "p:" + r.id + ":" + r.next, route: "money/rec", title: (r.kind === "in" ? "💰 Поступление: " : "💳 Платёж: ") + r.name, text: A.money(r.amt) + (nd ? " — через " + nd + " " + A.plural(nd, "день", "дня", "дней") + (r.auto ? " (запишется автоматически)" : "") : " — срок сегодня"), type: "once", date: when, time: "10:00" });
     });
     A.col("tasks").forEach((t) => {
       if (t.done || !t.date || !t.time || !t.remind) return;
-      push({ id: "t:" + t.id, title: "✓ " + t.title, text: t.minVer ? "Минимальная версия: " + t.minVer : "Задача на " + t.time, type: "once", date: t.date, time: t.time });
+      push({ id: "t:" + t.id, route: "tasks", title: "✓ " + t.title, text: t.minVer ? "Минимальная версия: " + t.minVer : "Задача на " + t.time, type: "once", date: t.date, time: t.time });
     });
     try { A.native.scheduleReminders(JSON.stringify(out)); } catch (e) { console.error(e); }
   };
@@ -384,6 +412,105 @@
   /* ---------- серии дней для показателя ---------- */
   A.streakMetric = (fn) => { let n = 0, d = today(); if (!fn(d)) d = addDays(d, -1); while (fn(d) && n < 3650) { n++; d = addDays(d, -1); } return n; };
   A.statsOf = (vals) => { const v = vals.filter((x) => x != null); return v.length ? { avg: avg(v), min: Math.min(...v), max: Math.max(...v), n: v.length, sum: sum(v) } : { avg: null, min: null, max: null, n: 0, sum: 0 }; };
+
+  /* ---------- тело, вес, энергозатраты ---------- */
+  A.burnDay = (d) => {
+    const w = A.col("workouts").filter((x) => x.date === d);
+    const wk = A.sum(w.map((x) => +x.kcal || Math.round((+x.dur || 0) * (3 + (+x.int || 5) * 0.6))));
+    const steps = (A.dayGet(d) || {}).steps || 0;
+    const kg = A.lastWeight(d) || 65;
+    return Math.round(wk + steps * 0.0005 * kg);
+  };
+  A.lastWeight = (d = today()) => { for (let i = 0; i < 400; i++) { const x = A.dayGet(addDays(d, -i)); if (x && x.weight) return x.weight; } const b = A.db().profile.body; return b.startWeight || null; };
+  A.bmr = () => { const b = A.db().profile.body, w = A.lastWeight() || b.startWeight; if (!w || !b.height || !b.age) return null; return Math.round(10 * w + 6.25 * b.height - 5 * b.age + (b.sex === "m" ? 5 : -161)); };
+  A.bodyTargets = () => {
+    const b = A.db().profile.body, w = A.lastWeight() || b.startWeight, bmr = A.bmr();
+    if (!bmr) return null;
+    const tdee = Math.round(bmr * (+b.activity || 1.375));
+    const delta = Math.round(((+b.monthChange || 0) * 7700) / 30); // 1 кг ≈ 7700 ккал
+    const kcal = b.goal === "lose" ? tdee - Math.min(delta, Math.round(tdee * 0.25)) : b.goal === "gain" ? tdee + Math.min(delta, 500) : tdee;
+    const prot = Math.round(w * (+b.protKg || 1.6)), fat = Math.round(w * (+b.fatKg || 0.9));
+    const carb = Math.max(0, Math.round((kcal - prot * 4 - fat * 9) / 4));
+    return { bmr, tdee, kcal, prot, fat, carb };
+  };
+  A.weightPoints = (from, to) => A.range(from, to).map((d) => ({ d, v: (A.dayGet(d) || {}).weight ?? null })).filter((x) => x.v != null);
+  // Наклон линейной регрессии, кг в день.
+  A.slope = (pts) => {
+    if (pts.length < 2) return null;
+    const xs = pts.map((p) => A.diffDays(pts[0].d, p.d)), ys = pts.map((p) => p.v);
+    const mx = avg(xs), my = avg(ys); let a = 0, b = 0;
+    xs.forEach((x, i) => { a += (x - mx) * (ys[i] - my); b += (x - mx) ** 2; });
+    return b ? a / b : null;
+  };
+  A.weightTrend = (days = 14, end = today()) => {
+    const pts = A.weightPoints(addDays(end, -(days - 1)), end);
+    const k = A.slope(pts);
+    if (k == null) return { arrow: "→", word: "мало данных", k: null, pts };
+    const wk = k * 7;
+    return { arrow: wk > 0.1 ? "↑" : wk < -0.1 ? "↓" : "→", word: wk > 0.1 ? "вес растёт" : wk < -0.1 ? "вес падает" : "вес стабилен", k, wk, pts };
+  };
+  A.weightForecast = () => {
+    const tgt = A.db().profile.body.targetWeight, cur = A.lastWeight();
+    const t = A.weightTrend(28);
+    if (!tgt || !cur || t.k == null || Math.abs(t.k) < 0.002) return null;
+    const days = (tgt - cur) / t.k;
+    if (days <= 0 || days > 3650) return null;
+    return addDays(today(), Math.round(days));
+  };
+
+  /* ---------- числовые привычки ---------- */
+  A.hv = (hid, d) => A.db().hval[hid + "|" + d] ?? null;
+  A.setHv = (h, d, v) => {
+    const k = h.id + "|" + d;
+    if (v == null || v === "" || isNaN(v)) { delete A.db().hval[k]; A.setHs(h.id, d, null); return; }
+    A.db().hval[k] = +v;
+    A.setHs(h.id, d, +v >= (+h.target || 1) ? "done" : +v > 0 ? "part" : "skip");
+  };
+  A.daysMask = (days) => (days || []).reduce((m, d) => m | (1 << (d - 1)), 0);
+
+  /* ---------- настроение: несколько записей в день ---------- */
+  A.addMood = (d, v, tags, note) => {
+    const day = A.day(d);
+    day.moods = day.moods || [];
+    const now = A.nowHM(), last = day.moods[day.moods.length - 1];
+    if (last && d === today() && Math.abs(hm2min(now) - hm2min(last.t)) < 30 && !tags && !note) last.v = v;
+    else day.moods.push({ t: now, v, tags: tags || [], note: note || "" });
+    day.mood = Math.round(avg(day.moods.map((m) => m.v)) * 10) / 10;
+    A.save();
+  };
+
+  /* ---------- проекты и задачи ---------- */
+  A.project = (id) => A.col("projects").find((p) => p.id === id) || null;
+  A.PRIO = { 1: ["Высокий", "#D2555E"], 2: ["Средний", "#F0A45B"], 3: ["Низкий", "#7F9C7A"] };
+
+  /* ---------- факты о достижениях ---------- */
+  A.achievements = () => {
+    const t = today(), w7 = A.lastDays(7), out = [];
+    const water = A.sum(w7.map((d) => (A.dayGet(d) || {}).water || 0));
+    if (water) out.push("💧 За 7 дней ты выпила " + (water / 1000).toFixed(1) + " л воды");
+    const steps = A.sum(w7.map((d) => (A.dayGet(d) || {}).steps || 0));
+    if (steps) out.push("👟 За неделю — " + A.fmtN(steps) + " шагов, это примерно " + A.fmtN(steps * 0.0007, 1) + " км");
+    const done = A.col("tasks").filter((x) => x.done && (x.doneAt || "").slice(0, 10) >= w7[0]).length;
+    if (done) out.push("✅ Выполнено задач за неделю: " + done);
+    A.col("habits").filter((h) => !h.archived).forEach((h) => { const s = A.habitStreak(h); if (s >= 3) out.push("🔥 Серия «" + h.name + "» — " + s + " " + A.plural(s, "день", "дня", "дней") + " подряд"); });
+    const pages = A.sum(A.col("rsess").map((x) => +x.pages || 0));
+    if (pages) out.push("📖 Всего прочитано " + A.fmtN(pages) + " страниц");
+    const wk = A.col("workouts").length;
+    if (wk) out.push("🏋 Тренировок в журнале: " + wk);
+    const pm = A.sum(A.col("psess").map((x) => x.min || 0));
+    if (pm) out.push("🎹 На пианино уже " + A.fmtDur(pm) + " практики");
+    const lw = A.weightTrend(30);
+    if (lw.k != null && lw.pts.length > 2) { const ch = lw.pts[lw.pts.length - 1].v - lw.pts[0].v; out.push("⚖ За месяц вес изменился на " + (ch > 0 ? "+" : "") + ch.toFixed(1) + " кг"); }
+    const mains = A.lastDays(30).filter((d) => (A.dayGet(d) || {}).mainDone).length;
+    if (mains) out.push("🎯 Главное дело дня выполнено " + mains + " раз за 30 дней");
+    const cooked = A.col("cookLog").length;
+    if (cooked) out.push("🍳 Приготовлено блюд по рецептам: " + cooked);
+    const tarot = Object.keys(A.db().tarot.daily).length;
+    if (tarot) out.push("🃏 Карт дня вытянуто: " + tarot);
+    if (!out.length) out.push("🌱 Каждая отметка здесь — маленький шаг. Первые записи появятся уже сегодня.", "💜 Движение важнее, чем идеальность.");
+    return out;
+  };
+
   A.lastDays = (n, end = today()) => A.range(addDays(end, -(n - 1)), end);
   A.pad = pad;
 })();

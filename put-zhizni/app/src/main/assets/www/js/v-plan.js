@@ -15,7 +15,9 @@
     e = e || { title: "", cat: "other", date: d || today(), start: "09:00", end: "10:00", repeat: "none", days: [], must: false, remind: "", note: "" };
     const fields = [
       { k: "title", label: "Название", req: true, full: true },
+      { k: "location", label: "Место", full: true, ph: "Адрес, кабинет, ссылка" },
       { k: "cat", label: "Категория", type: "select", opts: A.catOpts() },
+      { k: "color", label: "Цвет (если нужен свой)", type: "chips", opts: [["", "как у категории"]].concat(A.PAL.map((c) => [c, "●"])) },
       { k: "prio", label: "Приоритет", type: "select", opts: [[1, "Высокий"], [2, "Обычный"], [3, "Низкий"]] },
       { k: "date", label: e.repeat && e.repeat !== "none" ? "Начало повторов" : "Дата", type: "date" },
       { k: "must", label: "Тип", type: "check", text: "Обязательное дело" },
@@ -23,14 +25,14 @@
       { k: "repeat", label: "Повторение", type: "select", opts: REPEAT },
       { k: "until", label: "Повторять до", type: "date" },
       { k: "days", label: "Дни недели (для «По дням недели»)", type: "multi", opts: DAYS_OPTS, numeric: true },
-      { k: "remind", label: "Напоминание", type: "select", opts: [["", "Без напоминания"], [0, "В момент начала"], [5, "За 5 минут"], [15, "За 15 минут"], [30, "За 30 минут"], [60, "За 1 час"], [1440, "За день"]] },
-      { k: "note", label: "Заметка", type: "textarea" }
+      { k: "remind", label: "Напоминание", type: "select", opts: [["", "Без напоминания"], [0, "В момент начала"], [5, "За 5 минут"], [15, "За 15 минут"], [30, "За 30 минут"], [60, "За 1 час"], [120, "За 2 часа"], [1440, "За день"]] },
+      { k: "note", label: "Описание", type: "textarea" }
     ];
-    const opts = {};
+    const opts = { after: (w) => w.querySelectorAll('.chips[data-field="color"] .chip').forEach((c) => { if (c.dataset.v) c.style.color = c.dataset.v; }) };
     if (!isNew) {
       opts.onDelete = () => { A.remove("events", e.id); A.syncReminders(); A.refresh(); };
       if (e.repeat !== "none" && d) opts.post = '<div class="btns"><button class="btn sm ghost" id="skipOne">Пропустить только ' + fmtShort(d) + "</button></div>";
-      opts.after = (w) => { const b = w.querySelector("#skipOne"); if (b) b.onclick = () => { e.skip = (e.skip || []).concat(d); A.save(); A.closeSheet(); A.refresh(); }; };
+      const a0 = opts.after; opts.after = (w) => { a0(w); const b = w.querySelector("#skipOne"); if (b) b.onclick = () => { e.skip = (e.skip || []).concat(d); A.save(); A.closeSheet(); A.refresh(); }; };
     }
     A.formSheet(isNew ? "Новое событие" : "Событие", fields, e, (o) => {
       Object.assign(e, o);
@@ -43,27 +45,53 @@
 
   A.edit.task = (t, preset = {}) => {
     const isNew = !t;
-    t = t || Object.assign({ title: "", date: today(), time: "", prio: 2, must: false, minVer: "", goalId: "", note: "", done: false, repeat: "none", remind: false }, preset);
+    t = t || Object.assign({ title: "", desc: "", date: today(), time: "", prio: 2, projectId: "", tags: [], subtasks: [], must: false, minVer: "", goalId: "", note: "", done: false, repeat: "none", remind: false, archived: false }, preset);
+    const subs = (t.subtasks || []).map((x) => Object.assign({}, x));
     const fields = [
-      { k: "title", label: "Задача", req: true, full: true, ph: "Глагол + объект + объём + срок", hint: "Не «работать над проектом», а «сегодня до 19:00 написать структуру из пяти пунктов»" },
-      { k: "date", label: "Дата", type: "date" }, { k: "time", label: "Время", type: "time" },
-      { k: "prio", label: "Приоритет", type: "select", opts: [[1, "Высокий"], [2, "Обычный"], [3, "Низкий"]] },
-      { k: "must", label: "Тип", type: "check", text: "Обязательно" },
+      { k: "title", label: "Заголовок", req: true, full: true, ph: "Глагол + объект + объём + срок" },
+      { k: "desc", label: "Подробное описание", type: "textarea", rows: 3 },
+      { k: "projectId", label: "Проект", type: "select", opts: () => [["", "— без проекта —"]].concat(A.col("projects").filter((p) => !p.archived || p.id === t.projectId).map((p) => [p.id, p.name])) },
+      { k: "prio", label: "Приоритет", type: "chips", numeric: true, opts: [[1, "🔴 Высокий"], [2, "🟠 Средний"], [3, "🟢 Низкий"]] },
+      { k: "date", label: "Срок: дата", type: "date" }, { k: "time", label: "Срок: время", type: "time" },
+      { k: "repeat", label: "Повторение", type: "select", opts: [["none", "Один раз"], ["daily", "Ежедневно"], ["weekly", "Еженедельно"], ["monthly", "Ежемесячно"]] },
+      { k: "remind", label: "Напоминание", type: "check", text: "Уведомить в срок" },
+      { k: "tagsStr", label: "Теги (через запятую)", full: true, ph: "звонки, дом, срочно" },
+      { k: "goalId", label: "Связанная цель", type: "select", opts: () => [["", "—"]].concat(A.col("goals").map((g) => [g.id, g.title])), full: true },
       { k: "minVer", label: "Минимальная версия", full: true, hint: "Если сопротивление высокое — уменьшить объём в два раза, а не отказаться" },
-      { k: "goalId", label: "Цель", type: "select", opts: () => [["", "—"]].concat(A.col("goals").map((g) => [g.id, g.title])), full: true },
-      { k: "repeat", label: "Повтор", type: "select", opts: [["none", "Нет"], ["daily", "Каждый день"], ["weekly", "Каждую неделю"], ["monthly", "Каждый месяц"]] },
-      { k: "remind", label: "Уведомление", type: "check", text: "Напомнить во время" },
-      { k: "note", label: "Заметка", type: "textarea" }
+      { k: "must", label: "Тип", type: "check", text: "Обязательно" },
+      { k: "archived", label: "Архив", type: "check", text: "В архиве" }
     ];
-    A.formSheet(isNew ? "Новая задача" : "Задача", fields, t, (o) => {
-      Object.assign(t, o); t.prio = +o.prio || 2;
-      if (isNew) t.created = today();
+    const subHtml = () => '<div class="fsec">Подзадачи</div>' + subs.map((x, i) => '<div class="row" style="margin:4px 0"><button type="button" class="check' + (x.done ? " on" : "") + '" data-st="' + i + '">' + (x.done ? "✓" : "") + '</button><input data-sti="' + i + '" value="' + esc(x.t) + '"><button type="button" class="icon-btn" data-sd="' + i + '" aria-label="Удалить">✕</button></div>').join("") + '<div class="inline-add" style="margin-top:6px"><input id="newSub" placeholder="Новая подзадача"><button type="button" class="btn" id="addSub">+</button></div>';
+    A.formSheet(isNew ? "Новая задача" : "Задача", fields, Object.assign({}, t, { tagsStr: (t.tags || []).join(", ") }), (o) => {
+      o.tags = (o.tagsStr || "").split(",").map((x) => x.trim()).filter(Boolean); delete o.tagsStr;
+      Object.assign(t, o); t.prio = +o.prio || 2; t.subtasks = subs.filter((x) => x.t);
+      if (isNew) t.created = new Date().toISOString();
       A.upsert("tasks", t); A.syncReminders(); A.refresh();
-    }, isNew ? {} : { onDelete: () => { A.remove("tasks", t.id); A.refresh(); } });
+    }, {
+      post: '<div id="subBox"></div>' + (!isNew && t.doneAt ? '<p class="small muted">Выполнена: ' + new Date(t.doneAt.length > 10 ? t.doneAt : t.doneAt + "T12:00").toLocaleString("ru-RU") + "</p>" : ""),
+      onDelete: isNew ? null : () => { A.remove("tasks", t.id); A.syncReminders(); A.refresh(); },
+      after(w) {
+        const box = w.querySelector("#subBox"), draw = () => (box.innerHTML = subHtml()); draw();
+        const add = () => { const v = box.querySelector("#newSub").value.trim(); if (v) { subs.push({ t: v, done: false }); draw(); box.querySelector("#newSub").focus(); } };
+        box.addEventListener("click", (e) => {
+          if (e.target.id === "addSub") add();
+          if (e.target.dataset.st != null) { subs[+e.target.dataset.st].done = !subs[+e.target.dataset.st].done; draw(); }
+          if (e.target.dataset.sd != null) { subs.splice(+e.target.dataset.sd, 1); draw(); }
+        });
+        box.addEventListener("keydown", (e) => { if (e.target.id === "newSub" && e.key === "Enter") { e.preventDefault(); add(); } });
+        box.addEventListener("input", (e) => { if (e.target.dataset.sti != null) subs[+e.target.dataset.sti].t = e.target.value; });
+      }
+    });
+  };
+  A.edit.project = (p) => {
+    const isNew = !p;
+    p = p || { name: "", color: A.PAL[A.col("projects").length % A.PAL.length], order: A.col("projects").length, archived: false };
+    A.formSheet(isNew ? "Новый проект" : "Проект", [{ k: "name", label: "Название", req: true, full: true }, { k: "color", label: "Цвет", type: "chips", opts: A.PAL.map((c) => [c, "●"]) }, { k: "desc", label: "Описание", type: "textarea", rows: 2 }, { k: "archived", label: "Архив", type: "check", text: "Проект в архиве" }], p, (o) => { Object.assign(p, o); A.upsert("projects", p); A.refresh(); },
+      Object.assign({ after: (w) => w.querySelectorAll('.chips[data-field="color"] .chip').forEach((c) => (c.style.color = c.dataset.v)) }, isNew ? {} : { onDelete: () => { A.confirm("Удалить проект? Задачи останутся без проекта.", () => { A.col("tasks").forEach((t) => { if (t.projectId === p.id) t.projectId = ""; }); A.remove("projects", p.id); A.refresh(); }, "Удалить", true); } }));
   };
   // Выполнение повторяющейся задачи создаёт следующую.
   A.completeTask = (t) => {
-    t.done = !t.done; t.doneAt = t.done ? today() : "";
+    t.done = !t.done; t.doneAt = t.done ? new Date().toISOString() : "";
     if (t.done && t.repeat && t.repeat !== "none" && t.date && !t.spawned) {
       const nd = t.repeat === "daily" ? addDays(t.date, 1) : t.repeat === "weekly" ? addDays(t.date, 7) : A.nextMonthly(t.date, parse(t.date).getDate());
       A.col("tasks").push(Object.assign({}, t, { id: A.uid(), date: nd, done: false, doneAt: "", spawned: false }));
@@ -78,7 +106,10 @@
     const fields = [
       { k: "icon", label: "Значок", ph: "✨" }, { k: "name", label: "Название", req: true },
       { k: "cat", label: "Категория", type: "select", opts: [["health", "Здоровье"], ["sport", "Спорт"], ["learn", "Обучение"], ["home", "Дом"], ["money", "Финансы"], ["family", "Отношения"], ["rest", "Восстановление"], ["other", "Другое"]] },
-      { k: "freq", label: "Периодичность", type: "select", opts: [["daily", "Каждый день"], ["weekdays", "По дням недели"], ["xweek", "N раз в неделю"]] },
+      { k: "freq", label: "Периодичность", type: "select", opts: [["daily", "Ежедневно"], ["weekdays", "По дням недели"], ["xweek", "Еженедельно: N раз в неделю"]] },
+      { k: "type", label: "Отслеживание", type: "chips", opts: [["check", "✓ галочка"], ["num", "🔢 число"]] },
+      { k: "target", label: "Цель в день (число)", type: "number", step: "any", ph: "1, 10, 2" },
+      { k: "unit", label: "Единица", ph: "раз, км, л, мин, стр." },
       { k: "days", label: "Дни недели", type: "multi", opts: DAYS_OPTS, numeric: true },
       { k: "perWeek", label: "Раз в неделю (для N раз)", type: "number", min: 1, max: 7 },
       { k: "min", label: "Минимальная цель", ph: "например, 10 минут" },
@@ -87,7 +118,8 @@
       { k: "note", label: "Комментарий", type: "textarea" },
       { k: "archived", label: "Архив", type: "check", text: "В архиве (не показывать)" }
     ];
-    A.formSheet(isNew ? "Новая привычка" : "Привычка", fields, h, (o) => { Object.assign(h, o); A.upsert("habits", h); A.syncReminders(); A.refresh(); },
+    if (!h.type) h.type = "check";
+    A.formSheet(isNew ? "Новая привычка" : "Привычка", fields, h, (o) => { Object.assign(h, o); if (h.type === "num" && !h.target) h.target = 1; h.mask = A.daysMask(h.freq === "daily" ? [1, 2, 3, 4, 5, 6, 7] : h.days); A.upsert("habits", h); A.syncReminders(); A.refresh(); },
       isNew ? {} : { onDelete: () => { A.remove("habits", h.id); Object.keys(A.db().hlog).forEach((k) => { if (k.startsWith(h.id + "|")) delete A.db().hlog[k]; }); A.save(); A.refresh(); } });
   };
 
@@ -111,13 +143,13 @@
   };
 
   /* ---------- календарь ---------- */
-  const evCard = (e, d) => { const c = A.cat(e.cat); return '<div class="ev" style="--c:' + c.color + '" data-a="event" data-id="' + e.id + '" data-d="' + d + '"><b>' + esc(c.icon + " " + e.title) + "</b><small>" + esc((e.start || "") + (e.end ? "–" + e.end : "")) + (e.must ? " · обязательно" : " · желательно") + (e.repeat !== "none" ? " · ↻" : "") + "</small></div>"; };
+  const evCard = (e, d) => { const c = A.cat(e.cat); return '<div class="ev" style="--c:' + (e.color || c.color) + '" data-a="event" data-id="' + e.id + '" data-d="' + d + '"><b>' + esc(c.icon + " " + e.title) + "</b><small>" + esc((e.start || "") + (e.end ? "–" + e.end : "") + (e.location ? " · 📍 " + e.location : "")) + (e.must ? " · обязательно" : " · желательно") + (e.repeat !== "none" ? " · ↻" : "") + "</small></div>"; };
 
   function dayView(d) {
     const ev = A.eventsOn(d);
     const tasks = A.col("tasks").filter((t) => t.date === d);
     let h = A.dateNav(d);
-    h += '<div class="card"><h3>Задачи<span class="sp"></span><button class="link" data-a="addTask">+ задача</button></h3><div class="list">' + (tasks.length ? tasks.map((t) => A.taskRow(t, d)).join("") : A.empty("Задач нет")) + "</div></div>";
+    h += '<div class="card"><h3>Задачи со сроком на этот день<span class="sp"></span><button class="link" data-a="addTask">+ задача</button></h3><div class="list">' + (tasks.length ? tasks.map((t) => A.taskRow(t, d)).join("") : A.empty("Задач нет")) + '</div><a class="link" href="#/tasks?f=all">Перейти в задачи →</a></div>';
     h += '<div class="card"><h3>Шкала дня<span class="sp"></span><button class="link" data-a="addEvent">+ событие</button></h3><div class="timeline">';
     const hours = {}; ev.forEach((e) => { const k = Math.floor((hm2min(e.start) ?? 0) / 60); (hours[k] = hours[k] || []).push(e); });
     for (let hh = 5; hh <= 23; hh++) h += '<div class="tl-row"><div class="tl-h">' + pad(hh) + ':00</div><div class="tl-c">' + (hours[hh] || []).map((e) => evCard(e, d)).join("") + "</div></div>";
@@ -206,7 +238,7 @@
       } else {
         const ev = A.eventsOn(d).filter((e) => e.repeat === "none");
         const ts = A.col("tasks").filter((k) => k.date === d);
-        const cats = [...new Set(ev.map((e) => A.cat(e.cat).color))].slice(0, 4);
+        const cats = [...new Set(ev.map((e) => e.color || A.cat(e.cat).color))].slice(0, 4);
         inner = '<div class="dots">' + cats.map((c) => '<i style="background:' + c + '"></i>').join("") + (ts.length ? '<i style="background:var(--ink2)"></i>' : "") + "</div>";
       }
       h += '<button class="mday' + (out ? " out" : "") + (d === t ? " now" : "") + '" data-a="openDay" data-d="' + d + '" style="' + style + '">' + parse(d).getDate() + inner + "</button>";
@@ -267,37 +299,71 @@
   });
 
   /* ---------- задачи ---------- */
+  const sortTasks = (list, by) => list.sort((a, b) => {
+    if (by === "prio") return (a.prio || 2) - (b.prio || 2) || ((a.date || "9") > (b.date || "9") ? 1 : -1);
+    if (by === "project") { const pa = A.project(a.projectId), pb = A.project(b.projectId); return (pa ? pa.order : 999) - (pb ? pb.order : 999) || ((a.date || "9") > (b.date || "9") ? 1 : -1); }
+    return ((a.date || "9") + (a.time || "99")) > ((b.date || "9") + (b.time || "99")) ? 1 : ((a.date || "9") === (b.date || "9") ? (a.prio || 2) - (b.prio || 2) : -1);
+  });
   A.view("tasks", {
     title: "Задачи", tab: "calendar",
-    actions(el) { el.innerHTML = '<button class="icon-btn" onclick="App.go(\'ideas\')" title="Контейнер идей" aria-label="Идеи">💡</button>'; },
+    actions(el) { el.innerHTML = '<button class="icon-btn" onclick="App.go(\'projects\')" title="Проекты" aria-label="Проекты">📁</button><button class="icon-btn" onclick="App.go(\'ideas\')" title="Контейнер идей" aria-label="Идеи">💡</button>'; },
     render(el, r) {
-      const f = r.params.f || "today", t = today();
-      let list = A.col("tasks");
+      const f = r.params.f || "today", t = today(), by = r.params.s || A.db().profile.taskSort || "date", pid = r.params.p || "";
+      let list = A.col("tasks").filter((x) => f === "archive" ? x.archived : !x.archived);
+      if (pid) list = list.filter((x) => x.projectId === pid);
       if (f === "today") list = list.filter((x) => !x.done && x.date && x.date <= t);
       else if (f === "next") list = list.filter((x) => !x.done && x.date > t);
       else if (f === "inbox") list = list.filter((x) => !x.done && !x.date);
-      else list = list.filter((x) => x.done).sort((a, b) => (b.doneAt || "") > (a.doneAt || "") ? 1 : -1).slice(0, 100);
-      if (f !== "done") list.sort((a, b) => (a.date || "9") > (b.date || "9") ? 1 : a.date === b.date ? (a.prio || 2) - (b.prio || 2) : -1);
-      let h = A.seg([["today", "Сегодня"], ["next", "Предстоящие"], ["inbox", "Без даты"], ["done", "Готово"]], f, "f");
-      h += '<div class="card"><div class="inline-add"><input id="qt" placeholder="' + (f === "inbox" ? "Задача без даты" : "Новая задача") + '"><button class="btn primary" data-a="add">+</button></div><p class="small muted" style="margin-top:6px">Формула задачи: глагол + объект + объём + срок.</p></div>';
-      if (f === "next") {
-        let last = "";
+      else if (f === "all") list = list.filter((x) => !x.done);
+      else if (f === "done") list = list.filter((x) => x.done).sort((a, b) => ((b.doneAt || "") > (a.doneAt || "") ? 1 : -1)).slice(0, 150);
+      if (f !== "done") sortTasks(list, by);
+      let h = A.seg([["today", "Сегодня"], ["next", "Скоро"], ["inbox", "Без даты"], ["all", "Все"], ["done", "Готово"], ["archive", "Архив"]], f, "f");
+      const projs = A.col("projects").filter((p) => !p.archived).sort((a, b) => a.order - b.order);
+      h += '<div class="chips" style="margin-bottom:10px;flex-wrap:nowrap;overflow-x:auto"><button class="chip' + (!pid ? " on" : "") + '" data-a="proj" data-v="" style="flex:0 0 auto">Все проекты</button>' + projs.map((p) => '<button class="chip' + (pid === p.id ? " on" : "") + '" data-a="proj" data-v="' + p.id + '" style="flex:0 0 auto"><span class="dot" style="background:' + p.color + ';margin-right:6px"></span>' + esc(p.name) + "</button>").join("") + "</div>";
+      h += '<div class="card nocollapse"><div class="inline-add"><input id="qt" placeholder="' + (f === "inbox" ? "Задача без даты" : "Новая задача") + '"><button class="btn primary" data-a="add">+</button></div><div class="row" style="margin-top:8px"><span class="small muted grow">Сортировка</span>' + A.seg([["date", "дата"], ["prio", "приоритет"], ["project", "проект"]], by, "sort").replace('class="seg"', 'class="seg" style="margin:0;flex:0 0 auto"') + "</div></div>";
+      if (f === "next" || (f === "all" && by === "date")) {
+        let last = "@";
         h += '<div class="card"><div class="list">';
-        list.forEach((x) => { if (x.date !== last) { last = x.date; h += '<div class="small muted" style="margin-top:8px">' + fmtDate(x.date, { dow: true }) + "</div>"; } h += A.taskRow(x); });
-        h += (list.length ? "" : A.empty("Нет предстоящих задач")) + "</div></div>";
+        list.forEach((x) => { if ((x.date || "") !== last) { last = x.date || ""; h += '<div class="small muted" style="margin-top:8px">' + (x.date ? fmtDate(x.date, { dow: true }) : "Без даты") + "</div>"; } h += A.taskRow(x); });
+        h += (list.length ? "" : A.empty("Нет задач")) + "</div></div>";
       } else h += '<div class="card"><div class="list">' + (list.length ? list.map((x) => A.taskRow(x)).join("") : A.empty(f === "today" ? "На сегодня всё. Можно отдыхать 💜" : "Пусто")) + "</div></div>";
+      if (f === "done") { const old = A.col("tasks").filter((x) => x.done && !x.archived && (x.doneAt || "").slice(0, 10) < addDays(t, -7)).length; if (old) h += '<button class="btn block" data-a="archOld">Архивировать выполненные старше 7 дней (' + old + ")</button>"; }
       h += '<button class="fab" data-a="full" aria-label="Подробная задача">+</button>';
       return h;
     },
     bind(el, r) {
-      const f = r.params.f || "today";
-      const add = () => { const i = el.querySelector("#qt"); const v = i.value.trim(); if (!v) return; A.upsert("tasks", { title: v, date: f === "inbox" ? "" : f === "next" ? addDays(today(), 1) : today(), prio: 2, done: false, created: today() }); A.refresh(); };
+      const P = A.route().params, f = P.f || "today";
+      const q = (o) => { const x = Object.assign({ f: P.f || "", p: P.p || "", s: P.s || "" }, o); A.go("tasks?" + Object.keys(x).filter((k) => x[k]).map((k) => k + "=" + x[k]).join("&"), true); };
+      const add = () => { const i = el.querySelector("#qt"); const v = i.value.trim(); if (!v) return; A.upsert("tasks", { title: v, date: f === "inbox" ? "" : f === "next" ? addDays(today(), 1) : today(), prio: 2, projectId: P.p || "", tags: [], subtasks: [], done: false, created: new Date().toISOString() }); A.refresh(); };
       el.querySelector("#qt").addEventListener("keydown", (e) => { if (e.key === "Enter") add(); });
       A.bind(el, {
-        f(b) { A.go("tasks?f=" + b.dataset.v, true); }, add,
-        full() { A.edit.task(null, { date: f === "inbox" ? "" : today() }); },
+        f(b) { q({ f: b.dataset.v }); }, proj(b) { q({ p: b.dataset.v }); }, sort(b) { A.db().profile.taskSort = b.dataset.v; A.save(); q({ s: b.dataset.v }); }, add,
+        full() { A.edit.task(null, { date: f === "inbox" ? "" : today(), projectId: P.p || "" }); },
         taskDone(b) { A.completeTask(A.byId("tasks", b.dataset.id)); A.vibe(); A.refresh(); },
-        task(b) { A.edit.task(A.byId("tasks", b.dataset.id)); }
+        task(b) { A.edit.task(A.byId("tasks", b.dataset.id)); },
+        archOld() { const t = today(); let n = 0; A.col("tasks").forEach((x) => { if (x.done && !x.archived && (x.doneAt || "").slice(0, 10) < addDays(t, -7)) { x.archived = true; n++; } }); A.save(); A.toast("В архив: " + n); A.refresh(); }
+      });
+    }
+  });
+
+  /* ---------- проекты ---------- */
+  A.view("projects", {
+    title: "Проекты", tab: "calendar",
+    actions(el) { el.innerHTML = '<button class="icon-btn" onclick="App.edit.project()" aria-label="Новый проект">＋</button>'; },
+    render(el, r) {
+      const showArch = r.params.a === "1";
+      const ps = A.col("projects").filter((p) => !!p.archived === showArch).sort((a, b) => a.order - b.order);
+      let h = A.seg([["0", "Активные"], ["1", "Архив"]], showArch ? "1" : "0", "arch");
+      h += '<div class="card"><div class="list">' + (ps.length ? ps.map((p, i) => { const ts = A.col("tasks").filter((t) => t.projectId === p.id && !t.archived); const d = ts.filter((t) => t.done).length; return '<div class="item"><span class="dot" style="background:' + p.color + ';width:14px;height:14px"></span><div class="tx tap" data-a="open" data-id="' + p.id + '"><b>' + esc(p.name) + "</b><small>задач: " + (ts.length - d) + " открыто · " + d + " готово</small>" + A.bar(ts.length ? d / ts.length : 0, p.color) + '</div><button class="icon-btn" data-a="up" data-i="' + i + '" aria-label="Выше">↑</button><button class="icon-btn" data-a="edit" data-id="' + p.id + '" aria-label="Изменить">✎</button></div>'; }).join("") : A.empty(showArch ? "Архив пуст" : "Проектов нет")) + "</div></div>";
+      h += '<p class="small muted">Проекты — это папки для задач. Правило одного проекта: один главный проект на 30–90 дней, новые идеи — в список.</p>';
+      return h;
+    },
+    bind(el, r) {
+      A.bind(el, {
+        arch(b) { A.go("projects" + (b.dataset.v === "1" ? "?a=1" : ""), true); },
+        open(b) { A.go("tasks?f=all&p=" + b.dataset.id); },
+        edit(b) { A.edit.project(A.byId("projects", b.dataset.id)); },
+        up(b) { const ps = A.col("projects").filter((p) => !p.archived).sort((a, c) => a.order - c.order); const i = +b.dataset.i; if (i > 0) { const o = ps[i - 1].order; ps[i - 1].order = ps[i].order; ps[i].order = o; if (ps[i - 1].order === ps[i].order) ps.forEach((p, k) => (p.order = k)); A.save(); A.refresh(); } }
       });
     }
   });
@@ -336,7 +402,10 @@
       let h = '<div class="datenav"><button class="icon-btn" data-a="mnav" data-v="-1">‹</button><div class="dn-t" style="display:flex;align-items:center;justify-content:center">' + esc(A.monthTitle(mk)) + '</div><button class="icon-btn" data-a="mnav" data-v="1">›</button></div>';
       h += '<div class="card"><h3>Трекер привычек</h3>' + A.charts.monthGrid(mk, hs.map((x) => ({ id: x.id, name: (x.icon || "") + " " + x.name })), (row, d) => { const st = A.hs(row.id, d); if (st) { const S = A.HSTATUS[st]; return { c: S[2], s: st === "none" ? "" : S[1], t: S[0] }; } const hb = A.byId("habits", row.id); return !A.habitPlanned(hb, d) ? { c: "transparent" } : null; }) +
         '<div class="mlegend">' + Object.values(A.HSTATUS).map((S) => '<div><i style="background:' + S[2] + '"></i>' + S[1] + " " + S[0] + "</div>").join("") + "</div></div>";
-      h += '<div class="card"><h3>План / факт за месяц</h3><div class="list">' + hs.map((x) => { const s = A.habitStats(x, from, to > t ? t : to); return '<div class="item" data-a="edit" data-id="' + x.id + '"><div class="ic">' + esc(x.icon || "•") + '</div><div class="tx"><b>' + esc(x.name) + "</b><small>" + (x.freq === "daily" ? "ежедневно" : x.freq === "weekdays" ? (x.days || []).map((k) => DOW[k - 1]).join(", ") : (x.perWeek || 3) + " раз в неделю") + " · серия " + A.habitStreak(x) + " · факт " + A.fmtN(s.done, 1) + "/" + s.plan + "</small>" + A.bar(s.pct || 0, "var(--sage)") + '</div><b class="num">' + (s.pct == null ? "—" : Math.round(s.pct * 100) + "%") + "</b></div>"; }).join("") + "</div></div>";
+      const ws = A.weekStart(t), wd = A.range(ws, addDays(ws, 6));
+      h += '<div class="card"><h3>Неделя: привычка × день</h3><div class="matrix-wrap"><table class="matrix wide"><thead><tr><th></th>' + wd.map((x, i) => '<th class="' + (x === t ? "today" : "") + '">' + DOW[i] + "</th>").join("") + '<th>%</th></tr></thead><tbody>' +
+        hs.map((x) => { const st = A.habitStats(x, ws, addDays(ws, 6) > t ? t : addDays(ws, 6)); return '<tr><th class="rowh"><span style="display:inline-block;max-width:118px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle">' + esc((x.icon || "") + " " + x.name) + "</span></th>" + wd.map((d) => { const s2 = A.hs(x.id, d), S = s2 && A.HSTATUS[s2], pl = A.habitPlanned(x, d), nv = x.type === "num" ? A.hv(x.id, d) : null; return '<td data-a="gcell" data-id="' + x.id + '" data-d="' + d + '" style="' + (S ? "background:" + S[2] + ";color:#fff;" : pl ? "" : "opacity:.35;") + '">' + (nv != null ? A.fmtN(nv, 1) : S ? S[1] : "") + "</td>"; }).join("") + '<td style="background:transparent;font-weight:700">' + (st.pct == null ? "" : Math.round(st.pct * 100)) + "</td></tr>"; }).join("") + "</tbody></table></div></div>";
+      h += '<div class="card"><h3>План / факт за месяц</h3><div class="list">' + hs.map((x) => { const s = A.habitStats(x, from, to > t ? t : to); return '<div class="item" data-a="detail" data-id="' + x.id + '"><div class="ic">' + esc(x.icon || "•") + '</div><div class="tx"><b>' + esc(x.name) + "</b><small>" + (x.type === "num" ? "цель " + (x.target || 1) + " " + esc(x.unit || "") + " · " : "") + (x.freq === "daily" ? "ежедневно" : x.freq === "weekdays" ? (x.days || []).map((k) => DOW[k - 1]).join(", ") : (x.perWeek || 3) + " раз в неделю") + " · серия " + A.habitStreak(x) + " · факт " + A.fmtN(s.done, 1) + "/" + s.plan + "</small>" + A.bar(s.pct || 0, "var(--sage)") + '</div><b class="num">' + (s.pct == null ? "—" : Math.round(s.pct * 100) + "%") + "</b></div>"; }).join("") + "</div></div>";
       if (p.points) {
         const pts = Object.values(A.db().hlog).reduce((s, v) => s + (v === "done" ? 2 : v === "part" ? 1 : 0), 0) - A.sum(A.col("rewards").filter((x) => x.claimed).map((x) => +x.cost || 0));
         h += '<div class="card peach"><h3>🎁 Баллы и награды<span class="sp"></span><b>' + pts + ' б.</b></h3><p class="small muted">Выполнено = 2 балла, частично = 1. Пропуски баллы не отнимают.</p><div class="list">' + A.col("rewards").map((rw) => '<div class="item"><div class="tx"><b>' + esc(rw.name) + "</b><small>" + rw.cost + " б." + (rw.claimed ? " · получена " + fmtShort(rw.claimed) : "") + "</small></div>" + (rw.claimed ? "" : '<button class="btn sm" data-a="claim" data-id="' + rw.id + '"' + (pts < rw.cost ? " disabled" : "") + ">Получить</button>") + "</div>").join("") + '</div><button class="btn sm" data-a="addReward">+ награда</button></div>';
@@ -348,7 +417,17 @@
     bind(el, r) {
       A.bind(el, {
         mnav(b) { const mk = A.route().params.m || today().slice(0, 7); let [y, m] = mk.split("-").map(Number); m += +b.dataset.v; if (m < 1) { m = 12; y--; } if (m > 12) { m = 1; y++; } A.go("habits?m=" + y + "-" + pad(m), true); },
-        gcell(b) { if (b.dataset.d > today()) return; A.cycleHs(A.byId("habits", b.dataset.id), b.dataset.d); A.refresh(); },
+        gcell(b) { if (b.dataset.d > today()) return; const hb = A.byId("habits", b.dataset.id); if (hb.type === "num") return A.edit.habitValue(hb, b.dataset.d); A.cycleHs(hb, b.dataset.d); A.refresh(); },
+        detail(b) {
+          const hb = A.byId("habits", b.dataset.id), t = today();
+          const weeks = []; for (let i = 11; i >= 0; i--) { const a = addDays(A.weekStart(t), -7 * i), e = addDays(a, 6); const st = A.habitStats(hb, a, e > t ? t : e); weeks.push({ x: fmtShort(a), v: st.pct == null ? null : Math.round(st.pct * 100) }); }
+          const days30 = A.lastDays(30);
+          const body = '<div class="grid3"><div class="stat"><small>Серия</small><b>' + A.habitStreak(hb) + '</b></div><div class="stat"><small>Лучшая серия</small><b>' + A.bestStreak(hb) + '</b></div><div class="stat"><small>30 дней</small><b>' + (A.habitStats(hb, days30[0], t).pct == null ? "—" : Math.round(A.habitStats(hb, days30[0], t).pct * 100) + "%") + "</b></div></div>" +
+            '<h3 style="margin-top:12px">Выполнение по неделям, %</h3>' + A.charts.bars(weeks, { color: "#7F9C7A", goal: 100, labelsEvery: 3, fmt: (v) => v + "%" }) +
+            (hb.type === "num" ? '<h3 style="margin-top:12px">Значения за 30 дней, ' + esc(hb.unit || "") + "</h3>" + A.charts.bars(days30.map((d) => ({ x: fmtShort(d).slice(0, 2), v: A.hv(hb.id, d) })), { color: "#8E7CC3", goal: hb.target || 1 }) : "") +
+            (hb.note ? '<p class="small muted">' + esc(hb.note) + "</p>" : "");
+          A.sheet((hb.icon || "") + " " + hb.name, body, { buttons: [{ label: hb.archived ? "Из архива" : "В архив", cls: "ghost", onClick: () => { hb.archived = !hb.archived; A.save(); A.refresh(); } }, { label: "Изменить", cls: "primary", onClick: () => setTimeout(() => A.edit.habit(hb), 250) }] });
+        },
         edit(b) { A.edit.habit(A.byId("habits", b.dataset.id)); },
         addReward() { A.formSheet("Награда", [{ k: "name", label: "Награда", req: true, full: true }, { k: "cost", label: "Стоимость в баллах", type: "number" }], {}, (o) => { A.upsert("rewards", o); A.refresh(); }); },
         claim(b) { const rw = A.byId("rewards", b.dataset.id); rw.claimed = today(); A.save(); A.toast("Ты заслужила 💜"); A.refresh(); }
@@ -367,6 +446,10 @@
       if (A.native && !A.native.notificationsAllowed()) h += '<div class="card peach row"><div class="grow small">Уведомления выключены в системе.</div><button class="btn sm primary" data-a="perm">Разрешить</button></div>';
       if (!A.native) h += '<div class="warn" style="margin-bottom:12px">Системные уведомления работают в Android-приложении. Здесь напоминания видны на экране «Сегодня».</div>';
       h += '<div class="card"><div class="list">' + (rs.length ? rs.map((r) => '<div class="item"><div class="ic">🔔</div><div class="tx" data-a="edit" data-id="' + r.id + '"><b>' + esc(r.title) + "</b><small>" + esc(r.time + " · " + types[r.type] + (r.type === "once" ? " " + fmtShort(r.date || today()) : "") + (r.type === "weekdays" || r.type === "weekly" ? " " + (r.days || []).map((k) => DOW[k - 1]).join(",") : "") + (r.type === "monthly" ? " " + r.dom + " числа" : "")) + '</small></div><label class="switch"><input type="checkbox" data-c="toggle" data-id="' + r.id + '"' + (r.on ? " checked" : "") + "><span></span></label></div>").join("") : A.empty("Напоминаний нет")) + "</div></div>";
+      const t0 = today(), dueToday = rs.filter((r) => r.on && A.reminderOn(r, t0));
+      if (dueToday.length) h += '<div class="card"><h3>Сегодня</h3>' + dueToday.map((r) => { const done = A.col("remLog").some((x) => x.rid === r.id && x.date === t0); return '<div class="item' + (done ? " done" : "") + '"><button class="check' + (done ? " on" : "") + '" data-a="rdone" data-id="' + r.id + '">' + (done ? "✓" : "") + '</button><div class="tx"><b>' + esc(r.title) + "</b><small>" + esc(r.time) + "</small></div></div>"; }).join("") + "</div>";
+      const hist = A.col("remLog").slice().reverse().slice(0, 30);
+      if (hist.length) h += '<div class="card"><h3>История</h3>' + hist.map((x) => { const r = A.byId("reminders", x.rid); return '<div class="row small" style="padding:4px 0"><span class="grow">✓ ' + esc(r ? r.title : "удалено") + '</span><span class="muted">' + fmtShort(x.date) + " " + esc(x.at || "") + "</span></div>"; }).join("") + "</div>";
       h += '<p class="small muted">Также уведомления приходят для привычек со временем, событий с напоминанием, задач с отметкой «напомнить» и регулярных платежей. Все типы отключаются в Настройках → Уведомления.</p>';
       if (A.native) h += '<button class="btn block" data-a="test">Проверить уведомление</button>';
       return h;
@@ -375,6 +458,7 @@
       A.bind(el, {
         edit(b) { A.edit.reminder(A.byId("reminders", b.dataset.id)); },
         toggle(b) { A.byId("reminders", b.dataset.id).on = b.checked; A.save(); A.syncReminders(); },
+        rdone(b) { const t0 = today(), L = A.col("remLog"), i = L.findIndex((x) => x.rid === b.dataset.id && x.date === t0); if (i >= 0) L.splice(i, 1); else L.push({ id: A.uid(), rid: b.dataset.id, date: t0, at: A.nowHM() }); A.save(); A.refresh(); },
         perm() { A.nativeCall("notif", () => A.native.requestNotifications()).then(() => A.refresh()); },
         test() { A.native.testNotification("Путь жизни", "Уведомления работают 💜"); }
       });

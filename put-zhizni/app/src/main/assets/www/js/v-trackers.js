@@ -34,6 +34,12 @@
         return Object.assign(step([1, 15, 30, 60], ["#EDEDED", "#D9D2F0", "#B3A6E3", "#8E7CC3", "#5E4C9C"], ["нет", "< 15 мин", "15–30 мин", "30–60 мин", "> 60 мин"]), { short: (v) => v });
       case "spend":
         return Object.assign(step([1, 500, 1500, 3000, 7000], ["#EDEDED", "#E5F0DD", "#F6E7B5", "#F2C27A", "#EB8F5E", "#D2555E"], ["0", "< 500", "500–1 500", "1 500–3 000", "3 000–7 000", "> 7 000"]), { short: (v) => (v >= 1000 ? Math.round(v / 1000) + "к" : Math.round(v)) });
+      case "weight": {
+        const ws = Object.values(A.db().days).map((x) => x.weight).filter((x) => x != null);
+        const mn = ws.length ? Math.min(...ws) : 50, mx = ws.length ? Math.max(...ws) : 80, r = Math.max(0.5, mx - mn);
+        const cols = ["#DDEBF7", "#B8D5EE", "#8EBBE2", "#6C9FD3", "#4F82BF", "#3A66A3"];
+        return { color: (v) => cols[Math.min(5, Math.floor(((v - mn) / r) * 5.999))], legend: cols.map((c, i) => [c, fmtN(mn + (r * i) / 6, 1) + "–" + fmtN(mn + (r * (i + 1)) / 6, 1) + " кг"]), short: (v) => fmtN(v, 1) };
+      }
       case "habits":
         return Object.assign(step([1, 34, 67, 100], ["#E07B6A", "#F0A45B", "#F2CF5B", "#A8CC6E", "#6BAF6B"], ["0%", "1–33%", "34–66%", "67–99%", "100%"]), { short: (v) => v + "%" });
     }
@@ -42,7 +48,7 @@
 
   const TRACKERS = [
     ["mood", "Настроение"], ["weather", "Погода"], ["temp", "Температура"], ["steps", "Шаги"], ["sleep", "Сон"], ["stress", "Стресс"], ["anx", "Тревожность"],
-    ["energy", "Энергия"], ["workout", "Тренировки"], ["water", "Вода"], ["habits", "Привычки"], ["pages", "Чтение"], ["kcal", "Питание"]
+    ["energy", "Энергия"], ["workout", "Тренировки"], ["water", "Вода"], ["habits", "Привычки"], ["pages", "Чтение"], ["kcal", "Питание"], ["weight", "Вес"]
   ];
 
   const cellFor = (k, hid) => {
@@ -50,6 +56,53 @@
     if (k === "habit") return (d) => { const st = A.hs(hid, d); if (!st) return null; const S = A.HSTATUS[st]; return { c: S[2], t: S[0], s: S[1] }; };
     const sc = A.metricScale(k), get = A.METRICS[k].get;
     return (d) => { const v = get(d); if (v == null) return null; return { c: sc.color(v), t: fmtN(v, 1), s: sc.short ? sc.short(v) : fmtN(v) }; };
+  };
+
+  // Быстрый ввод значения прямо из матрицы трекера — без перехода на другие экраны.
+  A.quickEdit = (k, d, hid) => {
+    const day = A.day(d), title = A.fmtDate(d, { dow: true });
+    const scaleSheet = (name, key, cur, onPick, extra) => {
+      const w = A.sheet(name + " · " + title, A.scale(key, cur) + (extra || ""), {
+        buttons: [{ label: "Очистить", cls: "ghost", onClick: () => { onPick(null); A.refresh(); } }, { label: "Готово", cls: "primary", onClick: () => A.refresh() }]
+      });
+      w.querySelector(".scale").addEventListener("click", (e) => {
+        const b = e.target.closest("[data-v]"); if (!b) return;
+        w.querySelectorAll(".scale button").forEach((x) => x.classList.toggle("on", x === b));
+        onPick(+b.dataset.v); A.vibe();
+      });
+      return w;
+    };
+    switch (k) {
+      case "mood": {
+        const w = scaleSheet("Настроение", "mood", day.mood, (v) => { if (v == null) { delete day.mood; delete day.moods; A.save(); return; } day.moods = []; A.addMood(d, v); },
+          '<div class="small muted" style="margin-top:10px">Эмоции</div>' + '<div class="chips" id="qtags">' + A.FEELINGS.map((f) => '<button class="chip' + ((day.feelings || []).includes(f) ? " on" : "") + '" data-f="' + f + '">' + f + "</button>").join("") + "</div>");
+        w.querySelector("#qtags").addEventListener("click", (e) => { const c = e.target.closest("[data-f]"); if (!c) return; c.classList.toggle("on"); day.feelings = [...w.querySelectorAll("#qtags .chip.on")].map((x) => x.dataset.f); A.save(); });
+        return;
+      }
+      case "stress": return scaleSheet("Стресс", "stress", day.stress, (v) => { day.stress = v; A.save(); });
+      case "energy": {
+        const h = new Date().getHours(), part = d === today() ? (h < 12 ? "m" : h < 17 ? "d" : "e") : "d";
+        return scaleSheet("Энергия (" + { m: "утро", d: "день", e: "вечер" }[part] + ")", "energy", (day.energy || {})[part], (v) => { day.energy = day.energy || {}; day.energy[part] = v; A.save(); });
+      }
+      case "anx": return A.edit.anxiety(d);
+      case "sleep": case "sleepQ": return A.edit.sleep(d);
+      case "steps": return A.edit.steps(d);
+      case "weather": case "temp": return A.edit.weather(d);
+      case "workout": return A.edit.workout({ date: d });
+      case "pages": return A.edit.reading({ date: d });
+      case "weight": return A.edit.weight(d);
+      case "kcal": return A.edit.meal({ date: d, type: "snack", g: 100 });
+      case "water":
+        return A.formSheet("Вода · " + title, [{ k: "water", label: "Выпито за день, мл", type: "number", full: true }], { water: day.water }, (o) => { day.water = o.water; A.save(); A.refresh(); });
+      case "habits": {
+        if (hid) { const h = A.byId("habits", hid); if (h.type === "num") return A.edit.habitValue(h, d); A.cycleHs(h, d); A.refresh(); return; }
+        const hs = A.col("habits").filter((h) => !h.archived);
+        const draw = () => hs.map((h) => { const st = A.hs(h.id, d), S = st && A.HSTATUS[st]; return '<div class="item"><div class="ic">' + esc(h.icon || "•") + '</div><div class="tx"><b>' + esc(h.name) + "</b>" + (h.type === "num" ? "<small>" + (A.hv(h.id, d) ?? 0) + " / " + (h.target || 1) + " " + esc(h.unit || "") + "</small>" : "") + '</div><button class="hbtn" data-h="' + h.id + '" style="' + (S ? "background:" + S[2] + ";border-color:" + S[2] + ";color:#fff" : "") + '">' + (S ? S[1] : "") + "</button></div>"; }).join("");
+        const w = A.sheet("Привычки · " + title, '<div class="list" id="qh">' + draw() + "</div>", { buttons: [{ label: "Готово", cls: "primary", onClick: () => A.refresh() }] });
+        w.querySelector("#qh").addEventListener("click", (e) => { const b = e.target.closest("[data-h]"); if (!b) return; const h = A.byId("habits", b.dataset.h); if (h.type === "num") { A.edit.habitValue(h, d); return; } A.cycleHs(h, d); w.querySelector("#qh").innerHTML = draw(); });
+        return;
+      }
+    }
   };
 
   A.view("trackers", {
@@ -90,8 +143,8 @@
         sym(b) { q({ s: b.checked ? "1" : "" }); },
         mcell(b) {
           const d = b.dataset.d;
-          if (P.k === "habits" && P.h) { A.cycleHs(A.byId("habits", P.h), d); A.refresh(); return; }
-          A.go("today?d=" + d);
+          if (d > today()) return A.toast("Этот день ещё не наступил");
+          A.quickEdit(P.k || "mood", d, P.h);
         }
       });
     }

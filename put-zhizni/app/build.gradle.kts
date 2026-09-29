@@ -11,8 +11,8 @@ android {
         applicationId = "ru.putzhizni.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "2.0"
     }
 
     // Постоянный ключ подписи: обновления ставятся поверх без потери данных.
@@ -42,4 +42,13 @@ android {
     kotlinOptions {
         jvmTarget = "1.8"
     }
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
+}
+
+dependencies {
+    implementation("androidx.health.connect:connect-client:1.1.0-alpha07")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 }

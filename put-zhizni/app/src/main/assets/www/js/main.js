@@ -48,7 +48,27 @@
     A.syncReminders();
     A.weatherRefresh(false);
     A.syncSteps(false);
+    if (A.db().profile.hc) A.syncHealth(false);
+    if (A.native && A.db().profile.smsImport) A.smsImport(false);
+    if (A.native && A.db().profile.sleepAuto) {
+      const day = A.day(A.today());
+      if (!day.sleep && new Date().getHours() >= 5 && A.native.usageAllowed()) { const r = A.native.detectSleep(A.today()); if (r) { try { const o = JSON.parse(r); day.sleep = { bed: o.bed, wake: o.wake, auto: true }; A.save(); } catch (e) {} } }
+    }
+    A.updateWidget();
   };
+  // Данные для виджета на главном экране.
+  A.updateWidget = () => {
+    if (!A.native || !A.native.updateWidget) return;
+    const d = A.today(), p = A.db().profile, day = A.dayGet(d) || {}, tr = A.weightTrend(14);
+    const tasks = A.col("tasks").filter((t) => !t.done && !t.archived && t.date && t.date <= d).sort((a, b) => (a.prio || 2) - (b.prio || 2) || ((a.time || "99") > (b.time || "99") ? 1 : -1)).slice(0, 2).map((t) => (t.time ? t.time + " " : "") + t.title);
+    const spark = A.lastDays(7).map((x) => (A.dayGet(x) || {}).weight ?? null);
+    try { A.native.updateWidget(JSON.stringify({ date: A.DOW_FULL[A.dow(d) - 1] + ", " + A.fmtDate(d), steps: day.steps || 0, goal: p.stepsGoal || 8000, burn: A.burnDay(d), weight: A.lastWeight(d), arrow: tr.arrow, spark, tasks })); } catch (e) {}
+  };
+  A.on("saved", () => {
+    clearTimeout(A._wT); A._wT = setTimeout(A.updateWidget, 1500);
+    const p = A.db().profile;
+    if (A.native && A.native.setFlags && (A._fl !== "" + p.hc + p.smsImport)) { A._fl = "" + p.hc + p.smsImport; try { A.native.setFlags(!!p.hc, !!p.smsImport); } catch (e) {} }
+  });
   window.__onPause = () => { hiddenAt = Date.now(); A.saveNow(); };
   window.__onResume = () => {
     if (hiddenAt && Date.now() - hiddenAt > 60000) A.lock();

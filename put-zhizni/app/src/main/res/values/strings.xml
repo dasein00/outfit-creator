@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Путь жизни</string>
+    <string name="widget_desc">Шаги, калории, вес и ближайшие задачи</string>
 </resources>
