@@ -64,10 +64,9 @@ fun BodyScienceScreen(nav: NavHostController) {
     var waist by remember { mutableStateOf("") }
     var hip by remember { mutableStateOf("") }
     var neck by remember { mutableStateOf("") }
-    var filled by remember { mutableStateOf(false) }
+    // Данные из базы приходят не сразу: пустые поля дозаполняются, как только появятся замеры.
     LaunchedEffect(readings, p, lastMeasure) {
-        if (filled || (readings.isEmpty() && p.heightCm == 0.0)) return@LaunchedEffect
-        height = s(p.heightCm)
+        if (height.isBlank() && p.heightCm > 0) height = s(p.heightCm)
         // Берём самый свежий обхват: из «Замеров» или из взвешивания, смотря что позже.
         fun <T> latest(fromReading: (BodyMetric) -> T?, fromMeasure: (com.dasein.poryadok.data.Measurement) -> T?): T? {
             val r = readings.asReversed().firstOrNull { fromReading(it) != null }
@@ -79,10 +78,9 @@ fun BodyScienceScreen(nav: NavHostController) {
                 else -> fromReading(r)
             }
         }
-        waist = s(latest({ it.waistCm }, { it.waist }))
-        hip = s(latest({ it.hipCm }, { it.hips }))
-        neck = s(latest({ it.neckCm }, { it.neck }))
-        filled = true
+        if (waist.isBlank()) waist = s(latest({ it.waistCm }, { it.waist }))
+        if (hip.isBlank()) hip = s(latest({ it.hipCm }, { it.hips }))
+        if (neck.isBlank()) neck = s(latest({ it.neckCm }, { it.neck }))
     }
 
     val weight = last?.weight ?: p.startWeight
