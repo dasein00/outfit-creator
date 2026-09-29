@@ -75,31 +75,6 @@ object Widgets {
 private val TaskIdKey = ActionParameters.Key<Long>("taskId")
 private val RouteKey = ActionParameters.Key<String>(MainActivity.EXTRA_ROUTE)
 
-private val INK = Color(0xFF211D18)
-private val INK2 = Color(0xFF2B261F)
-private val TEXT = Color(0xFFF0ECE3)
-private val DIM = Color(0xFFA79E90)
-private val BRASS = Color(0xFFC79246)
-private val DANGER = Color(0xFFD27A63)
-private val GOOD = Color(0xFF8CC46E)
-
-/** Цвета темы виджета: фон, текст, приглушённый текст. */
-private data class WPal(val bg: Color, val text: Color, val dim: Color, val track: Color)
-
-private fun palette(theme: Int) = when (theme) {
-    1 -> WPal(Color(0xFFF6F1E7), Color(0xFF211D18), Color(0xFF7A7064), Color(0xFFE2D8C6))
-    2 -> WPal(Color(0x99141210), TEXT, Color(0xFFD5CDBF), Color(0x55FFFFFF))
-    else -> WPal(INK, TEXT, DIM, Color(0xFF3D362C))
-}
-
-private fun toneColor(tone: Int, pal: WPal): Color = when (tone) {
-    WidgetModels.TONE_GOOD -> GOOD
-    WidgetModels.TONE_BAD -> DANGER
-    WidgetModels.TONE_ACCENT -> BRASS
-    WidgetModels.TONE_DIM -> pal.dim
-    else -> pal.text
-}
-
 class TodayWidget : GlanceAppWidget() {
     override val sizeMode: SizeMode = SizeMode.Exact
 
@@ -115,35 +90,38 @@ class TodayWidget : GlanceAppWidget() {
         val size = LocalSize.current
         val context = LocalContext.current
         val cfg = m.cfg
-        val pal = palette(cfg.theme)
-        val k = if (cfg.large) 1.2f else 1f
+        val pal = cfg.colors()
+        val k = cfg.k()
         val compact = size.height < 140.dp
         val header = cfg.header && !compact
-        val avail = size.height.value - 20 - (if (header) 34 else 0)
-        val ringDp = (if (compact) size.height.value - 20 else size.height.value - 56)
-            .coerceAtMost(size.width.value * 0.5f).coerceAtLeast(72f)
-        val ring = remember(m.steps, m.stepsGoal, m.burned) { WidgetRing.render(context, m.steps, m.stepsGoal, m.burned) }
+        val avail = size.height.value - 20 - (if (header) 34 * cfg.titleScale else 0f)
+        val ringDp = ((if (compact) size.height.value - 20 else size.height.value - 56) * cfg.ringScale.coerceIn(0.5f, 1.5f))
+            .coerceAtMost(size.width.value * 0.5f).coerceAtLeast(56f)
+        val ring = remember(m.steps, m.stepsGoal, m.burned, cfg) { WidgetRing.render(context, m.steps, m.stepsGoal, m.burned, cfg.ringStyle()) }
         val visible = buildList {
             var used = 0
             for (r in m.rows) {
-                val h = (WidgetModels.rowHeight(r, cfg.large))
+                val h = WidgetModels.rowHeight(r, cfg)
                 if (used + h > avail && isNotEmpty()) break
                 used += h
                 add(r)
             }
         }.take(8)
         Column(
-            GlanceModifier.fillMaxSize().background(ColorProvider(pal.bg)).cornerRadius(20.dp).padding(10.dp)
+            GlanceModifier.fillMaxSize().background(ColorProvider(Color(pal.bg))).cornerRadius(cfg.radius.coerceIn(0, 32).dp).padding(10.dp)
                 .clickable(actionStartActivity<MainActivity>()),
         ) {
             if (header) {
+                val t = k * cfg.titleScale
                 Row(GlanceModifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Сегодня", style = TextStyle(color = ColorProvider(pal.text), fontSize = (19 * k).sp, fontWeight = FontWeight.Bold))
-                    Spacer(GlanceModifier.width(8.dp))
-                    Text(m.date, style = TextStyle(color = ColorProvider(pal.dim), fontSize = (14 * k).sp))
+                    if (cfg.title.isNotBlank()) {
+                        Text(cfg.title, maxLines = 1, style = TextStyle(color = ColorProvider(Color(pal.text)), fontSize = (19 * t).sp, fontWeight = FontWeight.Bold))
+                        Spacer(GlanceModifier.width(8.dp))
+                    }
+                    if (cfg.showDate) Text(m.date, style = TextStyle(color = ColorProvider(Color(pal.dim)), fontSize = (14 * t).sp))
                     Spacer(GlanceModifier.defaultWeight())
                     if (m.habitsText != null && m.rows.none { it.route == Routes.HABITS }) Text(
-                        m.habitsText, style = TextStyle(color = ColorProvider(BRASS), fontSize = (14 * k).sp, fontWeight = FontWeight.Bold),
+                        m.habitsText, style = TextStyle(color = ColorProvider(Color(pal.accent)), fontSize = (14 * t).sp, fontWeight = FontWeight.Bold),
                     )
                 }
                 Spacer(GlanceModifier.height(6.dp))
@@ -158,7 +136,7 @@ class TodayWidget : GlanceAppWidget() {
                 }
                 Column(GlanceModifier.defaultWeight()) {
                     if (visible.isEmpty()) Text(
-                        "Выберите блоки в настройках виджета", style = TextStyle(color = ColorProvider(pal.dim), fontSize = (14 * k).sp),
+                        "Выберите блоки в настройках виджета", style = TextStyle(color = ColorProvider(Color(pal.dim)), fontSize = (14 * k).sp),
                         modifier = GlanceModifier.clickable(actionStartActivity<MainActivity>(actionParametersOf(RouteKey to Routes.WIDGET_EDITOR))),
                     )
                     visible.forEach { r -> RowView(r, icons[r.icon ?: ""], pal, k) }
@@ -168,44 +146,52 @@ class TodayWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun RowView(r: WRow, icon: Bitmap?, pal: WPal, k: Float) {
+    private fun RowView(r: WRow, icon: Bitmap?, pal: WColors, k0: Float) {
+        val b = r.block
+        val k = k0 * (b?.scale ?: 1f)
+        val valueColor = Color(b?.valueColor?.takeIf { it != 0L }?.toInt() ?: pal.text)
+        val labelColor = Color(b?.labelColor?.takeIf { it != 0L }?.toInt() ?: pal.dim)
+        val showIcon = icon != null && (b?.icon ?: true)
         if (r.kind == 3) {
             Row(
                 GlanceModifier.fillMaxWidth().padding(vertical = 4.dp).clickable(actionRunCallback<ToggleTaskAction>(actionParametersOf(TaskIdKey to (r.taskId ?: 0L)))),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("○", style = TextStyle(color = ColorProvider(BRASS), fontSize = (18 * k).sp, fontWeight = FontWeight.Bold))
+                Text("○", style = TextStyle(color = ColorProvider(Color(pal.accent)), fontSize = (18 * k).sp, fontWeight = FontWeight.Bold))
                 Spacer(GlanceModifier.width(6.dp))
-                Text(r.title, maxLines = 1, style = TextStyle(color = ColorProvider(toneColor(r.tone, pal)), fontSize = (16 * k).sp, fontWeight = FontWeight.Medium), modifier = GlanceModifier.defaultWeight())
-                if (r.value.isNotEmpty()) Text(" " + r.value, style = TextStyle(color = ColorProvider(pal.dim), fontSize = (14 * k).sp))
+                val c = if (r.tone == WidgetModels.TONE_TEXT) valueColor else Color(pal.tone(r.tone))
+                Text(r.title, maxLines = 1, style = TextStyle(color = ColorProvider(c), fontSize = (16 * k).sp, fontWeight = FontWeight.Medium), modifier = GlanceModifier.defaultWeight())
+                if (r.value.isNotEmpty()) Text(" " + r.value, style = TextStyle(color = ColorProvider(labelColor), fontSize = (14 * k).sp))
             }
             return
         }
         val open = r.route?.let { actionStartActivity<MainActivity>(actionParametersOf(RouteKey to it)) } ?: actionStartActivity<MainActivity>()
         Column(GlanceModifier.fillMaxWidth().padding(vertical = 2.dp).clickable(open)) {
             Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                if (icon != null) {
-                    Image(ImageProvider(icon), r.title, modifier = GlanceModifier.size((22 * k).dp))
+                if (showIcon) {
+                    Image(ImageProvider(icon!!), r.title, modifier = GlanceModifier.size((22 * k).dp))
                     Spacer(GlanceModifier.width(6.dp))
                 }
                 if (r.value.isBlank()) {
-                    Text(r.title, maxLines = 1, style = TextStyle(color = ColorProvider(toneColor(r.tone, pal)), fontSize = (15 * k).sp, fontWeight = FontWeight.Medium))
+                    val c = if (r.tone == WidgetModels.TONE_TEXT || (b != null && b.valueColor != 0L)) valueColor else Color(pal.tone(r.tone))
+                    Text(r.title, maxLines = 1, style = TextStyle(color = ColorProvider(c), fontSize = (15 * k).sp, fontWeight = FontWeight.Medium))
                 } else {
-                    if (icon == null) {
-                        Text(r.title + " ", maxLines = 1, style = TextStyle(color = ColorProvider(pal.dim), fontSize = (14 * k).sp))
+                    if (!showIcon || (b?.label?.isNotBlank() == true)) {
+                        Text(r.title + " ", maxLines = 1, style = TextStyle(color = ColorProvider(labelColor), fontSize = (14 * k).sp))
                     }
-                    Text(r.value, maxLines = 1, style = TextStyle(color = ColorProvider(pal.text), fontSize = (18 * k).sp, fontWeight = FontWeight.Bold))
+                    Text(r.value, maxLines = 1, style = TextStyle(color = ColorProvider(valueColor), fontSize = (18 * k).sp, fontWeight = FontWeight.Bold))
                 }
                 if (r.sub.isNotBlank()) {
                     Spacer(GlanceModifier.width(6.dp))
-                    Text(r.sub, maxLines = 1, style = TextStyle(color = ColorProvider(if (r.tone == WidgetModels.TONE_TEXT) pal.dim else toneColor(r.tone, pal)), fontSize = (13 * k).sp, fontWeight = FontWeight.Bold))
+                    val c = if (r.tone == WidgetModels.TONE_TEXT || r.tone == WidgetModels.TONE_DIM) labelColor else Color(pal.tone(r.tone))
+                    Text(r.sub, maxLines = 1, style = TextStyle(color = ColorProvider(c), fontSize = (13 * k).sp, fontWeight = FontWeight.Bold))
                 }
             }
             if (r.kind == 1 && r.progress != null) {
                 Spacer(GlanceModifier.height(3.dp))
                 LinearProgressIndicator(
                     progress = r.progress.coerceIn(0f, 1f), modifier = GlanceModifier.fillMaxWidth().height(6.dp),
-                    color = ColorProvider(if (r.progress >= 1f) GOOD else BRASS), backgroundColor = ColorProvider(pal.track),
+                    color = ColorProvider(Color(if (r.progress >= 1f) pal.good else pal.accent)), backgroundColor = ColorProvider(Color(pal.track)),
                 )
             }
             if (r.kind == 2 && r.spark.size >= 2) {
@@ -254,17 +240,17 @@ object WidgetRing {
         return b
     }
 
-    fun render(ctx: Context, steps: Int, goal: Int, burned: Int): Bitmap {
+    fun render(ctx: Context, steps: Int, goal: Int, burned: Int, style: RingStyle = RingStyle()): Bitmap {
         val b = Bitmap.createBitmap(S, S, Bitmap.Config.ARGB_8888)
         val c = Canvas(b)
         val cx = S / 2f
         val stroke = S * 0.08f
         val oval = RectF(stroke / 2 + 2, stroke / 2 + 2, S - stroke / 2 - 2, S - stroke / 2 - 2)
         val arc = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = stroke; strokeCap = Paint.Cap.ROUND }
-        arc.color = 0xFF3D362C.toInt()
+        arc.color = style.track
         c.drawArc(oval, 0f, 360f, false, arc)
         val frac = (steps.toFloat() / goal.coerceAtLeast(1)).coerceIn(0f, 1f)
-        arc.color = if (frac >= 1f) 0xFF8CC46E.toInt() else 0xFFE0A04A.toInt()
+        arc.color = if (frac >= 1f) style.done else style.progress
         if (frac > 0f) c.drawArc(oval, -90f, (360f * frac).coerceAtLeast(4f), false, arc)
 
         val bold = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
@@ -277,17 +263,19 @@ object WidgetRing {
         icon(ctx, "sport/19")?.let { c.drawBitmap(it, null, RectF(cx - 36, 76f, cx + 36, 148f), src) }
 
         val stepsText = steps.toString().reversed().chunked(3).joinToString(" ").reversed()
-        text.color = 0xFFFFFFFF.toInt()
+        text.color = style.steps
         fit(text, stepsText, 330f, 104f)
-        c.drawText(stepsText, cx, 244f, text)
+        c.drawText(stepsText, cx, if (style.showGoal) 244f else 262f, text)
         text.typeface = Typeface.DEFAULT
-        text.color = 0xFFCFC6B8.toInt()
-        fit(text, "из $goal", 300f, 36f)
-        c.drawText("из $goal", cx, 286f, text)
+        text.color = style.dim
+        if (style.showGoal) {
+            fit(text, "из $goal", 300f, 36f)
+            c.drawText("из $goal", cx, 286f, text)
+        }
 
         val kcal = "$burned"
         text.typeface = bold
-        text.color = 0xFFFFA24C.toInt()
+        text.color = style.kcal
         fit(text, kcal, 210f, 78f)
         val w = text.measureText(kcal)
         val iconSize = 62f
@@ -297,9 +285,9 @@ object WidgetRing {
         c.drawText(kcal, left + iconSize + 8, 366f, text)
         text.textAlign = Paint.Align.CENTER
         text.typeface = Typeface.DEFAULT
-        text.color = 0xFFCFC6B8.toInt()
-        text.textSize = 32f
-        c.drawText("ккал", cx, 404f, text)
+        text.color = style.dim
+        fit(text, style.kcalLabel, 300f, 32f)
+        if (style.kcalLabel.isNotBlank()) c.drawText(style.kcalLabel, cx, 404f, text)
         return b
     }
 }

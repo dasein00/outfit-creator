@@ -200,6 +200,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                     IconAction(Ic.search, "Поиск") { nav.navigate(Routes.SEARCH) }
                     IconAction(Ic.settings, "Настройки") { nav.navigate(Routes.SETTINGS) }
                 }
+                com.dasein.poryadok.ui.weather.WeatherTile(nav)
                 com.dasein.poryadok.ui.calendar.HolidayBanner(nav)
                 Gap(14.dp)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

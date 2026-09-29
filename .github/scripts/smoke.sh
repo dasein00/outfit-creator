@@ -16,6 +16,10 @@ fi
 adb logcat -c
 adb install -r apk/DASEIN.apk
 adb shell pm grant $PKG android.permission.POST_NOTIFICATIONS || true
+# Погода: разрешение на геолокацию и точка на карте (Ереван), чтобы экран не ждал системного диалога.
+adb shell pm grant $PKG android.permission.ACCESS_COARSE_LOCATION || true
+adb shell pm grant $PKG android.permission.ACCESS_FINE_LOCATION || true
+adb emu geo fix 44.51 40.18 || true
 
 adb shell am start -W -n $PKG/.MainActivity --ez demo true
 sleep 15
@@ -37,7 +41,7 @@ routes=(
   "bodyDetail/0" "weightTrend" "bodyCompare" "kpImport?kind=0" "topsHub?tab=0" "recipeEdit/1"
   "bodyScience" "widgetEditor" "plan?tab=2" "notes" "page/1" "page/2"
   "training?tab=0" "training?tab=1" "training?tab=2" "training?tab=3" "trainingPlan/1" "exercise/1" "session/1"
-  "calendar?tab=2" "holiday/ru_newyear" "holiday/arm_vardavar" "health?tab=2" "bodyScience" "weightTrend" "recipe/3" "recipe/140" "recipe/170" "tasks"
+  "calendar?tab=2" "holiday/ru_newyear" "holiday/arm_vardavar" "health?tab=2" "bodyScience" "weightTrend" "recipe/3" "recipe/140" "recipe/170" "weather" "widgetEditor" "tasks"
 )
 i=1
 for r in "${routes[@]}"; do

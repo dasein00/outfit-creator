@@ -73,6 +73,7 @@ object Graph {
             runCatching { com.dasein.poryadok.data.PagesRepo.migrateOldNotes(app) }.onFailure { Log.e("DASEIN", "pages", it) }
             runCatching { Steps.ensureScheduled(app) }.onFailure { Log.e("DASEIN", "steps", it) }
             runCatching { SleepTracker.ensureScheduled(app) }.onFailure { Log.e("DASEIN", "sleep", it) }
+            runCatching { com.dasein.poryadok.system.Weather.schedule(app) }.onFailure { Log.e("DASEIN", "weather", it) }
             Repo.processRecurring()
             Alarms.rescheduleAll(app)
             Widgets.refresh(app)

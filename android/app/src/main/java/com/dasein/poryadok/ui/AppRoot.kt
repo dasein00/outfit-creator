@@ -117,6 +117,7 @@ object Routes {
     const val BODY_COMPARE = "bodyCompare"
     const val BODY_SCIENCE = "bodyScience"
     const val WIDGET_EDITOR = "widgetEditor"
+    const val WEATHER = "weather"
     const val TRAINING = "training"
 
     fun task(id: Long, day: Long = -1, goal: Long = -1) = "task/$id?day=$day&goal=$goal"
@@ -290,6 +291,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             }
             composable(Routes.BODY_SCIENCE) { com.dasein.poryadok.ui.health.BodyScienceScreen(nav) }
             composable(Routes.WIDGET_EDITOR) { com.dasein.poryadok.ui.more.WidgetEditorScreen(nav) }
+            composable(Routes.WEATHER) { com.dasein.poryadok.ui.weather.WeatherScreen(nav) }
             composable(
                 "${Routes.TRAINING}?tab={tab}",
                 arguments = listOf(navArgument("tab") { type = NavType.IntType; defaultValue = 0 }),

@@ -135,13 +135,10 @@ internal fun rememberBodyData(): BodyData {
     return BodyData(p, readings)
 }
 
-private fun hide(s: String, hidden: Boolean) = if (hidden) s.replace(Regex("\\d"), "*") else s
-
 /** Верхняя карточка раздела (область 1): вес, статус, шкала. Нажатие открывает подробности. */
 @Composable
 internal fun BodyHeaderCard(last: BodyMetric, readings: List<BodyMetric>, profile: BodyProfile, onClick: () -> Unit) {
     val extra = LocalExtra.current
-    var hidden by rememberUiFlag("hide_weight", false)
     val ws = BodyComp.weightScale(profile.heightCm)
     val zone = ws.zone(last.weight)
     val goal = runCatching { CalorieGoal.valueOf(profile.goal) }.getOrDefault(CalorieGoal.DEFICIT)
@@ -154,12 +151,9 @@ internal fun BodyHeaderCard(last: BodyMetric, readings: List<BodyMetric>, profil
             Glyph(Glyphs.SCALE, 26.dp)
         }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-            IconButton(onClick = { hidden = !hidden }) {
-                Icon(if (hidden) Icons.Default.VisibilityOff else Icons.Default.Visibility, if (hidden) "Показать вес" else "Скрыть вес", tint = extra.dim)
-            }
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text(hide(fmt(last.weight, 2), hidden), style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.SemiBold)
+                    Text(fmt(last.weight, 2), style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.SemiBold)
                     Text(" кг", color = extra.dim, modifier = Modifier.padding(bottom = 10.dp))
                 }
             }
@@ -173,11 +167,11 @@ internal fun BodyHeaderCard(last: BodyMetric, readings: List<BodyMetric>, profil
         val best = if (goal == CalorieGoal.SURPLUS) month.maxByOrNull { it.weight } else month.minByOrNull { it.weight }
         Row(Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                Text(prev?.let { hide(signed(last.weight - it.weight), hidden) } ?: "—", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                Text(prev?.let { signed(last.weight - it.weight) } ?: "—", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                 Text("Чем в прошлый раз", fontSize = 12.sp, color = extra.dim)
             }
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                Text(best?.let { hide(fmt(it.weight), hidden) } ?: "—", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                Text(best?.let { fmt(it.weight) } ?: "—", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                 Text("Лучшее за 30 дней", fontSize = 12.sp, color = extra.dim)
             }
         }

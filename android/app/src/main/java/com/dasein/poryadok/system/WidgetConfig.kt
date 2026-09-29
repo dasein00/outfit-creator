@@ -9,6 +9,7 @@ import com.dasein.poryadok.logic.Dates
 import com.dasein.poryadok.logic.Energy
 import com.dasein.poryadok.logic.HabitSchedule
 import com.dasein.poryadok.logic.Nutrition
+import com.dasein.poryadok.logic.WeatherLogic
 import com.dasein.poryadok.ui.Routes
 import com.dasein.poryadok.ui.health.input
 import com.dasein.poryadok.ui.health.sleepMinutes
@@ -17,11 +18,27 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlin.math.roundToInt
 
-/** Один блок на виджете: тип, вид (0 — текст, 1 — полоса или график) и количество строк (для задач и событий). */
+/**
+ * Один блок на виджете: тип, вид (0 — текст, 1 — полоса или график), количество строк (для задач и событий)
+ * и оформление: своя подпись, цвета значения и подписи (0 — как в теме), размер текста, показывать ли иконку.
+ */
 @Serializable
-data class WidgetBlock(val type: String, val style: Int = 0, val count: Int = 2, val on: Boolean = true)
+data class WidgetBlock(
+    val type: String,
+    val style: Int = 0,
+    val count: Int = 2,
+    val on: Boolean = true,
+    val label: String = "",
+    val valueColor: Long = 0,
+    val labelColor: Long = 0,
+    val scale: Float = 1f,
+    val icon: Boolean = true,
+)
 
-/** Как выглядит виджет: тема, заголовок, кольцо шагов слева, крупный шрифт и блоки справа в выбранном порядке. */
+/**
+ * Как выглядит виджет: тема, заголовок, кольцо шагов слева, крупный шрифт и блоки справа в выбранном порядке.
+ * Цвета хранятся как ARGB; 0 — взять из темы.
+ */
 @Serializable
 data class WidgetConfig(
     val theme: Int = 0,
@@ -29,23 +46,105 @@ data class WidgetConfig(
     val ring: Boolean = true,
     val large: Boolean = false,
     val blocks: List<WidgetBlock> = DEFAULT_BLOCKS,
+    val title: String = "Сегодня",
+    val showDate: Boolean = true,
+    val titleScale: Float = 1f,
+    val textScale: Float = 1f,
+    val bgColor: Long = 0,
+    val bgAlpha: Int = 100,
+    val textColor: Long = 0,
+    val dimColor: Long = 0,
+    val accentColor: Long = 0,
+    val goodColor: Long = 0,
+    val badColor: Long = 0,
+    val radius: Int = 20,
+    val ringScale: Float = 1f,
+    val ringColor: Long = 0,
+    val ringDoneColor: Long = 0,
+    val ringTrackColor: Long = 0,
+    val ringStepsColor: Long = 0,
+    val ringKcalColor: Long = 0,
+    val ringGoal: Boolean = true,
+    val kcalLabel: String = "ккал",
+    /** Версия настроек — чтобы один раз включить новые блоки (погоду) у тех, кто уже настроил виджет. */
+    val rev: Int = 0,
 ) {
-    /** Все известные блоки: сохранённые в выбранном порядке, затем новые — выключенными. */
+    /** Все известные блоки: сохранённые в выбранном порядке, затем новые — выключенными. Погода при первом появлении включается сверху. */
     fun normalized(): WidgetConfig {
         val known = WIDGET_BLOCK_TYPES.map { it.type }
-        val kept = blocks.filter { it.type in known }.distinctBy { it.type }
+        var kept = blocks.filter { it.type in known }.distinctBy { it.type }
+        if (rev < 1 && kept.none { it.type == "weather" }) kept = listOf(WidgetBlock("weather", 0)) + kept
         val missing = WIDGET_BLOCK_TYPES.filter { t -> kept.none { it.type == t.type } }.map { WidgetBlock(it.type, on = false) }
-        return copy(blocks = kept + missing)
+        return copy(blocks = kept + missing, rev = 1)
     }
 
+    /** Итоговые цвета с учётом темы и своих настроек. */
+    fun colors(): WColors {
+        val base = when (theme) {
+            1 -> WColors(0xFFF6F1E7.toInt(), 0xFF211D18.toInt(), 0xFF7A7064.toInt(), 0xFFE2D8C6.toInt())
+            2 -> WColors(0x99141210.toInt(), 0xFFF0ECE3.toInt(), 0xFFD5CDBF.toInt(), 0x55FFFFFF)
+            else -> WColors(0xFF211D18.toInt(), 0xFFF0ECE3.toInt(), 0xFFA79E90.toInt(), 0xFF3D362C.toInt())
+        }
+        fun pick(c: Long, def: Int) = if (c == 0L) def else c.toInt()
+        val bg0 = pick(bgColor, base.bg)
+        val alpha = if (bgColor == 0L && bgAlpha == 100) (bg0 ushr 24) else (bgAlpha.coerceIn(0, 100) * 255 / 100)
+        return base.copy(
+            bg = (alpha shl 24) or (bg0 and 0xFFFFFF),
+            text = pick(textColor, base.text), dim = pick(dimColor, base.dim),
+            accent = pick(accentColor, base.accent), good = pick(goodColor, base.good), bad = pick(badColor, base.bad),
+        )
+    }
+
+    fun ringStyle(): RingStyle {
+        val c = colors()
+        return RingStyle(
+            progress = if (ringColor == 0L) 0xFFE0A04A.toInt() else ringColor.toInt(),
+            done = if (ringDoneColor == 0L) c.good else ringDoneColor.toInt(),
+            track = if (ringTrackColor == 0L) (if (theme == 1) 0xFFE2D8C6.toInt() else 0xFF3D362C.toInt()) else ringTrackColor.toInt(),
+            steps = if (ringStepsColor == 0L) (if (theme == 1) 0xFF211D18.toInt() else 0xFFFFFFFF.toInt()) else ringStepsColor.toInt(),
+            kcal = if (ringKcalColor == 0L) 0xFFFFA24C.toInt() else ringKcalColor.toInt(),
+            dim = c.dim, kcalLabel = kcalLabel, showGoal = ringGoal,
+        )
+    }
+
+    /** Общий множитель размера текста. */
+    fun k(): Float = (if (large) 1.2f else 1f) * textScale.coerceIn(0.6f, 2f)
+
     companion object {
-        val DEFAULT_BLOCKS = listOf(WidgetBlock("weight", 1), WidgetBlock("tasks", 0, 2))
+        val DEFAULT_BLOCKS = listOf(WidgetBlock("weather", 0), WidgetBlock("weight", 1), WidgetBlock("tasks", 0, 2))
     }
 }
+
+/** Цвета виджета (ARGB). */
+data class WColors(
+    val bg: Int, val text: Int, val dim: Int, val track: Int,
+    val accent: Int = 0xFFC79246.toInt(), val good: Int = 0xFF8CC46E.toInt(), val bad: Int = 0xFFD27A63.toInt(),
+) {
+    fun tone(t: Int): Int = when (t) {
+        WidgetModels.TONE_GOOD -> good
+        WidgetModels.TONE_BAD -> bad
+        WidgetModels.TONE_ACCENT -> accent
+        WidgetModels.TONE_DIM -> dim
+        else -> text
+    }
+}
+
+/** Оформление кольца шагов. */
+data class RingStyle(
+    val progress: Int = 0xFFE0A04A.toInt(),
+    val done: Int = 0xFF8CC46E.toInt(),
+    val track: Int = 0xFF3D362C.toInt(),
+    val steps: Int = 0xFFFFFFFF.toInt(),
+    val kcal: Int = 0xFFFFA24C.toInt(),
+    val dim: Int = 0xFFCFC6B8.toInt(),
+    val kcalLabel: String = "ккал",
+    val showGoal: Boolean = true,
+)
 
 data class WidgetBlockType(val type: String, val title: String, val styles: List<String>, val counted: Boolean = false)
 
 val WIDGET_BLOCK_TYPES = listOf(
+    WidgetBlockType("weather", "Погода", listOf("Небо", "Ветер и давление")),
     WidgetBlockType("weight", "Вес", listOf("Число и изменение", "С графиком за 2 недели")),
     WidgetBlockType("tasks", "Задачи на сегодня", listOf("Список"), counted = true),
     WidgetBlockType("habits", "Привычки", listOf("Счётчик", "Полоса прогресса")),
@@ -89,6 +188,8 @@ data class WRow(
     val spark: List<Double> = emptyList(),
     val route: String? = null,
     val taskId: Long? = null,
+    /** Блок, из которого строка, — для его оформления (подпись, цвета, размер). */
+    val block: WidgetBlock? = null,
 )
 
 /** Всё, что нужно для отрисовки: заголовок, кольцо и строки. */
@@ -113,7 +214,8 @@ object WidgetModels {
     private fun thousands(n: Int) = n.toString().reversed().chunked(3).joinToString(" ").reversed()
 
     fun icon(ctx: Context, key: String): Bitmap? =
-        runCatching { ctx.assets.open("glyphs/$key.webp").use { BitmapFactory.decodeStream(it) } }.getOrNull()
+        if (key.startsWith("wx:")) key.split(':').let { WeatherIcons.render(it.getOrNull(1)?.toIntOrNull() ?: 2, it.getOrNull(2) != "0", 96) }
+        else runCatching { ctx.assets.open("glyphs/$key.webp").use { BitmapFactory.decodeStream(it) } }.getOrNull()
 
     suspend fun load(ctx: Context, cfg: WidgetConfig = WidgetPrefs.load(ctx)): WidgetModel {
         val dao = Graph.dao
@@ -130,7 +232,19 @@ object WidgetModels {
 
         val rows = mutableListOf<WRow>()
         for (b in cfg.blocks.filter { it.on }) {
+            val start = rows.size
             when (b.type) {
+                "weather" -> {
+                    val w = Weather.cached(ctx)
+                    if (w == null) rows += WRow(0, "wx:2:1", "Погода", "", "нажмите, чтобы загрузить", TONE_DIM, route = Routes.WEATHER)
+                    else {
+                        val n = w.now
+                        val day = w.days.firstOrNull()
+                        val sub = if (b.style == 1) "${WeatherLogic.windName(n.windDir)} ${n.windMs.roundToInt()} м/с · ${WeatherLogic.mmHg(n.pressureHpa)} мм"
+                        else WeatherLogic.describe(n.code) + (day?.let { " · ${WeatherLogic.temp(it.tMin)}…${WeatherLogic.temp(it.tMax)}" } ?: "")
+                        rows += WRow(0, "wx:${n.code}:${if (n.isDay) 1 else 0}", "Погода", WeatherLogic.temp(n.temp), sub, TONE_DIM, route = Routes.WEATHER)
+                    }
+                }
                 "weight" -> {
                     val recent = dao.weightsSince(today - 13)
                     val last = recent.lastOrNull() ?: lastW ?: continue
@@ -208,6 +322,11 @@ object WidgetModels {
                     if (page != null) rows += WRow(0, "ui:notebook", "Заметка", page.title.ifBlank { "Без названия" }, route = Routes.page(page.id))
                 }
             }
+            // Оформление блока: своя подпись и ссылка на блок для цветов и размера.
+            for (i in start until rows.size) {
+                val r = rows[i]
+                rows[i] = r.copy(block = b, title = if (b.label.isNotBlank() && r.kind != 3 && r.value.isNotBlank()) b.label else r.title)
+            }
         }
         return WidgetModel(
             cfg, "${Dates.weekdayShort(today)}, ${Dates.short(today)}",
@@ -217,5 +336,8 @@ object WidgetModels {
     }
 
     /** Примерная высота строки в dp — чтобы на виджете оказалось столько строк, сколько помещается. */
-    fun rowHeight(r: WRow, large: Boolean): Int = (if (large) 6 else 0) + when (r.kind) { 1 -> 40; 2 -> 64; 3 -> 30; else -> 28 }
+    fun rowHeight(r: WRow, cfg: WidgetConfig): Int {
+        val k = cfg.k() * (r.block?.scale ?: 1f)
+        return (when (r.kind) { 1 -> 40; 2 -> 64; 3 -> 30; else -> 28 } * k).toInt()
+    }
 }
