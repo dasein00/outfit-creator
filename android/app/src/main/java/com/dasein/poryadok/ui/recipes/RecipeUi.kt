@@ -68,12 +68,14 @@ import kotlin.math.roundToInt
 /** Все рецепты с ингредиентами и КБЖУ на порцию — одним объектом для экранов. */
 data class RecipeBook(
     val loaded: Boolean,
+    /** Все рецепты, кроме архивных, — для каталога, подбора и поиска. */
     val recipes: List<Recipe>,
     val ingredients: Map<Long, List<RecipeIngredient>>,
     val perServing: Map<Long, Macros>,
+    val archived: List<Recipe> = emptyList(),
 ) {
     fun macros(id: Long?): Macros = perServing[id] ?: Macros()
-    fun byId(id: Long?): Recipe? = recipes.firstOrNull { it.id == id }
+    fun byId(id: Long?): Recipe? = recipes.firstOrNull { it.id == id } ?: archived.firstOrNull { it.id == id }
 }
 
 @Composable
@@ -83,7 +85,10 @@ fun rememberRecipeBook(): RecipeBook {
     return remember(recipes, ingredients) {
         val grouped = ingredients.groupBy { it.recipeId }
         val list = recipes.orEmpty()
-        RecipeBook(recipes != null, list, grouped, list.associate { it.id to RecipeRepo.macros(grouped[it.id].orEmpty(), it.servings) })
+        RecipeBook(
+            recipes != null, list.filter { !it.archived }, grouped,
+            list.associate { it.id to RecipeRepo.macros(grouped[it.id].orEmpty(), it.servings) }, list.filter { it.archived },
+        )
     }
 }
 

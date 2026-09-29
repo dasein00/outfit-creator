@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [
@@ -14,7 +16,7 @@ import androidx.room.RoomDatabase
         BalanceWheel::class, Note::class, TopList::class, TopItem::class, WardrobeItem::class, ItemFit::class,
         Outfit::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class AppDb : RoomDatabase() {
@@ -22,7 +24,14 @@ abstract class AppDb : RoomDatabase() {
     abstract fun backupDao(): BackupDao
 
     companion object {
+        /** v2: обхват шеи в замерах — нужен для процента жира по формуле ВМС США. */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `measurements` ADD COLUMN `neck` REAL")
+            }
+        }
+
         fun create(context: Context): AppDb =
-            Room.databaseBuilder(context, AppDb::class.java, "poryadok.db").build()
+            Room.databaseBuilder(context, AppDb::class.java, "poryadok.db").addMigrations(MIGRATION_1_2).build()
     }
 }

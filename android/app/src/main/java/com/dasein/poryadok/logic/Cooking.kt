@@ -82,6 +82,38 @@ object Cooking {
         }
     }
 
+    /**
+     * Основной продукт рецепта — то, что взвешивают первым: самое тяжёлое мясо или рыба,
+     * иначе молочное (творог, яйца), иначе самый тяжёлый ингредиент.
+     */
+    fun mainIndex(list: List<Ingr>): Int {
+        val weighed = list.withIndex().filter { it.value.unit != "по вкусу" && it.value.grams > 0 }
+        if (weighed.isEmpty()) return -1
+        for (cats in listOf(setOf("Мясо", "Рыба"), setOf("Заморозка"), setOf("Молочные продукты"))) {
+            weighed.filter { it.value.shopCategory in cats }.maxByOrNull { it.value.grams }?.let { return it.index }
+        }
+        return weighed.maxBy { it.value.grams }.index
+    }
+
+    private fun grams(v: Double): String = if (v < 10) amount((v * 10).roundToInt() / 10.0) else v.roundToInt().toString()
+
+    /**
+     * Сколько положить — для кухонных весов. Всё, что меньше чайной ложки (5 г), пишется в граммах;
+     * ложки и штуки — с граммами в скобках.
+     */
+    fun weighLabel(i: Ingr): String {
+        if (i.unit == "по вкусу") return "по вкусу"
+        val g = i.grams
+        return when (i.unit) {
+            "г" -> grams(i.amount) + " г"
+            "мл" -> grams(i.amount) + " мл"
+            "кг" -> if (i.amount < 1) grams(i.amount * 1000) + " г" else amount(i.amount) + " кг"
+            "л" -> if (i.amount < 1) grams(i.amount * 1000) + " мл" else amount(i.amount) + " л"
+            "шт" -> amount(i.amount) + " шт" + if (g > 0) " (≈ ${grams(g)} г)" else ""
+            else -> if (g in 0.0..4.999 && g > 0) grams(g) + " г" else amount(i.amount) + " " + i.unit + if (g > 0) " (${grams(g)} г)" else ""
+        }
+    }
+
     fun scale(list: List<Ingr>, factor: Double): List<Ingr> =
         list.map { it.copy(amount = if (it.unit == "по вкусу") it.amount else it.amount * factor, grams = it.grams * factor) }
 

@@ -145,7 +145,7 @@ fun HealthScreen(nav: NavHostController, initialTab: Int) {
                 when (tab) {
                     0 -> FoodTab(nav, plan, profile)
                     1 -> BodyTab(nav, profile, weights)
-                    2 -> MeasureTab()
+                    2 -> MeasureTab(nav, profile, current, plan)
                     3 -> WorkoutTab(nav)
                     4 -> CalcTab(profile, current, plan)
                     5 -> ProgressTab(weights)
@@ -448,18 +448,77 @@ private fun FoodDialog(e0: FoodEntry, history: List<FoodEntry>, onDismiss: () ->
 
 private fun Double.plain1() = ((this * 10).roundToInt() / 10.0).plain()
 
-private val MEASURE_FIELDS = listOf("chest" to "Грудь", "waist" to "Талия", "belly" to "Низ живота", "hips" to "Бёдра", "arm" to "Плечо (бицепс)")
+private val MEASURE_FIELDS = listOf("chest" to "Грудь", "waist" to "Талия", "belly" to "Низ живота", "hips" to "Бёдра", "arm" to "Плечо (бицепс)", "neck" to "Шея")
 
-private fun Measurement.get(k: String): Double? = when (k) { "chest" -> chest; "waist" -> waist; "belly" -> belly; "hips" -> hips; else -> arm }
+private fun Measurement.get(k: String): Double? = when (k) { "chest" -> chest; "waist" -> waist; "belly" -> belly; "hips" -> hips; "neck" -> neck; else -> arm }
+
+/** Пол, возраст, рост и активность — общий профиль для калькулятора калорий, ИМТ и всех индексов. */
+@Composable
+private fun ProfileCard(nav: NavHostController, p: BodyProfile, current: Double, plan: NutritionPlan, last: Measurement?) {
+    val extra = LocalExtra.current
+    fun upd(b: BodyProfile) = io { Graph.dao.upsertProfile(b) }
+    var height by remember(p.id) { mutableStateOf(p.heightCm.plain()) }
+    var age by remember(p.id) { mutableStateOf(p.age.toString()) }
+    var activityOpen by remember { mutableStateOf(false) }
+    Tile {
+        Text("Мои данные для расчётов", fontWeight = FontWeight.SemiBold)
+        Text("Используются везде: калькулятор калорий, ИМТ, талия/рост, процент жира, базовый обмен.", fontSize = 12.sp, color = extra.dim)
+        Gap(8.dp)
+        Segments(listOf(false to "Женщина", true to "Мужчина"), p.male, { upd(p.copy(male = it)) })
+        Gap(8.dp)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            NumberField(age, { age = it; it.toIntOrNull()?.takeIf { v -> v in 10..110 }?.let { v -> upd(p.copy(age = v)) } }, "Возраст", Modifier.weight(1f), "лет", decimal = false)
+            NumberField(height, { height = it; it.num()?.takeIf { v -> v in 100.0..250.0 }?.let { v -> upd(p.copy(heightCm = v)) } }, "Рост", Modifier.weight(1f), "см")
+        }
+        Gap(8.dp)
+        FieldButton("Активность", ACTIVITY_LEVELS.firstOrNull { it.first == p.activity }?.second ?: "×${p.activity}", Modifier.fillMaxWidth()) { activityOpen = !activityOpen }
+        if (activityOpen) ACTIVITY_LEVELS.forEach { (k, label) ->
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { upd(p.copy(activity = k)); activityOpen = false }
+                    .background(if (p.activity == k) MaterialTheme.colorScheme.primaryContainer else androidx.compose.ui.graphics.Color.Transparent)
+                    .padding(10.dp),
+            ) {
+                Text("×$k", Modifier.size(width = 56.dp, height = 20.dp), color = extra.dim, fontSize = 13.sp)
+                Text(label, fontSize = 14.sp)
+            }
+        }
+        Text("Вес ${"%.1f".format(current).replace('.', ',')} кг — из последнего взвешивания (вкладка «Вес»).", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
+
+        val facts = com.dasein.poryadok.logic.BodyFacts(
+            male = p.male, age = p.age, heightCm = p.heightCm, weightKg = current,
+            waistCm = last?.waist, hipCm = last?.hips, neckCm = last?.neck, activity = p.activity,
+        )
+        val b = com.dasein.poryadok.logic.BodyScience.bmi(current, p.heightCm)
+        val (fat, method) = com.dasein.poryadok.logic.BodyScience.bestFat(facts)
+        val bmiLabel = com.dasein.poryadok.logic.BodyScience.BMI_SCALE.let { it.labels[it.zone(b)] }
+        Gap(10.dp)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Stat("%.1f".format(b).replace('.', ','), "ИМТ · $bmiLabel", Modifier.weight(1f))
+            Stat(last?.waist?.let { "%.2f".format(it / p.heightCm).replace('.', ',') } ?: "—", "талия / рост", Modifier.weight(1f))
+            Stat("%.0f%%".format(fat), "жир · $method", Modifier.weight(1f))
+        }
+        Gap(8.dp)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Stat("${plan.bmr.roundToInt()}", "базовый обмен", Modifier.weight(1f))
+            Stat("${plan.tdee.roundToInt()}", "расход в день", Modifier.weight(1f))
+            Stat("${plan.targetKcal}", "норма, ккал", Modifier.weight(1f), MaterialTheme.colorScheme.primary)
+        }
+        Row {
+            TextButton(onClick = { nav.navigate(com.dasein.poryadok.ui.Routes.BODY_SCIENCE) }) { Text("Все показатели и источники") }
+        }
+    }
+}
 
 @Composable
-private fun MeasureTab() {
+private fun MeasureTab(nav: NavHostController, profile: BodyProfile, current: Double, plan: NutritionPlan) {
     val extra = LocalExtra.current
     val ms by observe(emptyList()) { Graph.dao.measurements() }
     var edit by remember { mutableStateOf<Measurement?>(null) }
     Gap(8.dp)
+    ProfileCard(nav, profile, current, plan, ms.maxByOrNull { it.day })
+    Gap(10.dp)
     Button(onClick = { edit = Measurement(Dates.today()) }, modifier = Modifier.fillMaxWidth()) { Text("+ Новые замеры") }
-    Hint("measure_how", "Раз в 2 недели, сантиметровой лентой, утром натощак: 1 — грудь, 2 — талия, 3 — низ живота, 4 — бёдра, 5 — плечо.", Modifier.padding(vertical = 8.dp), title = "Как измерять")
+    Hint("measure_how", "Раз в 2 недели, сантиметровой лентой, утром натощак: 1 — грудь, 2 — талия (между нижним ребром и тазовой костью), 3 — низ живота, 4 — бёдра, 5 — плечо, 6 — шея (под кадыком). Талия, бёдра и шея нужны для процента жира и индекса талия/рост.", Modifier.padding(vertical = 8.dp), title = "Как измерять")
     if (ms.size >= 2) {
         SectionTitle("Талия и бёдра")
         Tile {
@@ -502,7 +561,7 @@ private fun MeasureTab() {
             confirmButton = {
                 TextButton(onClick = {
                     val v = values.mapValues { it.value.value.num() }
-                    val m = Measurement(day, v["chest"], v["waist"], v["belly"], v["hips"], v["arm"])
+                    val m = Measurement(day, v["chest"], v["waist"], v["belly"], v["hips"], v["arm"], v["neck"])
                     io { if (day != m0.day) Graph.dao.deleteMeasurement(m0); Graph.dao.upsertMeasurement(m) }
                     edit = null
                 }) { Text("Сохранить") }

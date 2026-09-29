@@ -26,6 +26,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -126,6 +127,14 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
         },
     ) { pad ->
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+            if (r.archived) {
+                Tile(color = extra.warn.copy(alpha = .18f)) {
+                    Text("Рецепт в архиве", fontWeight = FontWeight.SemiBold)
+                    Text("Он не показывается в каталоге и подборе меню.", fontSize = 13.sp, color = extra.dim)
+                    TextButton(onClick = { io { x.setArchived(r.id, false) } }) { Text("Вернуть из архива") }
+                }
+                Gap(10.dp)
+            }
             val img by rememberImage(r.photo.takeIf { it.isNotBlank() && !it.startsWith("dish/") }, 1200)
             img?.let {
                 Image(it, null, Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(18.dp)), contentScale = ContentScale.Crop)
@@ -266,12 +275,16 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                 if (swaps.isNotEmpty()) TextButton(onClick = {
                     scope.launch {
                         val newId = RecipeRepo.saveRecipe(
-                            r.copy(id = 0, name = r.name + " (с заменами)", custom = true, seedKey = null, favorite = false, createdAt = 0),
+                            r.copy(id = 0, name = r.name + " (с заменами)", custom = true, seedKey = null, favorite = false, createdAt = 0, archived = false),
                             ingr, steps.map { it.text },
                         )
                         nav.navigate(Routes.recipe(newId))
                     }
                 }) { Text("Сохранить с заменами") }
+                TextButton(onClick = {
+                    io { x.setArchived(r.id, !r.archived) }
+                    Toast.makeText(ctx, if (r.archived) "Рецепт возвращён в каталог" else "Рецепт убран в архив — вернуть можно в каталоге, вкладка «Архив»", Toast.LENGTH_LONG).show()
+                }) { Text(if (r.archived) "Вернуть из архива" else "В архив") }
                 if (r.custom) TextButton(onClick = { confirmDelete = true }) { Text("Удалить", color = extra.danger) }
             }
             Gap(40.dp)
@@ -389,23 +402,87 @@ fun maskLabel(mask: Int): String = when (mask) {
     else -> WEEKDAYS.filterIndexed { i, _ -> mask and (1 shl i) != 0 }.joinToString(", ")
 }
 
-/** «Приготовить»: запись в историю и по желанию — в дневник питания. */
+/**
+ * «Приготовить»: сначала навеска основного продукта (например, курицы) — остальные ингредиенты
+ * пересчитываются в той же пропорции; всё, что меньше чайной ложки, показывается в граммах.
+ * Затем — сколько порций получилось и сколько съедено; запись в историю и по желанию в дневник питания.
+ */
 @Composable
 fun CookDialog(recipeId: Long, servings: Int, mealsCsv: String, onDismiss: () -> Unit, onDone: (String) -> Unit) {
+    val extra = LocalExtra.current
+    val x = Graph.extra
+    val recipe by observe(null, recipeId) { x.recipe(recipeId) }
+    val ingredients by observe(emptyList(), recipeId) { x.ingredientsOf(recipeId) }
+    val list = remember(ingredients) { ingredients.map { it.toIngr() } }
+    var baseIdx by remember { mutableStateOf(-2) }
+    var have by remember { mutableStateOf("") }
     var cooked by remember { mutableStateOf(servings.toString()) }
+    var cookedTouched by remember { mutableStateOf(false) }
     var eaten by remember { mutableStateOf("1") }
     var meal by remember { mutableStateOf(MealType.parse(mealsCsv).firstOrNull() ?: MealType.LUNCH) }
     var toFood by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
+    val r = recipe
+    // Основной продукт и навеска по умолчанию — как в рецепте на выбранное число порций.
+    LaunchedEffect(list, r) {
+        if (baseIdx == -2 && list.isNotEmpty() && r != null) {
+            baseIdx = Cooking.mainIndex(list)
+            list.getOrNull(baseIdx)?.let { b -> have = Cooking.amount(b.grams * servings / r.servings.coerceAtLeast(1)) }
+        }
+    }
+    val base = list.getOrNull(baseIdx)
+    val factor = base?.let { b -> have.num()?.let { Cooking.factorFor(b.copy(unit = "г", amount = b.grams), it) } }
+    val autoServ = if (factor != null && r != null) r.servings * factor else null
+    LaunchedEffect(autoServ) { if (!cookedTouched && autoServ != null) cooked = Cooking.amount((autoServ * 10).roundToInt() / 10.0) }
+    val scaled = factor?.let { Cooking.scale(list, it) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Приготовлено") },
+        title = { Text("Приготовить") },
         text = {
-            Column {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text("Основной продукт", fontSize = 12.sp, color = extra.dim)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 6.dp)) {
+                    list.forEachIndexed { i, ing ->
+                        if (ing.unit != "по вкусу" && ing.grams > 0) Pill(ing.name, i == baseIdx) {
+                            baseIdx = i
+                            r?.let { rr -> have = Cooking.amount(ing.grams * servings / rr.servings.coerceAtLeast(1)) }
+                        }
+                    }
+                }
+                if (base != null) {
+                    NumberField(have, { have = it }, "Навеска: ${base.name}", suffix = "г")
+                    Text(
+                        "По рецепту ${Cooking.amount(base.grams)} г на ${r?.servings ?: 1} порц. Взвесьте продукт — остальное пересчитается.",
+                        fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+                if (scaled != null) {
+                    Gap(8.dp)
+                    Text("Сколько положить", fontWeight = FontWeight.SemiBold)
+                    scaled.forEachIndexed { i, ing ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+                            Text(ing.name, Modifier.weight(1f), fontSize = 14.sp, fontWeight = if (i == baseIdx) FontWeight.SemiBold else FontWeight.Normal)
+                            Text(Cooking.weighLabel(ing), fontSize = 14.sp, color = if (i == baseIdx) MaterialTheme.colorScheme.primary else extra.dim)
+                        }
+                    }
+                    val total = scaled.sumOf { it.grams }
+                    Text(
+                        "Всего ≈ ${Cooking.amount(total)} г сырых продуктов · ${Cooking.total(scaled).kcal.roundToInt()} ккал",
+                        fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
+                    )
+                    Text("Меньше чайной ложки — в граммах, для кухонных весов.", fontSize = 11.sp, color = extra.dim)
+                }
+                Gap(10.dp)
                 Row {
-                    NumberField(cooked, { cooked = it }, "Приготовлено порций", Modifier.weight(1f))
+                    NumberField(cooked, { cooked = it; cookedTouched = true }, "Получилось порций", Modifier.weight(1f))
                     HGap(8.dp)
                     NumberField(eaten, { eaten = it }, "Съедено порций", Modifier.weight(1f))
+                }
+                if (scaled != null) cooked.num()?.takeIf { it > 0 }?.let { c ->
+                    Text(
+                        "Порция ≈ ${Cooking.amount(scaled.sumOf { it.grams } / c)} г · ${(Cooking.total(scaled).kcal / c).roundToInt()} ккал",
+                        fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
+                    )
                 }
                 Gap(8.dp)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -420,7 +497,7 @@ fun CookDialog(recipeId: Long, servings: Int, mealsCsv: String, onDismiss: () ->
         confirmButton = {
             TextButton(onClick = {
                 scope.launch {
-                    RecipeRepo.cook(recipeId, cooked.num() ?: servings.toDouble(), eaten.num() ?: 0.0, meal, toFood)
+                    RecipeRepo.cook(recipeId, cooked.num() ?: servings.toDouble(), eaten.num() ?: 0.0, meal, toFood, factor = factor)
                     onDone(if (toFood) "Записано в историю и в питание" else "Записано в историю готовки")
                     onDismiss()
                 }

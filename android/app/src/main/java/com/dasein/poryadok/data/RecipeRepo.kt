@@ -113,7 +113,7 @@ object RecipeRepo {
         val r = x.recipeNow(id) ?: return null
         val ing = x.ingredientsOfNow(id)
         val steps = x.stepsOfNow(id).map { it.text }
-        return saveRecipe(r.copy(id = 0, name = r.name + " (копия)", custom = true, seedKey = null, favorite = false, createdAt = 0), ing, steps)
+        return saveRecipe(r.copy(id = 0, name = r.name + " (копия)", custom = true, seedKey = null, favorite = false, createdAt = 0, archived = false), ing, steps)
     }
 
     suspend fun deleteRecipe(id: Long) {
@@ -169,9 +169,11 @@ object RecipeRepo {
     }
 
     /** Приготовлено: запись в историю и по желанию — в дневник питания. */
-    suspend fun cook(recipeId: Long, servings: Double, eaten: Double, meal: Int, addToFood: Boolean, day: Long = Dates.today()) {
+    suspend fun cook(recipeId: Long, servings: Double, eaten: Double, meal: Int, addToFood: Boolean, day: Long = Dates.today(), factor: Double? = null) {
         val r = x.recipeNow(recipeId) ?: return
-        val m = macros(x.ingredientsOfNow(recipeId), r.servings) * eaten
+        // С навеской основного продукта: весь объём = рецепт × коэффициент, порция = объём / приготовлено порций.
+        val m = if (factor != null && servings > 0) macros(x.ingredientsOfNow(recipeId), 1) * (factor / servings * eaten)
+        else macros(x.ingredientsOfNow(recipeId), r.servings) * eaten
         val foodId = if (addToFood && eaten > 0) Graph.dao.upsertFood(
             FoodEntry(day = day, meal = meal, name = r.name, kcal = m.kcal.roundToInt(), protein = round1(m.protein), fat = round1(m.fat), carbs = round1(m.carbs))
         ) else null
@@ -256,7 +258,7 @@ object RecipeRepo {
     // ---------- Автоподбор ----------
 
     suspend fun autofill(from: Long, to: Long, params: Cooking.AutoParams, replace: Boolean): Int {
-        val recipes = x.recipesNow()
+        val recipes = x.recipesNow().filter { !it.archived }
         val ingr = x.ingredientsNow().groupBy { it.recipeId }
         val cands = recipes.map { r ->
             val list = ingr[r.id].orEmpty()

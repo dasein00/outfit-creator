@@ -42,11 +42,9 @@ import com.dasein.poryadok.ui.common.io
 import com.dasein.poryadok.ui.common.num
 import com.dasein.poryadok.ui.common.observe
 import com.dasein.poryadok.ui.theme.LocalExtra
+import kotlinx.coroutines.flow.first
 
 private fun s(v: Double?) = v?.let { if (it == Math.floor(it)) it.toLong().toString() else "%.1f".format(it).replace('.', ',') } ?: ""
-
-/** Последнее известное значение поля среди замеров (от новых к старым). */
-private fun <T> List<BodyMetric>.lastOf(f: (BodyMetric) -> T?): T? = asReversed().firstNotNullOfOrNull(f)
 
 /**
  * Научный анализ по росту, весу, возрасту, полу и обхватам. Все формулы и пороги — из клинических руководств
@@ -69,10 +67,21 @@ fun BodyScienceScreen(nav: NavHostController) {
     var filled by remember { mutableStateOf(false) }
     LaunchedEffect(readings, p, lastMeasure) {
         if (filled || (readings.isEmpty() && p.heightCm == 0.0)) return@LaunchedEffect
-        height = s(readings.lastOf { it.heightCm } ?: p.heightCm)
-        waist = s(readings.lastOf { it.waistCm } ?: lastMeasure?.waist)
-        hip = s(readings.lastOf { it.hipCm } ?: lastMeasure?.hips)
-        neck = s(readings.lastOf { it.neckCm })
+        height = s(p.heightCm)
+        // Берём самый свежий обхват: из «Замеров» или из взвешивания, смотря что позже.
+        fun <T> latest(fromReading: (BodyMetric) -> T?, fromMeasure: (com.dasein.poryadok.data.Measurement) -> T?): T? {
+            val r = readings.asReversed().firstOrNull { fromReading(it) != null }
+            val m = measurements.sortedByDescending { it.day }.firstOrNull { fromMeasure(it) != null }
+            return when {
+                r == null -> m?.let(fromMeasure)
+                m == null -> fromReading(r)
+                m.day >= r.day -> fromMeasure(m)
+                else -> fromReading(r)
+            }
+        }
+        waist = s(latest({ it.waistCm }, { it.waist }))
+        hip = s(latest({ it.hipCm }, { it.hips }))
+        neck = s(latest({ it.neckCm }, { it.neck }))
         filled = true
     }
 
@@ -92,6 +101,11 @@ fun BodyScienceScreen(nav: NavHostController) {
                 ?: BodyMetric(at = now, day = Dates.today(), weight = weight, source = "вручную")
             Body.save(base.copy(heightCm = facts.heightCm, waistCm = facts.waistCm, hipCm = facts.hipCm, neckCm = facts.neckCm))
             Graph.dao.upsertProfile(p.copy(heightCm = facts.heightCm))
+            if (facts.waistCm != null || facts.hipCm != null || facts.neckCm != null) {
+                val today = Dates.today()
+                val m0 = Graph.dao.measurements().first().firstOrNull { it.day == today } ?: com.dasein.poryadok.data.Measurement(today)
+                Graph.dao.upsertMeasurement(m0.copy(waist = facts.waistCm ?: m0.waist, hips = facts.hipCm ?: m0.hips, neck = facts.neckCm ?: m0.neck))
+            }
         }
     }
 
@@ -100,7 +114,7 @@ fun BodyScienceScreen(nav: NavHostController) {
             Tile {
                 Text("Замеры", fontWeight = FontWeight.SemiBold)
                 Text(
-                    "Вес ${s(weight)} кг — из последнего взвешивания. Пол: ${if (p.male) "мужской" else "женский"}, возраст ${p.age} — из профиля.",
+                    "Вес ${s(weight)} кг — из последнего взвешивания. Пол: ${if (p.male) "мужской" else "женский"}, возраст ${p.age} — из «Замеров» (Здоровье → Замеры).",
                     fontSize = 12.sp, color = extra.dim,
                 )
                 Gap(8.dp)
@@ -119,7 +133,7 @@ fun BodyScienceScreen(nav: NavHostController) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Button(onClick = { save() }) { Text("Сохранить в замер") }
                     HGap(8.dp)
-                    androidx.compose.material3.TextButton(onClick = { nav.navigate(Routes.health(0)) }) { Text("Профиль") }
+                    androidx.compose.material3.TextButton(onClick = { nav.navigate(Routes.health(2)) }) { Text("Пол и возраст") }
                 }
             }
             Gap(8.dp)

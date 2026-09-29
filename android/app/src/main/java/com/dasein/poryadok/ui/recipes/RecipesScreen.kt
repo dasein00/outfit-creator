@@ -18,6 +18,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,6 +50,7 @@ import com.dasein.poryadok.ui.theme.LocalExtra
 private const val ALL = "Все"
 private const val MINE = "Мои рецепты"
 private const val FAV = "Избранное"
+private const val ARCHIVE = "Архив"
 
 @Composable
 fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int, embedded: Boolean = false) {
@@ -91,11 +93,11 @@ private fun Catalog(nav: NavHostController, book: RecipeBook) {
     var q by rememberSaveable { mutableStateOf("") }
     var cat by rememberSaveable { mutableStateOf(ALL) }
     var filters by rememberSaveable { mutableStateOf(setOf<String>()) }
-    val list = book.recipes.filter { r ->
+    val list = (if (cat == ARCHIVE) book.archived else book.recipes).filter { r ->
         val m = book.macros(r.id)
         searchMatch(q, r, book.ingredients[r.id].orEmpty()) &&
             when (cat) {
-                ALL -> true
+                ALL, ARCHIVE -> true
                 MINE -> r.custom
                 FAV -> r.favorite
                 else -> r.category == cat || (cat in MEAL_CATEGORY && MEAL_CATEGORY.getValue(cat) in MealType.parse(r.meals) && r.category !in RECIPE_CATEGORIES.drop(4))
@@ -116,7 +118,9 @@ private fun Catalog(nav: NavHostController, book: RecipeBook) {
         }
         item {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(listOf(ALL) + RECIPE_CATEGORIES + listOf(MINE, FAV)) { c -> Pill(c, c == cat) { cat = c } }
+                items(listOf(ALL) + RECIPE_CATEGORIES + listOf(MINE, FAV) + if (book.archived.isNotEmpty() || cat == ARCHIVE) listOf(ARCHIVE) else emptyList()) { c ->
+                    Pill(if (c == ARCHIVE) "$ARCHIVE (${book.archived.size})" else c, c == cat) { cat = c }
+                }
             }
             Gap(8.dp)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -125,7 +129,10 @@ private fun Catalog(nav: NavHostController, book: RecipeBook) {
                 }
             }
             Gap(10.dp)
-            Text("${list.size} из ${book.recipes.size}", fontSize = 12.sp, color = LocalExtra.current.dim)
+            if (cat == ARCHIVE) Text(
+                "Рецепты в архиве не видны в каталоге и подборе меню. Откройте рецепт и нажмите «Вернуть из архива».",
+                fontSize = 12.sp, color = LocalExtra.current.dim,
+            ) else Text("${list.size} из ${book.recipes.size}", fontSize = 12.sp, color = LocalExtra.current.dim)
             Gap(6.dp)
         }
         if (list.isEmpty()) item {
@@ -133,6 +140,7 @@ private fun Catalog(nav: NavHostController, book: RecipeBook) {
         }
         items(list, key = { it.id }) { r ->
             RecipeCard(r, book.macros(r.id), onClick = { nav.navigate(Routes.recipe(r.id)) }, onFavorite = { io { Graph.extra.setFavorite(r.id, !r.favorite) } })
+            if (cat == ARCHIVE) TextButton(onClick = { io { Graph.extra.setArchived(r.id, false) } }) { Text("Вернуть из архива") }
         }
     }
 }

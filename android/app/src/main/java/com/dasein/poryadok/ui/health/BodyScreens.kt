@@ -114,8 +114,8 @@ internal fun mergeReadings(metrics: List<BodyMetric>, weights: List<WeightEntry>
 }
 
 internal data class BodyData(val profile: BodyProfile, val readings: List<BodyMetric>) {
-    /** Рост берётся из последнего замера, где его указали, иначе из профиля. */
-    val person get() = Person(profile.male, readings.asReversed().firstNotNullOfOrNull { it.heightCm } ?: profile.heightCm, profile.age)
+    /** Пол, рост и возраст — из общего профиля (его обновляют «Замеры», взвешивание и калькулятор). */
+    val person get() = Person(profile.male, profile.heightCm, profile.age)
 }
 
 @Composable

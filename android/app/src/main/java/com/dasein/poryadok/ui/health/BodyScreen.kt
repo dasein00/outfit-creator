@@ -237,7 +237,7 @@ fun BodyTab(nav: NavHostController, profile: BodyProfile, weights: List<WeightEn
     }
     if (ruler) WeightRulerDialog(
         last?.weight ?: profile.startWeight, { ruler = false },
-        heightCm = readings.asReversed().firstNotNullOfOrNull { it.heightCm } ?: profile.heightCm,
+        heightCm = profile.heightCm,
     ) { m -> ruler = false; edit = m }
     edit?.let { BodyDialog(it) { edit = null } }
 }

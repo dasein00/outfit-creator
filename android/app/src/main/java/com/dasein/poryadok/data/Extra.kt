@@ -64,6 +64,8 @@ data class Recipe(
     val custom: Boolean = false,
     val seedKey: String? = null,
     val createdAt: Long = 0,
+    /** Убран в архив: не показывается в каталоге и подборе меню, но не удалён. */
+    @androidx.room.ColumnInfo(defaultValue = "0") val archived: Boolean = false,
 )
 
 /** Ингредиент рецепта. КБЖУ на 100 г копируется из продукта, чтобы рецепт не зависел от правок базы. */
@@ -379,6 +381,7 @@ interface ExtraDao {
     @Upsert suspend fun upsertRecipe(r: Recipe): Long
     @Query("DELETE FROM recipes WHERE id = :id") suspend fun deleteRecipe(id: Long)
     @Query("UPDATE recipes SET favorite = :fav WHERE id = :id") suspend fun setFavorite(id: Long, fav: Boolean)
+    @Query("UPDATE recipes SET archived = :archived WHERE id = :id") suspend fun setArchived(id: Long, archived: Boolean)
 
     @Query("SELECT * FROM recipe_ingredients ORDER BY recipeId, pos") fun ingredients(): Flow<List<RecipeIngredient>>
     @Query("SELECT * FROM recipe_ingredients WHERE recipeId = :id ORDER BY pos") fun ingredientsOf(id: Long): Flow<List<RecipeIngredient>>
@@ -543,7 +546,7 @@ interface ExtraDao {
         MediaList::class, MediaListItem::class, Page::class, PageBlock::class, Exercise::class, WorkoutPlan::class,
         PlanExercise::class, WorkoutSession::class, SetLog::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = false,
 )
 abstract class ExtraDb : RoomDatabase() {
@@ -651,9 +654,16 @@ abstract class ExtraDb : RoomDatabase() {
             }
         }
 
+        /** v6: архив рецептов. */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `recipes` ADD COLUMN `archived` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun create(context: Context): ExtraDb =
             Room.databaseBuilder(context, ExtraDb::class.java, "dasein_extra.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build()
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).build()
     }
 }
 

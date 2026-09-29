@@ -247,6 +247,7 @@ data class Measurement(
     val belly: Double? = null,
     val hips: Double? = null,
     val arm: Double? = null,
+    val neck: Double? = null,
 )
 
 @Serializable
