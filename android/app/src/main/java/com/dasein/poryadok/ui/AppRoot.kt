@@ -143,6 +143,7 @@ object Routes {
     fun bodyDetail(at: Long) = "bodyDetail/$at"
     fun kpImport(kind: Int) = "kpImport?kind=$kind"
     fun page(id: Long) = "page/$id"
+    fun holiday(id: String) = "holiday/$id"
     fun training(tab: Int = 0) = "$TRAINING?tab=$tab"
     fun trainingPlan(id: Long) = "trainingPlan/$id"
     fun exercise(id: Long) = "exercise/$id"
@@ -283,6 +284,9 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable(Routes.NOTES) { com.dasein.poryadok.ui.notes.PagesHome(nav) }
             composable("page/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
                 com.dasein.poryadok.ui.notes.PageScreen(nav, it.long("id"))
+            }
+            composable("holiday/{id}", arguments = listOf(navArgument("id") { type = NavType.StringType })) {
+                com.dasein.poryadok.ui.calendar.HolidayScreen(nav, it.arguments?.getString("id") ?: "")
             }
             composable(Routes.BODY_SCIENCE) { com.dasein.poryadok.ui.health.BodyScienceScreen(nav) }
             composable(Routes.WIDGET_EDITOR) { com.dasein.poryadok.ui.more.WidgetEditorScreen(nav) }

@@ -66,6 +66,8 @@ data class Recipe(
     val createdAt: Long = 0,
     /** Убран в архив: не показывается в каталоге и подборе меню, но не удалён. */
     @androidx.room.ColumnInfo(defaultValue = "0") val archived: Boolean = false,
+    /** Видео рецепта: пути к файлам или ссылки, по одному в строке. */
+    val videos: String = "",
 )
 
 /** Ингредиент рецепта. КБЖУ на 100 г копируется из продукта, чтобы рецепт не зависел от правок базы. */
@@ -382,6 +384,7 @@ interface ExtraDao {
     @Query("DELETE FROM recipes WHERE id = :id") suspend fun deleteRecipe(id: Long)
     @Query("UPDATE recipes SET favorite = :fav WHERE id = :id") suspend fun setFavorite(id: Long, fav: Boolean)
     @Query("UPDATE recipes SET archived = :archived WHERE id = :id") suspend fun setArchived(id: Long, archived: Boolean)
+    @Query("UPDATE recipes SET videos = :videos WHERE id = :id") suspend fun setVideos(id: Long, videos: String)
 
     @Query("SELECT * FROM recipe_ingredients ORDER BY recipeId, pos") fun ingredients(): Flow<List<RecipeIngredient>>
     @Query("SELECT * FROM recipe_ingredients WHERE recipeId = :id ORDER BY pos") fun ingredientsOf(id: Long): Flow<List<RecipeIngredient>>
@@ -544,15 +547,16 @@ interface ExtraDao {
         MealPreset::class, MealPresetItem::class, MealRepeat::class, ShoppingItem::class, CookingLog::class,
         FinanceNote::class, ImportRecord::class, BodyMetric::class, SleepAuto::class, DayEnergy::class, MediaItem::class,
         MediaList::class, MediaListItem::class, Page::class, PageBlock::class, Exercise::class, WorkoutPlan::class,
-        PlanExercise::class, WorkoutSession::class, SetLog::class,
+        PlanExercise::class, WorkoutSession::class, SetLog::class, CustomDay::class, HolidayMark::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = false,
 )
 abstract class ExtraDb : RoomDatabase() {
     abstract fun dao(): ExtraDao
     abstract fun pages(): PageDao
     abstract fun training(): TrainingDao
+    abstract fun days(): DaysDao
 
     companion object {
         /** v2: состав тела и автоопределение сна. */
@@ -661,9 +665,22 @@ abstract class ExtraDb : RoomDatabase() {
             }
         }
 
+        /** v7: видео рецептов, свои праздники и дни, цвета праздников. */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `recipes` ADD COLUMN `videos` TEXT NOT NULL DEFAULT ''")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `custom_days` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `month` INTEGER NOT NULL, " +
+                        "`day` INTEGER NOT NULL, `year` INTEGER, `color` INTEGER NOT NULL, `note` TEXT NOT NULL, `kind` TEXT NOT NULL, `yearly` INTEGER NOT NULL, " +
+                        "`createdAt` INTEGER NOT NULL)"
+                )
+                db.execSQL("CREATE TABLE IF NOT EXISTS `holiday_marks` (`holidayId` TEXT NOT NULL, `color` INTEGER NOT NULL, PRIMARY KEY(`holidayId`))")
+            }
+        }
+
         fun create(context: Context): ExtraDb =
             Room.databaseBuilder(context, ExtraDb::class.java, "dasein_extra.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).build()
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7).build()
     }
 }
 
@@ -694,6 +711,8 @@ data class ExtraBackup(
     val planExercises: List<PlanExercise> = emptyList(),
     val workoutSessions: List<WorkoutSession> = emptyList(),
     val setLogs: List<SetLog> = emptyList(),
+    val customDays: List<CustomDay> = emptyList(),
+    val holidayMarks: List<HolidayMark> = emptyList(),
 )
 
 suspend fun ExtraDb.exportExtra(): ExtraBackup {
@@ -705,6 +724,7 @@ suspend fun ExtraDb.exportExtra(): ExtraBackup {
         d.allPresetItems(), d.allRepeats(), d.allShopping(), d.allHistory(), d.financeNotesNow(), d.allImportRecords(),
         d.bodyMetricsNow(), d.sleepAutoNow(), d.allDayEnergy(), d.allMedia(), d.allMediaLists(), d.allMediaListItems(),
         p.pagesNow(), p.allBlocks(), t.exercisesNow(), t.plansNow(), t.allPlanExercises(), t.sessionsNow(), t.allSets(),
+        days().customDaysNow(), days().marksNow(),
     )
 }
 
@@ -739,6 +759,11 @@ suspend fun ExtraDb.importExtra(b: ExtraBackup) {
             t.wipePlanExercises(); t.putPlanExercises(b.planExercises)
             t.wipeSessions(); t.putSessions(b.workoutSessions)
             t.wipeSets(); t.putSets(b.setLogs)
+        }
+        if (b.customDays.isNotEmpty() || b.holidayMarks.isNotEmpty()) {
+            val dd = days()
+            dd.wipeCustomDays(); dd.putCustomDays(b.customDays)
+            dd.wipeMarks(); dd.putMarks(b.holidayMarks)
         }
     }
 }

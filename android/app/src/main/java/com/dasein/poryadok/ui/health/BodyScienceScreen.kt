@@ -52,98 +52,46 @@ private fun s(v: Double?) = v?.let { if (it == Math.floor(it)) it.toLong().toStr
  */
 @Composable
 fun BodyScienceScreen(nav: NavHostController) {
-    val data = rememberBodyData()
     val extra = LocalExtra.current
-    val measurements by observe(emptyList()) { Graph.dao.measurements() }
-    val p = data.profile
-    val readings = data.readings
-    val last = readings.lastOrNull()
-    val lastMeasure = measurements.maxByOrNull { it.day }
-
-    var height by remember { mutableStateOf("") }
-    var waist by remember { mutableStateOf("") }
-    var hip by remember { mutableStateOf("") }
-    var neck by remember { mutableStateOf("") }
-    // Данные из базы приходят не сразу: пустые поля дозаполняются, как только появятся замеры.
-    LaunchedEffect(readings, p, lastMeasure) {
-        if (height.isBlank() && p.heightCm > 0) height = s(p.heightCm)
-        // Берём самый свежий обхват: из «Замеров» или из взвешивания, смотря что позже.
-        fun <T> latest(fromReading: (BodyMetric) -> T?, fromMeasure: (com.dasein.poryadok.data.Measurement) -> T?): T? {
-            val r = readings.asReversed().firstOrNull { fromReading(it) != null }
-            val m = measurements.sortedByDescending { it.day }.firstOrNull { fromMeasure(it) != null }
-            return when {
-                r == null -> m?.let(fromMeasure)
-                m == null -> fromReading(r)
-                m.day >= r.day -> fromMeasure(m)
-                else -> fromReading(r)
-            }
-        }
-        if (waist.isBlank()) waist = s(latest({ it.waistCm }, { it.waist }))
-        if (hip.isBlank()) hip = s(latest({ it.hipCm }, { it.hips }))
-        if (neck.isBlank()) neck = s(latest({ it.neckCm }, { it.neck }))
-    }
-
-    val weight = last?.weight ?: p.startWeight
-    val h = height.num()?.takeIf { it in 100.0..250.0 } ?: p.heightCm
-    val facts = BodyFacts(
-        male = p.male, age = p.age, heightCm = h, weightKg = weight,
-        waistCm = waist.num()?.takeIf { it in 40.0..250.0 }, hipCm = hip.num()?.takeIf { it in 40.0..250.0 },
-        neckCm = neck.num()?.takeIf { it in 20.0..70.0 }, scaleFatPct = last?.fatPct, activity = p.activity,
-    )
-    val list = remember(facts) { BodyScience.analyze(facts) }
-
-    fun save() {
-        io {
-            val now = System.currentTimeMillis()
-            val base = last?.takeIf { it.source != LEGACY && it.day == Dates.today() }
-                ?: BodyMetric(at = now, day = Dates.today(), weight = weight, source = "вручную")
-            Body.save(base.copy(heightCm = facts.heightCm, waistCm = facts.waistCm, hipCm = facts.hipCm, neckCm = facts.neckCm))
-            Graph.dao.upsertProfile(p.copy(heightCm = facts.heightCm))
-            if (facts.waistCm != null || facts.hipCm != null || facts.neckCm != null) {
-                val today = Dates.today()
-                val m0 = Graph.dao.measurements().first().firstOrNull { it.day == today } ?: com.dasein.poryadok.data.Measurement(today)
-                Graph.dao.upsertMeasurement(m0.copy(waist = facts.waistCm ?: m0.waist, hips = facts.hipCm ?: m0.hips, neck = facts.neckCm ?: m0.neck))
-            }
-        }
-    }
-
+    // Ждём настоящие данные из базы, чтобы не показать на мгновение значения по умолчанию.
+    val profile by observe<com.dasein.poryadok.data.BodyProfile?>(null) { Graph.dao.profile() }
+    val measurements by observe<List<com.dasein.poryadok.data.Measurement>?>(null) { Graph.dao.measurements() }
+    val data = rememberBodyData()
+    val p = profile
+    val ms = measurements
     Screen("Научный анализ тела", onBack = { nav.popBackStack() }) { pad ->
+        if (p == null || ms == null) {
+            Text("Загрузка…", Modifier.padding(pad).padding(16.dp), color = extra.dim)
+            return@Screen
+        }
+        val last = data.readings.lastOrNull()
+        val latest = ms.maxByOrNull { it.day }
+        val weight = last?.weight ?: p.startWeight
+        val facts = BodyFacts(
+            male = p.male, age = p.age, heightCm = p.heightCm, weightKg = weight,
+            waistCm = latest?.waist, hipCm = latest?.hips, neckCm = latest?.neck, scaleFatPct = last?.fatPct, activity = p.activity,
+        )
+        // Показываем только то, что удалось вычислить из введённых данных.
+        val list = remember(facts) { BodyScience.analyze(facts).filter { it.value != null || it.key == "pace" } }
         Column(Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            Tile {
-                Text("Замеры", fontWeight = FontWeight.SemiBold)
+            Tile(onClick = { nav.navigate(Routes.health(2)) }) {
+                Text("Исходные данные", fontWeight = FontWeight.SemiBold)
                 Text(
-                    "Вес ${s(weight)} кг — из последнего взвешивания. Пол: ${if (p.male) "мужской" else "женский"}, возраст ${p.age} — из «Замеров» (Здоровье → Замеры).",
-                    fontSize = 12.sp, color = extra.dim,
+                    listOfNotNull(
+                        if (p.male) "мужчина" else "женщина", "${p.age} лет", "рост ${s(p.heightCm)} см", "вес ${s(weight)} кг",
+                        latest?.waist?.let { "талия ${s(it)}" }, latest?.hips?.let { "бёдра ${s(it)}" }, latest?.neck?.let { "шея ${s(it)}" },
+                        last?.fatPct?.let { "жир с весов ${s(it)}%" },
+                    ).joinToString(", "),
+                    fontSize = 13.sp,
                 )
-                Gap(8.dp)
-                Row {
-                    NumberField(height, { height = it }, "Рост", Modifier.weight(1f), suffix = "см")
-                    HGap(8.dp)
-                    NumberField(waist, { waist = it }, "Талия", Modifier.weight(1f), suffix = "см")
-                }
-                Gap(6.dp)
-                Row {
-                    NumberField(hip, { hip = it }, "Бёдра", Modifier.weight(1f), suffix = "см")
-                    HGap(8.dp)
-                    NumberField(neck, { neck = it }, "Шея", Modifier.weight(1f), suffix = "см")
-                }
-                Gap(8.dp)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Button(onClick = { save() }) { Text("Сохранить в замер") }
-                    HGap(8.dp)
-                    androidx.compose.material3.TextButton(onClick = { nav.navigate(Routes.health(2)) }) { Text("Пол и возраст") }
-                }
-            }
-            Gap(8.dp)
-            InfoBox("science_how", "Как измерять") {
-                Text(
-                    "Рост — стоя у стены, босиком, пятки вместе. Талия — на середине между нижним ребром и тазовой костью, на спокойном выдохе. " +
-                        "Бёдра — по самой широкой части ягодиц. Шея — сразу под кадыком, лента чуть наклонена вниз. Лента горизонтальна и не сдавливает кожу.",
-                    fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
+                Text("Изменить в «Замерах» →", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
+                if (latest?.waist == null) Text(
+                    "Добавьте в «Замерах» талию (а также бёдра и шею) — появятся индексы талия/рост, талия/бёдра и точнее станет процент жира.",
+                    fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
                 )
             }
             SectionTitle("Показатели")
-            list.forEach { EvidenceCard(it); Gap(8.dp) }
+            list.forEach { EvidenceCard(it.copy(needs = null)); Gap(8.dp) }
             Text(
                 "Расчёты носят справочный характер и не заменяют консультацию врача.",
                 fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(vertical = 16.dp),

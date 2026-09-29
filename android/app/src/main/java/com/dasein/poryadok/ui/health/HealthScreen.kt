@@ -47,6 +47,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -142,12 +143,13 @@ fun HealthScreen(nav: NavHostController, initialTab: Int) {
                 }
             }
             Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-                when (tab) {
+                if (profileOrNull == null) Text("Загрузка…", Modifier.padding(16.dp), color = LocalExtra.current.dim)
+                else when (tab) {
                     0 -> FoodTab(nav, plan, profile)
                     1 -> BodyTab(nav, profile, weights)
-                    2 -> MeasureTab(nav, profile, current, plan)
+                    2 -> MeasureTab(nav, profileOrNull, current, plan)
                     3 -> WorkoutTab(nav)
-                    4 -> CalcTab(profile, current, plan)
+                    4 -> CalcTab(profile, current, plan) { tab = 2 }
                     5 -> ProgressTab(weights)
                 }
                 Gap(80.dp)
@@ -157,11 +159,9 @@ fun HealthScreen(nav: NavHostController, initialTab: Int) {
 }
 
 @Composable
-private fun CalcTab(p: BodyProfile, current: Double, plan: NutritionPlan) {
+private fun CalcTab(p: BodyProfile, current: Double, plan: NutritionPlan, onEditParams: () -> Unit) {
     val extra = LocalExtra.current
     fun upd(b: BodyProfile) = io { Graph.dao.upsertProfile(b) }
-    var height by remember(p.id) { mutableStateOf(p.heightCm.plain()) }
-    var age by remember(p.id) { mutableStateOf(p.age.toString()) }
     var start by remember(p.id) { mutableStateOf(p.startWeight.plain()) }
     var change by remember(p.id) { mutableStateOf(p.changeKg.plain()) }
     var protein by remember(p.id) { mutableStateOf(p.proteinPerKg.plain()) }
@@ -170,28 +170,14 @@ private fun CalcTab(p: BodyProfile, current: Double, plan: NutritionPlan) {
     var steps by remember(p.id) { mutableStateOf(p.stepsGoal.toString()) }
 
     Gap(8.dp)
-    Text("Заполните один раз — норма пересчитается сама после каждого взвешивания.", fontSize = 13.sp, color = extra.dim)
-    Gap(10.dp)
-    Segments(listOf(false to "Женщина", true to "Мужчина"), p.male, { upd(p.copy(male = it)) })
-    Gap(10.dp)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        NumberField(height, { height = it; it.num()?.let { v -> upd(p.copy(heightCm = v)) } }, "Рост", Modifier.weight(1f), "см")
-        NumberField(age, { age = it; it.toIntOrNull()?.let { v -> upd(p.copy(age = v)) } }, "Возраст", Modifier.weight(1f), "лет", decimal = false)
+    Tile(onClick = onEditParams) {
+        Text("${if (p.male) "Мужчина" else "Женщина"}, ${p.age} лет, рост ${p.heightCm.plain()} см", fontWeight = FontWeight.SemiBold)
+        Text(ACTIVITY_LEVELS.firstOrNull { it.first == p.activity }?.second ?: "активность ×${p.activity}", fontSize = 13.sp, color = extra.dim)
+        Text("Изменить во вкладке «Замеры» →", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
     }
     Gap(8.dp)
     NumberField(start, { start = it; it.num()?.let { v -> upd(p.copy(startWeight = v)) } }, "Стартовый вес", suffix = "кг")
     Text("Текущий вес: ${"%.1f".format(current)} кг (из последнего взвешивания)", fontSize = 12.sp, color = extra.dim)
-    SectionTitle("Активность")
-    ACTIVITY_LEVELS.forEach { (k, label) ->
-        Row(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { upd(p.copy(activity = k)) }
-                .background(if (p.activity == k) MaterialTheme.colorScheme.primaryContainer else androidx.compose.ui.graphics.Color.Transparent)
-                .padding(10.dp),
-        ) {
-            Text("×$k", Modifier.size(width = 56.dp, height = 20.dp), color = extra.dim, fontSize = 13.sp)
-            Text(label, fontSize = 14.sp)
-        }
-    }
     SectionTitle("Цель по калориям")
     Segments(CalorieGoal.entries.map { it.name to it.label }, p.goal, { upd(p.copy(goal = it)) })
     Gap(8.dp)
@@ -452,49 +438,90 @@ private val MEASURE_FIELDS = listOf("chest" to "Грудь", "waist" to "Тал�
 
 private fun Measurement.get(k: String): Double? = when (k) { "chest" -> chest; "waist" -> waist; "belly" -> belly; "hips" -> hips; "neck" -> neck; else -> arm }
 
-/** Пол, возраст, рост и активность — общий профиль для калькулятора калорий, ИМТ и всех индексов. */
+/**
+ * Все физические параметры на одной странице: пол, возраст, рост, активность и обхваты.
+ * Сохраняются одной кнопкой — в общий профиль и в замер за сегодня; от них считаются калькулятор калорий, ИМТ и все индексы.
+ */
 @Composable
-private fun ProfileCard(nav: NavHostController, p: BodyProfile, current: Double, plan: NutritionPlan, last: Measurement?) {
+private fun BodyParamsForm(nav: NavHostController, p: BodyProfile, current: Double, plan: NutritionPlan, latest: Measurement?, todayM: Measurement?) {
     val extra = LocalExtra.current
-    fun upd(b: BodyProfile) = io { Graph.dao.upsertProfile(b) }
-    var height by remember(p.id) { mutableStateOf(p.heightCm.plain()) }
-    var age by remember(p.id) { mutableStateOf(p.age.toString()) }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    fun s(v: Double?) = v?.plain() ?: ""
+    var male by remember { mutableStateOf(p.male) }
+    var age by remember { mutableStateOf(p.age.toString()) }
+    var height by remember { mutableStateOf(p.heightCm.plain()) }
+    var activity by remember { mutableStateOf(p.activity) }
     var activityOpen by remember { mutableStateOf(false) }
+    val base = todayM ?: latest
+    val girths = remember { MEASURE_FIELDS.associate { (k, _) -> k to mutableStateOf(s(base?.get(k))) } }
+    val ageV = age.toIntOrNull()?.takeIf { it in 10..110 }
+    val heightV = height.num()?.takeIf { it in 100.0..250.0 }
+    val changed = male != p.male || ageV != p.age || heightV != p.heightCm || activity != p.activity ||
+        MEASURE_FIELDS.any { (k, _) -> girths.getValue(k).value.num() != base?.get(k) }
+
+    fun save() {
+        if (ageV == null || heightV == null) {
+            android.widget.Toast.makeText(ctx, "Проверьте возраст (10–110) и рост (100–250 см)", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+        val v = girths.mapValues { it.value.value.num() }
+        io {
+            Graph.dao.upsertProfile(p.copy(male = male, age = ageV, heightCm = heightV, activity = activity))
+            if (v.values.any { it != null }) {
+                val today = Dates.today()
+                Graph.dao.upsertMeasurement(Measurement(today, v["chest"], v["waist"], v["belly"], v["hips"], v["arm"], v["neck"]))
+            }
+        }
+        android.widget.Toast.makeText(ctx, "Сохранено — все показатели пересчитаны", android.widget.Toast.LENGTH_SHORT).show()
+    }
+
     Tile {
-        Text("Мои данные для расчётов", fontWeight = FontWeight.SemiBold)
-        Text("Используются везде: калькулятор калорий, ИМТ, талия/рост, процент жира, базовый обмен.", fontSize = 12.sp, color = extra.dim)
+        Text("Мои параметры", fontWeight = FontWeight.SemiBold)
+        Text("Вводятся только здесь и используются везде: калькулятор калорий, ИМТ, талия/рост, процент жира, базовый обмен.", fontSize = 12.sp, color = extra.dim)
         Gap(8.dp)
-        Segments(listOf(false to "Женщина", true to "Мужчина"), p.male, { upd(p.copy(male = it)) })
+        Segments(listOf(false to "Женщина", true to "Мужчина"), male, { male = it })
         Gap(8.dp)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            NumberField(age, { age = it; it.toIntOrNull()?.takeIf { v -> v in 10..110 }?.let { v -> upd(p.copy(age = v)) } }, "Возраст", Modifier.weight(1f), "лет", decimal = false)
-            NumberField(height, { height = it; it.num()?.takeIf { v -> v in 100.0..250.0 }?.let { v -> upd(p.copy(heightCm = v)) } }, "Рост", Modifier.weight(1f), "см")
+            NumberField(age, { age = it }, "Возраст", Modifier.weight(1f), "лет", decimal = false)
+            NumberField(height, { height = it }, "Рост", Modifier.weight(1f), "см")
         }
         Gap(8.dp)
-        FieldButton("Активность", ACTIVITY_LEVELS.firstOrNull { it.first == p.activity }?.second ?: "×${p.activity}", Modifier.fillMaxWidth()) { activityOpen = !activityOpen }
+        FieldButton("Активность", ACTIVITY_LEVELS.firstOrNull { it.first == activity }?.second ?: "×$activity", Modifier.fillMaxWidth()) { activityOpen = !activityOpen }
         if (activityOpen) ACTIVITY_LEVELS.forEach { (k, label) ->
             Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { upd(p.copy(activity = k)); activityOpen = false }
-                    .background(if (p.activity == k) MaterialTheme.colorScheme.primaryContainer else androidx.compose.ui.graphics.Color.Transparent)
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { activity = k; activityOpen = false }
+                    .background(if (activity == k) MaterialTheme.colorScheme.primaryContainer else androidx.compose.ui.graphics.Color.Transparent)
                     .padding(10.dp),
             ) {
                 Text("×$k", Modifier.size(width = 56.dp, height = 20.dp), color = extra.dim, fontSize = 13.sp)
                 Text(label, fontSize = 14.sp)
             }
         }
-        Text("Вес ${"%.1f".format(current).replace('.', ',')} кг — из последнего взвешивания (вкладка «Вес»).", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
-
-        val facts = com.dasein.poryadok.logic.BodyFacts(
-            male = p.male, age = p.age, heightCm = p.heightCm, weightKg = current,
-            waistCm = last?.waist, hipCm = last?.hips, neckCm = last?.neck, activity = p.activity,
-        )
-        val b = com.dasein.poryadok.logic.BodyScience.bmi(current, p.heightCm)
-        val (fat, method) = com.dasein.poryadok.logic.BodyScience.bestFat(facts)
-        val bmiLabel = com.dasein.poryadok.logic.BodyScience.BMI_SCALE.let { it.labels[it.zone(b)] }
-        Gap(10.dp)
+        Text("Обхваты, см" + (base?.let { " · последние от ${Dates.label(it.day)}" } ?: ""), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
+        MEASURE_FIELDS.chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 6.dp)) {
+                row.forEach { (k, l) -> NumberField(girths.getValue(k).value, { girths.getValue(k).value = it }, l, Modifier.weight(1f), "см") }
+                if (row.size == 1) Box(Modifier.weight(1f))
+            }
+        }
+        Text("Вес ${"%.1f".format(current).replace('.', ',')} кг — из последнего взвешивания (вкладка «Вес»).", fontSize = 12.sp, color = extra.dim)
+        Gap(8.dp)
+        Button(onClick = { save() }, enabled = changed, modifier = Modifier.fillMaxWidth()) { Text(if (changed) "Сохранить" else "Сохранено") }
+    }
+    Gap(10.dp)
+    val facts = com.dasein.poryadok.logic.BodyFacts(
+        male = p.male, age = p.age, heightCm = p.heightCm, weightKg = current,
+        waistCm = latest?.waist, hipCm = latest?.hips, neckCm = latest?.neck, activity = p.activity,
+    )
+    val b = com.dasein.poryadok.logic.BodyScience.bmi(current, p.heightCm)
+    val (fat, method) = com.dasein.poryadok.logic.BodyScience.bestFat(facts)
+    val bmiLabel = com.dasein.poryadok.logic.BodyScience.BMI_SCALE.let { it.labels[it.zone(b)] }
+    Tile {
+        Text("Рассчитано по сохранённым параметрам", fontWeight = FontWeight.SemiBold)
+        Gap(8.dp)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Stat("%.1f".format(b).replace('.', ','), "ИМТ · $bmiLabel", Modifier.weight(1f))
-            Stat(last?.waist?.let { "%.2f".format(it / p.heightCm).replace('.', ',') } ?: "—", "талия / рост", Modifier.weight(1f))
+            if (latest?.waist != null) Stat("%.2f".format(latest.waist / p.heightCm).replace('.', ','), "талия / рост", Modifier.weight(1f))
             Stat("%.0f%%".format(fat), "жир · $method", Modifier.weight(1f))
         }
         Gap(8.dp)
@@ -503,21 +530,27 @@ private fun ProfileCard(nav: NavHostController, p: BodyProfile, current: Double,
             Stat("${plan.tdee.roundToInt()}", "расход в день", Modifier.weight(1f))
             Stat("${plan.targetKcal}", "норма, ккал", Modifier.weight(1f), MaterialTheme.colorScheme.primary)
         }
-        Row {
-            TextButton(onClick = { nav.navigate(com.dasein.poryadok.ui.Routes.BODY_SCIENCE) }) { Text("Все показатели и источники") }
-        }
+        TextButton(onClick = { nav.navigate(com.dasein.poryadok.ui.Routes.BODY_SCIENCE) }) { Text("Все показатели и источники") }
     }
 }
 
 @Composable
-private fun MeasureTab(nav: NavHostController, profile: BodyProfile, current: Double, plan: NutritionPlan) {
+private fun MeasureTab(nav: NavHostController, profile: BodyProfile?, current: Double, plan: NutritionPlan) {
     val extra = LocalExtra.current
-    val ms by observe(emptyList()) { Graph.dao.measurements() }
+    val msOrNull by observe<List<Measurement>?>(null) { Graph.dao.measurements() }
+    val ms = msOrNull.orEmpty()
     var edit by remember { mutableStateOf<Measurement?>(null) }
     Gap(8.dp)
-    ProfileCard(nav, profile, current, plan, ms.maxByOrNull { it.day })
+    if (profile == null || msOrNull == null) {
+        Text("Загрузка…", color = extra.dim)
+        return
+    }
+    val today = Dates.today()
+    // Форма пересоздаётся после сохранения, чтобы показать новые значения.
+    key(profile, ms) {
+        BodyParamsForm(nav, profile, current, plan, ms.maxByOrNull { it.day }, ms.firstOrNull { it.day == today })
+    }
     Gap(10.dp)
-    Button(onClick = { edit = Measurement(Dates.today()) }, modifier = Modifier.fillMaxWidth()) { Text("+ Новые замеры") }
     Hint("measure_how", "Раз в 2 недели, сантиметровой лентой, утром натощак: 1 — грудь, 2 — талия (между нижним ребром и тазовой костью), 3 — низ живота, 4 — бёдра, 5 — плечо, 6 — шея (под кадыком). Талия, бёдра и шея нужны для процента жира и индекса талия/рост.", Modifier.padding(vertical = 8.dp), title = "Как измерять")
     if (ms.size >= 2) {
         SectionTitle("Талия и бёдра")

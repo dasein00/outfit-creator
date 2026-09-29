@@ -200,6 +200,23 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                     IconAction(Ic.search, "Поиск") { nav.navigate(Routes.SEARCH) }
                     IconAction(Ic.settings, "Настройки") { nav.navigate(Routes.SETTINGS) }
                 }
+                val holidays = com.dasein.poryadok.ui.calendar.rememberDayEntries(today)
+                if (holidays.isNotEmpty()) {
+                    Gap(8.dp)
+                    Tile(onClick = { nav.navigate(Routes.calendar(2)) }, color = androidx.compose.ui.graphics.Color(holidays.first().color).copy(alpha = .14f), padding = 12.dp) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Glyph("fest/03", 26.dp, badge = false)
+                            Column(Modifier.padding(start = 10.dp).weight(1f)) {
+                                Text(if (holidays.size == 1) "Сегодня праздник" else "Сегодня праздники", fontSize = 12.sp, color = extra.dim)
+                                Text(
+                                    holidays.take(2).joinToString(" · ") { it.name } + if (holidays.size > 2) " и ещё ${holidays.size - 2}" else "",
+                                    fontWeight = FontWeight.SemiBold, maxLines = 2,
+                                )
+                            }
+                            Text("›", fontSize = 22.sp, color = extra.dim)
+                        }
+                    }
+                }
                 Gap(14.dp)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     RingStat(

@@ -37,6 +37,7 @@ routes=(
   "bodyDetail/0" "weightTrend" "bodyCompare" "kpImport?kind=0" "topsHub?tab=0" "recipeEdit/1"
   "bodyScience" "widgetEditor" "plan?tab=2" "notes" "page/1" "page/2"
   "training?tab=0" "training?tab=1" "training?tab=2" "training?tab=3" "trainingPlan/1" "exercise/1" "session/1"
+  "calendar?tab=2" "holiday/ru_newyear" "holiday/arm_vardavar" "health?tab=2" "bodyScience" "weightTrend" "recipe/3" "tasks"
 )
 i=1
 for r in "${routes[@]}"; do

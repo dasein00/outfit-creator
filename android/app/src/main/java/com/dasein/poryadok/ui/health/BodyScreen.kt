@@ -235,10 +235,7 @@ fun BodyTab(nav: NavHostController, profile: BodyProfile, weights: List<WeightEn
             TextButton(onClick = { edit = m }) { Text("Изменить", fontSize = 12.sp) }
         }
     }
-    if (ruler) WeightRulerDialog(
-        last?.weight ?: profile.startWeight, { ruler = false },
-        heightCm = profile.heightCm,
-    ) { m -> ruler = false; edit = m }
+    if (ruler) WeightRulerDialog(last?.weight ?: profile.startWeight, { ruler = false }) { m -> ruler = false; edit = m }
     edit?.let { BodyDialog(it) { edit = null } }
 }
 
@@ -332,8 +329,9 @@ internal fun MetricsList(list: List<BodyMetricView>, openAll: Boolean = false, t
         "age" to "cal/12", "height" to "train/28",
     )
     if (title != null) SectionTitle(title)
+    // Показатели без данных не показываем: их нельзя ни измерить, ни вычислить.
     Tile(padding = 6.dp) {
-        list.forEach { v ->
+        list.filter { it.value != null }.forEach { v ->
             Column(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { open = if (open == v.key) null else v.key }
                     .padding(horizontal = 8.dp, vertical = 8.dp),
@@ -457,11 +455,7 @@ internal fun BodyDialog(m0: BodyMetric, onDismiss: () -> Unit) {
                 }
                 Gap(6.dp)
                 NumberField(weight, { weight = it }, "Вес", suffix = "кг")
-                Text("Рост и обхваты — для научных показателей (ИМТ, талия/рост, жир по формуле ВМС США):", fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(vertical = 6.dp))
-                MetricField(f, "height", "Рост", "см")
-                MetricField(f, "waist", "Талия", "см")
-                MetricField(f, "hip", "Бёдра", "см")
-                MetricField(f, "neck", "Шея", "см")
+                Text("Рост, пол, возраст и обхваты вводятся один раз во вкладке «Замеры».", fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(vertical = 6.dp))
                 Text("Остальное — по желанию, с экрана весов:", fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(vertical = 6.dp))
                 MetricField(f, "fat", "Жир", "%")
                 MetricField(f, "musclePct", "Скелетная мускулатура", "%")
@@ -482,13 +476,9 @@ internal fun BodyDialog(m0: BodyMetric, onDismiss: () -> Unit) {
                 val out = m.copy(
                     weight = w, fatPct = v["fat"], musclePct = v["musclePct"], muscleKg = v["muscleKg"], waterPct = v["water"],
                     proteinPct = v["protein"], boneKg = v["bone"], visceral = v["visceral"], bmr = v["bmr"], metabolicAge = v["age"],
-                    subcutaneousPct = v["subcut"], heightCm = v["height"]?.takeIf { it in 100.0..250.0 }, waistCm = v["waist"],
-                    hipCm = v["hip"], neckCm = v["neck"], source = if (m.source.isBlank() || m.source == LEGACY || m.source.startsWith("вручную")) "вручную" else m.source,
+                    subcutaneousPct = v["subcut"], source = if (m.source.isBlank() || m.source == LEGACY || m.source.startsWith("вручную")) "вручную" else m.source,
                 )
-                io {
-                    Body.save(out)
-                    out.heightCm?.let { h -> Graph.dao.profileNow()?.let { p -> if (p.heightCm != h) Graph.dao.upsertProfile(p.copy(heightCm = h)) } }
-                }
+                io { Body.save(out) }
                 onDismiss()
             }) { Text("Сохранить") }
         },

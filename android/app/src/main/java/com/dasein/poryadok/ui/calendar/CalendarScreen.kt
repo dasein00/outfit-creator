@@ -120,12 +120,16 @@ fun CalendarScreen(nav: NavHostController, initialTab: Int, onBack: (() -> Unit)
         },
     ) { pad ->
         Column(Modifier.padding(pad)) {
-            TabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.background) {
+            TabRow(selectedTabIndex = when (tab) { 2 -> 1; 1 -> 2; else -> 0 }, containerColor = MaterialTheme.colorScheme.background) {
                 Tab(tab == 0, onClick = { tab = 0 }, text = { Text("Месяц") })
+                Tab(tab == 2, onClick = { tab = 2 }, text = { Text("Праздники") })
                 Tab(tab == 1, onClick = { tab = 1 }, text = { Text("Напоминалки") })
             }
-            if (tab == 0) MonthView(nav, selected, onSelect = { selected = it }, onReminder = { editReminder = it })
-            else RemindersList(onEdit = { editReminder = it })
+            when (tab) {
+                0 -> MonthView(nav, selected, onSelect = { selected = it }, onReminder = { editReminder = it })
+                2 -> HolidaysTab(nav, selected, onSelect = { selected = it })
+                else -> RemindersList(onEdit = { editReminder = it })
+            }
         }
     }
     editReminder?.let { r -> ReminderDialog(r) { editReminder = null } }
@@ -143,6 +147,22 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
     val subtasks by observe(emptyList()) { dao.subtasks() }
     var ym by remember { mutableStateOf(YearMonth.from(Dates.day(selected))) }
     val today = Dates.today()
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val custom by observe(emptyList()) { Graph.days.customDays() }
+    val marks by observe(emptyList()) { Graph.days.marks() }
+    // Праздники и выделения дней месяца считаются один раз на месяц.
+    val monthInfo = remember(ym, custom, marks) {
+        val first = ym.atDay(1).toEpochDay() - 7
+        (first..first + 49).associateWith { d ->
+            val ld = Dates.day(d)
+            Triple(
+                com.dasein.poryadok.logic.ProdCalendar.kind(ld),
+                com.dasein.poryadok.data.HolidayRepo.highlight(ctx, ld, custom, marks),
+                com.dasein.poryadok.logic.HolidayRules.on(com.dasein.poryadok.data.HolidayRepo.base(ctx), ld).isNotEmpty() || custom.any { com.dasein.poryadok.data.HolidayRepo.occurs(it, ld) },
+            )
+        }
+    }
+    val red = Color(0xFFD25B4B)
 
     LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 96.dp)) {
         item {
@@ -165,14 +185,24 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
                     for (d in 0 until 7) {
                         val day = start + w * 7 + d
                         val inMonth = YearMonth.from(Dates.day(day)) == ym
+                        val info = monthInfo[day]
+                        val kind = info?.first
+                        val off = kind == com.dasein.poryadok.logic.DayKind.WEEKEND || kind == com.dasein.poryadok.logic.DayKind.HOLIDAY
                         val dots = buildList {
+                            if (info?.third == true) add(info!!.second?.let { Color(it) } ?: Color(0xFFC7A46A))
                             eventsOn(events, day).take(2).forEach { add(Palette.item(it.color)) }
                             if (tasks.any { !it.done && it.dueDay == day }) add(MaterialTheme.colorScheme.primary)
                             if (remindersOn(reminders, day).any { !it.done }) add(extra.dim)
                         }
                         Column(
                             Modifier.weight(1f).aspectRatio(1f).padding(2.dp).clip(RoundedCornerShape(12.dp))
-                                .background(if (day == selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                                .background(
+                                    when {
+                                        day == selected -> MaterialTheme.colorScheme.primaryContainer
+                                        info?.second != null && inMonth -> Color(info!!.second!!).copy(alpha = .22f)
+                                        else -> Color.Transparent
+                                    },
+                                )
                                 .clickable { onSelect(day) },
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
@@ -184,9 +214,13 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
-                                    Dates.day(day).dayOfMonth.toString(), fontSize = 14.sp,
-                                    color = if (inMonth) MaterialTheme.colorScheme.onSurface else extra.dim.copy(alpha = .5f),
-                                    fontWeight = if (day == today) FontWeight.Bold else FontWeight.Normal,
+                                    Dates.day(day).dayOfMonth.toString() + if (kind == com.dasein.poryadok.logic.DayKind.SHORT) "*" else "", fontSize = 14.sp,
+                                    color = when {
+                                        !inMonth -> extra.dim.copy(alpha = .5f)
+                                        off -> red
+                                        else -> MaterialTheme.colorScheme.onSurface
+                                    },
+                                    fontWeight = if (day == today || kind == com.dasein.poryadok.logic.DayKind.HOLIDAY) FontWeight.Bold else FontWeight.Normal,
                                 )
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.height(6.dp)) {
@@ -198,11 +232,42 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
             }
         }
 
+        item {
+            val st = com.dasein.poryadok.logic.ProdCalendar.month(ym.year, ym.monthValue)
+            Tile(Modifier.padding(top = 6.dp), padding = 10.dp) {
+                Text("Производственный календарь", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(
+                    "Рабочих дней ${st.workDays} · выходных и праздничных ${st.offDays}" + (if (st.shortDays > 0) " · сокращённых ${st.shortDays}" else "") +
+                        " · норма ${st.hours40} ч при 40-часовой неделе",
+                    fontSize = 12.sp, color = extra.dim,
+                )
+                Text(
+                    "Красным — выходные и праздники, * — сокращённый на час предпраздничный день. " +
+                        if (com.dasein.poryadok.logic.ProdCalendar.exact(ym.year)) "С учётом переносов по постановлению Правительства РФ." else "Переносы на этот год ещё не утверждены — расчёт по общим правилам ТК РФ.",
+                    fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+        }
+
         val dayEvents = eventsOn(events, selected)
         val dayTasks = tasks.filter { it.dueDay == selected }
         val dayReminders = remindersOn(reminders, selected)
-        item { SectionTitle("${Dates.weekdayFull(selected)}, ${Dates.label(selected)}") }
-        if (dayEvents.isEmpty() && dayTasks.isEmpty() && dayReminders.isEmpty()) item {
+        item {
+            val k = com.dasein.poryadok.logic.ProdCalendar.kind(Dates.day(selected))
+            SectionTitle(
+                "${Dates.weekdayFull(selected)}, ${Dates.label(selected)} · " + when (k) {
+                    com.dasein.poryadok.logic.DayKind.WORK -> "рабочий"
+                    com.dasein.poryadok.logic.DayKind.SHORT -> "сокращённый"
+                    com.dasein.poryadok.logic.DayKind.HOLIDAY -> "праздничный"
+                    com.dasein.poryadok.logic.DayKind.WEEKEND -> "выходной"
+                },
+            )
+        }
+        val dayHolidays = com.dasein.poryadok.data.HolidayRepo.entries(ctx, Dates.day(selected), custom, marks, hiddenCats(ctx))
+        items(dayHolidays, key = { "h" + it.key }) { e ->
+            EntryRow(e, { if (e.custom == null) nav.navigate(Routes.holiday(e.key)) })
+        }
+        if (dayEvents.isEmpty() && dayTasks.isEmpty() && dayReminders.isEmpty() && dayHolidays.isEmpty()) item {
             Tile { Text("Свободный день. Нажмите «+», чтобы запланировать.", color = extra.dim) }
         }
         items(dayEvents, key = { "e" + it.id }) { e ->

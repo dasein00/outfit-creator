@@ -8,6 +8,13 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -453,7 +460,10 @@ fun WeightTrendScreen(nav: NavHostController) {
                 Text("${Dates.full(range.first)} — ${Dates.full(range.last)}", fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 Gap(8.dp)
                 if (series.size < 2) Text("Для графика нужно хотя бы два значения за период.", color = extra.dim, fontSize = 13.sp)
-                else TrendChart(series, period == TrendPeriod.MONTH, Modifier.fillMaxWidth().height(260.dp))
+                else {
+                    TrendChart(series, period == TrendPeriod.MONTH, Modifier.fillMaxWidth().height(260.dp), zoomable = true)
+                    if (series.size >= 4) Text("Разведите два пальца, чтобы увеличить; листайте одним пальцем; двойное касание — весь период.", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
+                }
             }
             val t = BodyComp.trend(pts, range.first, range.last)
             if (t != null) {
@@ -482,20 +492,58 @@ fun WeightTrendScreen(nav: NavHostController) {
 
 /** График с плавной линией, заливкой, точками и подписями значений. */
 @Composable
-fun TrendChart(points: List<Pair<Long, Double>>, monthLabels: Boolean, modifier: Modifier, dayLabels: ((Long) -> String)? = null) {
+fun TrendChart(points: List<Pair<Long, Double>>, monthLabels: Boolean, modifier: Modifier, dayLabels: ((Long) -> String)? = null, zoomable: Boolean = false) {
     val color = MaterialTheme.colorScheme.primary
     val extra = LocalExtra.current
     val measurer = rememberTextMeasurer()
     val labelStyle = TextStyle(fontSize = 10.sp, color = extra.dim)
     val valueStyle = TextStyle(fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface)
-    Canvas(modifier) {
+    // Масштаб по времени: два пальца — увеличить/уменьшить, один палец — листать увеличенный график, двойное касание — сброс.
+    var scale by remember(points.size) { mutableFloatStateOf(1f) }
+    var shift by remember(points.size) { mutableFloatStateOf(0f) }
+    var chartW by remember { mutableFloatStateOf(1f) }
+    val maxScale = (points.size / 3f).coerceAtLeast(1f)
+    fun clampShift() { shift = shift.coerceIn(0f, (chartW * (scale - 1f)).coerceAtLeast(0f)) }
+    val gestures = if (!zoomable || points.size < 4) Modifier else Modifier
+        .pointerInput(points.size) {
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false)
+                do {
+                    val event = awaitPointerEvent()
+                    val pressed = event.changes.count { it.pressed }
+                    if (pressed >= 2) {
+                        val zoom = event.calculateZoom()
+                        val pan = event.calculatePan()
+                        val c = event.calculateCentroid(useCurrent = true)
+                        val left = 36.dp.toPx()
+                        val anchor = (c.x - left + shift) / scale
+                        val ns = (scale * zoom).coerceIn(1f, maxScale)
+                        shift = anchor * ns - (c.x - left) - pan.x
+                        scale = ns
+                        clampShift()
+                        event.changes.forEach { it.consume() }
+                    } else if (pressed == 1 && scale > 1f) {
+                        val pan = event.calculatePan()
+                        if (abs(pan.x) > abs(pan.y)) {
+                            shift -= pan.x
+                            clampShift()
+                            event.changes.forEach { it.consume() }
+                        }
+                    }
+                } while (event.changes.any { it.pressed })
+            }
+        }
+        .pointerInput(points.size) { detectTapGestures(onDoubleTap = { scale = 1f; shift = 0f }) }
+    Canvas(modifier.then(gestures)) {
         val left = 36.dp.toPx(); val bottom = 22.dp.toPx(); val top = 16.dp.toPx(); val right = 12.dp.toPx()
         val w = size.width - left - right; val h = size.height - top - bottom
-        val vals = points.map { it.second }
+        chartW = w
+        fun x(i: Int) = left + (if (points.size == 1) w / 2 else i * w / (points.size - 1)) * scale - shift
+        val visible = points.indices.filter { x(it) in (left - 1f)..(left + w + 1f) }.ifEmpty { points.indices.toList() }
+        val vals = visible.map { points[it].second }
         var lo = vals.min(); var hi = vals.max()
         val pad = ((hi - lo) * .15).coerceAtLeast(.5)
         lo -= pad; hi += pad
-        fun x(i: Int) = left + if (points.size == 1) w / 2 else i * w / (points.size - 1)
         fun y(v: Double) = top + h - ((v - lo) / (hi - lo) * h).toFloat()
         // Сетка и подписи оси значений.
         for (k in 0..4) {
@@ -505,34 +553,37 @@ fun TrendChart(points: List<Pair<Long, Double>>, monthLabels: Boolean, modifier:
             val t = measurer.measure("%.1f".format(v), labelStyle)
             drawText(t, topLeft = Offset(left - t.size.width - 6f, yy - t.size.height / 2))
         }
-        val line = Path()
-        points.forEachIndexed { i, p ->
-            val px = x(i); val py = y(p.second)
-            if (i == 0) line.moveTo(px, py) else {
-                val qx = x(i - 1); val qy = y(points[i - 1].second)
-                val cx = (qx + px) / 2
-                line.cubicTo(cx, qy, cx, py, px, py)
+        clipRect(left - 8f, 0f, left + w + 8f, size.height) {
+            val line = Path()
+            points.forEachIndexed { i, p ->
+                val px = x(i); val py = y(p.second)
+                if (i == 0) line.moveTo(px, py) else {
+                    val qx = x(i - 1); val qy = y(points[i - 1].second)
+                    val cx = (qx + px) / 2
+                    line.cubicTo(cx, qy, cx, py, px, py)
+                }
+            }
+            val area = Path().apply { addPath(line); lineTo(x(points.lastIndex), top + h); lineTo(x(0), top + h); close() }
+            drawPath(area, Brush.verticalGradient(listOf(color.copy(alpha = .18f), color.copy(alpha = .02f)), startY = top, endY = top + h))
+            drawPath(line, color, style = Stroke(2.5.dp.toPx()))
+            // Точки и подписи: все видимые, если их немного, иначе первая, последняя, максимум и минимум.
+            val maxI = visible.maxBy { points[it].second }; val minI = visible.minBy { points[it].second }
+            val show = if (visible.size <= 12) visible.toSet() else setOf(visible.first(), visible.last(), maxI, minI)
+            visible.forEach { i ->
+                val c = Offset(x(i), y(points[i].second))
+                drawCircle(Color.White, 4.dp.toPx(), c)
+                drawCircle(color, 4.dp.toPx(), c, style = Stroke(2.dp.toPx()))
+                if (i in show) {
+                    val t = measurer.measure("%.1f".format(points[i].second), valueStyle)
+                    drawText(t, topLeft = Offset((c.x - t.size.width / 2).coerceIn(0f, size.width - t.size.width), c.y - t.size.height - 6f))
+                }
             }
         }
-        val area = Path().apply { addPath(line); lineTo(x(points.lastIndex), top + h); lineTo(x(0), top + h); close() }
-        drawPath(area, Brush.verticalGradient(listOf(color.copy(alpha = .18f), color.copy(alpha = .02f)), startY = top, endY = top + h))
-        drawPath(line, color, style = Stroke(2.5.dp.toPx()))
-        // Точки и подписи: все, если их немного, иначе первая, последняя, максимум и минимум.
-        val maxI = vals.indices.maxBy { vals[it] }; val minI = vals.indices.minBy { vals[it] }
-        val show = if (points.size <= 12) points.indices.toSet() else setOf(0, points.lastIndex, maxI, minI)
-        points.forEachIndexed { i, p ->
-            val c = Offset(x(i), y(p.second))
-            drawCircle(Color.White, 4.dp.toPx(), c)
-            drawCircle(color, 4.dp.toPx(), c, style = Stroke(2.dp.toPx()))
-            if (i in show) {
-                val t = measurer.measure("%.1f".format(p.second), valueStyle)
-                drawText(t, topLeft = Offset((c.x - t.size.width / 2).coerceIn(0f, size.width - t.size.width), c.y - t.size.height - 6f))
-            }
-        }
-        // Подписи дат: каждая точка, если задан формат дня, иначе первая, середина и последняя.
-        (if (dayLabels != null) points.indices.toList() else listOf(0, points.size / 2, points.lastIndex).distinct()).forEach { i ->
+        // Подписи дат: каждая видимая точка, если задан формат дня или их мало, иначе первая, середина и последняя видимые.
+        val labelIdx = if (dayLabels != null || visible.size <= 6) visible else listOf(visible.first(), visible[visible.size / 2], visible.last()).distinct()
+        labelIdx.forEach { i ->
             val d = Dates.day(points[i].first)
-            val s = dayLabels?.invoke(points[i].first) ?: if (monthLabels) "%02d.%02d".format(d.monthValue, d.year % 100) else "%02d.%02d".format(d.dayOfMonth, d.monthValue)
+            val s = dayLabels?.invoke(points[i].first) ?: if (monthLabels && scale < 3f) "%02d.%02d".format(d.monthValue, d.year % 100) else "%02d.%02d".format(d.dayOfMonth, d.monthValue)
             val t = measurer.measure(s, labelStyle)
             drawText(t, topLeft = Offset((x(i) - t.size.width / 2).coerceIn(0f, size.width - t.size.width), top + h + 6f))
         }
@@ -624,9 +675,8 @@ fun BodyCompareScreen(nav: NavHostController) {
 
 /** Быстрое добавление веса линейкой, как в приложении весов. «Подробнее» открывает все показатели. */
 @Composable
-internal fun WeightRulerDialog(initial: Double, onDismiss: () -> Unit, heightCm: Double? = null, onMore: (BodyMetric) -> Unit) {
+internal fun WeightRulerDialog(initial: Double, onDismiss: () -> Unit, onMore: (BodyMetric) -> Unit) {
     val extra = LocalExtra.current
-    var height by remember { mutableStateOf(heightCm?.takeIf { it > 0 }?.let { if (it == Math.floor(it)) it.toLong().toString() else it.toString().replace('.', ',') } ?: "") }
     var value by remember { mutableFloatStateOf(((initial * 10).roundToInt() / 10.0).toFloat()) }
     var at by remember { mutableStateOf(System.currentTimeMillis()) }
     var pickDay by remember { mutableStateOf(false) }
@@ -635,10 +685,7 @@ internal fun WeightRulerDialog(initial: Double, onDismiss: () -> Unit, heightCm:
     val measurer = rememberTextMeasurer()
     val labelStyle = TextStyle(fontSize = 12.sp, color = extra.dim)
     fun snapped() = (value * 10).roundToInt() / 10.0
-    fun metric() = BodyMetric(
-        at = at, day = Dates.dayOf(at), weight = snapped(), source = "вручную",
-        heightCm = height.replace(',', '.').toDoubleOrNull()?.takeIf { it in 100.0..250.0 },
-    )
+    fun metric() = BodyMetric(at = at, day = Dates.dayOf(at), weight = snapped(), source = "вручную")
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Добавить вес", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
@@ -683,9 +730,6 @@ internal fun WeightRulerDialog(initial: Double, onDismiss: () -> Unit, heightCm:
                     drawPath(arrow, color)
                 }
                 Text("Двигайте линейку влево и вправо", fontSize = 12.sp, color = extra.dim)
-                com.dasein.poryadok.ui.common.NumberField(
-                    height, { height = it }, "Рост при замере", Modifier.padding(top = 8.dp), suffix = "см",
-                )
                 Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(-1.0f, -0.1f, 0.1f, 1.0f).forEach { d ->
                         OutlinedButton(
@@ -700,14 +744,7 @@ internal fun WeightRulerDialog(initial: Double, onDismiss: () -> Unit, heightCm:
             }
         },
         confirmButton = {
-            Button(onClick = {
-                val m = metric()
-                io {
-                    Body.save(m)
-                    m.heightCm?.let { h -> Graph.dao.profileNow()?.let { p -> if (p.heightCm != h) Graph.dao.upsertProfile(p.copy(heightCm = h)) } }
-                }
-                onDismiss()
-            }) { Text("Подтвердить") }
+            Button(onClick = { val m = metric(); io { Body.save(m) }; onDismiss() }) { Text("Подтвердить") }
         },
         dismissButton = {
             Row {

@@ -228,6 +228,7 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                 }
             }
             if (steps.isEmpty()) Text("Шаги не добавлены", color = extra.dim)
+            RecipeVideosSection(r)
 
             if (r.notes.isNotBlank()) { SectionTitle("Заметки"); Text(r.notes) }
             if (r.tips.isNotBlank()) { SectionTitle("Советы"); Text(r.tips) }

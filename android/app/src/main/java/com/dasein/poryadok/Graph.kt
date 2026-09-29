@@ -51,6 +51,7 @@ object Graph {
     val extra: ExtraDao get() = extraDb.dao()
     val pages: com.dasein.poryadok.data.PageDao get() = extraDb.pages()
     val training: com.dasein.poryadok.data.TrainingDao get() = extraDb.training()
+    val days: com.dasein.poryadok.data.DaysDao get() = extraDb.days()
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var ready = false
 
