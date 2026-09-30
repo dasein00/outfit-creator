@@ -14,7 +14,12 @@ import kotlin.random.Random
 object SmallTalk {
     data class Story(val id: Int, val sphere: String, val title: String, val text: String)
     data class Question(val id: Int, val situation: String, val text: String)
-    data class Tip(val id: Int, val title: String, val text: String)
+    /** Приём из «Школы»: раздел, название, как применять и откуда он (книга или автор). */
+    data class Tip(val id: Int, val section: String, val title: String, val text: String, val source: String)
+    data class Topic(val name: String, val words: String, val questions: List<String>)
+    data class Exercise(val title: String, val text: String)
+    /** Своя история по трём шагам: статус-кво, конфликт, развязка. */
+    data class MyStory(val title: String, val start: String, val conflict: String, val end: String)
 
     /** Сферы в порядке показа и их иконки. */
     val SPHERES = listOf(
@@ -89,11 +94,55 @@ object SmallTalk {
         else Question(("q:" + p[1].trim()).hashCode(), p[0].trim(), p[1].trim())
     }.distinctBy { it.id }.toList()
 
-    fun parseTips(text: String): List<Tip> = text.lineSequence().mapNotNull { line ->
-        val p = line.split('|', limit = 2)
-        if (p.size < 2 || line.startsWith("#") || p[1].isBlank()) null
-        else Tip(("t:" + p[1].trim()).hashCode(), p[0].trim(), p[1].trim())
+    /** «Раздел|Приём|Как применять|Источник». */
+    fun parseGuide(text: String): List<Tip> = text.lineSequence().mapNotNull { line ->
+        val p = line.split('|', limit = 4)
+        if (p.size < 3 || line.startsWith("#") || p[2].isBlank()) null
+        else Tip(("t:" + p[1].trim()).hashCode(), p[0].trim(), p[1].trim(), p[2].trim(), p.getOrNull(3)?.trim().orEmpty())
+    }.distinctBy { it.id }.toList()
+
+    /** «Тема|О чём говорить|вопрос;вопрос». */
+    fun parseTopics(text: String): List<Topic> = text.lineSequence().mapNotNull { line ->
+        val p = line.split('|', limit = 3)
+        if (p.size < 3 || line.startsWith("#")) null
+        else Topic(p[0].trim(), p[1].trim(), p[2].split(';').map { it.trim() }.filter { it.isNotEmpty() })
     }.toList()
+
+    /** «Номер месяца|Темы». */
+    fun parseMonths(text: String): Map<Int, String> = text.lineSequence().mapNotNull { line ->
+        val p = line.split('|', limit = 2)
+        val m = p[0].trim().toIntOrNull()
+        if (p.size < 2 || m == null || m !in 1..12) null else m to p[1].trim()
+    }.toMap()
+
+    fun parseLines(text: String): List<String> = text.lineSequence().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }.toList()
+
+    fun parseExercises(text: String): List<Exercise> = text.lineSequence().mapNotNull { line ->
+        val p = line.split('|', limit = 2)
+        if (p.size < 2 || line.startsWith("#") || p[1].isBlank()) null else Exercise(p[0].trim(), p[1].trim())
+    }.toList()
+
+    /** Упражнение дня: одно и то же весь день, каждый день новое. */
+    fun <T> ofDay(list: List<T>, epochDay: Long): T? = if (list.isEmpty()) null else list[Math.floorMod(epochDay, list.size.toLong()).toInt()]
+
+    /** Светофор реплики: 0 — зелёный (до 20 с), 1 — жёлтый (до 40 с), 2 — красный. */
+    fun light(seconds: Int): Int = when {
+        seconds < 20 -> 0
+        seconds < 40 -> 1
+        else -> 2
+    }
+
+    private const val SEP_FIELD = '\u001F'
+    private const val SEP_STORY = '\u001E'
+
+    fun encodeStories(list: List<MyStory>): String = list.joinToString(SEP_STORY.toString()) { st ->
+        listOf(st.title, st.start, st.conflict, st.end).joinToString(SEP_FIELD.toString()) { it.replace(SEP_FIELD, ' ').replace(SEP_STORY, ' ') }
+    }
+
+    fun decodeStories(s: String): List<MyStory> = s.split(SEP_STORY).mapNotNull { rec ->
+        val p = rec.split(SEP_FIELD)
+        if (p.size < 4 || p.all { it.isBlank() }) null else MyStory(p[0], p[1], p[2], p[3])
+    }
 
     fun decodeSet(s: String): Set<String> = s.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
     fun encodeSet(s: Collection<String>): String = s.joinToString(",")

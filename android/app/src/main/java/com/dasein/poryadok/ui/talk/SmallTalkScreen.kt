@@ -77,6 +77,11 @@ object TalkRepo {
         val stories: List<SmallTalk.Story>,
         val questions: List<SmallTalk.Question>,
         val tips: List<SmallTalk.Tip>,
+        val phrases: List<SmallTalk.Question>,
+        val topics: List<SmallTalk.Topic>,
+        val months: Map<Int, String>,
+        val opinions: List<String>,
+        val exercises: List<SmallTalk.Exercise>,
     )
 
     @Volatile private var cache: Data? = null
@@ -94,7 +99,12 @@ object TalkRepo {
             facts.distinctBy { it.id },
             SmallTalk.parseStories(read(ctx, "smalltalk") { it == "stories.txt" }),
             SmallTalk.parseQuestions(read(ctx, "smalltalk") { it == "questions.txt" }),
-            SmallTalk.parseTips(read(ctx, "smalltalk") { it == "tips.txt" }),
+            SmallTalk.parseGuide(read(ctx, "smalltalk") { it == "guide.txt" }),
+            SmallTalk.parseQuestions(read(ctx, "smalltalk") { it == "phrases.txt" }),
+            SmallTalk.parseTopics(read(ctx, "smalltalk") { it == "topics.txt" }),
+            SmallTalk.parseMonths(read(ctx, "smalltalk") { it == "months.txt" }),
+            SmallTalk.parseLines(read(ctx, "smalltalk") { it == "opinions.txt" }),
+            SmallTalk.parseExercises(read(ctx, "smalltalk") { it == "exercises.txt" }),
         ).also { cache = it }
     }
 
@@ -169,7 +179,8 @@ fun TalkFactCard(onOpen: () -> Unit) {
     }
 }
 
-private val TABS = listOf("Факты", "Истории", "Вопросы", "Приёмы", "Избранное")
+private val TABS = listOf("Факты", "Истории", "Вопросы", "Темы", "Школа", "Тренажёр", "Фразы", "Избранное")
+private const val FAV_TAB = 7
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -184,7 +195,7 @@ fun SmallTalkScreen(nav: NavHostController) {
         LazyColumn(Modifier.padding(pad).padding(horizontal = 16.dp)) {
             item {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    TABS.forEachIndexed { i, t -> Pill(if (i == 4 && favorites.isNotEmpty()) "$t · ${favorites.size}" else t, tab == i) { tab = i } }
+                    TABS.forEachIndexed { i, t -> Pill(if (i == FAV_TAB && favorites.isNotEmpty()) "$t · ${favorites.size}" else t, tab == i) { tab = i } }
                 }
                 Gap(10.dp)
             }
@@ -192,7 +203,10 @@ fun SmallTalkScreen(nav: NavHostController) {
                 0 -> factsTab(data, s, favorites)
                 1 -> storiesTab(data, s, favorites)
                 2 -> questionsTab(data)
-                3 -> tipsTab(data)
+                3 -> topicsTab(data)
+                4 -> guideTab(data)
+                5 -> trainerTab(data, s)
+                6 -> phrasesTab(data)
                 else -> favoritesTab(data, favorites) { tab = it }
             }
             item { Gap(32.dp) }
@@ -364,19 +378,6 @@ private fun androidx.compose.foundation.lazy.LazyListScope.questionsTab(data: Ta
         SectionTitle(if (situation.isEmpty()) "Все вопросы · ${pool.size}" else "$situation · ${pool.size}")
         pool.forEach { q ->
             Text("• ${q.text}", fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(vertical = 5.dp))
-        }
-    }
-}
-
-private fun androidx.compose.foundation.lazy.LazyListScope.tipsTab(data: TalkRepo.Data) {
-    item {
-        Text("Приёмы, которые помогают начать, поддержать и красиво закончить разговор.", fontSize = 13.sp, color = LocalExtra.current.dim)
-        Gap(10.dp)
-    }
-    items(data.tips, key = { it.id }) { t ->
-        Tile(Modifier.padding(bottom = 8.dp)) {
-            Text(t.title, fontWeight = FontWeight.SemiBold)
-            Text(t.text, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 6.dp))
         }
     }
 }

@@ -85,6 +85,22 @@ class SmallTalkTest {
         assertEquals(emptyList<Int>(), SmallTalk.toggle(a, 5))
     }
 
+    @Test fun trafficLightAndDailyPick() {
+        assertEquals(0, SmallTalk.light(0))
+        assertEquals(0, SmallTalk.light(19))
+        assertEquals(1, SmallTalk.light(20))
+        assertEquals(2, SmallTalk.light(40))
+        val list = listOf("a", "b", "c")
+        assertEquals("b", SmallTalk.ofDay(list, 4))
+        assertEquals("c", SmallTalk.ofDay(list, -1))
+    }
+
+    @Test fun storiesRoundTrip() {
+        val list = listOf(SmallTalk.MyStory("Паспорт", "Ехал в отпуск", "Забыл паспорт", "Успел"), SmallTalk.MyStory("Кот", "a", "b", "c"))
+        assertEquals(list, SmallTalk.decodeStories(SmallTalk.encodeStories(list)))
+        assertEquals(emptyList<SmallTalk.MyStory>(), SmallTalk.decodeStories(""))
+    }
+
     @Test fun healthTagsBecomeOneSphere() {
         assertEquals("Здоровье", SmallTalk.sphereOf("Сон"))
         assertEquals("Кино", SmallTalk.sphereOf("Кино"))
@@ -101,6 +117,15 @@ class SmallTalkTest {
         assertTrue(stories.size >= 40)
         stories.forEach { assertTrue("неизвестная сфера ${it.sphere}", it.sphere in spheres) }
         assertTrue(SmallTalk.parseQuestions(File(dir, "questions.txt").readText()).size >= 80)
-        assertTrue(SmallTalk.parseTips(File(dir, "tips.txt").readText()).size >= 15)
+        val guide = SmallTalk.parseGuide(File(dir, "guide.txt").readText())
+        assertTrue("приёмов мало: ${guide.size}", guide.size >= 60)
+        guide.forEach { assertTrue("нет источника у ${it.title}", it.source.isNotBlank()) }
+        assertTrue(SmallTalk.parseQuestions(File(dir, "phrases.txt").readText()).size >= 60)
+        val topics = SmallTalk.parseTopics(File(dir, "topics.txt").readText())
+        assertTrue(topics.size >= 30)
+        topics.forEach { assertTrue("мало вопросов у ${it.name}", it.questions.size >= 3) }
+        assertEquals((1..12).toSet(), SmallTalk.parseMonths(File(dir, "months.txt").readText()).keys)
+        assertTrue(SmallTalk.parseLines(File(dir, "opinions.txt").readText()).size >= 40)
+        assertTrue(SmallTalk.parseExercises(File(dir, "exercises.txt").readText()).size >= 14)
     }
 }

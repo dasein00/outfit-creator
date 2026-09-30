@@ -54,6 +54,8 @@ data class Settings(
     /** Small Talks: выбранные сферы фактов (через запятую, пусто — все) и избранное. */
     val talkSpheres: String = "",
     val talkFavorites: String = "",
+    /** Small Talks: свои истории из конструктора. */
+    val talkStories: String = "",
 )
 
 class Prefs(private val context: Context) {
@@ -96,6 +98,7 @@ class Prefs(private val context: Context) {
         val factsRound = intPreferencesKey("factsRound")
         val talkSpheres = stringPreferencesKey("talkSpheres")
         val talkFavorites = stringPreferencesKey("talkFavorites")
+        val talkStories = stringPreferencesKey("talkStories")
     }
 
     val settings: Flow<Settings> = context.store.data.map { p -> p.toSettings() }
@@ -141,6 +144,7 @@ class Prefs(private val context: Context) {
         factsRound = this[K.factsRound] ?: 0,
         talkSpheres = this[K.talkSpheres] ?: "",
         talkFavorites = this[K.talkFavorites] ?: "",
+        talkStories = this[K.talkStories] ?: "",
     )
 
     suspend fun update(block: (Settings) -> Settings) {
@@ -184,6 +188,7 @@ class Prefs(private val context: Context) {
             p[K.factsRound] = s.factsRound
             p[K.talkSpheres] = s.talkSpheres
             p[K.talkFavorites] = s.talkFavorites
+            p[K.talkStories] = s.talkStories
         }
     }
 }
