@@ -100,7 +100,7 @@ object TalkRepo {
             SmallTalk.parseFacts(read(ctx, "facts") { it.endsWith(".txt") })
         Data(
             facts.distinctBy { it.id },
-            SmallTalk.parseStories(read(ctx, "smalltalk") { it == "stories.txt" }),
+            SmallTalk.parseStories(read(ctx, "smalltalk") { it.startsWith("stories") && it.endsWith(".txt") }),
             SmallTalk.parseQuestions(read(ctx, "smalltalk") { it == "questions.txt" }),
             SmallTalk.parseGuide(read(ctx, "smalltalk") { it == "guide.txt" }),
             SmallTalk.parseQuestions(read(ctx, "smalltalk") { it == "phrases.txt" }),

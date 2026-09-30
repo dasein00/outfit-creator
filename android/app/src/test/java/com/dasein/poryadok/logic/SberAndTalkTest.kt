@@ -113,7 +113,7 @@ class SmallTalkTest {
         val spheres = SmallTalk.SPHERES.map { it.first }.toSet()
         facts.forEach { assertTrue("неизвестная сфера ${it.tag}", it.tag in spheres) }
         SmallTalk.SPHERES.filter { it.first != "Здоровье" }.forEach { (s, _) -> assertTrue("пустая сфера $s", facts.count { it.tag == s } >= 20) }
-        val stories = SmallTalk.parseStories(File(dir, "stories.txt").readText())
+        val stories = SmallTalk.parseStories(dir.listFiles()!!.filter { it.name.startsWith("stories") }.joinToString("\n") { it.readText() })
         assertTrue(stories.size >= 40)
         stories.forEach { assertTrue("неизвестная сфера ${it.sphere}", it.sphere in spheres) }
         assertTrue(SmallTalk.parseQuestions(File(dir, "questions.txt").readText()).size >= 80)
