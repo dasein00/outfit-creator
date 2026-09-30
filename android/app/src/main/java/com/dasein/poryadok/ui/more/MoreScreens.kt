@@ -83,6 +83,7 @@ private val HUB = listOf(
     Hub("habit/23", "Заметки", "страницы, статьи, картинки", Routes.NOTES),
     Hub("habit/01", "Фильмы, сериалы, книги", "коллекция и отзывы", Routes.topsHub(0)),
     Hub("ui:hanger", "Гардероб", "образы на манекене", Routes.WARDROBE),
+    Hub("ui:people", "Small Talks", "факты, истории и вопросы для разговора", Routes.SMALL_TALK),
     Hub("ui:wheel", "Колесо баланса", "8 сфер жизни", Routes.WHEEL),
     Hub("train/29", "Итоги недели", "всё в одном отчёте", Routes.REVIEW),
     Hub("cal/23", "Напоминалки", "по времени", Routes.calendar(1)),

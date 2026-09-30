@@ -74,6 +74,8 @@ class MainActivity : FragmentActivity() {
             // Весы: если доступ к весу выдан — читаем всегда, без отдельного включения.
             runCatching { Body.syncHealthConnect(applicationContext, 30) }
             runCatching { Steps.ensureScheduled(applicationContext) }
+            // Сбер: входящие переводы, записанные как расход, и дубли SMS + пуш.
+            runCatching { com.dasein.poryadok.system.Sber.repair() }
         }
     }
 

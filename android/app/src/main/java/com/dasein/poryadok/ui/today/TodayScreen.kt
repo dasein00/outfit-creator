@@ -425,7 +425,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
 
             item {
                 Gap(18.dp)
-                FactsCard()
+                com.dasein.poryadok.ui.talk.TalkFactCard { nav.navigate(Routes.SMALL_TALK) }
             }
 
             item {

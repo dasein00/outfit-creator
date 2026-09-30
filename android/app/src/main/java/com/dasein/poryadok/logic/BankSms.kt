@@ -15,7 +15,15 @@ object BankSms {
     private val TIME = Regex("""\b\d{1,2}:\d{2}\b""")
 
     private val SKIP = listOf("код", "пароль", "никому не сообщайте", "отказ", "недостаточно", "отклонен", "не выполнен", "не прошла", "подтвердите", "одобрен кредит", "предлагаем")
-    private val INCOME = listOf("зачислен", "зачисление", "поступлен", "перевод от", "пополнение", "возврат", "кэшбэк", "кешбэк", "cashback", "зарплат", "аванс", "вам перевели", "получен перевод")
+    private val INCOME = listOf(
+        "зачислен", "зачисление", "поступлен", "поступил", "пополнение", "возврат", "кэшбэк", "кешбэк", "cashback", "зарплат", "аванс",
+        "вам перевели", "получен перевод", "входящий перевод", "перевёл вам", "перевел вам", "перевела вам", "перевёл(а) вам", "перевел(а) вам",
+        "отправил вам", "отправила вам", "отправил(а) вам",
+    )
+    /** «Перевод от …», «Перевод из Т-Банка …», «Перевод 1 000р от Екатерина Щ.» — входящие; «на запрос от» — наоборот, оплата по запросу. */
+    private val TRANSFER_FROM = Regex("""перевод(?:\s+\S+){0,6}?\s+(?:от|из)(?![а-яё])""")
+    /** Знак прямо перед суммой: «+1 000 ₽» — доход, «−350 ₽» — расход. */
+    private val SIGNED = Regex("""([+−–-])\s?\d""")
     private val EXPENSE = listOf("покупка", "оплата", "списан", "списание", "перевод ", "перевод:", "выдача", "платёж", "платеж", "оплатили", "снятие", "мобильный банк", "комиссия")
 
     private val MERCHANT_CATEGORIES = listOf(
@@ -42,18 +50,23 @@ object BankSms {
         val t = text.replace('\n', ' ').replace(Regex("\\s+"), " ").trim()
         val low = t.lowercase()
         if (t.isEmpty() || SKIP.any { it in low }) return null
+        val balanceAt = BALANCE.find(t)?.range?.first ?: Int.MAX_VALUE
+        val match = AMOUNT.findAll(t).firstOrNull { it.range.first < balanceAt } ?: return null
+        val sign = SIGNED.findAll(t).firstOrNull { it.range.last == match.range.first }?.groupValues?.get(1)
+        val request = "запрос" in low
         val kind = when {
+            sign == "+" -> Kind.INCOME
+            sign != null -> Kind.EXPENSE
             INCOME.any { it in low } -> Kind.INCOME
+            !request && TRANSFER_FROM.containsMatchIn(low.substring(0, minOf(balanceAt, low.length))) -> Kind.INCOME
             EXPENSE.any { it in low } -> Kind.EXPENSE
             else -> return null
         }
-        val balanceAt = BALANCE.find(t)?.range?.first ?: Int.MAX_VALUE
-        val match = AMOUNT.findAll(t).firstOrNull { it.range.first < balanceAt } ?: return null
         val amount = match.groupValues[1].replace(" ", "").replace(" ", "").replace(',', '.').toDoubleOrNull() ?: return null
         if (amount <= 0) return null
         val card = CARD.find(t)?.value?.uppercase().orEmpty()
         val merchant = t.substring(match.range.last + 1, minOf(balanceAt, t.length))
-            .replace(TIME, "").trim().trim('.', ',', ';', ':', '-').trim()
+            .replace(TIME, "").trim().trim('.', ',', ';', ':', '-', '—', '–', '•').trim()
             .let { if (it.length > 60) it.take(60) else it }
         val category = if (kind == Kind.INCOME) {
             if ("зарплат" in low || "аванс" in low) "Зарплата" else if ("кэшбэк" in low || "кешбэк" in low || "cashback" in low) "Кэшбэк" else null
@@ -62,5 +75,15 @@ object BankSms {
             MERCHANT_CATEGORIES.firstOrNull { (_, words) -> words.any { it in m } }?.first
         }
         return Op(kind, amount, merchant, card, category, t)
+    }
+
+    /**
+     * Исправляет тип уже записанной операции по её подписи: раньше «Перевод 1 000р от Екатерина Щ.» считался расходом.
+     * Возвращает true, если подпись говорит о входящем переводе.
+     */
+    fun noteLooksIncoming(note: String): Boolean {
+        val low = note.lowercase().removePrefix("сбер:").trim()
+        if ("запрос" in low) return false
+        return low.startsWith("от ")
     }
 }
