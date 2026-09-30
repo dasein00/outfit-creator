@@ -69,7 +69,7 @@ class SmsReceiver : BroadcastReceiver() {
         if (from != "900" && from != "+7900") return
         val body = msgs.joinToString("") { it.messageBody ?: "" }
         if (!Regex("(покупка|оплата|списан|зачислен|перевод|выдача)", RegexOption.IGNORE_CASE).containsMatchIn(body)) return
-        Notifications.show(ctx, body.hashCode(), "📩 Новая операция по карте", body.take(120) + "\nОткройте приложение — операция добавится в финансы.", "money/ops")
+        Notifications.show(ctx, body.hashCode(), "Новая операция по карте", body.take(120) + "\nОткройте приложение — операция добавится в финансы.", "money/ops")
     }
 }
 

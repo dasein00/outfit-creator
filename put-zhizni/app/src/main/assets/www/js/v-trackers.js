@@ -97,7 +97,7 @@
       case "habits": {
         if (hid) { const h = A.byId("habits", hid); if (h.type === "num") return A.edit.habitValue(h, d); A.cycleHs(h, d); A.refresh(); return; }
         const hs = A.col("habits").filter((h) => !h.archived);
-        const draw = () => hs.map((h) => { const st = A.hs(h.id, d), S = st && A.HSTATUS[st]; return '<div class="item"><div class="ic">' + esc(h.icon || "•") + '</div><div class="tx"><b>' + esc(h.name) + "</b>" + (h.type === "num" ? "<small>" + (A.hv(h.id, d) ?? 0) + " / " + (h.target || 1) + " " + esc(h.unit || "") + "</small>" : "") + '</div><button class="hbtn" data-h="' + h.id + '" style="' + (S ? "background:" + S[2] + ";border-color:" + S[2] + ";color:#fff" : "") + '">' + (S ? S[1] : "") + "</button></div>"; }).join("");
+        const draw = () => hs.map((h) => { const st = A.hs(h.id, d), S = st && A.HSTATUS[st]; return '<div class="item"><div class="ic">' + A.icon(h.icon || "•") + '</div><div class="tx"><b>' + esc(h.name) + "</b>" + (h.type === "num" ? "<small>" + (A.hv(h.id, d) ?? 0) + " / " + (h.target || 1) + " " + esc(h.unit || "") + "</small>" : "") + '</div><button class="hbtn" data-h="' + h.id + '" style="' + (S ? "background:" + S[2] + ";border-color:" + S[2] + ";color:#fff" : "") + '">' + (S ? S[1] : "") + "</button></div>"; }).join("");
         const w = A.sheet("Привычки · " + title, '<div class="list" id="qh">' + draw() + "</div>", { buttons: [{ label: "Готово", cls: "primary", onClick: () => A.refresh() }] });
         w.querySelector("#qh").addEventListener("click", (e) => { const b = e.target.closest("[data-h]"); if (!b) return; const h = A.byId("habits", b.dataset.h); if (h.type === "num") { A.edit.habitValue(h, d); return; } A.cycleHs(h, d); w.querySelector("#qh").innerHTML = draw(); });
         return;
@@ -107,7 +107,7 @@
 
   A.view("trackers", {
     root: true, title: "Трекеры",
-    actions(el) { el.innerHTML = '<button class="icon-btn" onclick="App.print(\'Трекер\')" aria-label="Печать">⎙</button>'; },
+    actions(el) { el.innerHTML = '<button class="icon-btn" onclick="App.print(\'Трекер\')" aria-label="Печать">{{i:printer}}</button>'; },
     render(el, r) {
       const k = r.params.k || "mood", y = +(r.params.y || new Date().getFullYear());
       const hid = r.params.h || "";
@@ -116,7 +116,7 @@
       let title = (TRACKERS.find((x) => x[0] === k) || [0, ""])[1], cell, legend;
       if (k === "habits") {
         const hs = A.col("habits").filter((x) => !x.archived);
-        h += '<div class="chips noprint" style="margin-bottom:10px"><button class="chip' + (!hid ? " on" : "") + '" data-a="h" data-v="">Все, % дня</button>' + hs.map((x) => '<button class="chip' + (x.id === hid ? " on" : "") + '" data-a="h" data-v="' + x.id + '">' + esc((x.icon || "") + " " + x.name) + "</button>").join("") + "</div>";
+        h += '<div class="chips noprint" style="margin-bottom:10px"><button class="chip' + (!hid ? " on" : "") + '" data-a="h" data-v="">Все, % дня</button>' + hs.map((x) => '<button class="chip' + (x.id === hid ? " on" : "") + '" data-a="h" data-v="' + x.id + '">' + A.icon(x.icon) + " " + esc(x.name) + "</button>").join("") + "</div>";
         if (hid) { const hb = A.byId("habits", hid); title = "Привычка: " + (hb ? hb.name : ""); cell = cellFor("habit", hid); legend = Object.values(A.HSTATUS).map((S) => [S[2], S[1] + " " + S[0]]); }
         else { cell = cellFor("habits"); legend = A.metricScale("habits").legend; }
       } else if (k === "weather") { cell = cellFor("weather"); legend = A.WEATHER.map((w) => [w[3], w[2] + " " + w[1]]); }

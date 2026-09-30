@@ -6,16 +6,16 @@
 
   /* ---------- справочники ---------- */
   A.CATS = [
-    ["work", "Работа", "💼", "#9C8FD0"],
-    ["sport", "Спорт", "🏋", "#7FAE8A"],
-    ["learn", "Развитие / обучение", "📖", "#6FA4C9"],
-    ["hobby", "Хобби / творчество", "🎨", "#E0A15E"],
-    ["family", "Семья / отношения", "👥", "#E58C9C"],
-    ["home", "Быт", "🏠", "#C4A77D"],
-    ["rest", "Восстановление", "🌿", "#8DBF9E"],
-    ["plan", "Планирование", "🎯", "#8E7CC3"],
-    ["sleep", "Сон", "🌙", "#7C83C9"],
-    ["food", "Еда", "🍽", "#E6B87A"],
+    ["work", "Работа", "{{i:briefcase}}", "#9C8FD0"],
+    ["sport", "Спорт", "{{i:dumbbell}}", "#7FAE8A"],
+    ["learn", "Развитие / обучение", "{{i:book-open}}", "#6FA4C9"],
+    ["hobby", "Хобби / творчество", "{{i:palette}}", "#E0A15E"],
+    ["family", "Семья / отношения", "{{i:users}}", "#E58C9C"],
+    ["home", "Быт", "{{i:house}}", "#C4A77D"],
+    ["rest", "Восстановление", "{{i:leaf}}", "#8DBF9E"],
+    ["plan", "Планирование", "{{i:target}}", "#8E7CC3"],
+    ["sleep", "Сон", "{{i:moon}}", "#7C83C9"],
+    ["food", "Еда", "{{i:utensils}}", "#E6B87A"],
     ["other", "Другое", "•", "#A9A3B5"]
   ];
   A.cat = (k) => { const c = A.CATS.find((x) => x[0] === k) || A.CATS[A.CATS.length - 1]; return { k: c[0], name: c[1], icon: c[2], color: c[3] }; };
@@ -27,12 +27,12 @@
   A.FEELINGS = ["радость", "спокойствие", "энергичность", "вдохновение", "уверенность", "усталость", "грусть", "раздражение", "злость", "страх", "тревога", "апатия"];
   A.STRESS_SRC = ["работа", "дом", "отношения", "деньги", "здоровье", "учёба", "люди", "другое"];
   A.WORKOUT_TYPES = [["strength", "Силовая"], ["gym", "Тренажёры"], ["cardio", "Кардио"], ["walk", "Ходьба"], ["stretch", "Растяжка"], ["yoga", "Йога"], ["home", "Домашняя"], ["dance", "Танцы"], ["run", "Бег"], ["other", "Другое"]];
-  A.MEALS = [["breakfast", "Завтрак"], ["lunch", "Обед"], ["dinner", "Ужин"], ["snack", "Перекус"]];
+  A.MEALS = [["breakfast", "Завтрак"], ["brunch", "Второй завтрак"], ["lunch", "Обед"], ["afternoon", "Полдник"], ["dinner", "Ужин"], ["snack", "Перекус"]];
   A.GOAL_LEVELS = [["10y", "10 лет"], ["3y", "3 года"], ["1y", "Год"], ["q", "Квартал"], ["m", "Месяц"], ["w", "Неделя"], ["d", "День"]];
   A.WEATHER = [
-    ["sun", "Солнечно", "☀", "#F4CD52"], ["part", "Переменная облачность", "⛅", "#F29A4A"], ["cloud", "Облачно", "☁", "#9A9A9A"],
-    ["rain", "Дождь", "🌧", "#3F6FB5"], ["storm", "Гроза", "⛈", "#8750B0"], ["snow", "Снег", "❄", "#8FD3E8"],
-    ["sleet", "Мокрый снег", "🌨", "#3E9FC9"], ["fog", "Туман", "🌫", "#58B8E0"], ["wind", "Ветер", "🌬", "#3FB5A0"]
+    ["sun", "Солнечно", "{{i:sun}}", "#F4CD52"], ["part", "Переменная облачность", "{{i:cloud-sun}}", "#F29A4A"], ["cloud", "Облачно", "{{i:cloud}}", "#9A9A9A"],
+    ["rain", "Дождь", "{{i:cloud-rain}}", "#3F6FB5"], ["storm", "Гроза", "{{i:cloud-lightning}}", "#8750B0"], ["snow", "Снег", "{{i:snowflake}}", "#8FD3E8"],
+    ["sleet", "Мокрый снег", "{{i:cloud-snow}}", "#3E9FC9"], ["fog", "Туман", "{{i:cloud-fog}}", "#58B8E0"], ["wind", "Ветер", "{{i:wind}}", "#3FB5A0"]
   ];
   A.weather = (k) => { const w = A.WEATHER.find((x) => x[0] === k); return w ? { k: w[0], name: w[1], icon: w[2], color: w[3] } : null; };
   A.HSTATUS = { done: ["Выполнено", "✓", "#6BAF6B"], part: ["Частично", "½", "#F2CF5B"], skip: ["Пропуск", "×", "#E07B6A"], none: ["Не планировалось", "–", "#E4E0EA"] };
@@ -67,12 +67,12 @@
       },
       days: {},
       habits: [
-        H("Тренировка", "🏋", "sport", { freq: "weekdays", days: [1, 3, 6], min: "10 минут зарядки" }),
-        H("2 л воды", "💧", "health"), H("Питание (КБЖУ)", "🍎", "health"), H("Чтение", "📖", "learn", { min: "5 страниц" }),
-        H("Пианино", "🎹", "learn", { min: "10 минут" }), H("Таро", "🃏", "learn", { freq: "weekdays", days: [2, 4, 6] }),
-        H("Бацзы", "☯", "learn", { freq: "weekdays", days: [1, 5] }), H("Кету", "🌿", "learn", { freq: "weekdays", days: [3, 7] }),
-        H("Уборка", "🏠", "home", { min: "15 минут" }), H("Забота о себе", "❤", "rest"), H("Общение", "👥", "family"),
-        H("Финансы", "💰", "money", { min: "записать расходы" }), H("Сон 7+ часов", "🌙", "health"), H("Утренний ритуал", "☀", "rest")
+        H("Тренировка", "{{i:dumbbell}}", "sport", { freq: "weekdays", days: [1, 3, 6], min: "10 минут зарядки" }),
+        H("2 л воды", "{{i:droplet}}", "health"), H("Питание (КБЖУ)", "{{i:apple}}", "health"), H("Чтение", "{{i:book-open}}", "learn", { min: "5 страниц" }),
+        H("Пианино", "{{i:piano}}", "learn", { min: "10 минут" }), H("Таро", "{{i:wand-sparkles}}", "learn", { freq: "weekdays", days: [2, 4, 6] }),
+        H("Бацзы", "{{i:orbit}}", "learn", { freq: "weekdays", days: [1, 5] }), H("Кету", "{{i:leaf}}", "learn", { freq: "weekdays", days: [3, 7] }),
+        H("Уборка", "{{i:house}}", "home", { min: "15 минут" }), H("Забота о себе", "{{i:heart}}", "rest"), H("Общение", "{{i:users}}", "family"),
+        H("Финансы", "{{i:wallet}}", "money", { min: "записать расходы" }), H("Сон 7+ часов", "{{i:moon}}", "health"), H("Утренний ритуал", "{{i:sun}}", "rest")
       ],
       hlog: {},
       tasks: [], ideas: [],
@@ -138,6 +138,14 @@
     for (const k of Object.keys(def.profile.notif)) if (db.profile.notif[k] == null) db.profile.notif[k] = true;
     for (const k of Object.keys(def.profile.weights)) if (db.profile.weights[k] == null) db.profile.weights[k] = def.profile.weights[k];
     for (const k of Object.keys(def.profile.body)) if (db.profile.body[k] === undefined) db.profile.body[k] = def.profile.body[k];
+    if (!db.__icons) {
+      const M = { "🏋": "dumbbell", "💧": "droplet", "🍎": "apple", "📖": "book-open", "🎹": "piano", "🃏": "wand-sparkles", "☯": "orbit", "🌿": "leaf", "🏠": "house", "❤": "heart", "👥": "users", "💰": "wallet", "🌙": "moon", "☀": "sun", "✨": "sparkles", "🎨": "palette", "💳": "credit-card", "💵": "banknote", "🏦": "landmark", "🪙": "coins" };
+      const fix = (v) => { const k = String(v || "").replace(/\ufe0f/g, ""); return M[k] ? "{{i:" + M[k] + "}}" : v; };
+      (db.habits || []).forEach((h) => (h.icon = fix(h.icon)));
+      (db.hobbies || []).forEach((h) => (h.icon = fix(h.icon)));
+      (db.accounts || []).forEach((a) => { if (a.emoji) a.emoji = fix(a.emoji); });
+      db.__icons = 1;
+    }
     if (!db.profile.cards.includes("dash")) db.profile.cards.unshift("dash");
     if (db.profile.cards.includes("tasks") && !db.profile.hidden.includes("tasks") && !db.profile.__t5) { db.profile.hidden.push("tasks"); db.profile.__t5 = 1; }
     ["weight", "tasks5", "facts", "esoteric"].forEach((c) => { if (!db.profile.cards.includes(c)) db.profile.cards.splice(2, 0, c); });
@@ -340,12 +348,13 @@
     if (n.payments !== false) A.col("recurring").forEach((r) => {
       if (!r.active || !r.next) return;
       const nd = +r.notifyDays || 0, when = addDays(r.next, -nd);
-      push({ id: "p:" + r.id + ":" + r.next, route: "money/rec", title: (r.kind === "in" ? "💰 Поступление: " : "💳 Платёж: ") + r.name, text: A.money(r.amt) + (nd ? " — через " + nd + " " + A.plural(nd, "день", "дня", "дней") + (r.auto ? " (запишется автоматически)" : "") : " — срок сегодня"), type: "once", date: when, time: "10:00" });
+      push({ id: "p:" + r.id + ":" + r.next, route: "money/rec", title: (r.kind === "in" ? "{{i:wallet}} Поступление: " : "{{i:credit-card}} Платёж: ") + r.name, text: A.money(r.amt) + (nd ? " — через " + nd + " " + A.plural(nd, "день", "дня", "дней") + (r.auto ? " (запишется автоматически)" : "") : " — срок сегодня"), type: "once", date: when, time: "10:00" });
     });
     A.col("tasks").forEach((t) => {
       if (t.done || !t.date || !t.time || !t.remind) return;
       push({ id: "t:" + t.id, route: "tasks", title: "✓ " + t.title, text: t.minVer ? "Минимальная версия: " + t.minVer : "Задача на " + t.time, type: "once", date: t.date, time: t.time });
     });
+    out.forEach((r) => { r.title = A.stripIcons(r.title); r.text = A.stripIcons(r.text); });
     try { A.native.scheduleReminders(JSON.stringify(out)); } catch (e) { console.error(e); }
   };
 
@@ -487,27 +496,27 @@
   A.achievements = () => {
     const t = today(), w7 = A.lastDays(7), out = [];
     const water = A.sum(w7.map((d) => (A.dayGet(d) || {}).water || 0));
-    if (water) out.push("💧 За 7 дней ты выпила " + (water / 1000).toFixed(1) + " л воды");
+    if (water) out.push("{{i:droplet}} За 7 дней ты выпила " + (water / 1000).toFixed(1) + " л воды");
     const steps = A.sum(w7.map((d) => (A.dayGet(d) || {}).steps || 0));
-    if (steps) out.push("👟 За неделю — " + A.fmtN(steps) + " шагов, это примерно " + A.fmtN(steps * 0.0007, 1) + " км");
+    if (steps) out.push("{{i:footprints}} За неделю — " + A.fmtN(steps) + " шагов, это примерно " + A.fmtN(steps * 0.0007, 1) + " км");
     const done = A.col("tasks").filter((x) => x.done && (x.doneAt || "").slice(0, 10) >= w7[0]).length;
-    if (done) out.push("✅ Выполнено задач за неделю: " + done);
-    A.col("habits").filter((h) => !h.archived).forEach((h) => { const s = A.habitStreak(h); if (s >= 3) out.push("🔥 Серия «" + h.name + "» — " + s + " " + A.plural(s, "день", "дня", "дней") + " подряд"); });
+    if (done) out.push("{{i:circle-check}} Выполнено задач за неделю: " + done);
+    A.col("habits").filter((h) => !h.archived).forEach((h) => { const s = A.habitStreak(h); if (s >= 3) out.push("{{i:flame}} Серия «" + h.name + "» — " + s + " " + A.plural(s, "день", "дня", "дней") + " подряд"); });
     const pages = A.sum(A.col("rsess").map((x) => +x.pages || 0));
-    if (pages) out.push("📖 Всего прочитано " + A.fmtN(pages) + " страниц");
+    if (pages) out.push("{{i:book-open}} Всего прочитано " + A.fmtN(pages) + " страниц");
     const wk = A.col("workouts").length;
-    if (wk) out.push("🏋 Тренировок в журнале: " + wk);
+    if (wk) out.push("{{i:dumbbell}} Тренировок в журнале: " + wk);
     const pm = A.sum(A.col("psess").map((x) => x.min || 0));
-    if (pm) out.push("🎹 На пианино уже " + A.fmtDur(pm) + " практики");
+    if (pm) out.push("{{i:piano}} На пианино уже " + A.fmtDur(pm) + " практики");
     const lw = A.weightTrend(30);
-    if (lw.k != null && lw.pts.length > 2) { const ch = lw.pts[lw.pts.length - 1].v - lw.pts[0].v; out.push("⚖ За месяц вес изменился на " + (ch > 0 ? "+" : "") + ch.toFixed(1) + " кг"); }
+    if (lw.k != null && lw.pts.length > 2) { const ch = lw.pts[lw.pts.length - 1].v - lw.pts[0].v; out.push("{{i:scale}} За месяц вес изменился на " + (ch > 0 ? "+" : "") + ch.toFixed(1) + " кг"); }
     const mains = A.lastDays(30).filter((d) => (A.dayGet(d) || {}).mainDone).length;
-    if (mains) out.push("🎯 Главное дело дня выполнено " + mains + " раз за 30 дней");
+    if (mains) out.push("{{i:target}} Главное дело дня выполнено " + mains + " раз за 30 дней");
     const cooked = A.col("cookLog").length;
-    if (cooked) out.push("🍳 Приготовлено блюд по рецептам: " + cooked);
+    if (cooked) out.push("{{i:chef-hat}} Приготовлено блюд по рецептам: " + cooked);
     const tarot = Object.keys(A.db().tarot.daily).length;
-    if (tarot) out.push("🃏 Карт дня вытянуто: " + tarot);
-    if (!out.length) out.push("🌱 Каждая отметка здесь — маленький шаг. Первые записи появятся уже сегодня.", "💜 Движение важнее, чем идеальность.");
+    if (tarot) out.push("{{i:wand-sparkles}} Карт дня вытянуто: " + tarot);
+    if (!out.length) out.push("{{i:sprout}} Каждая отметка здесь — маленький шаг. Первые записи появятся уже сегодня.", "{{i:heart}} Движение важнее, чем идеальность.");
     return out;
   };
 

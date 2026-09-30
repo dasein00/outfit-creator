@@ -51,7 +51,7 @@
       { k: "title", label: "Заголовок", req: true, full: true, ph: "Глагол + объект + объём + срок" },
       { k: "desc", label: "Подробное описание", type: "textarea", rows: 3 },
       { k: "projectId", label: "Проект", type: "select", opts: () => [["", "— без проекта —"]].concat(A.col("projects").filter((p) => !p.archived || p.id === t.projectId).map((p) => [p.id, p.name])) },
-      { k: "prio", label: "Приоритет", type: "chips", numeric: true, opts: [[1, "🔴 Высокий"], [2, "🟠 Средний"], [3, "🟢 Низкий"]] },
+      { k: "prio", label: "Приоритет", type: "chips", numeric: true, opts: [[1, "{{i:dot-high}} Высокий"], [2, "{{i:dot-mid}} Средний"], [3, "{{i:dot-low}} Низкий"]] },
       { k: "date", label: "Срок: дата", type: "date" }, { k: "time", label: "Срок: время", type: "time" },
       { k: "repeat", label: "Повторение", type: "select", opts: [["none", "Один раз"], ["daily", "Ежедневно"], ["weekly", "Еженедельно"], ["monthly", "Ежемесячно"]] },
       { k: "remind", label: "Напоминание", type: "check", text: "Уведомить в срок" },
@@ -102,12 +102,12 @@
 
   A.edit.habit = (h) => {
     const isNew = !h;
-    h = h || { name: "", icon: "✨", cat: "other", freq: "daily", days: [1, 2, 3, 4, 5, 6, 7], perWeek: 3, min: "", time: "", remind: false, start: today(), end: "", note: "", archived: false };
+    h = h || { name: "", icon: "{{i:sparkles}}", cat: "other", freq: "daily", days: [1, 2, 3, 4, 5, 6, 7], perWeek: 3, min: "", time: "", remind: false, start: today(), end: "", note: "", archived: false };
     const fields = [
-      { k: "icon", label: "Значок", ph: "✨" }, { k: "name", label: "Название", req: true },
+      { k: "icon", label: "Иконка", type: "icon" }, { k: "name", label: "Название", req: true },
       { k: "cat", label: "Категория", type: "select", opts: [["health", "Здоровье"], ["sport", "Спорт"], ["learn", "Обучение"], ["home", "Дом"], ["money", "Финансы"], ["family", "Отношения"], ["rest", "Восстановление"], ["other", "Другое"]] },
       { k: "freq", label: "Периодичность", type: "select", opts: [["daily", "Ежедневно"], ["weekdays", "По дням недели"], ["xweek", "Еженедельно: N раз в неделю"]] },
-      { k: "type", label: "Отслеживание", type: "chips", opts: [["check", "✓ галочка"], ["num", "🔢 число"]] },
+      { k: "type", label: "Отслеживание", type: "chips", opts: [["check", "✓ галочка"], ["num", "{{i:hash}} число"]] },
       { k: "target", label: "Цель в день (число)", type: "number", step: "any", ph: "1, 10, 2" },
       { k: "unit", label: "Единица", ph: "раз, км, л, мин, стр." },
       { k: "days", label: "Дни недели", type: "multi", opts: DAYS_OPTS, numeric: true },
@@ -143,7 +143,7 @@
   };
 
   /* ---------- календарь ---------- */
-  const evCard = (e, d) => { const c = A.cat(e.cat); return '<div class="ev" style="--c:' + (e.color || c.color) + '" data-a="event" data-id="' + e.id + '" data-d="' + d + '"><b>' + esc(c.icon + " " + e.title) + "</b><small>" + esc((e.start || "") + (e.end ? "–" + e.end : "") + (e.location ? " · 📍 " + e.location : "")) + (e.must ? " · обязательно" : " · желательно") + (e.repeat !== "none" ? " · ↻" : "") + "</small></div>"; };
+  const evCard = (e, d) => { const c = A.cat(e.cat); return '<div class="ev" style="--c:' + (e.color || c.color) + '" data-a="event" data-id="' + e.id + '" data-d="' + d + '"><b>' + A.icon(c.icon) + " " + esc(e.title) + "</b><small>" + esc((e.start || "") + (e.end ? "–" + e.end : "") + (e.location ? " · {{i:map-pin}} " + e.location : "")) + (e.must ? " · обязательно" : " · желательно") + (e.repeat !== "none" ? " · ↻" : "") + "</small></div>"; };
 
   function dayView(d) {
     const ev = A.eventsOn(d);
@@ -176,7 +176,7 @@
     h += '<div class="card"><div class="row">' + A.ring(plan ? done / plan : 0, plan ? Math.round((done / plan) * 100) + "%" : "—", "выполнено") + '<div class="grow"><b>Неделя ' + esc(wk.split("-W")[1]) + '</b><div class="small muted">задачи и привычки: ' + A.fmtN(done, 1) + " из " + plan + "</div>" +
       (unfinished.length ? '<button class="btn sm" style="margin-top:6px" data-a="moveUndone">Перенести незавершённое на сегодня (' + unfinished.length + ")</button>" : "") + "</div></div></div>";
 
-    h += '<div class="card peach"><h3>⭐ Главное дело недели</h3><input data-c="wk" data-k="main" value="' + esc(W.main) + '" placeholder="Одно главное дело">' +
+    h += '<div class="card peach"><h3>{{i:star}} Главное дело недели</h3><input data-c="wk" data-k="main" value="' + esc(W.main) + '" placeholder="Одно главное дело">' +
       '<div class="form" style="margin-top:8px"><div class="fld full"><label>2–3 конкретных времени для него</label><input data-c="wk" data-k="times" value="' + esc(W.times || "") + '" placeholder="Вт 17:00, Чт 17:00, Сб 17:00"></div>' +
       '<div class="fld full"><label>Минимальная версия</label><input data-c="wk" data-k="minVer" value="' + esc(W.minVer || "") + '"></div>' +
       '<div class="fld full"><label>Что убираю заранее (одно необязательное дело)</label><input data-c="wk" data-k="remove" value="' + esc(W.remove || "") + '"></div>' +
@@ -196,7 +196,7 @@
       h += '<tr><td class="t">' + s + "</td>";
       days.forEach((x) => {
         const es = A.eventsOn(x).filter((e) => e.start === s);
-        h += "<td>" + es.map((e) => { const c = A.cat(e.cat); return '<div class="wc" style="--c:' + c.color + '" data-a="event" data-id="' + e.id + '" data-d="' + x + '">' + esc(c.icon + " " + e.title) + "</div>"; }).join("") + "</td>";
+        h += "<td>" + es.map((e) => { const c = A.cat(e.cat); return '<div class="wc" style="--c:' + c.color + '" data-a="event" data-id="' + e.id + '" data-d="' + x + '">' + A.icon(c.icon) + " " + esc(e.title) + "</div>"; }).join("") + "</td>";
       });
       h += "</tr>";
     });
@@ -208,7 +208,7 @@
     // привычки недели
     const hs = A.col("habits").filter((hb) => !hb.archived);
     h += '<div class="card"><h3>Привычки недели</h3><div class="matrix-wrap"><table class="matrix wide"><thead><tr><th></th>' + days.map((x, i) => "<th>" + DOW[i] + "</th>").join("") + "</tr></thead><tbody>" +
-      hs.map((hb) => '<tr><th class="rowh">' + esc((hb.icon || "") + " " + hb.name) + "</th>" + days.map((x) => { const st = A.hs(hb.id, x), S = st && A.HSTATUS[st]; const pl = A.habitPlanned(hb, x); return '<td data-a="whabit" data-id="' + hb.id + '" data-d="' + x + '" style="' + (S ? "background:" + S[2] + ";color:#fff" : pl ? "" : "opacity:.35") + '">' + (S ? S[1] : "") + "</td>"; }).join("") + "</tr>").join("") + "</tbody></table></div></div>";
+      hs.map((hb) => '<tr><th class="rowh">' + A.icon(hb.icon) + " " + esc(hb.name) + "</th>" + days.map((x) => { const st = A.hs(hb.id, x), S = st && A.HSTATUS[st]; const pl = A.habitPlanned(hb, x); return '<td data-a="whabit" data-id="' + hb.id + '" data-d="' + x + '" style="' + (S ? "background:" + S[2] + ";color:#fff" : pl ? "" : "opacity:.35") + '">' + (S ? S[1] : "") + "</td>"; }).join("") + "</tr>").join("") + "</tbody></table></div></div>";
 
     h += '<div class="card tint"><h3>Недельная сверка</h3><div class="form">' +
       [["q1", "Что я выбрала?"], ["q2", "Что я сделала?"], ["q3", "Что изменю?"], ["q4", "Мои действия на этой неделе были похожи на жизнь, которую я хочу?"]].map(([k, l]) => '<div class="fld full"><label>' + l + '</label><textarea rows="2" data-c="wk" data-k="' + k + '">' + esc(W[k] || "") + "</textarea></div>").join("") + "</div></div>";
@@ -306,7 +306,7 @@
   });
   A.view("tasks", {
     title: "Задачи", tab: "calendar",
-    actions(el) { el.innerHTML = '<button class="icon-btn" onclick="App.go(\'projects\')" title="Проекты" aria-label="Проекты">📁</button><button class="icon-btn" onclick="App.go(\'ideas\')" title="Контейнер идей" aria-label="Идеи">💡</button>'; },
+    actions(el) { el.innerHTML = '<button class="icon-btn" onclick="App.go(\'projects\')" title="Проекты" aria-label="Проекты">{{i:folder}}</button><button class="icon-btn" onclick="App.go(\'ideas\')" title="Контейнер идей" aria-label="Идеи">{{i:lightbulb}}</button>'; },
     render(el, r) {
       const f = r.params.f || "today", t = today(), by = r.params.s || A.db().profile.taskSort || "date", pid = r.params.p || "";
       let list = A.col("tasks").filter((x) => f === "archive" ? x.archived : !x.archived);
@@ -326,7 +326,7 @@
         h += '<div class="card"><div class="list">';
         list.forEach((x) => { if ((x.date || "") !== last) { last = x.date || ""; h += '<div class="small muted" style="margin-top:8px">' + (x.date ? fmtDate(x.date, { dow: true }) : "Без даты") + "</div>"; } h += A.taskRow(x); });
         h += (list.length ? "" : A.empty("Нет задач")) + "</div></div>";
-      } else h += '<div class="card"><div class="list">' + (list.length ? list.map((x) => A.taskRow(x)).join("") : A.empty(f === "today" ? "На сегодня всё. Можно отдыхать 💜" : "Пусто")) + "</div></div>";
+      } else h += '<div class="card"><div class="list">' + (list.length ? list.map((x) => A.taskRow(x)).join("") : A.empty(f === "today" ? "На сегодня всё. Можно отдыхать {{i:heart}}" : "Пусто")) + "</div></div>";
       if (f === "done") { const old = A.col("tasks").filter((x) => x.done && !x.archived && (x.doneAt || "").slice(0, 10) < addDays(t, -7)).length; if (old) h += '<button class="btn block" data-a="archOld">Архивировать выполненные старше 7 дней (' + old + ")</button>"; }
       h += '<button class="fab" data-a="full" aria-label="Подробная задача">+</button>';
       return h;
@@ -349,12 +349,12 @@
   /* ---------- проекты ---------- */
   A.view("projects", {
     title: "Проекты", tab: "calendar",
-    actions(el) { el.innerHTML = '<button class="icon-btn" onclick="App.edit.project()" aria-label="Новый проект">＋</button>'; },
+    actions(el) { el.innerHTML = '<button class="icon-btn" onclick="App.edit.project()" aria-label="Новый проект">{{i:plus}}</button>'; },
     render(el, r) {
       const showArch = r.params.a === "1";
       const ps = A.col("projects").filter((p) => !!p.archived === showArch).sort((a, b) => a.order - b.order);
       let h = A.seg([["0", "Активные"], ["1", "Архив"]], showArch ? "1" : "0", "arch");
-      h += '<div class="card"><div class="list">' + (ps.length ? ps.map((p, i) => { const ts = A.col("tasks").filter((t) => t.projectId === p.id && !t.archived); const d = ts.filter((t) => t.done).length; return '<div class="item"><span class="dot" style="background:' + p.color + ';width:14px;height:14px"></span><div class="tx tap" data-a="open" data-id="' + p.id + '"><b>' + esc(p.name) + "</b><small>задач: " + (ts.length - d) + " открыто · " + d + " готово</small>" + A.bar(ts.length ? d / ts.length : 0, p.color) + '</div><button class="icon-btn" data-a="up" data-i="' + i + '" aria-label="Выше">↑</button><button class="icon-btn" data-a="edit" data-id="' + p.id + '" aria-label="Изменить">✎</button></div>'; }).join("") : A.empty(showArch ? "Архив пуст" : "Проектов нет")) + "</div></div>";
+      h += '<div class="card"><div class="list">' + (ps.length ? ps.map((p, i) => { const ts = A.col("tasks").filter((t) => t.projectId === p.id && !t.archived); const d = ts.filter((t) => t.done).length; return '<div class="item"><span class="dot" style="background:' + p.color + ';width:14px;height:14px"></span><div class="tx tap" data-a="open" data-id="' + p.id + '"><b>' + esc(p.name) + "</b><small>задач: " + (ts.length - d) + " открыто · " + d + " готово</small>" + A.bar(ts.length ? d / ts.length : 0, p.color) + '</div><button class="icon-btn" data-a="up" data-i="' + i + '" aria-label="Выше">↑</button><button class="icon-btn" data-a="edit" data-id="' + p.id + '" aria-label="Изменить">{{i:pencil}}</button></div>'; }).join("") : A.empty(showArch ? "Архив пуст" : "Проектов нет")) + "</div></div>";
       h += '<p class="small muted">Проекты — это папки для задач. Правило одного проекта: один главный проект на 30–90 дней, новые идеи — в список.</p>';
       return h;
     },
@@ -375,7 +375,7 @@
       const st = { new: "Новая", exp: "Эксперимент", grow: "Развивать", arch: "Архив", closed: "Закрыта" };
       const ideas = A.col("ideas").slice().reverse();
       return '<div class="card tint"><p class="small">Новые идеи — только в список. Для каждой: записать → что именно интересно → минимальный эксперимент на 1–3 дня → результат → развивать, архивировать или закрыть.</p><div class="inline-add"><input id="qi" placeholder="Идея"><button class="btn primary" data-a="add">+</button></div></div>' +
-        '<div class="card"><div class="list">' + (ideas.length ? ideas.map((i) => '<div class="item" data-a="edit" data-id="' + i.id + '"><div class="ic">💡</div><div class="tx"><b>' + esc(i.text) + "</b><small>" + esc(st[i.status || "new"]) + (i.exp ? " · эксперимент: " + esc(i.exp) : "") + "</small></div></div>").join("") : A.empty("Идей пока нет")) + "</div></div>";
+        '<div class="card"><div class="list">' + (ideas.length ? ideas.map((i) => '<div class="item" data-a="edit" data-id="' + i.id + '"><div class="ic">{{i:lightbulb}}</div><div class="tx"><b>' + esc(i.text) + "</b><small>" + esc(st[i.status || "new"]) + (i.exp ? " · эксперимент: " + esc(i.exp) : "") + "</small></div></div>").join("") : A.empty("Идей пока нет")) + "</div></div>";
     },
     bind(el) {
       A.bind(el, {
@@ -392,7 +392,7 @@
   /* ---------- привычки ---------- */
   A.view("habits", {
     title: "Привычки",
-    actions(el) { el.innerHTML = '<button class="icon-btn" onclick="App.edit.habit()" aria-label="Добавить">＋</button>'; },
+    actions(el) { el.innerHTML = '<button class="icon-btn" onclick="App.edit.habit()" aria-label="Добавить">{{i:plus}}</button>'; },
     render(el, r) {
       const t = today(), mk = r.params.m || t.slice(0, 7);
       const [y, m] = mk.split("-").map(Number);
@@ -404,11 +404,11 @@
         '<div class="mlegend">' + Object.values(A.HSTATUS).map((S) => '<div><i style="background:' + S[2] + '"></i>' + S[1] + " " + S[0] + "</div>").join("") + "</div></div>";
       const ws = A.weekStart(t), wd = A.range(ws, addDays(ws, 6));
       h += '<div class="card"><h3>Неделя: привычка × день</h3><div class="matrix-wrap"><table class="matrix wide"><thead><tr><th></th>' + wd.map((x, i) => '<th class="' + (x === t ? "today" : "") + '">' + DOW[i] + "</th>").join("") + '<th>%</th></tr></thead><tbody>' +
-        hs.map((x) => { const st = A.habitStats(x, ws, addDays(ws, 6) > t ? t : addDays(ws, 6)); return '<tr><th class="rowh"><span style="display:inline-block;max-width:118px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle">' + esc((x.icon || "") + " " + x.name) + "</span></th>" + wd.map((d) => { const s2 = A.hs(x.id, d), S = s2 && A.HSTATUS[s2], pl = A.habitPlanned(x, d), nv = x.type === "num" ? A.hv(x.id, d) : null; return '<td data-a="gcell" data-id="' + x.id + '" data-d="' + d + '" style="' + (S ? "background:" + S[2] + ";color:#fff;" : pl ? "" : "opacity:.35;") + '">' + (nv != null ? A.fmtN(nv, 1) : S ? S[1] : "") + "</td>"; }).join("") + '<td style="background:transparent;font-weight:700">' + (st.pct == null ? "" : Math.round(st.pct * 100)) + "</td></tr>"; }).join("") + "</tbody></table></div></div>";
-      h += '<div class="card"><h3>План / факт за месяц</h3><div class="list">' + hs.map((x) => { const s = A.habitStats(x, from, to > t ? t : to); return '<div class="item" data-a="detail" data-id="' + x.id + '"><div class="ic">' + esc(x.icon || "•") + '</div><div class="tx"><b>' + esc(x.name) + "</b><small>" + (x.type === "num" ? "цель " + (x.target || 1) + " " + esc(x.unit || "") + " · " : "") + (x.freq === "daily" ? "ежедневно" : x.freq === "weekdays" ? (x.days || []).map((k) => DOW[k - 1]).join(", ") : (x.perWeek || 3) + " раз в неделю") + " · серия " + A.habitStreak(x) + " · факт " + A.fmtN(s.done, 1) + "/" + s.plan + "</small>" + A.bar(s.pct || 0, "var(--sage)") + '</div><b class="num">' + (s.pct == null ? "—" : Math.round(s.pct * 100) + "%") + "</b></div>"; }).join("") + "</div></div>";
+        hs.map((x) => { const st = A.habitStats(x, ws, addDays(ws, 6) > t ? t : addDays(ws, 6)); return '<tr><th class="rowh"><span style="display:inline-block;max-width:118px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle">' + A.icon(x.icon) + " " + esc(x.name) + "</span></th>" + wd.map((d) => { const s2 = A.hs(x.id, d), S = s2 && A.HSTATUS[s2], pl = A.habitPlanned(x, d), nv = x.type === "num" ? A.hv(x.id, d) : null; return '<td data-a="gcell" data-id="' + x.id + '" data-d="' + d + '" style="' + (S ? "background:" + S[2] + ";color:#fff;" : pl ? "" : "opacity:.35;") + '">' + (nv != null ? A.fmtN(nv, 1) : S ? S[1] : "") + "</td>"; }).join("") + '<td style="background:transparent;font-weight:700">' + (st.pct == null ? "" : Math.round(st.pct * 100)) + "</td></tr>"; }).join("") + "</tbody></table></div></div>";
+      h += '<div class="card"><h3>План / факт за месяц</h3><div class="list">' + hs.map((x) => { const s = A.habitStats(x, from, to > t ? t : to); return '<div class="item" data-a="detail" data-id="' + x.id + '"><div class="ic">' + A.icon(x.icon || "•") + '</div><div class="tx"><b>' + esc(x.name) + "</b><small>" + (x.type === "num" ? "цель " + (x.target || 1) + " " + esc(x.unit || "") + " · " : "") + (x.freq === "daily" ? "ежедневно" : x.freq === "weekdays" ? (x.days || []).map((k) => DOW[k - 1]).join(", ") : (x.perWeek || 3) + " раз в неделю") + " · серия " + A.habitStreak(x) + " · факт " + A.fmtN(s.done, 1) + "/" + s.plan + "</small>" + A.bar(s.pct || 0, "var(--sage)") + '</div><b class="num">' + (s.pct == null ? "—" : Math.round(s.pct * 100) + "%") + "</b></div>"; }).join("") + "</div></div>";
       if (p.points) {
         const pts = Object.values(A.db().hlog).reduce((s, v) => s + (v === "done" ? 2 : v === "part" ? 1 : 0), 0) - A.sum(A.col("rewards").filter((x) => x.claimed).map((x) => +x.cost || 0));
-        h += '<div class="card peach"><h3>🎁 Баллы и награды<span class="sp"></span><b>' + pts + ' б.</b></h3><p class="small muted">Выполнено = 2 балла, частично = 1. Пропуски баллы не отнимают.</p><div class="list">' + A.col("rewards").map((rw) => '<div class="item"><div class="tx"><b>' + esc(rw.name) + "</b><small>" + rw.cost + " б." + (rw.claimed ? " · получена " + fmtShort(rw.claimed) : "") + "</small></div>" + (rw.claimed ? "" : '<button class="btn sm" data-a="claim" data-id="' + rw.id + '"' + (pts < rw.cost ? " disabled" : "") + ">Получить</button>") + "</div>").join("") + '</div><button class="btn sm" data-a="addReward">+ награда</button></div>';
+        h += '<div class="card peach"><h3>{{i:gift}} Баллы и награды<span class="sp"></span><b>' + pts + ' б.</b></h3><p class="small muted">Выполнено = 2 балла, частично = 1. Пропуски баллы не отнимают.</p><div class="list">' + A.col("rewards").map((rw) => '<div class="item"><div class="tx"><b>' + esc(rw.name) + "</b><small>" + rw.cost + " б." + (rw.claimed ? " · получена " + fmtShort(rw.claimed) : "") + "</small></div>" + (rw.claimed ? "" : '<button class="btn sm" data-a="claim" data-id="' + rw.id + '"' + (pts < rw.cost ? " disabled" : "") + ">Получить</button>") + "</div>").join("") + '</div><button class="btn sm" data-a="addReward">+ награда</button></div>';
       }
       const arch = A.col("habits").filter((x) => x.archived);
       if (arch.length) h += '<div class="card"><h3>Архив</h3>' + arch.map((x) => '<div class="item" data-a="edit" data-id="' + x.id + '"><div class="tx"><b>' + esc(x.name) + "</b></div></div>").join("") + "</div>";
@@ -430,7 +430,7 @@
         },
         edit(b) { A.edit.habit(A.byId("habits", b.dataset.id)); },
         addReward() { A.formSheet("Награда", [{ k: "name", label: "Награда", req: true, full: true }, { k: "cost", label: "Стоимость в баллах", type: "number" }], {}, (o) => { A.upsert("rewards", o); A.refresh(); }); },
-        claim(b) { const rw = A.byId("rewards", b.dataset.id); rw.claimed = today(); A.save(); A.toast("Ты заслужила 💜"); A.refresh(); }
+        claim(b) { const rw = A.byId("rewards", b.dataset.id); rw.claimed = today(); A.save(); A.toast("Ты заслужила {{i:heart}}"); A.refresh(); }
       });
     }
   });
@@ -438,14 +438,14 @@
   /* ---------- напоминания ---------- */
   A.view("reminders", {
     title: "Напоминания",
-    actions(el) { el.innerHTML = '<button class="icon-btn" onclick="App.edit.reminder()" aria-label="Добавить">＋</button>'; },
+    actions(el) { el.innerHTML = '<button class="icon-btn" onclick="App.edit.reminder()" aria-label="Добавить">{{i:plus}}</button>'; },
     render() {
       const types = { once: "разово", daily: "ежедневно", weekdays: "по дням", weekly: "еженедельно", monthly: "ежемесячно" };
       const rs = A.col("reminders");
       let h = "";
       if (A.native && !A.native.notificationsAllowed()) h += '<div class="card peach row"><div class="grow small">Уведомления выключены в системе.</div><button class="btn sm primary" data-a="perm">Разрешить</button></div>';
       if (!A.native) h += '<div class="warn" style="margin-bottom:12px">Системные уведомления работают в Android-приложении. Здесь напоминания видны на экране «Сегодня».</div>';
-      h += '<div class="card"><div class="list">' + (rs.length ? rs.map((r) => '<div class="item"><div class="ic">🔔</div><div class="tx" data-a="edit" data-id="' + r.id + '"><b>' + esc(r.title) + "</b><small>" + esc(r.time + " · " + types[r.type] + (r.type === "once" ? " " + fmtShort(r.date || today()) : "") + (r.type === "weekdays" || r.type === "weekly" ? " " + (r.days || []).map((k) => DOW[k - 1]).join(",") : "") + (r.type === "monthly" ? " " + r.dom + " числа" : "")) + '</small></div><label class="switch"><input type="checkbox" data-c="toggle" data-id="' + r.id + '"' + (r.on ? " checked" : "") + "><span></span></label></div>").join("") : A.empty("Напоминаний нет")) + "</div></div>";
+      h += '<div class="card"><div class="list">' + (rs.length ? rs.map((r) => '<div class="item"><div class="ic">{{i:bell}}</div><div class="tx" data-a="edit" data-id="' + r.id + '"><b>' + esc(r.title) + "</b><small>" + esc(r.time + " · " + types[r.type] + (r.type === "once" ? " " + fmtShort(r.date || today()) : "") + (r.type === "weekdays" || r.type === "weekly" ? " " + (r.days || []).map((k) => DOW[k - 1]).join(",") : "") + (r.type === "monthly" ? " " + r.dom + " числа" : "")) + '</small></div><label class="switch"><input type="checkbox" data-c="toggle" data-id="' + r.id + '"' + (r.on ? " checked" : "") + "><span></span></label></div>").join("") : A.empty("Напоминаний нет")) + "</div></div>";
       const t0 = today(), dueToday = rs.filter((r) => r.on && A.reminderOn(r, t0));
       if (dueToday.length) h += '<div class="card"><h3>Сегодня</h3>' + dueToday.map((r) => { const done = A.col("remLog").some((x) => x.rid === r.id && x.date === t0); return '<div class="item' + (done ? " done" : "") + '"><button class="check' + (done ? " on" : "") + '" data-a="rdone" data-id="' + r.id + '">' + (done ? "✓" : "") + '</button><div class="tx"><b>' + esc(r.title) + "</b><small>" + esc(r.time) + "</small></div></div>"; }).join("") + "</div>";
       const hist = A.col("remLog").slice().reverse().slice(0, 30);
@@ -460,7 +460,7 @@
         toggle(b) { A.byId("reminders", b.dataset.id).on = b.checked; A.save(); A.syncReminders(); },
         rdone(b) { const t0 = today(), L = A.col("remLog"), i = L.findIndex((x) => x.rid === b.dataset.id && x.date === t0); if (i >= 0) L.splice(i, 1); else L.push({ id: A.uid(), rid: b.dataset.id, date: t0, at: A.nowHM() }); A.save(); A.refresh(); },
         perm() { A.nativeCall("notif", () => A.native.requestNotifications()).then(() => A.refresh()); },
-        test() { A.native.testNotification("Путь жизни", "Уведомления работают 💜"); }
+        test() { A.native.testNotification("Путь жизни", "Уведомления работают {{i:heart}}"); }
       });
     }
   });

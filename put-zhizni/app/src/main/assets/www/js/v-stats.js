@@ -44,13 +44,13 @@
 
   const tile = (ic, name, val, sub) => '<div class="stat"><small>' + ic + " " + esc(name) + "</small><b>" + val + "</b>" + (sub ? '<small>' + sub + "</small>" : "") + "</div>";
   const summaryTiles = (s) => '<div class="grid3">' + [
-    tile("🌙", "Сон, сред.", s.sleep != null ? fmtDur(s.sleep * 60) : "—"), tile("💜", "Настроение", fmtN(s.mood, 1)), tile("⚡", "Энергия", fmtN(s.energy, 1)),
-    tile("🌀", "Стресс", fmtN(s.stress, 1)), tile("🌫", "Тревожность", fmtN(s.anx, 1)), tile("👟", "Шаги, сред.", fmtN(s.steps)),
-    tile("🏋", "Тренировки", s.workouts, fmtDur(s.workoutMin)), tile("🍎", "Калории, сред.", fmtN(s.kcal)), tile("🥗", "Б/Ж/У, сред.", s.kcal ? fmtN(s.p) + "/" + fmtN(s.f) + "/" + fmtN(s.c) : "—"),
-    tile("💧", "Вода, сред.", s.water != null ? fmtN(s.water) + " мл" : "—"), tile("✅", "Привычки", s.habits != null ? Math.round(s.habits * 100) + "%" : "—"), tile("📖", "Книги / стр.", s.books + " / " + fmtN(s.pages)),
-    tile("🎬", "Фильмы / серии", s.movies + " / " + s.episodes), tile("🎓", "Обучение", fmtDur(s.learnMin + s.piano)), tile("🎹", "Пианино", fmtDur(s.piano)),
-    tile("🃏", "Таро", fmtDur(s.tarot), s.tarotCards + " карт дня"), tile("☯", "Бацзы", fmtDur(s.bazi)), tile("🌿", "Кету", fmtDur(s.ketu)),
-    tile("⬆", "Доходы", money(s.income)), tile("⬇", "Расходы", money(s.expense)), tile("🏦", "Накопления", money(s.savings))
+    tile("{{i:moon}}", "Сон, сред.", s.sleep != null ? fmtDur(s.sleep * 60) : "—"), tile("{{i:heart}}", "Настроение", fmtN(s.mood, 1)), tile("{{i:zap}}", "Энергия", fmtN(s.energy, 1)),
+    tile("{{i:activity}}", "Стресс", fmtN(s.stress, 1)), tile("{{i:cloud-fog}}", "Тревожность", fmtN(s.anx, 1)), tile("{{i:footprints}}", "Шаги, сред.", fmtN(s.steps)),
+    tile("{{i:dumbbell}}", "Тренировки", s.workouts, fmtDur(s.workoutMin)), tile("{{i:apple}}", "Калории, сред.", fmtN(s.kcal)), tile("{{i:salad}}", "Б/Ж/У, сред.", s.kcal ? fmtN(s.p) + "/" + fmtN(s.f) + "/" + fmtN(s.c) : "—"),
+    tile("{{i:droplet}}", "Вода, сред.", s.water != null ? fmtN(s.water) + " мл" : "—"), tile("{{i:circle-check}}", "Привычки", s.habits != null ? Math.round(s.habits * 100) + "%" : "—"), tile("{{i:book-open}}", "Книги / стр.", s.books + " / " + fmtN(s.pages)),
+    tile("{{i:clapperboard}}", "Фильмы / серии", s.movies + " / " + s.episodes), tile("{{i:graduation-cap}}", "Обучение", fmtDur(s.learnMin + s.piano)), tile("{{i:piano}}", "Пианино", fmtDur(s.piano)),
+    tile("{{i:wand-sparkles}}", "Таро", fmtDur(s.tarot), s.tarotCards + " карт дня"), tile("{{i:orbit}}", "Бацзы", fmtDur(s.bazi)), tile("{{i:leaf}}", "Кету", fmtDur(s.ketu)),
+    tile("{{i:circle-arrow-up}}", "Доходы", money(s.income)), tile("{{i:circle-arrow-down}}", "Расходы", money(s.expense)), tile("{{i:landmark}}", "Накопления", money(s.savings))
   ].join("") + "</div>";
 
   const PAIRS = [
@@ -63,7 +63,7 @@
 
   A.view("stats", {
     title: "Статистика", tab: "more",
-    actions(el, r) { el.innerHTML = '<button class="icon-btn" onclick="App.print(\'Путь жизни — отчёт\')" aria-label="Печать / PDF" title="Печать / PDF">⎙</button>'; },
+    actions(el, r) { el.innerHTML = '<button class="icon-btn" onclick="App.print(\'Путь жизни — отчёт\')" aria-label="Печать / PDF" title="Печать / PDF">{{i:printer}}</button>'; },
     render(el, r) {
       const tab = r.args[0] || "month";
       let h = '<div class="noprint">' + A.seg(TABS, tab, "tab") + "</div>";
@@ -78,12 +78,12 @@
         const pr = A.periodSummary(addDays(ws, -7), addDays(ws, -1));
         const arrow = (a, b2, inv) => a == null || b2 == null ? "" : ' <span class="trend ' + ((a > b2) !== !!inv ? "down" : "up") + '" style="font-size:14px">' + (a > b2 ? "↑" : a < b2 ? "↓" : "→") + "</span>";
         const X = (d) => A.DOW[A.dow(d) - 1];
-        h += '<div class="card"><h3>👟 Тренд шагов' + arrow(s.steps, pr.steps, true) + '</h3>' + A.charts.bars(days.map((d) => ({ x: X(d), v: A.METRICS.steps.get(d) })), { goal: A.db().profile.stepsGoal, color: "#5FA774" }) + '<p class="small muted">Среднее ' + fmtN(s.steps) + " (прошлая неделя " + fmtN(pr.steps) + ")</p></div>";
-        h += '<div class="card"><h3>🍎 Тренд калорий</h3>' + A.charts.bars(days.map((d) => ({ x: X(d), v: A.kcalDay(d) })), { goal: A.db().profile.kcal, color: "#EFA984" }) + '<p class="small muted">Среднее ' + fmtN(s.kcal) + " · потрачено активностью за неделю " + fmtN(s.burn) + " ккал</p></div>";
+        h += '<div class="card"><h3>{{i:footprints}} Тренд шагов' + arrow(s.steps, pr.steps, true) + '</h3>' + A.charts.bars(days.map((d) => ({ x: X(d), v: A.METRICS.steps.get(d) })), { goal: A.db().profile.stepsGoal, color: "#5FA774" }) + '<p class="small muted">Среднее ' + fmtN(s.steps) + " (прошлая неделя " + fmtN(pr.steps) + ")</p></div>";
+        h += '<div class="card"><h3>{{i:apple}} Тренд калорий</h3>' + A.charts.bars(days.map((d) => ({ x: X(d), v: A.kcalDay(d) })), { goal: A.db().profile.kcal, color: "#EFA984" }) + '<p class="small muted">Среднее ' + fmtN(s.kcal) + " · потрачено активностью за неделю " + fmtN(s.burn) + " ккал</p></div>";
         const wt = A.weightTrend(7, we > t ? t : we);
-        h += '<div class="card"><h3>⚖ Тренд веса <span class="trend ' + (wt.arrow === "↑" ? "up" : wt.arrow === "↓" ? "down" : "flat") + '" style="font-size:16px">' + wt.arrow + "</span></h3>" + A.charts.line([{ name: "Вес", color: "#6C9FD3", data: days.map((d) => ({ x: X(d), v: (A.dayGet(d) || {}).weight ?? null })) }]) + '<p class="small muted">' + esc(wt.word) + (s.weightCh != null ? " · за неделю " + (s.weightCh > 0 ? "+" : "") + s.weightCh.toFixed(1) + " кг" : "") + "</p></div>";
-        h += '<div class="card"><h3>🌙 Тренд сна' + arrow(s.sleep, pr.sleep) + '</h3>' + A.charts.bars(days.map((d) => ({ x: X(d), v: A.sleepH(d) })), { goal: A.db().profile.sleepGoal || 8, color: "#9C8FD8", fmt: (v) => fmtDur(v * 60) }) + "</div>";
-        h += '<div class="card"><h3>✅ Тренд привычек' + arrow(s.habits, pr.habits) + '</h3>' + A.charts.bars(days.map((d) => ({ x: X(d), v: A.METRICS.habits.get(d) })), { goal: 100, color: "#7F9C7A", fmt: (v) => v + "%" }) + "</div>";
+        h += '<div class="card"><h3>{{i:scale}} Тренд веса <span class="trend ' + (wt.arrow === "↑" ? "up" : wt.arrow === "↓" ? "down" : "flat") + '" style="font-size:16px">' + wt.arrow + "</span></h3>" + A.charts.line([{ name: "Вес", color: "#6C9FD3", data: days.map((d) => ({ x: X(d), v: (A.dayGet(d) || {}).weight ?? null })) }]) + '<p class="small muted">' + esc(wt.word) + (s.weightCh != null ? " · за неделю " + (s.weightCh > 0 ? "+" : "") + s.weightCh.toFixed(1) + " кг" : "") + "</p></div>";
+        h += '<div class="card"><h3>{{i:moon}} Тренд сна' + arrow(s.sleep, pr.sleep) + '</h3>' + A.charts.bars(days.map((d) => ({ x: X(d), v: A.sleepH(d) })), { goal: A.db().profile.sleepGoal || 8, color: "#9C8FD8", fmt: (v) => fmtDur(v * 60) }) + "</div>";
+        h += '<div class="card"><h3>{{i:circle-check}} Тренд привычек' + arrow(s.habits, pr.habits) + '</h3>' + A.charts.bars(days.map((d) => ({ x: X(d), v: A.METRICS.habits.get(d) })), { goal: 100, color: "#7F9C7A", fmt: (v) => v + "%" }) + "</div>";
         h += highlightsCard(s, ws, we, "Достижения недели");
       } else if (tab === "month") {
         const mk = r.params.m || t.slice(0, 7);
@@ -91,7 +91,7 @@
         const s = A.periodSummary(from, to);
         const R = A.db().reviews[mk] || {};
         h += '<div class="datenav noprint"><button class="icon-btn" data-a="mnav" data-v="-1">‹</button><div class="dn-t" style="display:flex;align-items:center;justify-content:center">' + esc(A.monthTitle(mk)) + '</div><button class="icon-btn" data-a="mnav" data-v="1">›</button></div>';
-        h += '<div class="card hero"><div class="small muted">Месяц в одном экране</div><div class="date">' + esc(A.monthTitle(mk)) + "</div>" + (s.prime != null ? '<div class="tag" style="font-size:13px;padding:4px 12px;margin-top:8px">◈ PRIME SCORE ' + Math.round(s.prime) + "</div>" : "") + '<div class="phrase">' + esc(A.db().profile.principle) + "</div></div>";
+        h += '<div class="card hero"><div class="small muted">Месяц в одном экране</div><div class="date">' + esc(A.monthTitle(mk)) + "</div>" + (s.prime != null ? '<div class="tag" style="font-size:13px;padding:4px 12px;margin-top:8px">{{i:gem}} PRIME SCORE ' + Math.round(s.prime) + "</div>" : "") + '<div class="phrase">' + esc(A.db().profile.principle) + "</div></div>";
         h += summaryTiles(s);
         // распределение времени по категориям календаря
         const cats = {}; A.range(from, monthRange(mk)[2]).forEach((d) => A.eventsOn(d).forEach((e) => (cats[e.cat] = (cats[e.cat] || 0) + A.eventMin(e))));
@@ -99,7 +99,7 @@
         if (totalH) h += '<div class="card" style="margin-top:12px"><h3>Распределение времени за месяц (по плану)</h3>' + A.charts.donut(Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ name: A.cat(k).name, v, color: A.cat(k).color })), fmtN(totalH), "часов") + "</div>";
         h += '<div class="card"><h3>Настроение месяца</h3>' + A.charts.bars(A.range(from, to).map((d) => ({ x: String(A.parse(d).getDate()), v: A.METRICS.mood.get(d), c: A.METRICS.mood.get(d) != null ? A.scaleColor(A.METRICS.mood.get(d)) : null })), { color: "#8CC474", labelsEvery: 5 }) + "</div>";
         const hs = A.col("habits").filter((x) => !x.archived);
-        h += '<div class="card"><h3>Привычки-опоры</h3>' + hs.map((x) => { const st = A.habitStats(x, from, to); return '<div style="margin:6px 0"><div class="row small"><span class="grow">' + esc((x.icon || "") + " " + x.name) + "</span><b>" + (st.pct == null ? "—" : Math.round(st.pct * 100) + "%") + "</b></div>" + A.bar(st.pct || 0, "var(--sage)") + "</div>"; }).join("") + "</div>";
+        h += '<div class="card"><h3>Привычки-опоры</h3>' + hs.map((x) => { const st = A.habitStats(x, from, to); return '<div style="margin:6px 0"><div class="row small"><span class="grow">' + A.icon(x.icon) + " " + esc(x.name) + "</span><b>" + (st.pct == null ? "—" : Math.round(st.pct * 100) + "%") + "</b></div>" + A.bar(st.pct || 0, "var(--sage)") + "</div>"; }).join("") + "</div>";
         h += highlightsCard(s, from, to, "Ключевые достижения месяца");
         h += reflectCard(mk);
         if (R.best || R.improve || R.change) h += '<div class="card tint"><h3>Рефлексия</h3>' + [["Лучше всего", R.best], ["Улучшить", R.improve], ["Изменить", R.change]].filter((x) => x[1]).map((x) => "<p><b>" + x[0] + ":</b> " + esc(x[1]) + "</p>").join("") + "</div>";
@@ -125,7 +125,7 @@
         h += '<div class="card"><div class="list">' + PAIRS.map(([a, b, name]) => {
           const res = A.pearson(days.map(A.METRICS[a].get), days.map(A.METRICS[b].get));
           const pre = res.n < 14;
-          return '<div class="item"><div class="tx"><b>' + esc(name) + "</b><small>" + esc(A.corrWords(res.r)) + " · пар данных: " + res.n + (pre && res.n >= 3 ? " · ⚠ предварительно, данных мало" : "") + "</small></div>" + (res.r != null ? '<b class="num" style="color:' + (Math.abs(res.r) >= 0.3 ? "var(--accent)" : "var(--ink2)") + '">' + (res.r > 0 ? "+" : "") + res.r.toFixed(2) + "</b>" : "") + "</div>";
+          return '<div class="item"><div class="tx"><b>' + esc(name) + "</b><small>" + esc(A.corrWords(res.r)) + " · пар данных: " + res.n + (pre && res.n >= 3 ? " · {{i:triangle-alert}} предварительно, данных мало" : "") + "</small></div>" + (res.r != null ? '<b class="num" style="color:' + (Math.abs(res.r) >= 0.3 ? "var(--accent)" : "var(--ink2)") + '">' + (res.r > 0 ? "+" : "") + res.r.toFixed(2) + "</b>" : "") + "</div>";
         }).join("") + "</div></div>";
         const out = {}; A.col("tx").filter((x) => x.kind === "out" && x.date >= days[0]).forEach((x) => (out[x.cat] = (out[x.cat] || 0) + x.amt));
         if (Object.keys(out).length) h += '<div class="card"><h3>Расходы ↔ категории</h3>' + A.charts.donut(Object.entries(out).sort((a, b) => b[1] - a[1]).map(([k, v], i) => ({ name: k, v, color: ["#8E7CC3", "#7F9C7A", "#EFA984", "#C9A45C", "#E3899A", "#7DB0D6", "#B6A6D9", "#9CC5A1", "#F3C29F", "#D8C08A", "#EBB0BC", "#A9CBE5", "#C9C3D3"][i % 13] })), fmtN(sum(Object.values(out))), "₽") + "</div>";
@@ -164,24 +164,24 @@
   // Ключевые достижения периода — формулируются из данных.
   A.periodHighlights = (s, from, to) => {
     const out = [];
-    if (s.tasksDone) out.push("✅ Выполнено задач: " + s.tasksDone);
-    if (s.habitsDone) out.push("🔥 Отметок «привычка выполнена»: " + s.habitsDone);
-    if (s.workouts) out.push("🏋 Тренировок: " + s.workouts + " (" + fmtDur(s.workoutMin) + ")");
-    if (s.stepsSum) out.push("👟 Пройдено шагов: " + fmtN(s.stepsSum));
-    if (s.goalsDone) out.push("🎯 Достигнуто целей: " + s.goalsDone);
-    if (s.books) out.push("📖 Прочитано книг: " + s.books + (s.pages ? ", страниц: " + fmtN(s.pages) : ""));
-    else if (s.pages) out.push("📖 Прочитано страниц: " + fmtN(s.pages));
-    if (s.piano) out.push("🎹 Практика пианино: " + fmtDur(s.piano));
-    if (s.cooked) out.push("🍳 Приготовлено блюд: " + s.cooked);
-    if (s.weightCh != null) out.push("⚖ Вес: " + (s.weightCh > 0 ? "+" : "") + s.weightCh.toFixed(1) + " кг");
-    if (s.income - s.expense > 0) out.push("💰 Отложено / осталось: " + money(s.income - s.expense));
+    if (s.tasksDone) out.push("{{i:circle-check}} Выполнено задач: " + s.tasksDone);
+    if (s.habitsDone) out.push("{{i:flame}} Отметок «привычка выполнена»: " + s.habitsDone);
+    if (s.workouts) out.push("{{i:dumbbell}} Тренировок: " + s.workouts + " (" + fmtDur(s.workoutMin) + ")");
+    if (s.stepsSum) out.push("{{i:footprints}} Пройдено шагов: " + fmtN(s.stepsSum));
+    if (s.goalsDone) out.push("{{i:target}} Достигнуто целей: " + s.goalsDone);
+    if (s.books) out.push("{{i:book-open}} Прочитано книг: " + s.books + (s.pages ? ", страниц: " + fmtN(s.pages) : ""));
+    else if (s.pages) out.push("{{i:book-open}} Прочитано страниц: " + fmtN(s.pages));
+    if (s.piano) out.push("{{i:piano}} Практика пианино: " + fmtDur(s.piano));
+    if (s.cooked) out.push("{{i:chef-hat}} Приготовлено блюд: " + s.cooked);
+    if (s.weightCh != null) out.push("{{i:scale}} Вес: " + (s.weightCh > 0 ? "+" : "") + s.weightCh.toFixed(1) + " кг");
+    if (s.income - s.expense > 0) out.push("{{i:wallet}} Отложено / осталось: " + money(s.income - s.expense));
     const best = A.col("habits").map((h) => [h, A.habitStats(h, from, to)]).filter(([, x]) => x.pct != null && x.plan >= 3).sort((a, b) => b[1].pct - a[1].pct)[0];
-    if (best) out.push("⭐ Самая устойчивая привычка: " + best[0].name + " — " + Math.round(best[1].pct * 100) + "%");
+    if (best) out.push("{{i:star}} Самая устойчивая привычка: " + best[0].name + " — " + Math.round(best[1].pct * 100) + "%");
     return out;
   };
   const REFLECT = ["Что получилось лучше всего?", "Чем я горжусь?", "Что забирало энергию?", "Что я сделаю иначе?", "За что я благодарна?", "Мои действия были похожи на жизнь, которую я хочу?"];
-  const highlightsCard = (s, from, to, title) => { const hl = A.periodHighlights(s, from, to); return '<div class="card tint"><h3>🏆 ' + title + "</h3>" + (hl.length ? hl.map((x) => '<p style="margin:5px 0">' + esc(x) + "</p>").join("") : '<p class="small muted">Данных пока мало — достижения появятся по мере записей.</p>') + "</div>"; };
-  const reflectCard = (key) => { const R = (A.db().reviews["refl:" + key] = A.db().reviews["refl:" + key] || {}); return '<div class="card sage"><h3>🪞 Вопросы для рефлексии</h3><div class="form">' + REFLECT.map((q, i) => '<div class="fld full"><label>' + esc(q) + '</label><textarea rows="2" data-c="refl" data-key="' + key + '" data-i="' + i + '">' + esc(R[i] || "") + "</textarea></div>").join("") + "</div></div>"; };
+  const highlightsCard = (s, from, to, title) => { const hl = A.periodHighlights(s, from, to); return '<div class="card tint"><h3>{{i:trophy}} ' + title + "</h3>" + (hl.length ? hl.map((x) => '<p style="margin:5px 0">' + esc(x) + "</p>").join("") : '<p class="small muted">Данных пока мало — достижения появятся по мере записей.</p>') + "</div>"; };
+  const reflectCard = (key) => { const R = (A.db().reviews["refl:" + key] = A.db().reviews["refl:" + key] || {}); return '<div class="card sage"><h3>{{i:message-circle-question}} Вопросы для рефлексии</h3><div class="form">' + REFLECT.map((q, i) => '<div class="fld full"><label>' + esc(q) + '</label><textarea rows="2" data-c="refl" data-key="' + key + '" data-i="' + i + '">' + esc(R[i] || "") + "</textarea></div>").join("") + "</div></div>"; };
   A._hl = { highlightsCard, reflectCard };
 
   /* ---------- дневная сводка ---------- */
@@ -191,22 +191,22 @@
       const d = r.params.d || today(), day = A.dayGet(d) || {}, p = A.db().profile, m = A.macrosDay(d);
       let h = A.dateNav(d);
       const ps = A.primeScore(d);
-      h += '<div class="card hero"><div class="date">' + esc(A.fmtDate(d, { dow: true })) + "</div>" + (ps.score != null ? '<div class="big" style="margin-top:6px">◈ ' + ps.score + '</div><div class="small muted">PRIME SCORE</div>' : "") + "</div>";
+      h += '<div class="card hero"><div class="date">' + esc(A.fmtDate(d, { dow: true })) + "</div>" + (ps.score != null ? '<div class="big" style="margin-top:6px">{{i:gem}} ' + ps.score + '</div><div class="small muted">PRIME SCORE</div>' : "") + "</div>";
       const T = (ic, n, v, route) => '<div class="stat tap" data-a="go" data-v="' + route + '"><small>' + ic + " " + n + "</small><b>" + v + "</b></div>";
       h += '<div class="grid3">' + [
-        T("👟", "Шаги", fmtN(day.steps), "health/steps"), T("🔥", "Потрачено", fmtN(A.burnDay(d)) + " ккал", "workouts"), T("🍎", "Съедено", fmtN(m.kcal) + " ккал", "food?d=" + d),
-        T("🥗", "Б/Ж/У", Math.round(m.p) + "/" + Math.round(m.f) + "/" + Math.round(m.c), "food?d=" + d), T("💧", "Вода", fmtN(day.water) + " мл", "health/water"), T("⚖", "Вес", day.weight ? fmtN(day.weight, 1) : "—", "health/weight"),
-        T("🌙", "Сон", A.sleepH(d) ? fmtDur(A.sleepH(d) * 60) : "—", "health/sleep"), T("💜", "Настроение", fmtN(day.mood, 1), "health/state"), T("⚡", "Энергия", fmtN(A.energyAvg(d), 1), "health/state"),
-        T("🌀", "Стресс", fmtN(day.stress), "health/state"), T("🏋", "Тренировки", fmtDur(A.workoutMin(d) || 0), "workouts"), T("📖", "Чтение", fmtN(A.pagesDay(d) || 0) + " стр.", "culture/books"),
-        T("🎓", "Обучение", fmtDur(A.learnMinDay(d) || 0), "learn"), T("⬇", "Расходы", money(A.spendDay(d) || 0), "money/ops"), T("🎯", "Главное", day.main ? (day.mainDone ? "✓" : "…") : "—", "today?d=" + d)
+        T("{{i:footprints}}", "Шаги", fmtN(day.steps), "health/steps"), T("{{i:flame}}", "Потрачено", fmtN(A.burnDay(d)) + " ккал", "workouts"), T("{{i:apple}}", "Съедено", fmtN(m.kcal) + " ккал", "food?d=" + d),
+        T("{{i:salad}}", "Б/Ж/У", Math.round(m.p) + "/" + Math.round(m.f) + "/" + Math.round(m.c), "food?d=" + d), T("{{i:droplet}}", "Вода", fmtN(day.water) + " мл", "health/water"), T("{{i:scale}}", "Вес", day.weight ? fmtN(day.weight, 1) : "—", "health/weight"),
+        T("{{i:moon}}", "Сон", A.sleepH(d) ? fmtDur(A.sleepH(d) * 60) : "—", "health/sleep"), T("{{i:heart}}", "Настроение", fmtN(day.mood, 1), "health/state"), T("{{i:zap}}", "Энергия", fmtN(A.energyAvg(d), 1), "health/state"),
+        T("{{i:activity}}", "Стресс", fmtN(day.stress), "health/state"), T("{{i:dumbbell}}", "Тренировки", fmtDur(A.workoutMin(d) || 0), "workouts"), T("{{i:book-open}}", "Чтение", fmtN(A.pagesDay(d) || 0) + " стр.", "culture/books"),
+        T("{{i:graduation-cap}}", "Обучение", fmtDur(A.learnMinDay(d) || 0), "learn"), T("{{i:circle-arrow-down}}", "Расходы", money(A.spendDay(d) || 0), "money/ops"), T("{{i:target}}", "Главное", day.main ? (day.mainDone ? "✓" : "…") : "—", "today?d=" + d)
       ].join("") + "</div>";
       const tDone = A.col("tasks").filter((t) => t.done && (t.doneAt || "").slice(0, 10) === d);
-      h += '<div class="card" style="margin-top:12px"><h3>✅ Выполненные задачи · ' + tDone.length + "</h3>" + (tDone.length ? tDone.map((t) => '<div class="small" style="padding:3px 0">✓ ' + esc(t.title) + "</div>").join("") : '<p class="small muted">Нет</p>') + "</div>";
+      h += '<div class="card" style="margin-top:12px"><h3>{{i:circle-check}} Выполненные задачи · ' + tDone.length + "</h3>" + (tDone.length ? tDone.map((t) => '<div class="small" style="padding:3px 0">✓ ' + esc(t.title) + "</div>").join("") : '<p class="small muted">Нет</p>') + "</div>";
       const hs = A.col("habits").filter((x) => A.habitPlanned(x, d));
-      h += '<div class="card"><h3>🔥 Привычки · ' + hs.filter((x) => A.hs(x.id, d) === "done").length + " из " + hs.length + "</h3>" + hs.map((x) => { const st = A.hs(x.id, d), S = st && A.HSTATUS[st]; return '<div class="row small" style="padding:3px 0"><span style="width:22px;color:' + (S ? S[2] : "var(--ink2)") + '">' + (S ? S[1] : "○") + '</span><span class="grow">' + esc((x.icon || "") + " " + x.name) + "</span>" + (x.type === "num" ? "<b>" + fmtN(A.hv(x.id, d) || 0, 1) + "/" + (x.target || 1) + "</b>" : "") + "</div>"; }).join("") + "</div>";
+      h += '<div class="card"><h3>{{i:flame}} Привычки · ' + hs.filter((x) => A.hs(x.id, d) === "done").length + " из " + hs.length + "</h3>" + hs.map((x) => { const st = A.hs(x.id, d), S = st && A.HSTATUS[st]; return '<div class="row small" style="padding:3px 0"><span style="width:22px;color:' + (S ? S[2] : "var(--ink2)") + '">' + (S ? S[1] : "○") + '</span><span class="grow">' + A.icon(x.icon) + " " + esc(x.name) + "</span>" + (x.type === "num" ? "<b>" + fmtN(A.hv(x.id, d) || 0, 1) + "/" + (x.target || 1) + "</b>" : "") + "</div>"; }).join("") + "</div>";
       const gs = A.col("goals").filter((g) => g.status === "active");
-      if (gs.length) h += '<div class="card"><h3>🎯 Прогресс по целям</h3>' + gs.map((g) => { const pr = A.goalProgress(g); return '<div style="margin:6px 0"><div class="row small"><span class="grow">' + esc(g.title) + "</span><b>" + Math.round(pr * 100) + "%</b></div>" + A.bar(pr) + "</div>"; }).join("") + "</div>";
-      if (day.fact || day.obstacle || day.note) h += '<div class="card sage"><h3>🌿 Вечерняя сверка</h3>' + [["План", day.plan || day.main], ["Факт", day.fact], ["Препятствие", day.obstacle], ["Заметка", day.note]].filter((x) => x[1]).map((x) => "<p><b>" + x[0] + ":</b> " + esc(x[1]) + "</p>").join("") + "</div>";
+      if (gs.length) h += '<div class="card"><h3>{{i:target}} Прогресс по целям</h3>' + gs.map((g) => { const pr = A.goalProgress(g); return '<div style="margin:6px 0"><div class="row small"><span class="grow">' + esc(g.title) + "</span><b>" + Math.round(pr * 100) + "%</b></div>" + A.bar(pr) + "</div>"; }).join("") + "</div>";
+      if (day.fact || day.obstacle || day.note) h += '<div class="card sage"><h3>{{i:leaf}} Вечерняя сверка</h3>' + [["План", day.plan || day.main], ["Факт", day.fact], ["Препятствие", day.obstacle], ["Заметка", day.note]].filter((x) => x[1]).map((x) => "<p><b>" + x[0] + ":</b> " + esc(x[1]) + "</p>").join("") + "</div>";
       return h;
     },
     bind(el, r) {

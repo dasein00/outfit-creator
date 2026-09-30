@@ -15,7 +15,7 @@
     const seen = {}, recent = A.col("meals").slice().reverse().filter((x) => { const k = x.name.toLowerCase(); if (seen[k]) return false; seen[k] = 1; return true; }).slice(0, 12);
     const body = '<div class="form"><div class="fld full"><label>Приём пищи</label>' + '<div class="chips" data-field="type" data-multi="0">' + A.MEALS.map(([k, n]) => '<button type="button" class="chip' + ((m.type || "breakfast") === k ? " on" : "") + '" data-v="' + k + '">' + n + "</button>").join("") + "</div></div>" +
       (isNew && recent.length ? '<div class="fld full"><label>Недавнее — добавить так же</label><div class="chips" id="rec">' + recent.map((x, i) => '<button type="button" class="chip" data-r="' + i + '">' + esc(x.name) + " · " + Math.round(x.kcal) + "</button>").join("") + "</div></div>" : "") +
-      '<div class="fld full"><label>Поиск: продукт из базы или рецепт 📖</label><input id="fq" placeholder="гречка, омлет, борщ…" autocomplete="off"><div id="fl" class="list" style="max-height:220px;overflow:auto"></div></div>' +
+      '<div class="fld full"><label>Поиск: продукт из базы или рецепт {{i:book-open}}</label><input id="fq" placeholder="гречка, омлет, борщ…" autocomplete="off"><div id="fl" class="list" style="max-height:220px;overflow:auto"></div></div>' +
       '<div class="fld"><label id="gl">Масса, г</label><input id="fg" type="number" inputmode="decimal" value="' + esc(m.g || 100) + '"></div><div class="fld"><label>Название</label><input id="fn" value="' + esc(m.name || "") + '"></div>' +
       '<div class="fsec full">КБЖУ (посчитается автоматически или введите вручную)</div>' +
       ["kcal:Ккал", "p:Белки, г", "f:Жиры, г", "c:Углеводы, г", "fib:Клетчатка, г"].map((x) => { const [k, l] = x.split(":"); return '<div class="fld"><label>' + l + '</label><input id="m_' + k + '" type="number" inputmode="decimal" value="' + esc(m[k] ?? "") + '"></div>'; }).join("") + "</div>";
@@ -40,7 +40,7 @@
       const s = q.value.trim().toLowerCase();
       const res = foods.filter((f) => !s || f.name.toLowerCase().includes(s)).slice(0, 25);
       const rs = s ? A.allRecipes().filter((r) => r.name.toLowerCase().includes(s)).slice(0, 8) : [];
-      list.innerHTML = rs.map((r) => '<div class="item" data-rid="' + r.id + '" style="min-height:40px;padding:6px 2px;' + (selR && selR.id === r.id ? "background:var(--accent2);border-radius:8px" : "") + '"><div class="tx"><b>📖 ' + esc(r.name) + "</b><small>рецепт · " + A.recipeMacros(r).kcal + " ккал на порцию</small></div></div>").join("") +
+      list.innerHTML = rs.map((r) => '<div class="item" data-rid="' + r.id + '" style="min-height:40px;padding:6px 2px;' + (selR && selR.id === r.id ? "background:var(--accent2);border-radius:8px" : "") + '"><div class="tx"><b>{{i:book-open}} ' + esc(r.name) + "</b><small>рецепт · " + A.recipeMacros(r).kcal + " ккал на порцию</small></div></div>").join("") +
         res.map((f) => '<div class="item" data-id="' + f.id + '" style="min-height:40px;padding:6px 2px;' + (sel && sel.id === f.id ? "background:var(--accent2);border-radius:8px" : "") + '"><div class="tx"><b>' + esc(f.name) + "</b><small>" + f.kcal + " ккал · Б " + f.p + " Ж " + f.f + " У " + f.c + " на 100 г</small></div></div>").join("") || '<div class="small muted">Нет в базе — введите КБЖУ вручную или добавьте продукт в базу.</div>';
     };
     list.addEventListener("click", (e) => {
@@ -67,7 +67,7 @@
 
   A.view("food", {
     title: "Питание",
-    actions(el) { el.innerHTML = '<button class="icon-btn" onclick="App.go(\'food/base\')" aria-label="База продуктов" title="База продуктов">📋</button>'; },
+    actions(el) { el.innerHTML = '<button class="icon-btn" onclick="App.go(\'food/base\')" aria-label="База продуктов" title="База продуктов">{{i:clipboard-list}}</button>'; },
     render(el, r) {
       const p = A.db().profile;
       if (r.args[0] === "base") {
@@ -141,12 +141,12 @@
   };
   A.edit.exercise = (e) => A.formSheet(e ? "Упражнение" : "Новое упражнение", [{ k: "name", label: "Название", req: true, full: true }, { k: "muscle", label: "Группа мышц / тип", full: true }, { k: "howto", label: "Техника, подсказки", type: "textarea" }], e || {}, (o) => { A.upsert("exercises", Object.assign(e || {}, o)); A.refresh(); }, e ? { onDelete: () => { A.remove("exercises", e.id); A.refresh(); } } : {});
 
-  A.view("workouts", {
-    title: "Тренировки",
-    actions(el) { el.innerHTML = '<button class="icon-btn" onclick="App.edit.workout()" aria-label="Добавить">＋</button>'; },
+  // Журнал всех тренировок (включая бег, йогу, прогулки) — вкладка «Журнал» раздела «Тренировки».
+  A.view("wlog", {
+    title: "Журнал тренировок", tab: "more",
     render(el, r) {
       const tab = r.args[0] || "log";
-      let h = A.seg([["log", "Журнал"], ["stats", "Статистика"], ["lib", "Упражнения"]], tab, "tab");
+      let h = A.seg([["log", "Записи"], ["stats", "Статистика"]], tab, "ltab");
       const ws = A.col("workouts").slice().sort((a, b) => (b.date > a.date ? 1 : -1));
       const exName = (id) => (A.byId("exercises", id) || { name: "?" }).name;
       if (tab === "log") {
@@ -154,9 +154,9 @@
         const mk = today().slice(0, 7), [y, m] = mk.split("-").map(Number);
         h += '<div class="card"><h3>' + esc(A.monthTitle(mk)) + '</h3><div class="month">' + A.DOW.map((x) => '<div class="h">' + x + "</div>").join("");
         const start = A.weekStart(mk + "-01");
-        for (let i = 0; i < 42; i++) { const d = addDays(start, i); if (i >= 35 && d.slice(0, 7) !== mk) break; const n = ws.filter((w) => w.date === d); h += '<div class="mday' + (d.slice(0, 7) !== mk ? " out" : "") + (d === today() ? " now" : "") + '" style="' + (n.length ? "background:var(--sage2)" : "") + '">' + A.parse(d).getDate() + (n.length ? '<small style="font-size:10px">' + n.map((w) => (w.type === "strength" ? "🏋" : w.type === "yoga" ? "🧘" : w.type === "walk" ? "🚶" : w.type === "run" || w.type === "cardio" ? "🏃" : "✦")).join("") + "</small>" : "") + "</div>"; }
+        for (let i = 0; i < 42; i++) { const d = addDays(start, i); if (i >= 35 && d.slice(0, 7) !== mk) break; const n = ws.filter((w) => w.date === d); h += '<div class="mday' + (d.slice(0, 7) !== mk ? " out" : "") + (d === today() ? " now" : "") + '" style="' + (n.length ? "background:var(--sage2)" : "") + '">' + A.parse(d).getDate() + (n.length ? '<small style="font-size:10px">' + n.map((w) => (w.type === "strength" ? "{{i:dumbbell}}" : w.type === "yoga" ? "{{i:flower-2}}" : w.type === "walk" ? "{{i:footprints}}" : w.type === "run" || w.type === "cardio" ? "{{i:activity}}" : "{{i:sparkle}}")).join("") + "</small>" : "") + "</div>"; }
         h += "</div></div>";
-        h += '<div class="card"><div class="list">' + (ws.length ? ws.slice(0, 60).map((w) => '<div class="item" data-a="w" data-id="' + w.id + '"><div class="ic">🏋</div><div class="tx"><b>' + esc(A.wType(w.type)) + " · " + fmtDate(w.date) + "</b><small>" + fmtDur(w.dur) + " · интенсивность " + (w.int || "—") + (w.dist ? " · " + w.dist + " км" : "") + (w.sets && w.sets.length ? " · " + [...new Set(w.sets.map((s) => exName(s.ex)))].slice(0, 3).join(", ") : "") + "</small></div>" + (volume(w) ? '<small class="num">' + fmtN(volume(w)) + " кг</small>" : "") + "</div>").join("") : A.empty("Тренировок пока нет. Минимальная версия тоже считается: прогулка или короткая зарядка.")) + "</div></div>";
+        h += '<div class="card"><div class="list">' + (ws.length ? ws.slice(0, 60).map((w) => '<div class="item" data-a="w" data-id="' + w.id + '"><div class="ic">{{i:dumbbell}}</div><div class="tx"><b>' + esc(A.wType(w.type)) + " · " + fmtDate(w.date) + "</b><small>" + fmtDur(w.dur) + " · интенсивность " + (w.int || "—") + (w.dist ? " · " + w.dist + " км" : "") + (w.sets && w.sets.length ? " · " + [...new Set(w.sets.map((s) => exName(s.ex)))].slice(0, 3).join(", ") : "") + "</small></div>" + (volume(w) ? '<small class="num">' + fmtN(volume(w)) + " кг</small>" : "") + "</div>").join("") : A.empty("Тренировок пока нет. Минимальная версия тоже считается: прогулка или короткая зарядка.")) + "</div></div>";
       } else if (tab === "stats") {
         const weeks = []; let ws0 = A.weekStart(today());
         for (let i = 11; i >= 0; i--) { const a = addDays(ws0, -7 * i), b = addDays(a, 6); const list = ws.filter((w) => w.date >= a && w.date <= b); weeks.push({ x: fmtShort(a), n: list.length, dur: A.sum(list.map((w) => w.dur || 0)), vol: A.sum(list.map(volume)) }); }
@@ -174,7 +174,7 @@
     },
     bind(el, r) {
       A.bind(el, {
-        tab(b) { A.go("workouts/" + b.dataset.v, true); },
+        ltab(b) { A.go("workouts/log?l=" + b.dataset.v, true); },
         w(b) { A.edit.workout(A.byId("workouts", b.dataset.id)); },
         newEx() { A.edit.exercise(); }, ex(b) { A.edit.exercise(A.byId("exercises", b.dataset.id)); }
       });

@@ -204,7 +204,7 @@
           h += '<div class="card"><h3>Уроки</h3><div class="list">' + content.lessons.map((l, i) => '<div class="item" data-a="lesson" data-id="' + l.id + '"><div class="ic">' + (st.lessons[l.id] ? "✓" : i + 1) + '</div><div class="tx"><b>' + esc(l.title) + "</b>" + (st.lessons[l.id] ? "<small>пройден " + fmtShort(st.lessons[l.id]) + "</small>" : "") + "</div></div>").join("") + "</div>" +
             A.bar(Object.keys(st.lessons).length / content.lessons.length, "var(--sage)") + "</div>";
           const mins = sum(A.col("learn").filter((x) => x.subject === title.split(" ")[0]).map((x) => x.min));
-          h += '<div class="card"><div class="row"><div class="grow"><b>Время изучения</b><div class="small muted">' + fmtDur(mins) + ' всего</div></div><button class="btn sm" data-a="log">+ занятие</button><button class="btn sm" data-a="timer">⏱</button></div></div>';
+          h += '<div class="card"><div class="row"><div class="grow"><b>Время изучения</b><div class="small muted">' + fmtDur(mins) + ' всего</div></div><button class="btn sm" data-a="log">+ занятие</button><button class="btn sm" data-a="timer">{{i:timer}}</button></div></div>';
         } else if (sec === "ref") {
           h += sections();
         } else if (sec === "cards") {
@@ -380,9 +380,9 @@
           '<div class="row between" style="margin-top:12px">' + (i > 0 ? '<a class="link" href="#/piano/lesson/' + lessons[i - 1].id + '">‹ назад</a>' : "<span></span>") + (i < lessons.length - 1 ? '<a class="link" href="#/piano/lesson/' + lessons[i + 1].id + '">следующий ›</a>' : "") + "</div>";
       } else if (sec === "songs") {
         const SG = window.SONGS.list, done = P.songs || {};
-        const groups = [["en", "🇬🇧 Англоязычный рок"], ["ru", "🇷🇺 Русский рок"], ["theory", "🎓 Приём для всех песен"]];
+        const groups = [["en", "{{i:languages}} Англоязычный рок"], ["ru", "{{i:flag}} Русский рок"], ["theory", "{{i:graduation-cap}} Приём для всех песен"]];
         h += '<div class="card tint"><p class="small">Разбор для чайников: аккорды, из каких нот они состоят, структура, ритм и пошаговый план. Нажмите на аккорд — он прозвучит и подсветится на клавиатуре. Тексты песен не приводятся — подпевайте по памяти.</p></div>';
-        groups.forEach(([g, n]) => { const list = SG.filter((x) => x.lang === g); h += '<div class="sec-t">' + n + '</div><div class="card"><div class="list">' + list.map((x) => '<a class="item" style="text-decoration:none;color:inherit" href="#/piano/song/' + x.id + '"><div class="ic" style="' + (done[x.id] ? "background:var(--sage2)" : "") + '">' + (done[x.id] ? "✓" : "🎸") + '</div><div class="tx"><b>' + esc(x.title) + "</b><small>" + esc(x.artist) + " · " + "★".repeat(x.level) + '<span style="opacity:.3">' + "★".repeat(3 - x.level) + "</span> · " + x.chords.join(" ") + "</small></div></a>").join("") + "</div></div>"; });
+        groups.forEach(([g, n]) => { const list = SG.filter((x) => x.lang === g); h += '<div class="sec-t">' + n + '</div><div class="card"><div class="list">' + list.map((x) => '<a class="item" style="text-decoration:none;color:inherit" href="#/piano/song/' + x.id + '"><div class="ic" style="' + (done[x.id] ? "background:var(--sage2)" : "") + '">' + (done[x.id] ? "✓" : "{{i:guitar}}") + '</div><div class="tx"><b>' + esc(x.title) + "</b><small>" + esc(x.artist) + " · " + "★".repeat(x.level) + '<span style="opacity:.3">' + "★".repeat(3 - x.level) + "</span> · " + x.chords.join(" ") + "</small></div></a>").join("") + "</div></div>"; });
       } else if (sec === "song") {
         const x = window.SONGS.list.find((k) => k.id === r.args[1]) || window.SONGS.list[0];
         const done = (P.songs || {})[x.id];
@@ -390,7 +390,7 @@
         h += '<div class="card"><h3>Аккорды песни</h3><div>' + x.chords.map((c) => { const ch = window.SONGS.chord(c); return '<span class="chord" data-a="chord" data-v="' + esc(c) + '">' + esc(c) + '<small style="display:block;font-weight:400;font-size:11px">' + (ch ? ch.notes.map((n) => NAMES[n % 12]).join("-") : "") + "</small></span>"; }).join("") + "</div>" + A.keyboard(48, 3) + '<p class="small muted">Левая рука берёт нижнюю подсвеченную ноту (бас), правая — аккорд.</p></div>';
         h += '<div class="card"><h3>Структура</h3>' + x.sections.map(([n, bars]) => '<div style="margin:8px 0"><b class="small">' + esc(n) + '</b><div class="formula" style="margin-top:4px">' + esc(bars) + "</div></div>").join("") + "</div>";
         h += '<div class="card"><h3>Ритм и как играть</h3><p>' + esc(x.rhythm) + '</p><h3 style="margin-top:10px">Пошагово</h3><ol>' + x.steps.map((k) => '<li style="margin:5px 0">' + esc(k) + "</li>").join("") + "</ol></div>";
-        h += '<div class="card sage"><h3>💡 Совет</h3><p>' + esc(x.tips) + "</p></div>";
+        h += '<div class="card sage"><h3>{{i:lightbulb}} Совет</h3><p>' + esc(x.tips) + "</p></div>";
         h += '<div class="btns"><a class="btn" href="#/piano/metro">Метроном</a><button class="btn" data-a="songPractice" data-id="' + x.id + '">+ практика</button><button class="btn primary" data-a="songDone" data-id="' + x.id + '">' + (done ? "Выучено ✓" : "Отметить выученной") + "</button></div>";
       } else if (sec === "keys") {
         h += '<div class="card"><h3>Интерактивная клавиатура</h3>' + A.keyboard(48, 3) + '<p class="small muted">Звук синтезируется телефоном. Прокручивайте клавиатуру вбок.</p></div>' +
@@ -407,7 +407,7 @@
         const ss = A.col("psess").slice().sort((a, b) => (b.date > a.date ? 1 : -1));
         const weeks = []; for (let i = 7; i >= 0; i--) { const a = addDays(A.weekStart(today()), -7 * i); weeks.push({ x: fmtShort(a), v: sum(ss.filter((s) => s.date >= a && s.date <= addDays(a, 6)).map((s) => s.min)) }); }
         h += '<div class="card"><h3>Минуты практики по неделям</h3>' + A.charts.bars(weeks, { color: "#8E7CC3", labelsEvery: 2 }) + "</div>";
-        h += '<div class="btns" style="margin-bottom:12px"><button class="btn primary" data-a="practice" style="flex:1">+ запись</button><button class="btn" data-a="timerP" style="flex:1">⏱ Таймер</button></div>';
+        h += '<div class="btns" style="margin-bottom:12px"><button class="btn primary" data-a="practice" style="flex:1">+ запись</button><button class="btn" data-a="timerP" style="flex:1">{{i:timer}} Таймер</button></div>';
         h += '<div class="card"><div class="list">' + (ss.length ? ss.slice(0, 50).map((s) => { const l = lessons.find((x) => x.id === s.lesson); return '<div class="item" data-a="ps" data-id="' + s.id + '"><div class="tx"><b>' + fmtDate(s.date) + " · " + fmtDur(s.min) + "</b><small>" + esc([s.item, l && l.title, "сложность " + (s.diff || "—")].filter(Boolean).join(" · ")) + (s.note ? "<br>" + esc(s.note) : "") + "</small></div></div>"; }).join("") : A.empty("Практик пока нет")) + "</div></div>";
       }
       return h;
@@ -426,7 +426,7 @@
       el.addEventListener("pianokey", (e) => {
         if (target == null) return;
         const ok = e.detail % 12 === target;
-        el.querySelector("#findR").textContent = ok ? "Верно! 🎉" : "Это " + NAMES[e.detail % 12] + ", попробуй ещё";
+        el.querySelector("#findR").textContent = ok ? "Верно! {{i:party-popper}}" : "Это " + NAMES[e.detail % 12] + ", попробуй ещё";
         if (ok) target = null;
       });
       A.bind(el, {
@@ -438,10 +438,10 @@
           [ch.bass].concat(ch.notes).forEach((m, i) => { const k = el.querySelector('.pk[data-m="' + m + '"]'); if (k) k.classList.add("lit"); setTimeout(() => A.playNote(m, 1.4), i === 0 ? 0 : 40 * i); });
           const nm = el.querySelector("#pkName"); if (nm) nm.textContent = b.dataset.v + ": бас " + NAMES[ch.bass % 12] + " + " + ch.notes.map((n) => NAMES[n % 12]).join(" – ");
         },
-        songDone(b) { P.songs = P.songs || {}; if (P.songs[b.dataset.id]) delete P.songs[b.dataset.id]; else { P.songs[b.dataset.id] = today(); A.toast("Ещё одна песня в репертуаре 🎸"); } A.save(); A.refresh(); },
+        songDone(b) { P.songs = P.songs || {}; if (P.songs[b.dataset.id]) delete P.songs[b.dataset.id]; else { P.songs[b.dataset.id] = today(); A.toast("Ещё одна песня в репертуаре {{i:guitar}}"); } A.save(); A.refresh(); },
         songPractice(b) { const x = window.SONGS.list.find((k) => k.id === b.dataset.id); A.edit.practice({ item: x.artist + " — " + x.title }); },
         setCur(b) { P.cur = b.dataset.id; A.save(); A.toast("Текущий урок выбран"); A.refresh(); },
-        lessonDone(b) { const id = b.dataset.id; if (P.done[id]) delete P.done[id]; else { P.done[id] = today(); const i = L().PIANO.findIndex((x) => x.id === id); if (L().PIANO[i + 1] && P.cur === id) P.cur = L().PIANO[i + 1].id; A.toast("Урок завершён 🎹"); } A.save(); A.refresh(); },
+        lessonDone(b) { const id = b.dataset.id; if (P.done[id]) delete P.done[id]; else { P.done[id] = today(); const i = L().PIANO.findIndex((x) => x.id === id); if (L().PIANO[i + 1] && P.cur === id) P.cur = L().PIANO[i + 1].id; A.toast("Урок завершён {{i:piano}}"); } A.save(); A.refresh(); },
         lnote(b) { P.notes[b.dataset.id] = b.value; A.save(); },
         practice(b) { A.edit.practice({ lesson: b.dataset.id || P.cur }); },
         timerP() { A.timer.start("piano", "", "практика"); A.go("today"); },
@@ -485,14 +485,14 @@
       const tot = (subj) => sum(A.col("learn").filter((x) => x.subject === subj).map((x) => x.min));
       const pm = sum(A.col("psess").map((s) => s.min));
       const mods = [
-        ["piano", "🎹", "Самоучитель пианино", Object.keys(P.done).length + "/" + L().PIANO.length + " уроков · " + fmtDur(pm)],
-        ["tarot", "🃏", "Обучатель по Таро", L().TAROT.filter((c) => (T.box[c.id] || {}).b >= 3).length + "/78 карт выучено"],
-        ["ketu", "🌿", "Модуль Кету", Object.keys(A.db().ketu.lessons).length + "/" + L().KETU.lessons.length + " уроков"],
-        ["bazi", "☯", "Обучатель по Бацзы", Object.keys(A.db().bazi.lessons).length + "/" + L().BAZI.lessons.length + " уроков"],
-        ["piano/songs", "🎸", "Рок-песни на пианино", Object.keys(P.songs || {}).length + "/" + window.SONGS.list.length + " выучено"],
-        ["english", "🇬🇧", "Английский язык", Object.keys(A.db().english.lessons).length + "/" + window.LANG.EN.lessons.length + " уроков"],
-        ["latin", "🏛", "Латынь", Object.keys(A.db().latin.lessons).length + "/" + window.LANG.LA.lessons.length + " уроков"],
-        ["book", "📘", "Книга PRIME ERA", Object.keys(A.db().bookDone).length + "/13 блоков"]
+        ["piano", "{{i:piano}}", "Самоучитель пианино", Object.keys(P.done).length + "/" + L().PIANO.length + " уроков · " + fmtDur(pm)],
+        ["tarot", "{{i:wand-sparkles}}", "Обучатель по Таро", L().TAROT.filter((c) => (T.box[c.id] || {}).b >= 3).length + "/78 карт выучено"],
+        ["ketu", "{{i:leaf}}", "Модуль Кету", Object.keys(A.db().ketu.lessons).length + "/" + L().KETU.lessons.length + " уроков"],
+        ["bazi", "{{i:orbit}}", "Обучатель по Бацзы", Object.keys(A.db().bazi.lessons).length + "/" + L().BAZI.lessons.length + " уроков"],
+        ["piano/songs", "{{i:guitar}}", "Рок-песни на пианино", Object.keys(P.songs || {}).length + "/" + window.SONGS.list.length + " выучено"],
+        ["english", "{{i:languages}}", "Английский язык", Object.keys(A.db().english.lessons).length + "/" + window.LANG.EN.lessons.length + " уроков"],
+        ["latin", "{{i:landmark}}", "Латынь", Object.keys(A.db().latin.lessons).length + "/" + window.LANG.LA.lessons.length + " уроков"],
+        ["book", "{{i:book}}", "Книга PRIME ERA", Object.keys(A.db().bookDone).length + "/13 блоков"]
       ];
       let h = '<div class="card"><div class="list">' + mods.map((m) => '<a class="item" style="text-decoration:none;color:inherit" href="#/' + m[0] + '"><div class="ic">' + m[1] + '</div><div class="tx"><b>' + m[2] + "</b><small>" + esc(m[3]) + "</small></div><span class=\"muted\">›</span></a>").join("") + "</div></div>";
       const subs = {}; A.col("learn").forEach((x) => (subs[x.subject] = (subs[x.subject] || 0) + x.min));
@@ -526,10 +526,10 @@
         '<div class="card"><div class="list">' + B.blocks.map((b) => '<a class="item" style="text-decoration:none;color:inherit" href="#/book/' + b.n + '"><div class="ic" style="' + (done[b.n] ? "background:var(--sage2)" : "") + '">' + (done[b.n] ? "✓" : b.n) + '</div><div class="tx"><b>' + esc(b.title[0] + b.title.slice(1).toLowerCase()) + "</b></div></a>").join("") + "</div></div>" +
         '<div class="card peach"><h3>Финальный практический чек-лист</h3>' + B.checklist.map((c, i) => '<label class="switch"><input type="checkbox" data-c="ch" data-i="' + i + '"' + (ch[i] ? " checked" : "") + "><span></span>" + esc(c) + "</label>").join("") + '<p class="book" style="text-align:center;margin-top:10px"><i>«Я не обязана знать весь маршрут. Я обязана понимать направление и делать следующий шаг.»</i></p></div>' +
         '<div class="card sage"><h3>Опоры из книги</h3><div class="list">' +
-        '<div class="item" data-a="tool" data-t="stop"><div class="ic">✋</div><div class="tx"><b>Протокол «СТОП»</b><small>вместо «я ленивая» — точная причина и минимальный шаг</small></div></div>' +
-        '<div class="item" data-a="tool" data-t="four"><div class="ic">❓</div><div class="tx"><b>Четыре вопроса перед обязательством</b><small>я сама хочу? ценности? свобода? что уберу?</small></div></div>' +
-        '<div class="item" data-a="tool" data-t="crisis"><div class="ic">🛟</div><div class="tx"><b>В кризисе</b><small>сон → еда → движение → обязательства → близкие → одна задача</small></div></div>' +
-        '<div class="item" data-a="tool" data-t="conflict"><div class="ic">🤝</div><div class="tx"><b>Порядок в конфликте</b><small>выслушать → повторить → согласие → позиция → решение</small></div></div>' +
+        '<div class="item" data-a="tool" data-t="stop"><div class="ic">{{i:hand}}</div><div class="tx"><b>Протокол «СТОП»</b><small>вместо «я ленивая» — точная причина и минимальный шаг</small></div></div>' +
+        '<div class="item" data-a="tool" data-t="four"><div class="ic">{{i:circle-help}}</div><div class="tx"><b>Четыре вопроса перед обязательством</b><small>я сама хочу? ценности? свобода? что уберу?</small></div></div>' +
+        '<div class="item" data-a="tool" data-t="crisis"><div class="ic">{{i:life-buoy}}</div><div class="tx"><b>В кризисе</b><small>сон → еда → движение → обязательства → близкие → одна задача</small></div></div>' +
+        '<div class="item" data-a="tool" data-t="conflict"><div class="ic">{{i:handshake}}</div><div class="tx"><b>Порядок в конфликте</b><small>выслушать → повторить → согласие → позиция → решение</small></div></div>' +
         '<a class="item" style="text-decoration:none;color:inherit" href="#/goals/era"><div class="ic">90</div><div class="tx"><b>90 дней PRIME ERA</b><small>наблюдение → настройка → закрепление</small></div></a></div></div>';
     },
     bind(el, r) {

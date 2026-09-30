@@ -8,17 +8,17 @@
     root: true, title: "Все разделы",
     render() {
       const items = [
-        ["summary", "🗒", "Сводка дня"], ["tasks", "📝", "Задачи"], ["projects", "📁", "Проекты"],
-        ["habits", "✅", "Привычки"], ["reminders", "🔔", "Напоминания"], ["calendar/month", "📅", "Календарь"],
-        ["health", "❤", "Здоровье и вес"], ["food", "🍎", "Дневник питания"], ["recipes", "🍲", "Рецепты и меню"],
-        ["recipes/shop", "🛒", "Список покупок"], ["workouts", "🏋", "Тренировки"], ["health/balance", "☸", "Баланс жизни"],
-        ["money", "💰", "Финансы"], ["learn", "🎓", "Обучение"], ["hobbies", "🎨", "Хобби"],
-        ["culture", "📚", "Книги / фильмы / сериалы"], ["piano", "🎹", "Пианино"], ["tarot", "🃏", "Таро"],
-        ["ketu", "🌿", "Кету"], ["bazi", "☯", "Бацзы"], ["english", "🇬🇧", "Английский"],
-        ["latin", "🏛", "Латынь"], ["piano/songs", "🎸", "Песни на пианино"], ["stats", "📊", "Статистика"],
-        ["book", "📘", "Книга PRIME ERA"], ["ideas", "💡", "Идеи"], ["settings", "⚙", "Настройки"]
+        ["summary", "{{i:file-text}}", "Сводка дня"], ["tasks", "{{i:notebook-pen}}", "Задачи"], ["projects", "{{i:folder}}", "Проекты"],
+        ["habits", "{{i:circle-check}}", "Привычки"], ["reminders", "{{i:bell}}", "Напоминания"], ["calendar/month", "{{i:calendar-days}}", "Календарь"],
+        ["health", "{{i:heart}}", "Здоровье и вес"], ["food", "{{i:apple}}", "Дневник питания"], ["recipes", "{{i:soup}}", "Рецепты и меню"],
+        ["recipes/shop", "{{i:shopping-cart}}", "Список покупок"], ["workouts", "{{i:dumbbell}}", "Тренировки"], ["health/balance", "{{i:radar}}", "Баланс жизни"],
+        ["money", "{{i:wallet}}", "Финансы"], ["learn", "{{i:graduation-cap}}", "Обучение"], ["hobbies", "{{i:palette}}", "Хобби"],
+        ["culture", "{{i:library}}", "Книги / фильмы / сериалы"], ["piano", "{{i:piano}}", "Пианино"], ["tarot", "{{i:wand-sparkles}}", "Таро"],
+        ["ketu", "{{i:leaf}}", "Кету"], ["bazi", "{{i:orbit}}", "Бацзы"], ["english", "{{i:languages}}", "Английский"],
+        ["latin", "{{i:landmark}}", "Латынь"], ["piano/songs", "{{i:guitar}}", "Песни на пианино"], ["stats", "{{i:chart-column}}", "Статистика"],
+        ["book", "{{i:book}}", "Книга PRIME ERA"], ["ideas", "{{i:lightbulb}}", "Идеи"], ["settings", "{{i:settings}}", "Настройки"]
       ];
-      return '<div class="card hero" style="padding:14px"><div class="row" style="justify-content:center;gap:12px"><img src="img/logo-192.png" width="54" height="54" alt="" style="border-radius:50%"><div style="text-align:left"><div class="date" style="font-size:20px">Путь жизни</div><div class="small muted">' + esc(A.db().profile.name ? "Привет, " + A.db().profile.name + " 💜" : "Живу и не жалею") + "</div></div></div></div>" +
+      return '<div class="card hero" style="padding:14px"><div class="row" style="justify-content:center;gap:12px"><img src="img/logo-192.png" width="54" height="54" alt="" style="border-radius:50%"><div style="text-align:left"><div class="date" style="font-size:20px">Путь жизни</div><div class="small muted">' + esc(A.db().profile.name ? "Привет, " + A.db().profile.name + " {{i:heart}}" : "Живу и не жалею") + "</div></div></div></div>" +
         '<div class="menu-grid">' + items.map((i) => '<a href="#/' + i[0] + '"><span>' + i[1] + "</span>" + esc(i[2]) + "</a>").join("") + "</div>" +
         '<a class="card row" href="numerology.html" style="text-decoration:none;color:inherit;margin-top:12px"><span style="font-size:28px">命</span><div class="grow"><b>Нумерология и Бацзы</b><div class="small muted">Личный цифровой код, матрица, карта четырёх столпов, такты удачи, совместимость</div></div><span class="muted">›</span></a>';
     }
@@ -97,7 +97,7 @@
         let backups = "";
         if (A.native) { const list = (A.native.listBackups() || "").split(",").filter(Boolean).reverse(); backups = '<div class="card"><h3>Автоматические копии</h3><p class="small muted">Ежедневно сохраняются во внутренней памяти приложения (последние 14 дней).</p>' + (list.length ? list.map((d) => '<div class="item"><div class="tx"><b>' + fmtDate(d) + '</b></div><button class="btn sm" data-a="restoreDay" data-d="' + d + '">Восстановить</button></div>').join("") : A.empty("Пока нет")) + "</div>"; }
         return '<div class="card"><h3>Резервная копия</h3><div class="btns" style="margin-top:0"><button class="btn primary" data-a="backupNow">Сделать копию сейчас</button><button class="btn" data-a="exp" data-k="all">Экспорт в JSON</button><button class="btn" data-a="import">Импорт из JSON</button></div><label class="switch" style="margin-top:8px"><input type="checkbox" data-c="pb" data-k="autoBackup"' + (p.autoBackup !== false ? " checked" : "") + '><span></span>Автоматическое ежедневное резервное копирование</label><p class="small muted">Фото хранятся отдельно в памяти приложения и в JSON не входят.</p></div>' +
-          '<div class="card"><h3>Экспорт</h3><p class="small muted">Последнее сохранение: ' + esc(saved) + '</p><div class="list">' + Object.entries(EXPORTS).map(([k, [n]]) => '<div class="item"><div class="tx"><b>' + esc(n) + '</b></div><button class="btn sm" data-a="exp" data-k="' + k + '">Сохранить</button></div>').join("") + '</div><div class="btns"><a class="btn" href="#/stats/month">PDF: месячный отчёт</a><a class="btn" href="#/stats/year">PDF: год</a></div><p class="small muted">PDF создаётся через печать: кнопка ⎙ → «Сохранить как PDF».</p></div>' +
+          '<div class="card"><h3>Экспорт</h3><p class="small muted">Последнее сохранение: ' + esc(saved) + '</p><div class="list">' + Object.entries(EXPORTS).map(([k, [n]]) => '<div class="item"><div class="tx"><b>' + esc(n) + '</b></div><button class="btn sm" data-a="exp" data-k="' + k + '">Сохранить</button></div>').join("") + '</div><div class="btns"><a class="btn" href="#/stats/month">PDF: месячный отчёт</a><a class="btn" href="#/stats/year">PDF: год</a></div><p class="small muted">PDF создаётся через печать: кнопка {{i:printer}} → «Сохранить как PDF».</p></div>' +
           '<div class="card"><h3>Восстановление</h3><p class="small">Загрузить полную резервную копию из файла (JSON). Текущие данные будут заменены.</p><button class="btn" data-a="import">Выбрать файл</button></div>' + backups +
           '<div class="card" style="border:1px solid var(--bad)"><h3 style="color:var(--bad)">Полное удаление данных</h3><p class="small">Удаляет все записи, настройки, автоматические копии и напоминания без возможности восстановления. Сначала сохраните резервную копию.</p><button class="btn danger" data-a="wipe">Удалить все данные</button></div>';
       }
@@ -134,7 +134,7 @@
         smsPerm() { A.smsImport(true); },
         usagePerm() { A.native.openUsageSettings(); },
         perm() { A.nativeCall("notif", () => A.native.requestNotifications()).then(() => A.refresh()); },
-        test() { A.native.testNotification("Путь жизни", "Уведомления работают 💜"); },
+        test() { A.native.testNotification("Путь жизни", "Уведомления работают {{i:heart}}"); },
         setPin() {
           A.formSheet("PIN-код", [{ k: "a", label: "Новый PIN (4–8 цифр)", type: "password" }, { k: "b", label: "Повторите PIN", type: "password" }], {}, (o) => {
             if (!/^\d{4,8}$/.test(o.a)) { A.toast("PIN — от 4 до 8 цифр"); return false; }

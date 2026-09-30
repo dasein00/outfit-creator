@@ -232,6 +232,10 @@
     switch (f.type) {
       case "textarea": inp = '<textarea id="' + id + '" name="' + f.k + '" rows="' + (f.rows || 3) + '" placeholder="' + esc(f.ph || "") + '">' + esc(v) + "</textarea>"; break;
       case "select": inp = '<select id="' + id + '" name="' + f.k + '">' + opts.map((o) => { const [ov, ol] = Array.isArray(o) ? o : [o, o]; return '<option value="' + esc(ov) + '"' + (String(ov) === String(v) ? " selected" : "") + ">" + esc(ol) + "</option>"; }).join("") + "</select>"; break;
+      case "icon": {
+        const list = (App.ICON_CHOICES || []).slice(); if (v && !list.includes(v)) list.unshift(v);
+        inp = '<div class="chips icons" data-field="' + f.k + '" data-multi="0">' + list.map((o) => '<button type="button" class="chip' + (o === v ? " on" : "") + '" data-v="' + esc(o) + '" aria-label="Иконка">' + esc(o) + "</button>").join("") + "</div>"; break;
+      }
       case "chips": case "multi": {
         const sel = f.type === "multi" ? (Array.isArray(v) ? v.map(String) : []) : [String(v)];
         inp = '<div class="chips" data-field="' + f.k + '" data-multi="' + (f.type === "multi" ? 1 : 0) + '">' + opts.map((o) => { const [ov, ol] = Array.isArray(o) ? o : [o, o]; return '<button type="button" class="chip' + (sel.includes(String(ov)) ? " on" : "") + '" data-v="' + esc(ov) + '">' + esc(ol) + "</button>"; }).join("") + "</div>"; break;
@@ -241,7 +245,7 @@
       case "stars": inp = '<div class="stars" data-field="' + f.k + '" data-v="' + esc(v || 0) + '">' + [1, 2, 3, 4, 5].map((i) => '<button type="button" data-s="' + i + '" class="' + (i <= (v || 0) ? "on" : "") + '" aria-label="' + i + '">★</button>').join("") + "</div>"; break;
       default: inp = '<input id="' + id + '" name="' + f.k + '" type="' + (f.type || "text") + '"' + (f.type === "number" ? ' inputmode="decimal" step="' + (f.step || "any") + '"' : "") + (f.min != null ? ' min="' + f.min + '"' : "") + (f.max != null ? ' max="' + f.max + '"' : "") + ' value="' + esc(v) + '" placeholder="' + esc(f.ph || "") + '">';
     }
-    return '<div class="fld' + (f.full || ["textarea", "chips", "multi", "range", "stars"].includes(f.type) ? " full" : "") + '">' + lab + inp + hint + "</div>";
+    return '<div class="fld' + (f.full || ["textarea", "chips", "multi", "range", "stars", "icon"].includes(f.type) ? " full" : "") + '">' + lab + inp + hint + "</div>";
   };
   App.formHtml = (fields, obj = {}) => '<div class="form">' + fields.map((f) => f.section ? '<div class="fsec full">' + esc(f.section) + "</div>" : App.field(f, obj[f.k])).join("") + "</div>";
   App.wireForm = (root) => {
@@ -261,7 +265,7 @@
     const o = {};
     fields.forEach((f) => {
       if (f.section) return;
-      if (f.type === "chips" || f.type === "multi") {
+      if (f.type === "chips" || f.type === "multi" || f.type === "icon") {
         const vals = [...root.querySelectorAll('.chips[data-field="' + f.k + '"] .chip.on')].map((c) => c.dataset.v);
         o[f.k] = f.type === "multi" ? (f.numeric ? vals.map(Number) : vals) : (vals[0] ?? "");
         if (f.numeric && f.type === "chips") o[f.k] = o[f.k] === "" ? null : +o[f.k];

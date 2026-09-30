@@ -305,3 +305,14 @@ table.tbl td.r, table.tbl th.r { text-align: right; font-variant-numeric: tabula
 .chord:active { background: var(--accent); color: var(--accent-ink); }
 .pk.lit { background: var(--peach) !important; }
 .pk.b.lit { background: var(--accent) !important; }
+
+/* иконки Lucide */
+svg.i { width: 1.15em; height: 1.15em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -0.2em; flex: 0 0 auto; }
+.ic svg.i { width: 20px; height: 20px; color: var(--accent); }
+.tab .ti svg.i { width: 22px; height: 22px; }
+.card > h3 svg.i { color: var(--accent); width: 20px; height: 20px; }
+.stat small svg.i { color: var(--accent); }
+.chips.icons .chip { min-width: 44px; justify-content: center; display: inline-flex; align-items: center; }
+.chips.icons .chip svg.i { width: 20px; height: 20px; }
+.icon-btn svg.i { width: 22px; height: 22px; }
+.menu-grid a span svg.i { width: 28px; height: 28px; color: var(--accent); }
