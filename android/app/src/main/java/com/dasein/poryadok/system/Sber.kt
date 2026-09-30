@@ -159,6 +159,9 @@ object Sber {
         flipped to removed.size
     }
 
+    /** Ключ уведомления: текст и минута. Повторные показы того же уведомления не создают дублей. */
+    fun notificationKey(text: String, at: Long) = "${at / 60_000}:${text.hashCode()}"
+
     private fun label(note: String) = note.removePrefix("Сбер: ").let { if (it == "Сбер" || !it.any(Char::isLetter)) "" else it }
 
     /** Разовый импорт уже полученных SMS от 900 (нужно разрешение на чтение SMS). */
