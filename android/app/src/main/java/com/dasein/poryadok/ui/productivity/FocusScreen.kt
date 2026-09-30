@@ -167,7 +167,7 @@ fun FocusScreen(nav: NavHostController, settings: Settings) {
                 BarChart(
                     week.map { d -> sessions.filter { it.day == d }.sumOf { it.minutes }.toFloat() },
                     week.map { Dates.weekdayShort(it).take(2) },
-                    MaterialTheme.colorScheme.primary, highlight = 6,
+                    MaterialTheme.colorScheme.primary, highlight = 6, format = { "${it.toInt()} мин" },
                 )
             }
             val byTask = sessions.filter { it.day in week && it.label.isNotBlank() }.groupBy { it.label }

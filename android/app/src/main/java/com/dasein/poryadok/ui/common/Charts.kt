@@ -25,6 +25,12 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -56,7 +62,10 @@ fun ProgressRing(
     }
 }
 
-/** Столбики; последний (текущий) можно выделить. */
+/**
+ * Столбики; последний (текущий) можно выделить. Касание столбика показывает его значение,
+ * двумя пальцами — масштаб, двойное касание — весь период. [format] — как подписать значение (например, «5 432 шага»).
+ */
 @Composable
 fun BarChart(
     values: List<Float>,
@@ -66,91 +75,155 @@ fun BarChart(
     height: Dp = 140.dp,
     highlight: Int = -1,
     target: Float? = null,
+    format: (Float) -> String = { chartNumber(it) },
 ) {
-    val dim = LocalExtra.current.dim
-    val line = LocalExtra.current.line
+    val extra = LocalExtra.current
+    val dim = extra.dim
+    val line = extra.line
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    val surface = MaterialTheme.colorScheme.surface
+    val measurer = rememberTextMeasurer()
+    val labelStyle = TextStyle(fontSize = 10.sp, color = dim)
+    val bubbleStyle = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+    val z = rememberChartZoom(values.size)
     val maxV = max(values.maxOrNull() ?: 0f, target ?: 0f).coerceAtLeast(1f)
-    Column(modifier.fillMaxWidth()) {
-        Canvas(Modifier.fillMaxWidth().height(height)) {
-            val n = values.size.coerceAtLeast(1)
-            val slot = size.width / n
-            val bw = slot * .62f
+    val n = values.size.coerceAtLeast(1)
+    val labelH = with(LocalDensity.current) { 18.dp.toPx() }
+    val topPad = with(LocalDensity.current) { 26.dp.toPx() }
+    Canvas(
+        modifier.fillMaxWidth().height(height + 18.dp + 26.dp)
+            .chartGestures(z, values, 0f, (n / 4f).coerceAtLeast(1f)) { o ->
+                val slot = z.width * z.scale / n
+                ((o.x + z.shift) / slot).toInt().takeIf { it in values.indices } ?: -1
+            },
+    ) {
+        z.width = size.width
+        val h = size.height - labelH - topPad
+        val slot = size.width * z.scale / n
+        val bw = slot * .62f
+        val sel = z.selected
+        clipRect(0f, 0f, size.width, size.height) {
             values.forEachIndexed { i, v ->
-                val h = size.height * (v / maxV)
-                val c = if (highlight == -1 || i == highlight) color else color.copy(alpha = .45f)
+                val x0 = i * slot - z.shift
+                if (x0 + slot < 0 || x0 > size.width) return@forEachIndexed
+                val bh = h * (v / maxV)
+                val active = if (sel >= 0) i == sel else (highlight == -1 || i == highlight)
                 drawRoundRect(
-                    c, Offset(i * slot + (slot - bw) / 2, size.height - h), Size(bw, h.coerceAtLeast(2f)),
+                    if (active) color else color.copy(alpha = .45f), Offset(x0 + (slot - bw) / 2, topPad + h - bh), Size(bw, bh.coerceAtLeast(2f)),
                     CornerRadius(6f, 6f),
                 )
             }
-            if (target != null) {
-                val y = size.height * (1 - target / maxV)
-                drawLine(dim, Offset(0f, y), Offset(size.width, y), 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f)))
+            // Подписи под столбиками: все, если помещаются, иначе через одну-две.
+            val maxLabelW = labels.maxOfOrNull { measurer.measure(it, labelStyle).size.width } ?: 0
+            val every = if (slot <= 0f) 1 else kotlin.math.ceil((maxLabelW + 6f) / slot).toInt().coerceAtLeast(1)
+            labels.forEachIndexed { i, l ->
+                if (i % every != 0 && i != sel) return@forEachIndexed
+                val cx = i * slot - z.shift + slot / 2
+                if (cx < -slot || cx > size.width + slot) return@forEachIndexed
+                val t = measurer.measure(l, if (i == sel) labelStyle.copy(color = onSurface, fontWeight = FontWeight.Bold) else labelStyle)
+                drawText(t, topLeft = Offset((cx - t.size.width / 2).coerceIn(0f, size.width - t.size.width), topPad + h + 4f))
             }
-            drawLine(line, Offset(0f, size.height), Offset(size.width, size.height), 2f)
         }
-        Row(Modifier.fillMaxWidth().padding(top = 4.dp)) {
-            labels.forEach {
-                Text(it, Modifier.weight(1f), fontSize = 10.sp, color = dim, textAlign = TextAlign.Center, maxLines = 1)
-            }
+        if (target != null) {
+            val y = topPad + h * (1 - target / maxV)
+            drawLine(dim, Offset(0f, y), Offset(size.width, y), 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f)))
+        }
+        drawLine(line, Offset(0f, topPad + h), Offset(size.width, topPad + h), 2f)
+        if (sel in values.indices) {
+            val cx = sel * slot - z.shift + slot / 2
+            val top = topPad + h - h * (values[sel] / maxV)
+            val label = labels.getOrNull(sel)?.let { "$it · " } ?: ""
+            chartBubble(measurer, label + format(values[sel]), Offset(cx, top), onSurface, surface, bubbleStyle)
         }
     }
 }
 
-data class Series(val points: List<Float?>, val color: Color, val dashed: Boolean = false)
+data class Series(val points: List<Float?>, val color: Color, val dashed: Boolean = false, val name: String = "")
 
+/**
+ * Линии. Касание показывает значения в ближайшей точке, двумя пальцами — масштаб, двойное касание — сброс.
+ * [pointLabels] — подписи точек для подсказки (например, даты), [format] — как подписать значение.
+ */
 @Composable
 fun LineChart(
     series: List<Series>,
     modifier: Modifier = Modifier,
     height: Dp = 160.dp,
     labels: List<String> = emptyList(),
+    pointLabels: List<String> = emptyList(),
+    format: (Float) -> String = { chartNumber(it) },
 ) {
-    val dim = LocalExtra.current.dim
-    val line = LocalExtra.current.line
+    val extra = LocalExtra.current
+    val dim = extra.dim
+    val line = extra.line
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    val surface = MaterialTheme.colorScheme.surface
+    val measurer = rememberTextMeasurer()
+    val bubbleStyle = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
     val all = series.flatMap { s -> s.points.filterNotNull() }
     if (all.isEmpty()) return
+    val n = series.maxOf { it.points.size }.coerceAtLeast(1)
+    val z = rememberChartZoom(n)
     var lo = all.min()
     var hi = all.max()
     if (hi - lo < 1f) { hi += .5f; lo -= .5f }
     val pad = (hi - lo) * .12f
     lo -= pad; hi += pad
+    val topPad = with(LocalDensity.current) { 26.dp.toPx() }
     Column(modifier.fillMaxWidth()) {
-        Canvas(Modifier.fillMaxWidth().height(height)) {
+        Canvas(
+            Modifier.fillMaxWidth().height(height + 26.dp)
+                .chartGestures(z, n, 0f, (n / 4f).coerceAtLeast(1f)) { o ->
+                    if (n < 2) 0 else (((o.x + z.shift) / (z.width * z.scale)) * (n - 1)).let { Math.round(it) }.coerceIn(0, n - 1)
+                },
+        ) {
+            z.width = size.width
             val w = size.width
-            val h = size.height
+            val h = size.height - topPad
+            fun x(i: Int) = if (n > 1) z.x(0f, i / (n - 1f)) else w / 2
+            fun y(v: Float) = topPad + h * (1 - (v - lo) / (hi - lo))
             for (k in 0..3) {
-                val y = h * k / 3f
-                drawLine(line, Offset(0f, y), Offset(w, y), 1.5f)
+                val yy = topPad + h * k / 3f
+                drawLine(line, Offset(0f, yy), Offset(w, yy), 1.5f)
             }
             drawIntoCanvas { c ->
                 val p = android.graphics.Paint().apply { this.color = dim.toArgb(); textSize = 26f; isAntiAlias = true }
-                c.nativeCanvas.drawText("%.1f".format(hi), 4f, 26f, p)
-                c.nativeCanvas.drawText("%.1f".format(lo), 4f, h - 6f, p)
+                c.nativeCanvas.drawText(chartNumber(hi), 4f, topPad + 26f, p)
+                c.nativeCanvas.drawText(chartNumber(lo), 4f, size.height - 6f, p)
             }
-            series.forEach { s ->
-                val n = s.points.size
-                if (n == 0) return@forEach
-                val step = if (n > 1) w / (n - 1) else 0f
-                val path = Path()
-                var started = false
-                s.points.forEachIndexed { i, v ->
-                    if (v == null) return@forEachIndexed
-                    val x = if (n > 1) i * step else w / 2
-                    val y = h * (1 - (v - lo) / (hi - lo))
-                    if (!started) { path.moveTo(x, y); started = true } else path.lineTo(x, y)
-                    if (!s.dashed) drawCircle(s.color, 5f, Offset(x, y))
+            clipRect(0f, 0f, w, size.height) {
+                series.forEach { s ->
+                    if (s.points.isEmpty()) return@forEach
+                    val path = Path()
+                    var started = false
+                    s.points.forEachIndexed { i, v ->
+                        if (v == null) return@forEachIndexed
+                        val px = x(i); val py = y(v)
+                        if (!started) { path.moveTo(px, py); started = true } else path.lineTo(px, py)
+                        if (!s.dashed) drawCircle(s.color, if (i == z.selected) 9f else 5f, Offset(px, py))
+                    }
+                    drawPath(
+                        path, s.color,
+                        style = Stroke(
+                            width = if (s.dashed) 3f else 5f, cap = StrokeCap.Round,
+                            pathEffect = if (s.dashed) PathEffect.dashPathEffect(floatArrayOf(14f, 10f)) else null,
+                        ),
+                    )
                 }
-                drawPath(
-                    path, s.color,
-                    style = Stroke(
-                        width = if (s.dashed) 3f else 5f, cap = StrokeCap.Round,
-                        pathEffect = if (s.dashed) PathEffect.dashPathEffect(floatArrayOf(14f, 10f)) else null,
-                    ),
-                )
+            }
+            val sel = z.selected
+            if (sel in 0 until n) {
+                val px = x(sel)
+                drawLine(dim, Offset(px, topPad), Offset(px, size.height), 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f)))
+                val vals = series.mapNotNull { s -> s.points.getOrNull(sel)?.let { v -> (if (s.name.isNotBlank()) "${s.name} " else "") + format(v) } }
+                val top = series.mapNotNull { it.points.getOrNull(sel) }.maxOrNull()?.let { y(it) } ?: topPad
+                if (vals.isNotEmpty()) {
+                    val head = pointLabels.getOrNull(sel)?.let { "$it · " } ?: ""
+                    chartBubble(measurer, head + vals.joinToString(" · "), Offset(px, top), onSurface, surface, bubbleStyle)
+                }
             }
         }
-        if (labels.isNotEmpty()) Row(Modifier.fillMaxWidth().padding(top = 4.dp)) {
+        if (labels.isNotEmpty() && z.scale <= 1.01f) Row(Modifier.fillMaxWidth().padding(top = 4.dp)) {
             labels.forEach { Text(it, Modifier.weight(1f), fontSize = 10.sp, color = dim, textAlign = TextAlign.Center, maxLines = 1) }
         }
     }

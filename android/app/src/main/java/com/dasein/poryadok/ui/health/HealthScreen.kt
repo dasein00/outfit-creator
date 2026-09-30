@@ -92,6 +92,7 @@ import com.dasein.poryadok.ui.common.FieldButton
 import com.dasein.poryadok.ui.common.Gap
 import com.dasein.poryadok.ui.common.Images
 import com.dasein.poryadok.ui.common.LineChart
+import com.dasein.poryadok.ui.common.chartNumber
 import com.dasein.poryadok.ui.common.NumberField
 import com.dasein.poryadok.ui.common.Pill
 import com.dasein.poryadok.ui.common.ProgressRing
@@ -557,9 +558,10 @@ private fun MeasureTab(nav: NavHostController, profile: BodyProfile?, current: D
         Tile {
             LineChart(
                 listOf(
-                    Series(ms.map { it.waist?.toFloat() }, MaterialTheme.colorScheme.primary),
-                    Series(ms.map { it.hips?.toFloat() }, Palette.item(3)),
+                    Series(ms.map { it.waist?.toFloat() }, MaterialTheme.colorScheme.primary, name = "талия"),
+                    Series(ms.map { it.hips?.toFloat() }, Palette.item(3), name = "бёдра"),
                 ),
+                pointLabels = ms.map { Dates.short(it.day) }, format = { chartNumber(it) + " см" },
             )
             Row(Modifier.padding(top = 6.dp)) {
                 Text("● талия", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)

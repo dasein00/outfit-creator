@@ -298,7 +298,7 @@ private fun Overview(all: List<Txn>, month: List<Txn>, cats: List<Category>, ym:
         SectionTitle("Полгода: расходы")
         Tile {
             val monthly = months.map { m -> all.filter { it.type == TxnType.EXPENSE && it.day in Dates.monthRange(m) }.sumOf { it.amount }.toFloat() }
-            BarChart(monthly, months.map { Dates.monthTitle(it).take(3) }, extra.danger, highlight = 5)
+            BarChart(monthly, months.map { Dates.monthTitle(it).take(3) }, extra.danger, highlight = 5, format = { Money.format(it.toDouble(), cur) })
             val avg = monthly.dropLast(1).filter { it > 0 }.let { if (it.isEmpty()) 0f else it.average().toFloat() }
             if (avg > 0) Text("В среднем ${Money.format(avg.toDouble(), cur)} в месяц", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
         }
@@ -306,7 +306,7 @@ private fun Overview(all: List<Txn>, month: List<Txn>, cats: List<Category>, ym:
         Tile {
             BarChart(
                 months.map { m -> all.filter { it.type == TxnType.INCOME && it.day in Dates.monthRange(m) }.sumOf { it.amount }.toFloat() },
-                months.map { Dates.monthTitle(it).take(3) }, extra.ok, highlight = 5,
+                months.map { Dates.monthTitle(it).take(3) }, extra.ok, highlight = 5, format = { Money.format(it.toDouble(), cur) },
             )
         }
         val days = (Dates.monthRange(ym).last - Dates.monthRange(ym).first + 1).toInt()

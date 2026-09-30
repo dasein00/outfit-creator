@@ -401,6 +401,7 @@ internal fun TrendSection(readings: List<BodyMetric>, profile: BodyProfile) {
         if (series.size < 2) Text("Для графика нужно хотя бы два значения за период.", color = extra.dim, fontSize = 13.sp)
         else LineChart(
             listOf(Series(series.map { it.second.toFloat() }, MaterialTheme.colorScheme.primary)),
+            pointLabels = series.map { it.first },
             labels = series.map { it.first }.let { l -> if (l.size <= 6) l else l.filterIndexed { i, _ -> i % ((l.size + 5) / 6) == 0 } },
         )
         val t = BodyComp.trend(pts, range.first, range.last)

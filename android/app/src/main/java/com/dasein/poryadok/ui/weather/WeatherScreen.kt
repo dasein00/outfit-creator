@@ -120,6 +120,11 @@ fun WeatherTile(nav: NavHostController) {
                     "Ветер ${n.windMs.roundToInt()} м/с ${WeatherLogic.windName(n.windDir)} · ${WeatherLogic.mmHg(n.pressureHpa)} мм рт. ст. · влажность ${n.humidity}%",
                     fontSize = 12.sp, color = extra.dim, maxLines = 1,
                 )
+                val rain = WeatherLogic.precipToday(w.hours, today?.date ?: LocalDate.now().toString())
+                if (rain.isNotBlank()) Text(
+                    rain, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                    color = if (rain.startsWith("Без")) extra.dim else MaterialTheme.colorScheme.primary, maxLines = 2,
+                )
             }
             Text("›", fontSize = 22.sp, color = extra.dim)
         }
@@ -202,6 +207,8 @@ fun WeatherScreen(nav: NavHostController) {
                 today?.let {
                     Text("Днём до ${WeatherLogic.temp(it.tMax)}, ночью до ${WeatherLogic.temp(it.tMin)}", fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp))
                 }
+                val rain = WeatherLogic.precipToday(w.hours, today?.date ?: LocalDate.now().toString())
+                if (rain.isNotBlank()) Text(rain, fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 6.dp))
                 val advice = WeatherLogic.advice(n, today)
                 if (advice.isNotBlank()) Text(advice, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 6.dp))
             }

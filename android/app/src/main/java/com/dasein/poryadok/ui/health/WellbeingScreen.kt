@@ -150,7 +150,7 @@ private fun MoodTab() {
         val days = (29 downTo 0).map { today - it }
         LineChart(
             listOf(Series(days.map { d -> moods.filter { it.day == d }.map { it.level }.takeIf { it.isNotEmpty() }?.average()?.toFloat() }, MaterialTheme.colorScheme.primary)),
-            height = 120.dp,
+            height = 120.dp, pointLabels = days.map { Dates.short(it) },
         )
     }
     val tagStats = remember(moods) {
@@ -274,6 +274,7 @@ private fun SleepTab() {
         BarChart(
             days.map { d -> list.firstOrNull { it.day == d }?.let { sleepMinutes(it) / 60f } ?: 0f },
             days.map { Dates.day(it).dayOfMonth.toString() }, Palette.item(11), target = goal / 60f, highlight = 13,
+            format = { h -> val m = (h * 60).toInt(); "${m / 60} ч ${m % 60} мин" },
         )
         Text("Пунктир — цель ${goal / 60} ч", fontSize = 11.sp, color = extra.dim)
     }
@@ -381,6 +382,7 @@ private fun WaterTab() {
         BarChart(
             days.map { d -> (logs.firstOrNull { it.day == d }?.waterMl ?: 0) / 1000f },
             days.map { Dates.day(it).dayOfMonth.toString() }, blue, target = goal / 1000f, highlight = 13,
+            format = { "%.2f".format(it).replace('.', ',') + " л" },
         )
         var streak = 0
         var d = if (ml >= goal) today else today - 1

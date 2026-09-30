@@ -352,7 +352,7 @@ fun HabitDetailScreen(nav: NavHostController, id: Long) {
                 BarChart(
                     months.map { ym -> Dates.monthRange(ym).count { it in done }.toFloat() },
                     months.map { Dates.monthTitle(it).take(3) },
-                    color, highlight = months.size - 1,
+                    color, highlight = months.size - 1, format = { "${it.toInt()} дн." },
                 )
             }
             SectionTitle("Отметить прошедшие дни")

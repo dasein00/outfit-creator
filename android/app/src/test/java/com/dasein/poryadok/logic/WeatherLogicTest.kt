@@ -38,6 +38,16 @@ class WeatherLogicTest {
         assertTrue(WeatherLogic.advice(WeatherNow(temp = -5.0, feels = -9.0, code = 71), null).contains("холодно"))
     }
 
+    @Test fun precipitationToday() {
+        val h = listOf(
+            WeatherHour("2026-09-30T13:00", 12.0, 10, 2), WeatherHour("2026-09-30T14:00", 12.0, 60, 61),
+            WeatherHour("2026-09-30T15:00", 11.0, 70, 63), WeatherHour("2026-09-30T16:00", 11.0, 20, 3),
+            WeatherHour("2026-10-01T09:00", 9.0, 90, 63),
+        )
+        assertEquals("Дождь 14:00–16:00, вероятность до 70%", WeatherLogic.precipToday(h, "2026-09-30"))
+        assertEquals("Без осадков, вероятность до 10%", WeatherLogic.precipToday(h.take(1), "2026-09-30"))
+    }
+
     @Test fun parsesPlaces() {
         val p = WeatherLogic.parsePlaces("""{"results":[{"name":"Ереван","latitude":40.18,"longitude":44.51,"admin1":"Ереван","country":"Армения"}]}""")
         assertEquals("Ереван", p.single().name)

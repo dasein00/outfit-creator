@@ -108,6 +108,9 @@ import com.dasein.poryadok.ui.common.TimePickDialog
 import com.dasein.poryadok.ui.common.io
 import com.dasein.poryadok.ui.common.observe
 import com.dasein.poryadok.ui.common.rememberUiFlag
+import com.dasein.poryadok.ui.common.chartBubble
+import com.dasein.poryadok.ui.common.chartGestures
+import com.dasein.poryadok.ui.common.rememberChartZoom
 import com.dasein.poryadok.ui.theme.LocalExtra
 import java.util.Date
 import kotlin.math.abs
@@ -249,7 +252,7 @@ fun WeekWeightCard(readings: List<BodyMetric>, onClick: () -> Unit, modifier: Mo
             }
             TrendChart(
                 pts, false, Modifier.fillMaxWidth().height(170.dp).padding(top = 6.dp),
-                dayLabels = { d -> val x = Dates.day(d); WD[x.dayOfWeek.value - 1] + " " + x.dayOfMonth },
+                dayLabels = { d -> val x = Dates.day(d); WD[x.dayOfWeek.value - 1] + " " + x.dayOfMonth }, zoomable = true, unit = "кг",
             )
         } else Text("Добавьте хотя бы два взвешивания — здесь появится график.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
     }
@@ -455,8 +458,11 @@ fun WeightTrendScreen(nav: NavHostController) {
                 Gap(8.dp)
                 if (series.size < 2) Text("Для графика нужно хотя бы два значения за период.", color = extra.dim, fontSize = 13.sp)
                 else {
-                    TrendChart(series, period == TrendPeriod.MONTH, Modifier.fillMaxWidth().height(260.dp), zoomable = true)
-                    if (series.size >= 4) Text("Разведите два пальца, чтобы увеличить; листайте одним пальцем; двойное касание — весь период.", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
+                    TrendChart(
+                        series, period == TrendPeriod.MONTH, Modifier.fillMaxWidth().height(260.dp), zoomable = true,
+                        unit = when (metric) { "weight", "muscle" -> "кг"; "fat", "water" -> "%"; else -> "" },
+                    )
+                    if (series.size >= 4) Text("Нажмите на точку — появится значение. Разведите два пальца, чтобы увеличить; листайте одним пальцем; двойное касание — весь период.", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
                 }
             }
             val t = BodyComp.trend(pts, range.first, range.last)
@@ -484,55 +490,33 @@ fun WeightTrendScreen(nav: NavHostController) {
     if (pick == 2) DatePickDialog(to, { pick = 0 }, { it?.let { d -> to = d } }, allowClear = false)
 }
 
-/** График с плавной линией, заливкой, точками и подписями значений. */
+/**
+ * График с плавной линией, заливкой, точками и подписями значений. Касание точки показывает дату и значение;
+ * если [zoomable] — два пальца меняют масштаб, один листает, двойное касание возвращает весь период.
+ */
 @Composable
-fun TrendChart(points: List<Pair<Long, Double>>, monthLabels: Boolean, modifier: Modifier, dayLabels: ((Long) -> String)? = null, zoomable: Boolean = false) {
+fun TrendChart(points: List<Pair<Long, Double>>, monthLabels: Boolean, modifier: Modifier, dayLabels: ((Long) -> String)? = null, zoomable: Boolean = false, unit: String = "") {
     val color = MaterialTheme.colorScheme.primary
     val extra = LocalExtra.current
     val measurer = rememberTextMeasurer()
     val labelStyle = TextStyle(fontSize = 10.sp, color = extra.dim)
     val valueStyle = TextStyle(fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface)
-    // Масштаб по времени: два пальца — увеличить/уменьшить, один палец — листать увеличенный график, двойное касание — сброс.
-    var scale by remember(points.size) { mutableFloatStateOf(1f) }
-    var shift by remember(points.size) { mutableFloatStateOf(0f) }
-    var chartW by remember { mutableFloatStateOf(1f) }
-    val maxScale = (points.size / 3f).coerceAtLeast(1f)
-    fun clampShift() { shift = shift.coerceIn(0f, (chartW * (scale - 1f)).coerceAtLeast(0f)) }
-    val gestures = if (!zoomable || points.size < 4) Modifier else Modifier
-        .pointerInput(points.size) {
-            awaitEachGesture {
-                awaitFirstDown(requireUnconsumed = false)
-                do {
-                    val event = awaitPointerEvent()
-                    val pressed = event.changes.count { it.pressed }
-                    if (pressed >= 2) {
-                        val zoom = event.calculateZoom()
-                        val pan = event.calculatePan()
-                        val c = event.calculateCentroid(useCurrent = true)
-                        val left = 36.dp.toPx()
-                        val anchor = (c.x - left + shift) / scale
-                        val ns = (scale * zoom).coerceIn(1f, maxScale)
-                        shift = anchor * ns - (c.x - left) - pan.x
-                        scale = ns
-                        clampShift()
-                        event.changes.forEach { it.consume() }
-                    } else if (pressed == 1 && scale > 1f) {
-                        val pan = event.calculatePan()
-                        if (abs(pan.x) > abs(pan.y)) {
-                            shift -= pan.x
-                            clampShift()
-                            event.changes.forEach { it.consume() }
-                        }
-                    }
-                } while (event.changes.any { it.pressed })
-            }
-        }
-        .pointerInput(points.size) { detectTapGestures(onDoubleTap = { scale = 1f; shift = 0f }) }
+    val bubbleStyle = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    val surface = MaterialTheme.colorScheme.surface
+    val z = rememberChartZoom(points.size)
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val leftPx = with(density) { 36.dp.toPx() }
+    val maxScale = if (zoomable && points.size >= 4) (points.size / 3f).coerceAtLeast(1f) else 1f
+    val gestures = Modifier.chartGestures(z, points.size, leftPx, maxScale) { o ->
+        if (points.isEmpty()) -1
+        else points.indices.minBy { i -> abs(z.x(leftPx, if (points.size == 1) .5f else i / (points.size - 1f)) - o.x) }
+    }
     Canvas(modifier.then(gestures)) {
-        val left = 36.dp.toPx(); val bottom = 22.dp.toPx(); val top = 16.dp.toPx(); val right = 12.dp.toPx()
+        val left = leftPx; val bottom = 22.dp.toPx(); val top = 22.dp.toPx(); val right = 12.dp.toPx()
         val w = size.width - left - right; val h = size.height - top - bottom
-        chartW = w
-        fun x(i: Int) = left + (if (points.size == 1) w / 2 else i * w / (points.size - 1)) * scale - shift
+        z.width = w
+        fun x(i: Int) = z.x(left, if (points.size == 1) .5f else i / (points.size - 1f))
         val visible = points.indices.filter { x(it) in (left - 1f)..(left + w + 1f) }.ifEmpty { points.indices.toList() }
         val vals = visible.map { points[it].second }
         var lo = vals.min(); var hi = vals.max()
@@ -547,6 +531,8 @@ fun TrendChart(points: List<Pair<Long, Double>>, monthLabels: Boolean, modifier:
             val t = measurer.measure("%.1f".format(v), labelStyle)
             drawText(t, topLeft = Offset(left - t.size.width - 6f, yy - t.size.height / 2))
         }
+        val maxI = visible.maxBy { points[it].second }; val minI = visible.minBy { points[it].second }
+        val show = if (visible.size <= 12) visible.toSet() else setOf(visible.first(), visible.last(), maxI, minI)
         clipRect(left - 8f, 0f, left + w + 8f, size.height) {
             val line = Path()
             points.forEachIndexed { i, p ->
@@ -560,26 +546,34 @@ fun TrendChart(points: List<Pair<Long, Double>>, monthLabels: Boolean, modifier:
             val area = Path().apply { addPath(line); lineTo(x(points.lastIndex), top + h); lineTo(x(0), top + h); close() }
             drawPath(area, Brush.verticalGradient(listOf(color.copy(alpha = .18f), color.copy(alpha = .02f)), startY = top, endY = top + h))
             drawPath(line, color, style = Stroke(2.5.dp.toPx()))
-            // Точки и подписи: все видимые, если их немного, иначе первая, последняя, максимум и минимум.
-            val maxI = visible.maxBy { points[it].second }; val minI = visible.minBy { points[it].second }
-            val show = if (visible.size <= 12) visible.toSet() else setOf(visible.first(), visible.last(), maxI, minI)
             visible.forEach { i ->
                 val c = Offset(x(i), y(points[i].second))
-                drawCircle(Color.White, 4.dp.toPx(), c)
-                drawCircle(color, 4.dp.toPx(), c, style = Stroke(2.dp.toPx()))
-                if (i in show) {
-                    val t = measurer.measure("%.1f".format(points[i].second), valueStyle)
-                    drawText(t, topLeft = Offset((c.x - t.size.width / 2).coerceIn(0f, size.width - t.size.width), c.y - t.size.height - 6f))
-                }
+                val r = if (i == z.selected) 6.dp.toPx() else 4.dp.toPx()
+                drawCircle(Color.White, r, c)
+                drawCircle(color, r, c, style = Stroke(2.dp.toPx()))
             }
+        }
+        // Подписи значений рисуются вне обрезки и сдвигаются внутрь, чтобы крайние не срезались.
+        visible.forEach { i ->
+            if (i !in show || i == z.selected) return@forEach
+            val c = Offset(x(i), y(points[i].second))
+            val t = measurer.measure("%.1f".format(points[i].second), valueStyle)
+            drawText(t, topLeft = Offset((c.x - t.size.width / 2).coerceIn(left - 4f, size.width - t.size.width), (c.y - t.size.height - 6f).coerceAtLeast(0f)))
         }
         // Подписи дат: каждая видимая точка, если задан формат дня или их мало, иначе первая, середина и последняя видимые.
         val labelIdx = if (dayLabels != null || visible.size <= 6) visible else listOf(visible.first(), visible[visible.size / 2], visible.last()).distinct()
         labelIdx.forEach { i ->
             val d = Dates.day(points[i].first)
-            val s = dayLabels?.invoke(points[i].first) ?: if (monthLabels && scale < 3f) "%02d.%02d".format(d.monthValue, d.year % 100) else "%02d.%02d".format(d.dayOfMonth, d.monthValue)
+            val s = dayLabels?.invoke(points[i].first) ?: if (monthLabels && z.scale < 3f) "%02d.%02d".format(d.monthValue, d.year % 100) else "%02d.%02d".format(d.dayOfMonth, d.monthValue)
             val t = measurer.measure(s, labelStyle)
-            drawText(t, topLeft = Offset((x(i) - t.size.width / 2).coerceIn(0f, size.width - t.size.width), top + h + 6f))
+            drawText(t, topLeft = Offset((x(i) - t.size.width / 2).coerceIn(left - 4f, size.width - t.size.width), top + h + 6f))
+        }
+        val sel = z.selected
+        if (sel in points.indices) {
+            val c = Offset(x(sel), y(points[sel].second))
+            drawLine(extra.dim, Offset(c.x, top), Offset(c.x, top + h), 1.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f)))
+            val text = "${Dates.weekdayShort(points[sel].first)}, ${Dates.short(points[sel].first)} · " + "%.1f".format(points[sel].second).replace('.', ',') + if (unit.isNotBlank()) " $unit" else ""
+            chartBubble(measurer, text, c, onSurface, surface, bubbleStyle)
         }
     }
 }

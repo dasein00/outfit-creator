@@ -50,6 +50,7 @@ import com.dasein.poryadok.system.Sber
 import com.dasein.poryadok.system.Steps
 import com.dasein.poryadok.ui.common.AppIcon
 import com.dasein.poryadok.ui.common.BarChart
+import com.dasein.poryadok.ui.common.chartNumber
 import com.dasein.poryadok.ui.common.Gap
 import com.dasein.poryadok.ui.common.HGap
 import com.dasein.poryadok.ui.common.Ic
@@ -152,6 +153,7 @@ fun StepsScreen(nav: NavHostController, settings: AppSettings) {
                 days.map { d -> (dayLogs.firstOrNull { it.day == d }?.steps ?: 0).toFloat() },
                 days.map { Dates.day(it).dayOfMonth.toString() },
                 extra.ok, highlight = 13, target = goal.toFloat(),
+                format = { v -> chartNumber(v) + " " + com.dasein.poryadok.logic.plural(v.toInt(), "шаг", "шага", "шагов") },
             )
 
             SectionTitle("Health Connect — любые фитнес-приложения")

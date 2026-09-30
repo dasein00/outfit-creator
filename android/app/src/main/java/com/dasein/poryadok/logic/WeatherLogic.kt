@@ -114,6 +114,37 @@ object WeatherLogic {
 
     fun temp(t: Double): String = t.roundToInt().let { if (it > 0) "+$it°" else "$it°" }
 
+    /**
+     * Осадки на оставшуюся часть сегодняшнего дня по часовому прогнозу: «Дождь 14:00–17:00, вероятность до 70%»
+     * или «Без осадков, вероятность до 10%». [today] — дата «2026-09-30».
+     */
+    fun precipToday(hours: List<WeatherHour>, today: String): String {
+        val list = hours.filter { it.time.startsWith(today) }
+        if (list.isEmpty()) return ""
+        val maxPop = list.maxOf { it.pop }
+        val wet = list.filter { it.pop >= 40 }
+        if (wet.isEmpty()) return "Без осадков, вероятность до $maxPop%"
+        // Отрезки подряд идущих «мокрых» часов.
+        val ranges = mutableListOf<MutableList<WeatherHour>>()
+        wet.forEach { h ->
+            val last = ranges.lastOrNull()?.last()
+            val hour = h.time.substringAfter('T').take(2).toIntOrNull() ?: 0
+            val prev = last?.time?.substringAfter('T')?.take(2)?.toIntOrNull()
+            if (prev != null && hour == prev + 1) ranges.last().add(h) else ranges.add(mutableListOf(h))
+        }
+        val kind = when {
+            wet.any { sky(it.code) == Sky.STORM } -> "Гроза"
+            wet.any { sky(it.code) == Sky.SNOW } -> "Снег"
+            else -> "Дождь"
+        }
+        val times = ranges.take(2).joinToString(", ") { r ->
+            val a = r.first().time.substringAfter('T').take(5)
+            val endH = (r.last().time.substringAfter('T').take(2).toIntOrNull() ?: 0) + 1
+            "$a–%02d:00".format(endH.coerceAtMost(24))
+        }
+        return "$kind $times, вероятность до ${wet.maxOf { it.pop }}%"
+    }
+
     /** Совет на день по погоде. */
     fun advice(now: WeatherNow, today: WeatherDay?): String {
         val parts = mutableListOf<String>()
