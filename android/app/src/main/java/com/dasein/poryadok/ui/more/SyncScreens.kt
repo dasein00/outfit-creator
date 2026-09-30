@@ -155,6 +155,7 @@ fun StepsScreen(nav: NavHostController, settings: AppSettings) {
                 extra.ok, highlight = 13, target = goal.toFloat(),
                 format = { v -> chartNumber(v) + " " + com.dasein.poryadok.logic.plural(v.toInt(), "шаг", "шага", "шагов") },
             )
+            Text("Нажмите на столбик — над ним появится число шагов. Разведите два пальца, чтобы увеличить; двойное касание — все 14 дней.", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
 
             SectionTitle("Health Connect — любые фитнес-приложения")
             Tile {

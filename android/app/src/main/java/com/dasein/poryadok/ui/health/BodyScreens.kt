@@ -506,18 +506,22 @@ fun TrendChart(points: List<Pair<Long, Double>>, monthLabels: Boolean, modifier:
     val surface = MaterialTheme.colorScheme.surface
     val z = rememberChartZoom(points.size)
     val density = androidx.compose.ui.platform.LocalDensity.current
-    val leftPx = with(density) { 36.dp.toPx() }
+    val axisPx = with(density) { 36.dp.toPx() }
+    // Крайние точки отодвинуты от краёв, чтобы кружки и подписи значений и дат помещались целиком.
+    val insetPx = with(density) { 18.dp.toPx() }
+    val leftPx = axisPx + insetPx
     val maxScale = if (zoomable && points.size >= 4) (points.size / 3f).coerceAtLeast(1f) else 1f
     val gestures = Modifier.chartGestures(z, points.size, leftPx, maxScale) { o ->
         if (points.isEmpty()) -1
         else points.indices.minBy { i -> abs(z.x(leftPx, if (points.size == 1) .5f else i / (points.size - 1f)) - o.x) }
     }
     Canvas(modifier.then(gestures)) {
-        val left = leftPx; val bottom = 22.dp.toPx(); val top = 22.dp.toPx(); val right = 12.dp.toPx()
+        val axis = axisPx; val inset = insetPx; val left = leftPx
+        val bottom = 22.dp.toPx(); val top = 26.dp.toPx(); val right = 8.dp.toPx() + inset
         val w = size.width - left - right; val h = size.height - top - bottom
         z.width = w
         fun x(i: Int) = z.x(left, if (points.size == 1) .5f else i / (points.size - 1f))
-        val visible = points.indices.filter { x(it) in (left - 1f)..(left + w + 1f) }.ifEmpty { points.indices.toList() }
+        val visible = points.indices.filter { x(it) in (left - inset)..(left + w + inset) }.ifEmpty { points.indices.toList() }
         val vals = visible.map { points[it].second }
         var lo = vals.min(); var hi = vals.max()
         val pad = ((hi - lo) * .15).coerceAtLeast(.5)
@@ -527,13 +531,13 @@ fun TrendChart(points: List<Pair<Long, Double>>, monthLabels: Boolean, modifier:
         for (k in 0..4) {
             val v = lo + (hi - lo) * k / 4
             val yy = y(v)
-            drawLine(extra.line, Offset(left, yy), Offset(left + w, yy), 1f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)))
+            drawLine(extra.line, Offset(axis, yy), Offset(size.width - 8.dp.toPx(), yy), 1f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)))
             val t = measurer.measure("%.1f".format(v), labelStyle)
-            drawText(t, topLeft = Offset(left - t.size.width - 6f, yy - t.size.height / 2))
+            drawText(t, topLeft = Offset(axis - t.size.width - 6f, yy - t.size.height / 2))
         }
         val maxI = visible.maxBy { points[it].second }; val minI = visible.minBy { points[it].second }
         val show = if (visible.size <= 12) visible.toSet() else setOf(visible.first(), visible.last(), maxI, minI)
-        clipRect(left - 8f, 0f, left + w + 8f, size.height) {
+        clipRect(axis, 0f, size.width, size.height) {
             val line = Path()
             points.forEachIndexed { i, p ->
                 val px = x(i); val py = y(p.second)
@@ -558,7 +562,7 @@ fun TrendChart(points: List<Pair<Long, Double>>, monthLabels: Boolean, modifier:
             if (i !in show || i == z.selected) return@forEach
             val c = Offset(x(i), y(points[i].second))
             val t = measurer.measure("%.1f".format(points[i].second), valueStyle)
-            drawText(t, topLeft = Offset((c.x - t.size.width / 2).coerceIn(left - 4f, size.width - t.size.width), (c.y - t.size.height - 6f).coerceAtLeast(0f)))
+            drawText(t, topLeft = Offset((c.x - t.size.width / 2).coerceIn(axis, size.width - t.size.width), (c.y - t.size.height - 6f).coerceAtLeast(0f)))
         }
         // Подписи дат: каждая видимая точка, если задан формат дня или их мало, иначе первая, середина и последняя видимые.
         val labelIdx = if (dayLabels != null || visible.size <= 6) visible else listOf(visible.first(), visible[visible.size / 2], visible.last()).distinct()
@@ -566,7 +570,7 @@ fun TrendChart(points: List<Pair<Long, Double>>, monthLabels: Boolean, modifier:
             val d = Dates.day(points[i].first)
             val s = dayLabels?.invoke(points[i].first) ?: if (monthLabels && z.scale < 3f) "%02d.%02d".format(d.monthValue, d.year % 100) else "%02d.%02d".format(d.dayOfMonth, d.monthValue)
             val t = measurer.measure(s, labelStyle)
-            drawText(t, topLeft = Offset((x(i) - t.size.width / 2).coerceIn(left - 4f, size.width - t.size.width), top + h + 6f))
+            drawText(t, topLeft = Offset((x(i) - t.size.width / 2).coerceIn(axis, size.width - t.size.width), top + h + 6f))
         }
         val sel = z.selected
         if (sel in points.indices) {

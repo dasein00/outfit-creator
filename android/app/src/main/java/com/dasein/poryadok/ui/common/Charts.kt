@@ -89,9 +89,10 @@ fun BarChart(
     val maxV = max(values.maxOrNull() ?: 0f, target ?: 0f).coerceAtLeast(1f)
     val n = values.size.coerceAtLeast(1)
     val labelH = with(LocalDensity.current) { 18.dp.toPx() }
-    val topPad = with(LocalDensity.current) { 26.dp.toPx() }
+    // Сверху оставлено место под плашку со значением даже над самым высоким столбиком.
+    val topPad = with(LocalDensity.current) { 38.dp.toPx() }
     Canvas(
-        modifier.fillMaxWidth().height(height + 18.dp + 26.dp)
+        modifier.fillMaxWidth().height(height + 18.dp + 38.dp)
             .chartGestures(z, values, 0f, (n / 4f).coerceAtLeast(1f)) { o ->
                 val slot = z.width * z.scale / n
                 ((o.x + z.shift) / slot).toInt().takeIf { it in values.indices } ?: -1
