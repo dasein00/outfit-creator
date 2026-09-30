@@ -362,6 +362,18 @@ missing = [x["id"] for x in H if not x["how"]]
 assert not missing, missing
 assert not set(MORE) - {x["id"] for x in H}, set(MORE) - {x["id"] for x in H}
 
+# Праздники, чтобы у каждого дня года был хотя бы один (days_*), и подробности к кратким описаниям (rich_*).
+import re
+import days_1, days_apr, days_2, days_2b, days_3, days_oct, days_4, rich_1, rich_2, rich_3
+H += days_1.DAYS
+RICH = {**rich_1.EXTRA, **rich_2.EXTRA, **rich_3.EXTRA}
+assert not set(RICH) - {x["id"] for x in H}, set(RICH) - {x["id"] for x in H}
+for x in H:
+    for key, add in zip(("about", "how", "facts"), RICH.get(x["id"], ("", "", ""))):
+        for sent in re.split(r"(?<=[.!?])\s+", add.strip()):
+            if sent and sent not in x[key]:
+                x[key] = (x[key] + " " + sent).strip()
+
 ids = [x["id"] for x in H]
 assert len(ids) == len(set(ids)), "дубли id"
 out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../app/src/main/assets/holidays/holidays.json")

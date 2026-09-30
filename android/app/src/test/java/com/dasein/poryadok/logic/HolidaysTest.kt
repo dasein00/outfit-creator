@@ -40,9 +40,17 @@ class HolidaysTest {
             "/home/user/outfit-creator/android/app/src/main/assets/holidays/holidays.json").map { File(it) }.firstOrNull { it.exists() } ?: return
         val list = HolidayRules.parse(f.readText())
         assertTrue(list.size > 150)
-        list.forEach { h -> assertTrue(h.id, HolidayRules.dateIn(h.rule, 2026) != null && h.about.isNotBlank() && h.how.isNotBlank() && h.facts.isNotBlank()) }
+        // 29 февраля бывает только в високосные годы — такие праздники проверяем по 2028 году.
+        list.forEach { h -> assertTrue(h.id, (HolidayRules.dateIn(h.rule, 2026) ?: HolidayRules.dateIn(h.rule, 2028)) != null && h.about.isNotBlank() && h.how.isNotBlank() && h.facts.isNotBlank()) }
         val jan7 = HolidayRules.on(list, d(2026, 1, 7)).map { it.id }
         assertTrue("or_christmas" in jan7)
+        assertTrue("or_vera_nadezhda" in HolidayRules.on(list, d(2026, 9, 30)).map { it.id })
+        // На каждый день года (включая 29 февраля) есть хотя бы один праздник.
+        var day = d(2028, 1, 1)
+        while (day.year == 2028) {
+            assertTrue(day.toString(), HolidayRules.on(list, day).isNotEmpty())
+            day = day.plusDays(1)
+        }
     }
 
     @Test fun productionCalendar() {
