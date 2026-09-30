@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.health
 
 import android.graphics.BitmapFactory
+import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -483,6 +484,7 @@ fun WeightTrendScreen(nav: NavHostController) {
                     }
                 }
             }
+            HowTo("weight_trend")
             Gap(24.dp)
         }
     }
@@ -643,6 +645,7 @@ fun BodyCompareScreen(nav: NavHostController) {
                 Gap(8.dp)
                 Text("Зелёным — изменение в лучшую сторону, красным — в худшую.", fontSize = 12.sp, color = extra.dim)
             }
+            item { HowTo("body_compare") }
         }
     }
     if (picking != 0) AlertDialog(

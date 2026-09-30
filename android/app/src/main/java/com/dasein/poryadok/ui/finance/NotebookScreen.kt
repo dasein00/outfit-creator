@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.finance
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.HowTo
 import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -128,6 +129,7 @@ fun NotebookScreen(nav: NavHostController, settings: Settings) {
                 val monthNotes = allNotes.filter { it.year == y && it.month == m }
                 MonthCard(y, m, incomeByMonth[y to m].orEmpty().sumOf { it.amount }, incomeByMonth[y to m].orEmpty().size, monthNotes, cur)
             }
+            HowTo("fin_notebook")
             Gap(40.dp)
         }
     }

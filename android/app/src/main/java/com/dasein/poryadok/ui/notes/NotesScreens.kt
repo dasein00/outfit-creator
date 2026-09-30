@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.notes
 
 import androidx.activity.compose.BackHandler
+import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.GlyphRow
 import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.IconAction
@@ -331,6 +332,7 @@ fun TopsScreen(nav: NavHostController, embedded: Boolean = false) {
                     }
                 }
             }
+            item { HowTo("tops") }
         }
     }
     if (create) TopListDialog(TopList(title = "", sort = lists.size)) { create = false }

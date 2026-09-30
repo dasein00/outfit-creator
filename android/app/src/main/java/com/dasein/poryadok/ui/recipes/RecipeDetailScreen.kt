@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.recipes
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -114,7 +115,9 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
     val calcList = ingr
     val calcBase = ingr.getOrNull(baseIdx)?.toIngr()
     val baseFactor = calcBase?.let { b -> baseHave.num()?.let { Cooking.factorFor(b, it) } }
-    val servD: Double = baseFactor?.let { r.servings * it } ?: serv.toDouble()
+    // С весом порции «порций» в блюде столько, сколько раз порция помещается в вес блюда.
+    val exact = RecipeRepo.exactServings(baseIngr, r)
+    val servD: Double = baseFactor?.let { exact * it } ?: (serv * exact / r.servings.coerceAtLeast(1))
     val factor = baseFactor ?: (serv / r.servings.toDouble())
     val scaled = Cooking.scale(ingr.map { it.toIngr() }, factor)
     val total = Cooking.total(scaled)
@@ -181,6 +184,13 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                 Segments(listOf(true to "На 1 порцию", false to "На весь рецепт"), perServing, { perServing = it })
                 Gap(10.dp)
                 MacroLine(shown, showFiber = true)
+                if (r.portionGrams > 0) {
+                    val dishW = (if (r.dishGrams > 0) r.dishGrams else Cooking.rawGrams(baseIngr.map { it.toIngr() })) * factor
+                    Text(
+                        if (perServing) "Порция ${Cooking.amount(r.portionGrams)} г" else "Всё блюдо ≈ ${Cooking.amount(Math.round(dishW).toDouble())} г",
+                        fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
                 Gap(10.dp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Порций", Modifier.weight(1f))
@@ -302,6 +312,7 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                 }) { Text("Сохранить с заменами") }
                 if (r.custom) TextButton(onClick = { confirmDelete = true }) { Text("Удалить", color = extra.danger) }
             }
+            HowTo("recipe")
             Gap(40.dp)
         }
     }

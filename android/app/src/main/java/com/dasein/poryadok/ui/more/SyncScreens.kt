@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.more
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.HowTo
 import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -25,6 +26,11 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -147,6 +153,8 @@ fun StepsScreen(nav: NavHostController, settings: AppSettings) {
                     }
                 }
             }
+            StepsByHour(today, dayLogs.firstOrNull { it.day == today }?.steps ?: 0, profile?.heightCm, profile?.startWeight ?: 70.0, settings.stepsSyncedAt)
+
             SectionTitle("Последние 14 дней")
             val days = (13 downTo 0).map { today - it }
             BarChart(
@@ -199,6 +207,7 @@ fun StepsScreen(nav: NavHostController, settings: AppSettings) {
                 }
             }
             Hint("steps_both", "Если включены оба источника, за день берётся большее значение. Шаги также можно ввести вручную в «Питание» раздела «Здоровье».", Modifier.padding(vertical = 12.dp), title = "Если источников два")
+            HowTo("steps")
             Gap(40.dp)
         }
     }
@@ -291,7 +300,67 @@ fun SberScreen(nav: NavHostController, settings: AppSettings) {
                 }
             }
             Hint("sber_category", "Категория подбирается по названию магазина; её можно поменять в операции. Если какое-то уведомление не распозналось — добавьте операцию вручную.", Modifier.padding(vertical = 12.dp), title = "Категории")
+            HowTo("sber")
             Gap(40.dp)
         }
+    }
+}
+
+
+/**
+ * Шаги по часам за выбранный день: столбики с 0 до 23 часов, нажатие показывает «17:00–18:00 · 1 542 шага»,
+ * ниже — итоги: время в движении, расстояние, калории и самый активный час.
+ */
+@Composable
+private fun StepsByHour(today: Long, todayTotal: Int, heightCm: Double?, weightKg: Double, syncedAt: Long) {
+    val ctx = LocalContext.current
+    val extra = LocalExtra.current
+    var day by remember { mutableStateOf(today) }
+    val hours by produceState<IntArray?>(null, day, syncedAt) { value = runCatching { Steps.hours(ctx, day) }.getOrNull() ?: IntArray(24) }
+    SectionTitle("По часам")
+    Tile {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { day -= 1 }, enabled = day > today - com.dasein.poryadok.logic.StepHours.KEEP + 1) {
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Предыдущий день")
+            }
+            Text(
+                if (day == today) "Сегодня" else if (day == today - 1) "Вчера" else Dates.full(day),
+                Modifier.weight(1f), fontWeight = FontWeight.SemiBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+            IconButton(onClick = { day += 1 }, enabled = day < today) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Следующий день") }
+        }
+        val h = hours
+        if (h == null) Text("Загружаю…", color = extra.dim, fontSize = 13.sp)
+        else if (h.sum() == 0) Text(
+            "За этот день нет разбивки по часам. Она приходит из Health Connect, а с датчика телефона копится с этой версии приложения.",
+            color = extra.dim, fontSize = 13.sp, modifier = Modifier.padding(vertical = 12.dp),
+        ) else {
+            BarChart(
+                h.map { it.toFloat() }, (0..23).map { it.toString() }, extra.ok, height = 150.dp,
+                highlight = if (day == today) java.time.LocalTime.now().hour else -1,
+                format = { v -> chartNumber(v) },
+                bubble = { i -> "%02d:00–%02d:00 · ".format(i, (i + 1) % 24) + chartNumber(h[i].toFloat()) + " " + com.dasein.poryadok.logic.plural(h[i], "шаг", "шага", "шагов") },
+            )
+            val sum = com.dasein.poryadok.logic.StepHours.summary(h, heightCm)
+            val total = maxOf(sum.total, if (day == today) todayTotal else 0)
+            Row(Modifier.fillMaxWidth().padding(top = 12.dp)) {
+                HourStat("${sum.activeMinutes / 60} ч ${sum.activeMinutes % 60} мин", "в движении", Modifier.weight(1f))
+                HourStat("%.1f км".format(total * (sum.km / sum.total.coerceAtLeast(1))).replace('.', ','), "расстояние", Modifier.weight(1f))
+                HourStat("${com.dasein.poryadok.logic.Energy.stepsKcal(total, weightKg)} ккал", "калории", Modifier.weight(1f))
+            }
+            if (sum.peakHour >= 0) Text(
+                "Самый активный час — %02d:00–%02d:00. Активных часов (от 250 шагов): %d.".format(sum.peakHour, (sum.peakHour + 1) % 24, sum.activeHours),
+                fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp),
+            )
+            Text("Нажмите на столбик — над ним появится число шагов за час. Два пальца — увеличить.", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
+        }
+    }
+}
+
+@Composable
+private fun HourStat(value: String, label: String, modifier: Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+        Text(label, fontSize = 12.sp, color = LocalExtra.current.dim)
     }
 }

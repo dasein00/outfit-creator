@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.health
 
 import androidx.compose.foundation.layout.Column
+import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -96,6 +97,7 @@ fun BodyScienceScreen(nav: NavHostController) {
                 "Расчёты носят справочный характер и не заменяют консультацию врача.",
                 fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(vertical = 16.dp),
             )
+            HowTo("body_science")
         }
     }
 }

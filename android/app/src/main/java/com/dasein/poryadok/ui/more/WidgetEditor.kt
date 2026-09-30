@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.more
 
 import android.appwidget.AppWidgetManager
+import com.dasein.poryadok.ui.common.HowTo
 import android.content.ComponentName
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -208,6 +209,7 @@ fun WidgetEditorScreen(nav: NavHostController) {
                 }
             }
             OutlinedButton(onClick = { update(WidgetConfig().normalized()) }, modifier = Modifier.padding(vertical = 12.dp)) { Text("Как было по умолчанию") }
+            HowTo("widget")
             Gap(24.dp)
         }
     }

@@ -39,6 +39,8 @@ data class Settings(
     val sensorLast: Long = -1L,
     val sensorDay: Long = 0L,
     val sensorSteps: Int = 0,
+    /** Шаги с датчика по часам за последние дни (см. StepHours). */
+    val sensorHours: String = "",
     val stepsSyncedAt: Long = 0L,
     val stepsSource: String = "",
     val sberOn: Boolean = false,
@@ -83,6 +85,7 @@ class Prefs(private val context: Context) {
         val stepsSensor = booleanPreferencesKey("stepsSensor")
         val sensorLast = longPreferencesKey("sensorLast")
         val sensorDay = longPreferencesKey("sensorDay")
+        val sensorHours = stringPreferencesKey("sensorHours")
         val sensorSteps = intPreferencesKey("sensorSteps")
         val stepsSyncedAt = longPreferencesKey("stepsSyncedAt")
         val stepsSource = stringPreferencesKey("stepsSource")
@@ -130,6 +133,7 @@ class Prefs(private val context: Context) {
         sensorLast = this[K.sensorLast] ?: -1L,
         sensorDay = this[K.sensorDay] ?: 0L,
         sensorSteps = this[K.sensorSteps] ?: 0,
+        sensorHours = this[K.sensorHours] ?: "",
         stepsSyncedAt = this[K.stepsSyncedAt] ?: 0L,
         stepsSource = this[K.stepsSource] ?: "",
         sberOn = this[K.sberOn] ?: false,
@@ -174,6 +178,7 @@ class Prefs(private val context: Context) {
             p[K.sensorLast] = s.sensorLast
             p[K.sensorDay] = s.sensorDay
             p[K.sensorSteps] = s.sensorSteps
+            p[K.sensorHours] = s.sensorHours
             p[K.stepsSyncedAt] = s.stepsSyncedAt
             p[K.stepsSource] = s.stepsSource
             p[K.sberOn] = s.sberOn

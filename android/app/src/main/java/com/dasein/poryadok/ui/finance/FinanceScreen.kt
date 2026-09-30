@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.finance
 
 import androidx.compose.foundation.clickable
+import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.GlyphRow
 import com.dasein.poryadok.ui.common.Glyphs
 import com.dasein.poryadok.ui.common.Glyph
@@ -214,6 +215,7 @@ private fun Operations(nav: NavHostController, month: List<Txn>, cats: List<Cate
             }
             items(list, key = { it.id }) { t -> TxnRow(t, cats, accounts, cur) { nav.navigate(Routes.txn(t.id)) } }
         }
+        item { HowTo("finance") }
     }
 }
 
@@ -323,6 +325,7 @@ private fun Overview(all: List<Txn>, month: List<Txn>, cats: List<Category>, ym:
             Pill("+ Категория", false) { onCategory(Category(name = "", emoji = "ui:grid")) }
         }
         Gap(96.dp)
+        HowTo("finance")
     }
 }
 
@@ -359,6 +362,7 @@ private fun Budgets(month: List<Txn>, cats: List<Category>, budgets: List<Budget
                 )
             }
         }
+        item { HowTo("finance") }
     }
 }
 
@@ -396,6 +400,7 @@ private fun RecurringList(list: List<Recurring>, cats: List<Category>, accounts:
                 Text((if (r.income) "+" else "−") + Money.format(r.amount, cur), color = if (r.income) extra.ok else MaterialTheme.colorScheme.onSurface)
             }
         }
+        item { HowTo("finance") }
     }
 }
 
@@ -421,6 +426,7 @@ private fun Accounts(accounts: List<Account>, txns: List<Txn>, cur: String, onEd
                 }
             }
         }
+        item { HowTo("finance") }
     }
 }
 

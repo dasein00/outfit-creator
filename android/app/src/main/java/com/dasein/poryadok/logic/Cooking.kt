@@ -75,6 +75,29 @@ object Cooking {
 
     fun perServing(list: List<Ingr>, servings: Int): Macros = total(list) / servings.coerceAtLeast(1).toDouble()
 
+    /** Вес всех ингредиентов, г. */
+    fun rawGrams(list: List<Ingr>): Double = list.sumOf { it.grams }
+
+    /**
+     * Сколько порций в блюде. Если задан вес порции — вес блюда (готового или сумма ингредиентов) делится на него,
+     * иначе берётся число порций из рецепта.
+     */
+    fun exactServings(list: List<Ingr>, servings: Int, portionGrams: Double, dishGrams: Double): Double {
+        if (portionGrams <= 0) return servings.coerceAtLeast(1).toDouble()
+        val dish = if (dishGrams > 0) dishGrams else rawGrams(list)
+        return if (dish <= 0) servings.coerceAtLeast(1).toDouble() else dish / portionGrams
+    }
+
+    /** КБЖУ одной порции с учётом веса порции. */
+    fun perPortion(list: List<Ingr>, servings: Int, portionGrams: Double, dishGrams: Double): Macros =
+        total(list) / exactServings(list, servings, portionGrams, dishGrams)
+
+    /** КБЖУ на 100 г готового блюда. */
+    fun per100(list: List<Ingr>, dishGrams: Double): Macros {
+        val dish = if (dishGrams > 0) dishGrams else rawGrams(list)
+        return if (dish <= 0) Macros() else total(list) * (100.0 / dish)
+    }
+
     /**
      * Калькулятор граммовки: сколько раз увеличить рецепт, если основного продукта есть [have]
      * (в граммах или штуках — как в рецепте). Остальные ингредиенты берутся в тех же пропорциях.

@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.calendar
 
 import android.content.Context
+import com.dasein.poryadok.ui.common.HowTo
 import android.content.Intent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
@@ -383,6 +384,7 @@ fun HolidaysTab(nav: NavHostController, selected: Long, onSelect: (Long) -> Unit
                 fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 12.dp),
             )
         }
+        item { HowTo("holidays") }
     }
     editing?.let { c -> CustomDayDialog(c) { editing = null } }
 }

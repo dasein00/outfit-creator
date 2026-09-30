@@ -87,9 +87,16 @@ object RecipeRepo {
     fun macros(ingredients: List<RecipeIngredient>, servings: Int): Macros =
         Cooking.perServing(ingredients.map { it.toIngr() }, servings)
 
+    /** КБЖУ порции рецепта: по весу порции, если он задан, иначе делением на число порций. */
+    fun macros(ingredients: List<RecipeIngredient>, r: Recipe): Macros =
+        Cooking.perPortion(ingredients.map { it.toIngr() }, r.servings, r.portionGrams, r.dishGrams)
+
+    fun exactServings(ingredients: List<RecipeIngredient>, r: Recipe): Double =
+        Cooking.exactServings(ingredients.map { it.toIngr() }, r.servings, r.portionGrams, r.dishGrams)
+
     suspend fun perServing(recipeId: Long): Macros? {
         val r = x.recipeNow(recipeId) ?: return null
-        return macros(x.ingredientsOfNow(recipeId), r.servings)
+        return macros(x.ingredientsOfNow(recipeId), r)
     }
 
     /** Сохраняет рецепт целиком и обновляет КБЖУ в ещё не съеденных блюдах меню. */
@@ -101,7 +108,7 @@ object RecipeRepo {
             x.insertIngredients(ingredients.mapIndexed { i, ing -> ing.copy(id = 0, recipeId = id, pos = i) })
             x.deleteStepsOf(id)
             x.insertSteps(steps.filter { it.isNotBlank() }.mapIndexed { i, t -> RecipeStep(recipeId = id, pos = i, text = t.trim()) })
-            val m = macros(ingredients, r.servings)
+            val m = macros(ingredients, r)
             x.plannedOf(id).forEach { p ->
                 x.upsertPlan(p.copy(title = r.name, kcal = m.kcal, protein = m.protein, fat = m.fat, carbs = m.carbs))
             }
@@ -132,7 +139,7 @@ object RecipeRepo {
 
     suspend fun addToPlan(day: Long, meal: Int, recipeId: Long, servings: Double = 1.0, timeMin: Int? = null, repeatId: Long? = null): Long? {
         val r = x.recipeNow(recipeId) ?: return null
-        val m = macros(x.ingredientsOfNow(recipeId), r.servings)
+        val m = macros(x.ingredientsOfNow(recipeId), r)
         return x.upsertPlan(
             MealPlanItem(
                 day = day, meal = meal, recipeId = recipeId, title = r.name, servings = servings,

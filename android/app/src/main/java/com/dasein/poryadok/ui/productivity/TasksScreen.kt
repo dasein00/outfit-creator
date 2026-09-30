@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.productivity
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.ExperimentalFoundationApi
 import com.dasein.poryadok.ui.common.Glyphs
 import com.dasein.poryadok.ui.common.Glyph
@@ -200,6 +201,7 @@ fun TasksScreen(nav: NavHostController, onBack: (() -> Unit)? = null) {
                                 }
                             }
                         }
+                        item { HowTo("tasks") }
                     }
                 }
             }

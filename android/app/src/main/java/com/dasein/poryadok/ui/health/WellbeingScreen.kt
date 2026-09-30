@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.health
 
+import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.Hint
 import androidx.compose.foundation.background
 import kotlinx.coroutines.launch
@@ -102,6 +103,7 @@ fun WellbeingScreen(nav: NavHostController, initialTab: Int) {
                     1 -> SleepTab()
                     else -> WaterTab()
                 }
+                HowTo(listOf("mood", "sleep", "water")[tab])
                 Gap(80.dp)
             }
         }

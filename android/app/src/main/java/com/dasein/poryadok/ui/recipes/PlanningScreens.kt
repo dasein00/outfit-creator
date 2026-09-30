@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.recipes
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.HowTo
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -140,6 +141,7 @@ fun PresetsScreen(nav: NavHostController) {
                     )
                 }
             }
+            item { HowTo("presets") }
         }
     }
     rename?.let { p -> PresetNameDialog(p.name, onDismiss = { rename = null }) { n -> io { x.upsertPreset(p.copy(name = n)) } } }
@@ -366,6 +368,7 @@ fun ShoppingScreen(nav: NavHostController) {
                     }
                 }
             }
+            item { HowTo("shopping") }
         }
     }
     if (generate) GenerateShoppingDialog(onDismiss = { generate = false }) { from, to ->
@@ -490,6 +493,7 @@ fun CookHistoryScreen(nav: NavHostController) {
                     }
                 }
             }
+            item { HowTo("cook_history") }
         }
     }
     delete?.let { h -> ConfirmDialog("Удалить запись?", "Запись в дневнике питания, если была, останется.", onDismiss = { delete = null }) { io { x.deleteHistory(h) } } }

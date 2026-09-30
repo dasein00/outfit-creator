@@ -68,6 +68,10 @@ data class Recipe(
     @androidx.room.ColumnInfo(defaultValue = "0") val archived: Boolean = false,
     /** Видео рецепта: пути к файлам или ссылки, по одному в строке. */
     val videos: String = "",
+    /** Вес одной порции, г. Если задан — порции считаются по весу, а не делением на число порций. */
+    @androidx.room.ColumnInfo(defaultValue = "0") val portionGrams: Double = 0.0,
+    /** Вес готового блюда, г (после варки или жарки). 0 — сумма веса ингредиентов. */
+    @androidx.room.ColumnInfo(defaultValue = "0") val dishGrams: Double = 0.0,
 )
 
 /** Ингредиент рецепта. КБЖУ на 100 г копируется из продукта, чтобы рецепт не зависел от правок базы. */
@@ -549,7 +553,7 @@ interface ExtraDao {
         MediaList::class, MediaListItem::class, Page::class, PageBlock::class, Exercise::class, WorkoutPlan::class,
         PlanExercise::class, WorkoutSession::class, SetLog::class, CustomDay::class, HolidayMark::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 abstract class ExtraDb : RoomDatabase() {
@@ -678,9 +682,17 @@ abstract class ExtraDb : RoomDatabase() {
             }
         }
 
+        /** v8: вес порции и готового блюда в рецептах. */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `recipes` ADD COLUMN `portionGrams` REAL NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `recipes` ADD COLUMN `dishGrams` REAL NOT NULL DEFAULT 0")
+            }
+        }
+
         fun create(context: Context): ExtraDb =
             Room.databaseBuilder(context, ExtraDb::class.java, "dasein_extra.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7).build()
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8).build()
     }
 }
 

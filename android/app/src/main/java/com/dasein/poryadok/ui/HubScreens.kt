@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui
 
 import androidx.compose.foundation.background
+import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -166,6 +167,7 @@ fun HealthHubScreen(nav: NavHostController) {
                     t.progress?.let { Bar(it, extra.ok, Modifier.padding(top = 6.dp), height = 5.dp) }
                 }
             }
+            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) { HowTo("health_hub") }
         }
     }
 }

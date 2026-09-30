@@ -72,7 +72,12 @@ object Glyphs {
         "Домашнее" to "own", "Полезное" to "healthy", "Завтраки" to "breakfast", "Основные блюда" to "dishes1", "Ещё блюда" to "dishes2",
         "Русская кухня" to "russian", "Кавказская кухня" to "caucasus", "Разное" to "mixed", "Выпечка" to "bakery",
         "Десерты" to "desserts", "Фастфуд" to "fastfood",
+    ) + listOf(
+        "Картофель и мясо" to "potmeat", "Рыба и морепродукты" to "seafood", "Тесто, яйца, лепёшки" to "dough",
+        "Итальянская паста" to "pasta2", "Блюда из курицы" to "chicken2", "Салат-бар и кухня" to "saladbar", "Протеин и кухня" to "protein",
     )
+    /** Наборы из присланных листов: показываются в любом выборе иконки, не только для блюд. */
+    val SHARED_DISH_SETS = setOf("potmeat", "seafood", "dough", "pasta2", "chicken2", "saladbar", "protein")
     val UI = listOf(
         "v_film", "v_pot", "v_pulse", "v_plan", "v_bookopen", "v_steps", "v_weight", "v_mountain", "v_spark", "v_chart",
         "home", "calendar", "check", "stats", "pie", "grid", "search", "settings", "flame", "target", "timer", "salad",
@@ -240,6 +245,7 @@ fun GlyphPickerDialog(
         if (dishes) Glyphs.DISH_SETS.forEach { (t, s) -> add(t to "dish:$s") }
         add("Основные" to "ui")
         Glyphs.SETS.forEach { add(it) }
+        if (!dishes) Glyphs.DISH_SETS.filter { it.second in Glyphs.SHARED_DISH_SETS }.forEach { (t, s) -> add(t to "dish:$s") }
     }
     val initial = remember {
         when {

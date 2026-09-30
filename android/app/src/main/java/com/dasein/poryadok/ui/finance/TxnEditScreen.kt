@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.finance
 
 import androidx.activity.compose.BackHandler
+import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.IconAction
 import com.dasein.poryadok.ui.common.Ic
@@ -205,6 +206,7 @@ fun TxnEditScreen(nav: NavHostController, id: Long, income: Boolean, settings: S
                 onClick = { save() }, modifier = Modifier.fillMaxWidth(),
                 enabled = amount != null && amount > 0,
             ) { Text("Сохранить", color = if (amount != null && amount > 0) MaterialTheme.colorScheme.onPrimary else Color.Unspecified) }
+            HowTo("txn")
             Gap(40.dp)
         }
     }

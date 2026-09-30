@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.wardrobe
 
 import androidx.compose.foundation.Image
+import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -113,6 +114,7 @@ fun OutfitsScreen(nav: NavHostController) {
                     }
                 }
             }
+            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) { HowTo("outfits") }
         }
     }
 

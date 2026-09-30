@@ -87,7 +87,7 @@ fun rememberRecipeBook(): RecipeBook {
         val list = recipes.orEmpty()
         RecipeBook(
             recipes != null, list.filter { !it.archived }, grouped,
-            list.associate { it.id to RecipeRepo.macros(grouped[it.id].orEmpty(), it.servings) }, list.filter { it.archived },
+            list.associate { it.id to RecipeRepo.macros(grouped[it.id].orEmpty(), it) }, list.filter { it.archived },
         )
     }
 }

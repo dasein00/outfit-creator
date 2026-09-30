@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.health
 
+import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.Hint
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.ui.text.style.TextOverflow
@@ -153,6 +154,7 @@ fun HealthScreen(nav: NavHostController, initialTab: Int) {
                     4 -> CalcTab(profile, current, plan) { tab = 2 }
                     5 -> ProgressTab(weights)
                 }
+                if (profileOrNull != null) HowTo(listOf("food", "weight", "measure", "workout_tab", "calc", "progress")[tab])
                 Gap(80.dp)
             }
         }

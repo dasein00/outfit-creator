@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.media
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.NumberField
 import android.content.Intent
 import android.net.Uri
@@ -249,6 +250,7 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
                     )
                 }
             }
+            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) { HowTo("media") }
         }
     }
     if (import) ImportDialog(kind) { import = false }

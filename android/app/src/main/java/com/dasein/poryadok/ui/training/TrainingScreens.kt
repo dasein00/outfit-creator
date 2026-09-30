@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.training
 
 import android.content.Context
+import com.dasein.poryadok.ui.common.HowTo
 import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.compose.foundation.background
@@ -192,6 +193,7 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
                             if (p.description.isNotBlank()) Text(p.description, fontSize = 13.sp, color = extra.dim, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
                         }
                     }
+                    item { HowTo("training") }
                 }
                 1 -> ExerciseLibrary(exercises, sets) { nav.navigate(Routes.exercise(it)) }
                 2 -> LazyColumn(contentPadding = PaddingValues(12.dp, 8.dp, 12.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -213,6 +215,7 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
                             }
                         }
                     }
+                    item { HowTo("training") }
                 }
                 else -> LazyColumn(contentPadding = PaddingValues(12.dp, 8.dp, 12.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     val used = exercises.filter { e -> sets.any { it.exerciseId == e.id && it.done } }
@@ -237,6 +240,7 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
                             }
                         }
                     }
+                    item { HowTo("training") }
                 }
             }
         }

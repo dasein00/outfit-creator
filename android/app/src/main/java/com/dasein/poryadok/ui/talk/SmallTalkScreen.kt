@@ -1,5 +1,6 @@
 package com.dasein.poryadok.ui.talk
 
+import com.dasein.poryadok.ui.common.HowTo
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
@@ -35,6 +36,8 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -181,6 +184,17 @@ fun TalkFactCard(onOpen: () -> Unit) {
 
 private val TABS = listOf("Факты", "Истории", "Вопросы", "Темы", "Школа", "Тренажёр", "Фразы", "Избранное")
 private const val FAV_TAB = 7
+private val TAB_GLYPHS = listOf("ui:bulb", "ui:book", "ui:search", "ui:globe", "ui:cap", "ui:target", "ui:notebook", "ui:heart")
+private val TAB_HINTS = listOf(
+    "Интересные факты по сферам — те же, что на главной. Листайте стрелками, ★ — в избранное.",
+    "Короткие истории, которые можно пересказать за минуту. Нажмите, чтобы раскрыть.",
+    "Вопросы для разговора по ситуациям: знакомство, работа, свидание, нетворкинг и другие.",
+    "Повод месяца и темы с ассоциациями — когда не за что зацепиться.",
+    "Приёмы из книг о смолтоке: как начать, поддержать, слушать и красиво закончить разговор.",
+    "Упражнения: упражнение дня, светофор реплики, мнение за 3 секунды, конструктор историй.",
+    "Готовые фразы для трудных моментов. Нажмите на фразу — она скопируется.",
+    "Сохранённые факты и истории — освежите их перед встречей.",
+)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -192,12 +206,26 @@ fun SmallTalkScreen(nav: NavHostController) {
     Screen("Small Talks", onBack = { nav.popBackStack() }) { pad ->
         val s = settings ?: return@Screen
         val favorites = SmallTalk.decodeIds(s.talkFavorites)
-        LazyColumn(Modifier.padding(pad).padding(horizontal = 16.dp)) {
+        Column(Modifier.padding(pad)) {
+        // Вкладки раздела — отдельной полосой сверху, чтобы их не путали с фильтрами сфер.
+        ScrollableTabRow(
+            selectedTabIndex = tab, edgePadding = 12.dp,
+            containerColor = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.primary,
+        ) {
+            TABS.forEachIndexed { i, t ->
+                Tab(
+                    selected = tab == i, onClick = { tab = i },
+                    icon = { Glyph(TAB_GLYPHS[i], 22.dp) },
+                    text = { Text(if (i == FAV_TAB && favorites.isNotEmpty()) "$t · ${favorites.size}" else t, maxLines = 1) },
+                    selectedContentColor = MaterialTheme.colorScheme.primary,
+                    unselectedContentColor = LocalExtra.current.dim,
+                )
+            }
+        }
+        androidx.compose.runtime.key(tab) {
+        LazyColumn(Modifier.padding(horizontal = 16.dp)) {
             item {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    TABS.forEachIndexed { i, t -> Pill(if (i == FAV_TAB && favorites.isNotEmpty()) "$t · ${favorites.size}" else t, tab == i) { tab = i } }
-                }
-                Gap(10.dp)
+                Text(TAB_HINTS[tab], fontSize = 13.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 10.dp, bottom = 10.dp))
             }
             when (tab) {
                 0 -> factsTab(data, s, favorites)
@@ -209,7 +237,10 @@ fun SmallTalkScreen(nav: NavHostController) {
                 6 -> phrasesTab(data)
                 else -> favoritesTab(data, favorites) { tab = it }
             }
+            item { HowTo("small_talk") }
             item { Gap(32.dp) }
+        }
+        }
         }
     }
 }
@@ -309,8 +340,6 @@ private fun androidx.compose.foundation.lazy.LazyListScope.storiesTab(data: Talk
         val extra = LocalExtra.current
         val spheres = SmallTalk.decodeSet(s.talkSpheres)
         val counts = remember(data) { data.stories.groupingBy { it.sphere }.eachCount() }
-        Text("Короткие истории, которые можно пересказать за минуту.", fontSize = 13.sp, color = extra.dim)
-        Gap(6.dp)
         SphereChips(counts, spheres) { saveSpheres(it) }
         Gap(10.dp)
     }
@@ -354,8 +383,6 @@ private fun androidx.compose.foundation.lazy.LazyListScope.questionsTab(data: Ta
         var situation by rememberSaveable { mutableStateOf("") }
         val pool = data.questions.filter { situation.isEmpty() || it.situation == situation }
         var pick by rememberSaveable(situation) { mutableIntStateOf(if (pool.isEmpty()) -1 else Random.nextInt(pool.size)) }
-        Text("Вопросы, с которых легко начать и которые продолжают разговор.", fontSize = 13.sp, color = extra.dim)
-        Gap(6.dp)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Pill("Все", situation.isEmpty()) { situation = "" }
             situations.forEach { t -> Pill(t, t == situation) { situation = t } }

@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.more
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.HowTo
 import android.app.AlarmManager
 import android.content.Intent
 import android.net.Uri
@@ -196,6 +197,7 @@ fun SettingsScreen(nav: NavHostController, s: Settings) {
                     Hint("backup_what", "Задачи, привычки, цели, фокус, календарь, финансы, Сбер, тетрадь доходов, здоровье, шаги, рецепты и меню, заметки, топы и гардероб — в одном месте.", title = "Что входит в копию")
                 }
             }
+            HowTo("settings")
             Gap(40.dp)
         }
     }

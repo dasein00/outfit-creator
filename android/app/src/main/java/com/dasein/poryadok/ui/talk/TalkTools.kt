@@ -141,8 +141,6 @@ internal fun LazyListScope.phrasesTab(data: TalkRepo.Data) {
         val clipboard = LocalClipboardManager.current
         val situations = remember(data) { data.phrases.map { it.situation }.distinct() }
         var situation by rememberSaveable { mutableStateOf("") }
-        Text("Что сказать, когда нужно начать, возразить, уйти от сплетни или неудобного вопроса. Нажмите на фразу — она скопируется.", fontSize = 13.sp, color = extra.dim)
-        Gap(6.dp)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Pill("Все", situation.isEmpty()) { situation = "" }
             situations.forEach { t -> Pill(t, t == situation) { situation = t } }

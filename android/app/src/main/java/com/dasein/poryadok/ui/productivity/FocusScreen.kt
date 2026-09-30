@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.productivity
 
 import androidx.compose.foundation.layout.Arrangement
+import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -183,6 +184,7 @@ fun FocusScreen(nav: NavHostController, settings: Settings) {
                     }
                 }
             }
+            HowTo("focus")
             Gap(40.dp)
         }
     }

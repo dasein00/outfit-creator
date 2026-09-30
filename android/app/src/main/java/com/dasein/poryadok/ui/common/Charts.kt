@@ -76,6 +76,7 @@ fun BarChart(
     highlight: Int = -1,
     target: Float? = null,
     format: (Float) -> String = { chartNumber(it) },
+    bubble: ((Int) -> String)? = null,
 ) {
     val extra = LocalExtra.current
     val dim = extra.dim
@@ -134,7 +135,7 @@ fun BarChart(
             val cx = sel * slot - z.shift + slot / 2
             val top = topPad + h - h * (values[sel] / maxV)
             val label = labels.getOrNull(sel)?.let { "$it · " } ?: ""
-            chartBubble(measurer, label + format(values[sel]), Offset(cx, top), onSurface, surface, bubbleStyle)
+            chartBubble(measurer, bubble?.invoke(sel) ?: (label + format(values[sel])), Offset(cx, top), onSurface, surface, bubbleStyle)
         }
     }
 }
@@ -153,6 +154,7 @@ fun LineChart(
     labels: List<String> = emptyList(),
     pointLabels: List<String> = emptyList(),
     format: (Float) -> String = { chartNumber(it) },
+    bubble: ((Int) -> String)? = null,
 ) {
     val extra = LocalExtra.current
     val dim = extra.dim

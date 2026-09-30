@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.recipes
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.HowTo
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -99,6 +100,7 @@ fun MenuPlanner(nav: NavHostController, book: RecipeBook, initialMode: Int) {
                 else -> MonthView(day, { day = it }, plan) { d -> day = d; mode = 0 }
             }
             Gap(40.dp)
+            HowTo("menu")
         }
     }
 }
@@ -491,6 +493,7 @@ fun CreateMenuScreen(nav: NavHostController, startDay: Long) {
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(if (mode == 2) "Перейти к меню" else "Составить меню") }
+            HowTo("menu_create")
             Gap(40.dp)
         }
     }

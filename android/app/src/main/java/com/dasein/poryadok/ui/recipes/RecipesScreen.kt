@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.recipes
 
 import androidx.compose.foundation.layout.Arrangement
+import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -160,6 +161,7 @@ private fun Catalog(nav: NavHostController, book: RecipeBook) {
             RecipeCard(r, book.macros(r.id), onClick = { nav.navigate(Routes.recipe(r.id)) }, onFavorite = { io { Graph.extra.setFavorite(r.id, !r.favorite) } }, onLongClick = { menuFor = r })
             if (cat == ARCHIVE) TextButton(onClick = { io { Graph.extra.setArchived(r.id, false) } }) { Text("Вернуть из архива") }
         }
+        item { HowTo("recipes") }
     }
 }
 
@@ -196,6 +198,7 @@ private fun Favorites(nav: NavHostController, book: RecipeBook) {
         items(list, key = { it.id }) { r ->
             RecipeCard(r, book.macros(r.id), onClick = { nav.navigate(Routes.recipe(r.id)) }, onFavorite = { io { Graph.extra.setFavorite(r.id, false) } }, onLongClick = { menuFor = r })
         }
+        item { HowTo("recipes") }
     }
 }
 
@@ -215,6 +218,7 @@ private fun Mine(nav: NavHostController, book: RecipeBook) {
         items(list, key = { it.id }) { r ->
             RecipeCard(r, book.macros(r.id), onClick = { nav.navigate(Routes.recipe(r.id)) }, onFavorite = { io { Graph.extra.setFavorite(r.id, !r.favorite) } }, onLongClick = { menuFor = r })
         }
+        item { HowTo("recipes") }
     }
 }
 

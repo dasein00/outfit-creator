@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.productivity
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.HowTo
 import androidx.activity.compose.BackHandler
 import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.IconAction
@@ -139,6 +140,7 @@ fun HabitsScreen(nav: NavHostController) {
                         }
                     }
                 }
+                HowTo("habits")
             }
             return@Screen
         }
@@ -214,6 +216,7 @@ fun HabitsScreen(nav: NavHostController) {
                     }
                 }
             }
+            item { HowTo("habits") }
         }
     }
 }

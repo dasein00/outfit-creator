@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.weather
 
 import android.Manifest
+import com.dasein.poryadok.ui.common.HowTo
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -259,6 +260,7 @@ fun WeatherScreen(nav: NavHostController) {
                     "Прогноз обновляется раз в час в фоне и показывается на виджете.",
                 fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(vertical = 16.dp),
             )
+            HowTo("weather")
         }
     }
 

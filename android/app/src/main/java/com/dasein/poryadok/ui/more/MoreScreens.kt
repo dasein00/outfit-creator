@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.more
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.clickable
 import com.dasein.poryadok.ui.common.Glyph
 import androidx.compose.foundation.layout.Arrangement
@@ -120,6 +121,7 @@ fun MoreScreen(nav: NavHostController) {
             item(span = { GridItemSpan(2) }) {
                 Text("Удерживайте раздел, чтобы сменить его название и иконку.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(horizontal = 8.dp))
             }
+            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) { HowTo("more") }
         }
     }
     editing?.let { h -> com.dasein.poryadok.ui.common.SectionEditDialog(h.route, h.title, h.icon) { editing = null } }
@@ -172,6 +174,7 @@ fun WheelScreen(nav: NavHostController) {
                     }
                 }
             }
+            HowTo("wheel")
             Gap(40.dp)
         }
     }
@@ -278,6 +281,7 @@ fun ReviewScreen(nav: NavHostController, settings: Settings) {
                 if (doneTasks.isEmpty()) Text("Пока пусто", color = extra.dim)
                 doneTasks.take(20).forEach { Text("✓ ${it.title}", modifier = Modifier.padding(vertical = 2.dp)) }
             }
+            item { HowTo("review") }
         }
     }
 }
@@ -330,6 +334,7 @@ fun SearchScreen(nav: NavHostController) {
                         }
                     }
                 }
+                item { HowTo("search") }
             }
         }
     }

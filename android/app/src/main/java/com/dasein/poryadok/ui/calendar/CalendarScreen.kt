@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.calendar
 
 import androidx.activity.compose.BackHandler
+import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.Glyphs
 import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.IconAction
@@ -296,6 +297,7 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
                 )
             }
         }
+        item { HowTo("calendar") }
     }
 }
 
@@ -332,6 +334,7 @@ private fun RemindersList(onEdit: (Reminder) -> Unit) {
             item { SectionTitle("Выполнено", action = "Очистить") { io { done.forEach { Graph.dao.deleteReminder(it) } } } }
             item { Tile(padding = 10.dp) { done.forEach { r -> ReminderRow(r) { onEdit(r) } } } }
         }
+        item { HowTo("reminders") }
     }
 }
 

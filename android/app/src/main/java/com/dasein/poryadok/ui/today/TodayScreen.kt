@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.today
 
 import androidx.compose.foundation.background
+import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.MoodFace
 import com.dasein.poryadok.ui.common.Glyphs
 import com.dasein.poryadok.ui.common.Glyph
@@ -440,6 +441,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                     fontSize = 12.sp, color = extra.ok, modifier = Modifier.padding(8.dp),
                 )
             }
+            item { HowTo("today") }
         }
     }
     if (quickAdd) QuickAddSheet(onDismiss = { quickAdd = false }, defaultDay = today)

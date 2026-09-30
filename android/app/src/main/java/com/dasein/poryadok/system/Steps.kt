@@ -13,6 +13,8 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.StepsRecord
+import androidx.health.connect.client.request.AggregateGroupByDurationRequest
+import com.dasein.poryadok.logic.StepHours
 import androidx.health.connect.client.request.AggregateGroupByPeriodRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import androidx.work.CoroutineWorker
@@ -78,6 +80,33 @@ object Steps {
         return res.associate { it.startTime.toLocalDate().toEpochDay() to (it.result[StepsRecord.COUNT_TOTAL] ?: 0L).toInt() }
     }
 
+    /** Шаги по часам за день [day] из Health Connect (читать можно, только пока приложение на экране). */
+    suspend fun readHcHours(ctx: Context, day: Long): IntArray {
+        val client = HealthConnectClient.getOrCreate(ctx)
+        val date = LocalDate.ofEpochDay(day)
+        val zone = java.time.ZoneId.systemDefault()
+        val res = client.aggregateGroupByDuration(
+            AggregateGroupByDurationRequest(
+                metrics = setOf(StepsRecord.COUNT_TOTAL),
+                timeRangeFilter = TimeRangeFilter.between(date.atStartOfDay(zone).toInstant(), date.plusDays(1).atStartOfDay(zone).toInstant()),
+                timeRangeSlicer = java.time.Duration.ofHours(1),
+            )
+        )
+        val out = IntArray(24)
+        res.forEach { r ->
+            val h = r.startTime.atZone(zone).hour
+            out[h] += (r.result[StepsRecord.COUNT_TOTAL] ?: 0L).toInt()
+        }
+        return out
+    }
+
+    /** Шаги по часам: Health Connect и датчик телефона, в каждом часе — большее. */
+    suspend fun hours(ctx: Context, day: Long): IntArray {
+        val s = Graph.prefs.now()
+        val hc = if (s.stepsHc && hcGranted(ctx)) runCatching { readHcHours(ctx, day) }.onFailure { Log.w(TAG, "hours", it) }.getOrNull() else null
+        return StepHours.merge(hc, StepHours.decode(s.sensorHours)[day])
+    }
+
     /** Активные калории по дням из Health Connect (если разрешено). */
     suspend fun readActiveKcal(ctx: Context, days: Int = 30): Map<Long, Int> {
         val client = HealthConnectClient.getOrCreate(ctx)
@@ -131,7 +160,13 @@ object Steps {
             else -> value - s.sensorLast
         }
         val daySteps = (if (s.sensorDay == today) s.sensorSteps else 0) + delta.toInt()
-        Graph.prefs.update { it.copy(sensorLast = value, sensorDay = today, sensorSteps = daySteps) }
+        val hour = java.time.LocalTime.now().hour
+        Graph.prefs.update {
+            it.copy(
+                sensorLast = value, sensorDay = today, sensorSteps = daySteps,
+                sensorHours = StepHours.add(it.sensorHours, today, hour, delta.toInt()),
+            )
+        }
         return daySteps
     }
 

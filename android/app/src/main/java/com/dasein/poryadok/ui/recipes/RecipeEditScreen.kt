@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.recipes
 
+import com.dasein.poryadok.ui.common.HowTo
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -113,12 +114,14 @@ fun RecipeEditScreen(nav: NavHostController, id: Long) {
     var error by remember { mutableStateOf<String?>(null) }
     var confirmExit by remember { mutableStateOf(false) }
     val r = d.recipe
-    val macros = RecipeRepo.macros(d.ingredients, r.servings)
+    val macros = RecipeRepo.macros(d.ingredients, r)
 
     fun save() {
         if (r.name.isBlank()) { error = "Введите название рецепта"; d.step = 0; return }
         scope.launch {
-            val newId = RecipeRepo.saveRecipe(r.copy(name = r.name.trim()), d.ingredients.toList(), d.steps.toList())
+            val exact = RecipeRepo.exactServings(d.ingredients, r)
+            val fixed = if (r.portionGrams > 0) r.copy(servings = Math.round(exact).toInt().coerceIn(1, 40)) else r
+            val newId = RecipeRepo.saveRecipe(fixed.copy(name = r.name.trim()), d.ingredients.toList(), d.steps.toList())
             nav.popBackStack()
             if (id == 0L) nav.navigate(Routes.recipe(newId))
         }
@@ -150,6 +153,7 @@ fun RecipeEditScreen(nav: NavHostController, id: Long) {
                     3 -> StepParams(d)
                     else -> StepFinish(d)
                 }
+                HowTo("recipe_edit")
                 Gap(24.dp)
             }
             Row(Modifier.padding(vertical = 10.dp)) {
@@ -238,6 +242,16 @@ private fun StepIngredients(d: RecipeDraft) {
         }
     }
     if (d.ingredients.isEmpty()) Text("Ингредиентов пока нет", color = extra.dim, modifier = Modifier.padding(8.dp))
+    else {
+        val list = d.ingredients.map { it.toIngrSafe() }
+        val r = d.recipe
+        Tile(Modifier.padding(top = 6.dp)) {
+            Text("Итого ${Cooking.amount(Cooking.rawGrams(list))} г", fontWeight = FontWeight.SemiBold)
+            Text(if (r.portionGrams > 0) "На порцию ${Cooking.amount(r.portionGrams)} г:" else "На порцию (${r.servings} порц.):", fontSize = 13.sp, color = extra.dim)
+            MacroLine(RecipeRepo.macros(d.ingredients, r))
+            Text("Вес порции задаётся на шаге «Параметры» — там же КБЖУ на 100 г и на всё блюдо.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
+        }
+    }
 
     if (pickProduct) ProductPickerDialog(onDismiss = { pickProduct = false }) { p ->
         pickProduct = false
@@ -435,22 +449,61 @@ private fun StepParams(d: RecipeDraft) {
         NumberField(cook, { cook = it; d.recipe = d.recipe.copy(cookMin = it.toIntOrNull() ?: 0) }, "Готовка", Modifier.weight(1f), suffix = "мин", decimal = false)
     }
     Gap(10.dp)
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    if (r.portionGrams <= 0) Row(verticalAlignment = Alignment.CenterVertically) {
         Text("Порций", Modifier.weight(1f))
         Stepper(r.servings) { d.recipe = d.recipe.copy(servings = it.coerceIn(1, 40)) }
-    }
+    } else Text("Порций: считаются по весу порции ниже", color = LocalExtra.current.dim, fontSize = 13.sp)
     SectionTitle("Сложность")
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         DIFFICULTY.forEachIndexed { i, t -> Pill(t, r.difficulty == i + 1) { d.recipe = d.recipe.copy(difficulty = i + 1) } }
     }
-    SectionTitle("КБЖУ — считается автоматически")
-    val total = Cooking.total(d.ingredients.map { it.toIngrSafe() })
+    SectionTitle("Вес порции")
+    val ingrs = d.ingredients.map { it.toIngrSafe() }
+    val raw = Cooking.rawGrams(ingrs)
+    var portion by remember { mutableStateOf(if (r.portionGrams > 0) r.portionGrams.plain() else "") }
+    var dish by remember { mutableStateOf(if (r.dishGrams > 0) r.dishGrams.plain() else "") }
+    fun apply(p: String, dsh: String) {
+        val pg = p.num()?.takeIf { it > 0 } ?: 0.0
+        val dg = dsh.num()?.takeIf { it > 0 } ?: 0.0
+        val cur = d.recipe
+        val exact = Cooking.exactServings(ingrs, cur.servings, pg, dg)
+        // Число порций подстраивается под вес: так меню и список покупок считают так же.
+        d.recipe = cur.copy(portionGrams = pg, dishGrams = dg, servings = if (pg > 0) Math.round(exact).toInt().coerceIn(1, 40) else cur.servings)
+    }
     Tile {
-        Text("На порцию", fontSize = 13.sp, color = LocalExtra.current.dim)
-        MacroLine(total / r.servings.toDouble(), showFiber = true)
+        Text(
+            "Укажите вес одной порции — КБЖУ порции, 100 г и всего блюда посчитаются по ингредиентам сами. " +
+                "Если блюдо при готовке уварилось или ужарилось, взвесьте готовое и впишите его вес.",
+            fontSize = 13.sp, color = LocalExtra.current.dim,
+        )
         Gap(8.dp)
-        Text("На весь рецепт (${r.servings} порц.)", fontSize = 13.sp, color = LocalExtra.current.dim)
+        Row {
+            NumberField(portion, { portion = it; apply(it, dish) }, "Вес 1 порции", Modifier.weight(1f), suffix = "г")
+            HGap(8.dp)
+            NumberField(dish, { dish = it; apply(portion, it) }, "Готовое блюдо: ${Cooking.amount(raw)} г", Modifier.weight(1f), suffix = "г")
+        }
+        val pg = r.portionGrams
+        if (pg > 0) {
+            val exact = Cooking.exactServings(ingrs, r.servings, pg, r.dishGrams)
+            Text(
+                "Выходит ${Cooking.amount(Math.round(exact * 10) / 10.0)} порц. по ${Cooking.amount(pg)} г",
+                fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+    }
+    SectionTitle("КБЖУ — считается автоматически")
+    val total = Cooking.total(ingrs)
+    Tile {
+        Text(if (r.portionGrams > 0) "На порцию (${Cooking.amount(r.portionGrams)} г)" else "На порцию", fontSize = 13.sp, color = LocalExtra.current.dim)
+        MacroLine(RecipeRepo.macros(d.ingredients, r), showFiber = true)
+        Gap(8.dp)
+        Text("На 100 г готового блюда", fontSize = 13.sp, color = LocalExtra.current.dim)
+        MacroLine(Cooking.per100(ingrs, r.dishGrams))
+        Gap(8.dp)
+        val dishW = if (r.dishGrams > 0) r.dishGrams else raw
+        Text("На всё блюдо (${Cooking.amount(dishW)} г)", fontSize = 13.sp, color = LocalExtra.current.dim)
         MacroLine(total)
+        if (d.ingredients.isEmpty()) Text("Добавьте ингредиенты на шаге «Ингредиенты» — без них КБЖУ будет нулевым.", fontSize = 12.sp, color = LocalExtra.current.warn, modifier = Modifier.padding(top = 6.dp))
     }
 }
 
@@ -469,7 +522,7 @@ private fun StepFinish(d: RecipeDraft) {
         Text("${r.category} · ${r.servings} порц. · ${minutes(r.prepMin + r.cookMin)}", color = extra.dim, fontSize = 13.sp)
         Text("${d.ingredients.size} ингредиентов · ${d.steps.count { it.isNotBlank() }} шагов", color = extra.dim, fontSize = 13.sp)
         Gap(6.dp)
-        MacroLine(RecipeRepo.macros(d.ingredients, r.servings))
+        MacroLine(RecipeRepo.macros(d.ingredients, r))
         if (d.ingredients.isEmpty()) Text("Без ингредиентов КБЖУ будет нулевым.", color = extra.warn, fontSize = 12.sp)
     }
     Gap(6.dp)

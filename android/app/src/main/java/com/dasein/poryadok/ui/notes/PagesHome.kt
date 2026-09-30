@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.notes
 
 import androidx.compose.foundation.clickable
+import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -204,6 +205,7 @@ fun PagesHome(nav: NavHostController, embedded: Boolean = false) {
                     }
                 }
             }
+            item { HowTo("notes") }
         }
     }
     purge?.let { p ->

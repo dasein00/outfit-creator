@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.productivity
 
 import androidx.activity.compose.BackHandler
+import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.Glyphs
 import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.IconAction
@@ -144,6 +145,7 @@ fun GoalsScreen(nav: NavHostController, embedded: Boolean = false) {
                     }
                 }
             }
+            item { HowTo("goals") }
         }
     }
 }
