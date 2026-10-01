@@ -118,6 +118,12 @@ fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int, emb
     }
 }
 
+/** Убрать блюдо в архив (или вернуть) одной кнопкой с подсказкой. */
+private fun toggleArchive(ctx: android.content.Context, r: Recipe) {
+    io { Graph.extra.setArchived(r.id, !r.archived) }
+    Toast.makeText(ctx, if (r.archived) "«${r.name}» снова в каталоге" else "«${r.name}» в архиве — вернуть можно на вкладке «Архив»", Toast.LENGTH_SHORT).show()
+}
+
 /** Сортировка каталога. */
 private enum class RecipeSort(val label: String) {
     NAME("По названию"), FRIDGE("Из холодильника"), FAST("Сначала быстрые"), KCAL("Меньше калорий"), PROTEIN("Больше белка"),
@@ -133,6 +139,7 @@ private enum class CatalogSheet { SORT, ALL, CATEGORY, CUISINE, TIME, KCAL, FEAT
 
 @Composable
 private fun Catalog(nav: NavHostController, book: RecipeBook) {
+    val ctx = LocalContext.current
     var menuFor by remember { mutableStateOf<Recipe?>(null) }
     menuFor?.let { RecipeQuickMenu(nav, it) { menuFor = null } }
     val settings by observe(null) { Graph.prefs.settings }
@@ -326,7 +333,7 @@ private fun Catalog(nav: NavHostController, book: RecipeBook) {
             }
             PageInfo(list.size, p, size, { size = it; page = 0 }, "рецептов")
             PageBar(p, pages, go)
-            Text("Удерживайте рецепт, чтобы убрать его в архив", fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 6.dp))
+            Text("Значок архива рядом с сердечком убирает блюдо из каталога", fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 6.dp))
             Gap(6.dp)
         }
         if (list.isEmpty()) item {
@@ -334,7 +341,7 @@ private fun Catalog(nav: NavHostController, book: RecipeBook) {
         }
         items(Paging.slice(list, p, size), key = { it.id }) { r ->
             Column {
-                RecipeCard(r, book.macros(r.id), onClick = { nav.navigate(Routes.recipe(r.id)) }, onFavorite = { io { Graph.extra.setFavorite(r.id, !r.favorite) } }, onLongClick = { menuFor = r })
+                RecipeCard(r, book.macros(r.id), onClick = { nav.navigate(Routes.recipe(r.id)) }, onFavorite = { io { Graph.extra.setFavorite(r.id, !r.favorite) } }, onLongClick = { menuFor = r }, onArchive = { toggleArchive(ctx, r) })
                 fits[r.id]?.let { f ->
                     Text(
                         if (f.lacking.isEmpty()) "✓ Всё есть дома" else "Не хватает: " + f.lacking.take(4).joinToString(", ") + if (f.lacking.size > 4) " и ещё ${f.lacking.size - 4}" else "",
@@ -399,10 +406,10 @@ private fun Archive(nav: NavHostController, book: RecipeBook) {
             Gap(8.dp)
         }
         if (book.archived.isEmpty()) item {
-            Empty(Ic.folder, "Архив пуст", "Не понравилось блюдо? Удерживайте его в каталоге и выберите «Убрать в архив» — оно перестанет попадаться.")
+            Empty(Ic.archive, "Архив пуст", "Не понравилось блюдо? Нажмите значок архива рядом с сердечком — оно перестанет попадаться.")
         }
         items(list, key = { it.id }) { r ->
-            RecipeCard(r, book.macros(r.id), onClick = { nav.navigate(Routes.recipe(r.id)) }, onFavorite = { io { Graph.extra.setFavorite(r.id, !r.favorite) } })
+            RecipeCard(r, book.macros(r.id), onClick = { nav.navigate(Routes.recipe(r.id)) }, onFavorite = { io { Graph.extra.setFavorite(r.id, !r.favorite) } }, onArchive = { toggleArchive(ctx, r) })
             TextButton(onClick = {
                 io { Graph.extra.setArchived(r.id, false) }
                 Toast.makeText(ctx, "«${r.name}» снова в каталоге", Toast.LENGTH_SHORT).show()
@@ -419,6 +426,7 @@ private val FAV_FILTERS = listOf("Все", "Завтраки", "Обеды", "У
 
 @Composable
 private fun Favorites(nav: NavHostController, book: RecipeBook) {
+    val ctx = LocalContext.current
     var menuFor by remember { mutableStateOf<Recipe?>(null) }
     menuFor?.let { RecipeQuickMenu(nav, it) { menuFor = null } }
     var f by rememberSaveable { mutableStateOf("Все") }
@@ -443,7 +451,7 @@ private fun Favorites(nav: NavHostController, book: RecipeBook) {
             Empty(Ic.heart, "Избранного пока нет", "Отмечайте сердечком блюда, которые готовите чаще всего, — они будут под рукой и первыми в подборе меню.")
         }
         items(list, key = { it.id }) { r ->
-            RecipeCard(r, book.macros(r.id), onClick = { nav.navigate(Routes.recipe(r.id)) }, onFavorite = { io { Graph.extra.setFavorite(r.id, false) } }, onLongClick = { menuFor = r })
+            RecipeCard(r, book.macros(r.id), onClick = { nav.navigate(Routes.recipe(r.id)) }, onFavorite = { io { Graph.extra.setFavorite(r.id, false) } }, onLongClick = { menuFor = r }, onArchive = { toggleArchive(ctx, r) })
         }
         item { HowTo("recipes") }
     }
@@ -451,6 +459,7 @@ private fun Favorites(nav: NavHostController, book: RecipeBook) {
 
 @Composable
 private fun Mine(nav: NavHostController, book: RecipeBook) {
+    val ctx = LocalContext.current
     var menuFor by remember { mutableStateOf<Recipe?>(null) }
     menuFor?.let { RecipeQuickMenu(nav, it) { menuFor = null } }
     val list = book.recipes.filter { it.custom }.sortedByDescending { it.createdAt }
@@ -463,7 +472,7 @@ private fun Mine(nav: NavHostController, book: RecipeBook) {
             Empty(Ic.notebook, "Своих рецептов пока нет", "Добавьте блюдо: ингредиенты из базы продуктов, шаги — КБЖУ посчитается автоматически.")
         }
         items(list, key = { it.id }) { r ->
-            RecipeCard(r, book.macros(r.id), onClick = { nav.navigate(Routes.recipe(r.id)) }, onFavorite = { io { Graph.extra.setFavorite(r.id, !r.favorite) } }, onLongClick = { menuFor = r })
+            RecipeCard(r, book.macros(r.id), onClick = { nav.navigate(Routes.recipe(r.id)) }, onFavorite = { io { Graph.extra.setFavorite(r.id, !r.favorite) } }, onLongClick = { menuFor = r }, onArchive = { toggleArchive(ctx, r) })
         }
         item { HowTo("recipes") }
     }

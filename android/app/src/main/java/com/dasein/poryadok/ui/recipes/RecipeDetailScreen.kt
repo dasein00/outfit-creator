@@ -128,7 +128,7 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
         onBack = { nav.popBackStack() },
         actions = {
             IconAction(Ic.heart, if (r.favorite) "Убрать из избранного" else "В избранное") { io { x.setFavorite(r.id, !r.favorite) } }
-            IconAction(Ic.folder, if (r.archived) "Вернуть из архива" else "Убрать в архив") {
+            IconAction(Ic.archive, if (r.archived) "Вернуть из архива" else "Убрать в архив") {
                 io { x.setArchived(r.id, !r.archived) }
                 Toast.makeText(ctx, if (r.archived) "Рецепт возвращён в каталог" else "Рецепт в архиве — вернуть можно в каталоге, категория «Архив»", Toast.LENGTH_LONG).show()
             }

@@ -69,6 +69,7 @@ object Ic {
     val image = R.drawable.ic_image
     val document = R.drawable.ic_document
     val folder = R.drawable.ic_folder
+    val archive = R.drawable.ic_archive
     val sun = R.drawable.ic_sun
     val rain = R.drawable.ic_rain
     val thermo = R.drawable.ic_thermo
@@ -86,7 +87,7 @@ object Ic {
             "trophy" to trophy, "hanger" to hanger, "wheel" to wheel, "review" to review, "bell" to bell, "sliders" to sliders,
             "wallet" to wallet, "coins" to coins, "bank" to bank, "card" to card, "receipt" to receipt, "leaves" to leaves,
             "heart" to heart, "people" to people, "cart" to cart, "globe" to globe, "pin" to pin, "map" to map, "camera" to camera,
-            "image" to image, "document" to document, "folder" to folder, "sun" to sun, "rain" to rain, "thermo" to thermo,
+            "image" to image, "document" to document, "folder" to folder, "archive" to archive, "sun" to sun, "rain" to rain, "thermo" to thermo,
             "book" to book, "bulb" to bulb, "cap" to cap, "gift" to gift, "trash" to trash,
             // Нарисованы вручную векторами.
             "v_film" to R.drawable.ic_v_film, "v_pot" to R.drawable.ic_v_pot, "v_pulse" to R.drawable.ic_v_pulse,

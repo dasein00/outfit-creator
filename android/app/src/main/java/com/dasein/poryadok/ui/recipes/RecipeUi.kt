@@ -144,7 +144,7 @@ fun RecipeThumb(r: Recipe, size: Dp) {
 }
 
 @Composable
-fun RecipeCard(r: Recipe, m: Macros, onClick: () -> Unit, onFavorite: () -> Unit, onLongClick: (() -> Unit)? = null) {
+fun RecipeCard(r: Recipe, m: Macros, onClick: () -> Unit, onFavorite: () -> Unit, onLongClick: (() -> Unit)? = null, onArchive: (() -> Unit)? = null) {
     val extra = LocalExtra.current
     Tile(Modifier.padding(bottom = 8.dp), onClick = onClick, padding = 10.dp, onLongClick = onLongClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -162,8 +162,14 @@ fun RecipeCard(r: Recipe, m: Macros, onClick: () -> Unit, onFavorite: () -> Unit
                 val tags = r.tagList().take(3)
                 if (tags.isNotEmpty()) Text(tags.joinToString("  ·  "), fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Box(Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onFavorite).padding(6.dp)) {
-                AppIcon(Ic.heart, 22.dp, badge = false, dimmed = !r.favorite)
+            // Рядом с сердечком — архив: не понравилось блюдо, убрать одним нажатием (в «Архиве» — вернуть).
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onFavorite).padding(6.dp)) {
+                    AppIcon(Ic.heart, 22.dp, badge = false, dimmed = !r.favorite)
+                }
+                if (onArchive != null) Box(Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onArchive).padding(6.dp)) {
+                    AppIcon(Ic.archive, 22.dp, badge = false, dimmed = !r.archived)
+                }
             }
         }
     }
