@@ -206,6 +206,7 @@ fun WidgetEditorScreen(nav: NavHostController) {
                             if (type.counted) (1..5).forEach { n -> Pill("$n", b.count == n) { setBlock(i) { it.copy(count = n) } } }
                             if (b.type == "weather") {
                                 val on = b.weatherFields()
+                                Pill("☂ Будет ли дождь сегодня", b.rain) { setBlock(i) { it.copy(rain = !it.rain) } }
                                 Text("Подробности:", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
                                 WEATHER_FIELDS.forEach { (key, name) ->
                                     Pill(name, key in on) {

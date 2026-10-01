@@ -189,3 +189,49 @@ fun FilterRow(title: String, value: String?, onClick: () -> Unit) {
     androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = .25f))
 }
 
+
+/**
+ * Готовый фильтр с одним вариантом: кнопка «Сфера ▾», по нажатию — список снизу.
+ * Ключ "" означает «любой» (allLabel).
+ */
+@Composable
+fun SingleFilter(title: String, options: List<FilterOption>, selected: String, allLabel: String = "Все", allCount: Int = -1, onSelect: (String) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    FilterButton(title, options.firstOrNull { it.key == selected && selected.isNotEmpty() }?.label) { open = true }
+    if (open) OptionSheet(
+        title, listOf(FilterOption("", allLabel, allCount)) + options, setOf(selected), onDismiss = { open = false },
+    ) { onSelect(it.firstOrNull().orEmpty()); open = false }
+}
+
+/** Готовый фильтр с несколькими вариантами (галочки). */
+@Composable
+fun MultiFilter(title: String, options: List<FilterOption>, selected: Set<String>, onChange: (Set<String>) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val value = when (selected.size) {
+        0 -> null
+        1 -> options.firstOrNull { it.key in selected }?.label ?: selected.first()
+        else -> "$title: ${selected.size}"
+    }
+    FilterButton(title, value) { open = true }
+    if (open) OptionSheet(title, options, selected, multi = true, onDismiss = { open = false }) { onChange(it); open = false }
+}
+
+/** Кнопка сортировки «⇅ По порядку ▾» со списком вариантов снизу. */
+@Composable
+fun <T> SortButton(options: List<T>, selected: T, label: (T) -> String, onSelect: (T) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        Modifier.clickable { open = true }.padding(vertical = 8.dp, horizontal = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.AutoMirrored.Filled.Sort, null, tint = scheme.primary)
+        Spacer(Modifier.width(8.dp))
+        Text(label(selected), fontSize = 15.sp, maxLines = 1, softWrap = false)
+        Text(" ▾", fontSize = 13.sp, color = LocalExtra.current.dim)
+    }
+    if (open) OptionSheet(
+        "Сортировка", options.mapIndexed { i, o -> FilterOption("$i", label(o)) }, setOf("${options.indexOf(selected)}"),
+        onDismiss = { open = false },
+    ) { set -> set.firstOrNull()?.toIntOrNull()?.let { options.getOrNull(it) }?.let(onSelect); open = false }
+}

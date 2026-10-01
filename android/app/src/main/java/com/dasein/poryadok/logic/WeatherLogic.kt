@@ -118,8 +118,8 @@ object WeatherLogic {
      * Осадки на оставшуюся часть сегодняшнего дня по часовому прогнозу: «Дождь 14:00–17:00, вероятность до 70%»
      * или «Без осадков, вероятность до 10%». [today] — дата «2026-09-30».
      */
-    fun precipToday(hours: List<WeatherHour>, today: String): String {
-        val list = hours.filter { it.time.startsWith(today) }
+    fun precipToday(hours: List<WeatherHour>, today: String, fromHour: Int = 0): String {
+        val list = hours.filter { it.time.startsWith(today) && (it.time.substringAfter('T').take(2).toIntOrNull() ?: 0) >= fromHour }
         if (list.isEmpty()) return ""
         val maxPop = list.maxOf { it.pop }
         val wet = list.filter { it.pop >= 40 }

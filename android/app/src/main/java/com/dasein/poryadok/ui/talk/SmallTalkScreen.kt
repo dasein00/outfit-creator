@@ -76,6 +76,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.text.AnnotatedString
 import com.dasein.poryadok.logic.Paging
 import com.dasein.poryadok.logic.TextQuery
+import com.dasein.poryadok.ui.common.FilterOption
 import com.dasein.poryadok.ui.common.PageBar
 import com.dasein.poryadok.ui.common.PageInfo
 import com.dasein.poryadok.ui.common.SearchField
@@ -320,9 +321,7 @@ private fun <T> sorted(items: List<T>, sort: TalkSort, q: TextQuery.Query, seed:
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SortChips(sort: TalkSort, onSort: (TalkSort) -> Unit) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        TalkSort.entries.forEach { s -> Pill(s.label, s == sort) { onSort(s) } }
-    }
+    com.dasein.poryadok.ui.common.SortButton(TalkSort.entries, sort, { it.label }, onSort)
 }
 
 @Composable
@@ -454,11 +453,16 @@ private fun androidx.compose.foundation.lazy.LazyListScope.factOfTheDay(data: Ta
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SphereChips(counts: Map<String, Int>, selected: Set<String>, onChange: (Set<String>) -> Unit) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Pill("Все", selected.isEmpty()) { onChange(emptySet()) }
-        SmallTalk.SPHERES.filter { (counts[it.first] ?: 0) > 0 }.forEach { (name, glyph) ->
-            Pill("$name ${counts[name]}", name in selected, glyph) { onChange(if (name in selected) selected - name else selected + name) }
-        }
+    // Сферы — кнопкой со списком снизу (можно отметить несколько), а не длинной лентой плашек.
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        com.dasein.poryadok.ui.common.MultiFilter(
+            "Сферы", SmallTalk.SPHERES.filter { (counts[it.first] ?: 0) > 0 }.map { (name, _) -> FilterOption(name, name, counts[name] ?: 0) },
+            selected, onChange,
+        )
+        if (selected.isNotEmpty()) Text(
+            "Сбросить", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 12.dp).clickable { onChange(emptySet()) }.padding(6.dp),
+        )
     }
 }
 
@@ -510,25 +514,12 @@ private fun SearchTab(data: TalkRepo.Data, favorites: List<Int>) {
         item(key = "search_head") {
             SearchField(q, { q = it }, "Например: Ван Гог, \"чёрная дыра\", -кофе")
             Gap(8.dp)
-            Text("Где искать", fontSize = 12.sp, color = extra.dim)
-            Gap(4.dp)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Pill("Везде ${all.size}", kinds.isEmpty()) { kinds = emptySet() }
-                KINDS.forEach { k ->
-                    val n = all.count { it.kind == k }
-                    Pill("$k $n", k in kinds) { kinds = if (k in kinds) kinds - k else kinds + k }
-                }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                com.dasein.poryadok.ui.common.MultiFilter("Где искать", KINDS.map { k -> FilterOption(k, k, all.count { it.kind == k }) }, kinds) { kinds = it }
+                if (spheres.size > 1) com.dasein.poryadok.ui.common.SingleFilter(
+                    "Сфера", spheres.map { (name, n) -> FilterOption(name, name, n) }, sphere, allLabel = "Все сферы",
+                ) { sphere = it }
             }
-            if (spheres.size > 1) {
-                Gap(8.dp)
-                Text("Сфера или раздел", fontSize = 12.sp, color = extra.dim)
-                Gap(4.dp)
-                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    item { Pill("Все", sphere.isEmpty()) { sphere = "" } }
-                    items(spheres, key = { it.key }) { (name, n) -> Pill("$name $n", name == sphere) { sphere = if (sphere == name) "" else name } }
-                }
-            }
-            Gap(8.dp)
             SortChips(sort) { sort = it; if (it == TalkSort.SHUFFLE) seed = Random.nextInt() }
             PageInfo(found.size, page, paged.size, { paged.size = it; paged.page = 0 }, "найдено")
             PageBar(page, Paging.pages(found.size, paged.size), { paged.go(it) })
@@ -640,10 +631,9 @@ private fun QuestionsTab(data: TalkRepo.Data) {
     val hl = MaterialTheme.colorScheme.primary.copy(alpha = .22f)
     TabList(3, listState) {
         item(key = "q_head") {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Pill("Все", situation.isEmpty()) { situation = "" }
-                situations.forEach { t -> Pill(t, t == situation) { situation = t } }
-            }
+            com.dasein.poryadok.ui.common.SingleFilter(
+                "Ситуация", situations.map { t -> FilterOption(t, t, data.questions.count { it.situation == t }) }, situation, allLabel = "Все ситуации",
+            ) { situation = it }
             Gap(10.dp)
             pool.getOrNull(pick)?.let { qq ->
                 Tile(color = MaterialTheme.colorScheme.primary.copy(alpha = .14f)) {

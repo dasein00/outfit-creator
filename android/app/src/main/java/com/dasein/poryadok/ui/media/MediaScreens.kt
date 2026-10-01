@@ -81,6 +81,12 @@ import com.dasein.poryadok.data.TopItem
 import com.dasein.poryadok.logic.Dates
 import com.dasein.poryadok.logic.MediaHit
 import com.dasein.poryadok.logic.MediaParse
+import com.dasein.poryadok.logic.MediaCatalog
+import com.dasein.poryadok.ui.common.FilterOption
+import com.dasein.poryadok.ui.common.SearchField
+import com.dasein.poryadok.ui.common.SingleFilter
+import com.dasein.poryadok.ui.common.SortButton
+import androidx.compose.foundation.layout.Spacer
 import com.dasein.poryadok.system.MediaSearch
 import com.dasein.poryadok.system.MediaSource
 import com.dasein.poryadok.ui.Routes
@@ -148,30 +154,62 @@ fun Stars10(value: Int, size: Int = 22, onChange: ((Int) -> Unit)? = null) {
 
 private const val FAV = 99
 
-/** Коллекция одного вида: сетка постеров, фильтры по статусу, поиск и добавление. */
+/**
+ * Коллекция одного вида как в каталогах-агрегаторах: «Продолжить» с прогрессом, поиск по словам,
+ * фильтры кнопками со списком вариантов снизу (статус, жанр, годы, страна, автор, оценки, длительность, списки, метки),
+ * сортировка, сетка или список, «Что посмотреть?» и статистика.
+ */
 @Composable
 fun MediaListScreen(nav: NavHostController, kind: Int) {
     val extra = LocalExtra.current
     val all by observe<List<MediaItem>?>(null) { Graph.extra.media() }
-    var filter by rememberSaveable(kind) { mutableStateOf(-1) }
-    var sort by rememberSaveable(kind) { mutableStateOf(0) }
+    var status by rememberSaveable(kind) { mutableStateOf("") }
+    var genre by rememberSaveable(kind) { mutableStateOf("") }
+    var decade by rememberSaveable(kind) { mutableStateOf("") }
+    var country by rememberSaveable(kind) { mutableStateOf("") }
+    var creator by rememberSaveable(kind) { mutableStateOf("") }
+    var rating by rememberSaveable(kind) { mutableStateOf("") }
+    var ext by rememberSaveable(kind) { mutableStateOf("") }
+    var len by rememberSaveable(kind) { mutableStateOf("") }
+    var tag by rememberSaveable(kind) { mutableStateOf("") }
+    var listKey by rememberSaveable(kind) { mutableStateOf("") }
+    var sort by rememberSaveable(kind) { mutableStateOf(MediaSort.NEW) }
+    var grid by rememberSaveable(kind) { mutableStateOf(true) }
     var q by rememberSaveable(kind) { mutableStateOf("") }
     var menu by remember { mutableStateOf(false) }
     var import by remember { mutableStateOf(false) }
+    var stats by remember { mutableStateOf(false) }
+    var random by remember { mutableStateOf(false) }
     val lists by observe(emptyList()) { Graph.extra.mediaLists() }
     val listItems by observe(emptyList()) { Graph.extra.mediaListItems() }
-    var listFilter by rememberSaveable(kind) { mutableStateOf(0L) }
     var newList by remember { mutableStateOf(false) }
     var renameList by remember { mutableStateOf<MediaList?>(null) }
     var deleteList by remember { mutableStateOf<MediaList?>(null) }
     val myLists = lists.filter { it.kind == -1 || it.kind == kind }
-    val inList = listItems.filter { it.listId == listFilter }.associate { it.mediaId to it.position }
+    val listFilter = listKey.toLongOrNull() ?: 0L
     val names = MediaStatus.names(kind)
-    val list = all.orEmpty().filter { it.kind == kind }
-        .filter { listFilter == 0L || it.id in inList }
-        .filter { filter == -1 || (filter == FAV && it.favorite) || it.status == filter }
-        .filter { q.isBlank() || listOf(it.title, it.originalTitle, it.creators, it.cast, it.genres).any { f -> f.contains(q.trim(), true) } }
-        .let { l -> when (sort) { 1 -> l.sortedByDescending { it.myRating }; 2 -> l.sortedBy { it.title.lowercase() }; 3 -> l.sortedByDescending { it.year ?: 0 }; else -> l } }
+    val base = all.orEmpty().filter { it.kind == kind }
+    val query = remember(q) { com.dasein.poryadok.logic.TextQuery.parse(q) }
+    val split = MediaCatalog::split
+    val pass: (MediaItem, String?) -> Boolean = { m, skip ->
+        com.dasein.poryadok.logic.TextQuery.matches(listOf(m.title, m.originalTitle, m.creators, m.cast, m.genres, m.description, m.tags).joinToString(" "), query) &&
+            (skip == "status" || status.isEmpty() || (status == "fav" && m.favorite) || status == "${m.status}") &&
+            (skip == "genre" || genre.isEmpty() || genre in split(m.genres)) &&
+            (skip == "decade" || decade.isEmpty() || MediaCatalog.decade(m.year) == decade) &&
+            (skip == "country" || country.isEmpty() || country in split(m.countries)) &&
+            (skip == "creator" || creator.isEmpty() || creator in split(m.creators)) &&
+            (skip == "rating" || MediaCatalog.ratingMatches(rating, m.myRating)) &&
+            (skip == "ext" || ext.isEmpty() || (m.externalRating ?: 0.0) >= ext.toDouble()) &&
+            (skip == "len" || MediaCatalog.lengthMatches(len, m)) &&
+            (skip == "tag" || tag.isEmpty() || tag in split(m.tags)) &&
+            (skip == "list" || listFilter == 0L || listItems.any { it.listId == listFilter && it.mediaId == m.id })
+    }
+    val list = sortMedia(base.filter { pass(it, null) }, sort)
+    fun facet(group: String, values: (MediaItem) -> List<String>): List<FilterOption> =
+        base.filter { pass(it, group) }.flatMap(values).groupingBy { it }.eachCount()
+            .entries.sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key }).map { FilterOption(it.key, it.key, it.value) }
+    fun countIn(group: String, test: (MediaItem) -> Boolean) = base.count { pass(it, group) && test(it) }
+    val active = listOf(status, genre, decade, country, creator, rating, ext, len, tag, listKey).count { it.isNotEmpty() }
     Screen(
         title = MediaKind.plural[kind],
         actions = { IconAction("habit/24", "Найти онлайн") { nav.navigate(Routes.mediaSearch(kind)) } },
@@ -197,66 +235,104 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Column {
-                    TextInput(q, { q = it }, "Поиск в коллекции: название, режиссёр, актёр")
-                    Gap(6.dp)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Pill("Все ${items.count { it.kind == kind }}", filter == -1) { filter = -1 }
-                        Pill("Любимые", filter == FAV, glyph = "habit/28") { filter = FAV }
-                        names.forEachIndexed { i, n -> Pill(n, filter == i) { filter = i } }
+                    SearchField(q, { q = it }, "Название, режиссёр, актёр, жанр, метка")
+                    Gap(8.dp)
+                    ContinueShelf(base.filter { it.status == MediaStatus.IN_PROGRESS }.sortedByDescending { it.startedDay ?: 0L }) { nav.navigate(Routes.media(it.id, kind)) }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SortButton(MediaSort.entries, sort, { it.label }) { sort = it }
+                        Spacer(Modifier.weight(1f))
+                        Text(
+                            if (grid) "▦ Сетка" else "☰ Список", fontSize = 14.sp, color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { grid = !grid }.padding(8.dp),
+                        )
                     }
-                    Gap(6.dp)
-                    Text("Мои списки", fontSize = 12.sp, color = extra.dim)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
-                        myLists.forEach { l ->
-                            val n = listItems.count { it.listId == l.id && items.firstOrNull { m -> m.id == it.mediaId }?.kind == kind }
-                            Pill("${l.name} $n", listFilter == l.id, glyph = l.glyph.ifBlank { "ui:folder" }) { listFilter = if (listFilter == l.id) 0L else l.id }
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SingleFilter(
+                            "Статус",
+                            names.mapIndexed { i, n -> FilterOption("$i", n, countIn("status") { it.status == i }) } +
+                                FilterOption("fav", "Любимые", countIn("status") { it.favorite }),
+                            status, allLabel = "Любой", allCount = countIn("status") { true },
+                        ) { status = it }
+                        SingleFilter("Жанр", facet("genre") { split(it.genres) }, genre, allLabel = "Все жанры") { genre = it }
+                        SingleFilter("Годы", facet("decade") { listOfNotNull(MediaCatalog.decade(it.year)) }.sortedByDescending { it.key }, decade, allLabel = "Любые") { decade = it }
+                        SingleFilter("Страна", facet("country") { split(it.countries) }, country, allLabel = "Все страны") { country = it }
+                        SingleFilter(if (kind == MediaKind.BOOK) "Автор" else "Режиссёр", facet("creator") { split(it.creators) }, creator, allLabel = "Все") { creator = it }
+                        SingleFilter(
+                            "Моя оценка", MediaCatalog.RATING_OPTIONS.map { (k, l) -> FilterOption(k, l, countIn("rating") { MediaCatalog.ratingMatches(k, it.myRating) }) },
+                            rating, allLabel = "Любая",
+                        ) { rating = it }
+                        if (base.any { it.externalRating != null }) SingleFilter(
+                            "Рейтинг", MediaCatalog.EXTERNAL_OPTIONS.map { (k, l) -> FilterOption(k, l, countIn("ext") { m -> (m.externalRating ?: 0.0) >= k.toDouble() }) },
+                            ext, allLabel = "Любой",
+                        ) { ext = it }
+                        if (kind == MediaKind.MOVIE) SingleFilter(
+                            "Длительность", MediaCatalog.LENGTH_OPTIONS.map { (k, l) -> FilterOption(k, l, countIn("len") { MediaCatalog.lengthMatches(k, it) }) },
+                            len, allLabel = "Любая",
+                        ) { len = it }
+                        if (myLists.isNotEmpty()) SingleFilter(
+                            "Мои списки", myLists.map { l -> FilterOption("${l.id}", l.name, countIn("list") { m -> listItems.any { it.listId == l.id && it.mediaId == m.id } }) },
+                            listKey, allLabel = "Вся коллекция",
+                        ) { listKey = it }
+                        val tags = facet("tag") { split(it.tags) }
+                        if (tags.isNotEmpty() || tag.isNotEmpty()) SingleFilter("Метки", tags, tag, allLabel = "Любые") { tag = it }
+                    }
+                    Gap(8.dp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { random = true }, Modifier.weight(1f)) {
+                            Text(if (kind == MediaKind.BOOK) "🎲 Что почитать?" else "🎲 Что посмотреть?", maxLines = 1, softWrap = false)
                         }
-                        Pill("+ Список", false) { newList = true }
+                        OutlinedButton(onClick = { stats = true }, Modifier.weight(1f)) { Text("📊 Статистика", maxLines = 1, softWrap = false) }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
+                        Text("Найдено ${list.size} из ${base.size}", fontSize = 12.sp, color = extra.dim, modifier = Modifier.weight(1f))
+                        if (active > 0) TextButton(onClick = {
+                            status = ""; genre = ""; decade = ""; country = ""; creator = ""; rating = ""; ext = ""; len = ""; tag = ""; listKey = ""
+                        }) { Text("Сбросить фильтры", fontSize = 12.sp) }
                     }
                     myLists.firstOrNull { it.id == listFilter }?.let { l ->
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("«${l.name}»", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                             TextButton(onClick = { renameList = l }) { Text("Переименовать", fontSize = 12.sp) }
                             TextButton(onClick = { deleteList = l }) { Text("Удалить", fontSize = 12.sp, color = extra.danger) }
-                        }
-                    }
-                    Gap(6.dp)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Порядок: ", fontSize = 12.sp, color = extra.dim)
-                        listOf("новые", "оценка", "название", "год").forEachIndexed { i, s ->
-                            Text(s, fontSize = 12.sp, color = if (sort == i) MaterialTheme.colorScheme.primary else extra.dim,
-                                fontWeight = if (sort == i) FontWeight.SemiBold else FontWeight.Normal,
-                                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { sort = i }.padding(6.dp))
                         }
                     }
                 }
             }
             if (list.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) {
                 Empty(
-                    kindIcon(kind), "Здесь пока пусто",
-                    "Найдите ${MediaKind.names[kind].lowercase()} в каталоге (Кинопоиск, Википедия, TVMaze, Google Книги, Open Library), импортируйте свои оценки с Кинопоиска или заполните карточку сами: постер, роли, режиссёр, ваше мнение.",
+                    kindIcon(kind), if (base.isEmpty()) "Здесь пока пусто" else "Ничего не нашлось",
+                    if (base.isEmpty()) "Найдите ${MediaKind.names[kind].lowercase()} в каталоге (Кинопоиск, Википедия, TVMaze, Google Книги, Open Library), импортируйте свои оценки с Кинопоиска или заполните карточку сами: постер, роли, режиссёр, ваше мнение."
+                    else "Измените запрос или сбросьте фильтры.",
                 )
             }
-            items(list, key = { it.id }) { m ->
+            if (grid) items(list, key = { it.id }) { m ->
                 Column(Modifier.clip(RoundedCornerShape(12.dp)).clickable { nav.navigate(Routes.media(m.id, kind)) }) {
                     Box {
                         Poster(m, 200.dp, Modifier.fillMaxWidth())
                         if (m.favorite) Box(Modifier.padding(6.dp).align(Alignment.TopEnd)) { Glyph("habit/28", 16.dp) }
                     }
+                    MediaCatalog.progressShare(m)?.takeIf { m.status == MediaStatus.IN_PROGRESS }?.let { com.dasein.poryadok.ui.common.Bar(it, MaterialTheme.colorScheme.primary, height = 3.dp) }
                     Text(m.title, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
                     Text(
-                        listOfNotNull(m.year?.toString(), if (m.myRating > 0) "★ ${m.myRating}" else null, names.getOrNull(m.status)?.takeIf { m.status != MediaStatus.DONE }).joinToString(" · "),
+                        listOfNotNull(m.year?.toString(), if (m.myRating > 0) "★ ${m.myRating}" else m.externalRating?.let { "%.1f".format(it) }, names.getOrNull(m.status)?.takeIf { m.status != MediaStatus.DONE }).joinToString(" · "),
                         fontSize = 11.sp, color = extra.dim, maxLines = 1,
                     )
                 }
+            } else items(list, key = { it.id }, span = { GridItemSpan(maxLineSpan) }) { m ->
+                MediaRow(m) { nav.navigate(Routes.media(m.id, kind)) }
             }
             item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) { HowTo("media") }
         }
     }
+    if (stats) MediaStatsSheet(kind, base) { stats = false }
+    if (random) {
+        val planned = list.filter { it.status == MediaStatus.PLANNED }.ifEmpty { base.filter { it.status == MediaStatus.PLANNED } }
+        RandomPickDialog(kind, planned, onOpen = { random = false; nav.navigate(Routes.media(it.id, kind)) }) { random = false }
+    }
     if (import) ImportDialog(kind) { import = false }
     if (newList) ListNameDialog("Новый список", "", { newList = false }) { name, glyph ->
         newList = false
-        io { val id = Graph.extra.upsertMediaList(MediaList(name = name, glyph = glyph, createdAt = System.currentTimeMillis())); listFilter = id }
+        io { val id = Graph.extra.upsertMediaList(MediaList(name = name, glyph = glyph, createdAt = System.currentTimeMillis())); listKey = "$id" }
     }
     renameList?.let { l ->
         ListNameDialog("Переименовать список", l.name, { renameList = null }, l.glyph) { name, glyph ->
@@ -266,7 +342,7 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
     }
     deleteList?.let { l ->
         ConfirmDialog("Удалить список «${l.name}»?", "Фильмы и книги останутся в коллекции, исчезнет только сам список.", onDismiss = { deleteList = null }) {
-            deleteList = null; listFilter = 0L
+            deleteList = null; listKey = ""
             io { Graph.extra.clearMediaList(l.id); Graph.extra.deleteMediaListRow(l.id) }
         }
     }
@@ -460,6 +536,7 @@ fun MediaCardScreen(nav: NavHostController, id: Long, kind0: Int) {
     var searching by remember { mutableStateOf(false) }
     val lists by observe(emptyList()) { Graph.extra.mediaLists() }
     val listItems by observe(emptyList()) { Graph.extra.mediaListItems() }
+    val allMedia by observe(emptyList()) { Graph.extra.media() }
     var newList by remember { mutableStateOf(false) }
     val pickPoster = com.dasein.poryadok.ui.common.rememberImagePickerWithCrop(2f / 3f, "posters") { m = m.copy(poster = it) }
     var recrop by remember { mutableStateOf(false) }
@@ -511,8 +588,19 @@ fun MediaCardScreen(nav: NavHostController, id: Long, kind0: Int) {
 
             SectionTitle("Моё")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                MediaStatus.names(m.kind).forEachIndexed { i, n -> Pill(n, m.status == i) { m = m.copy(status = i) } }
+                MediaStatus.names(m.kind).forEachIndexed { i, n ->
+                    Pill(n, m.status == i) {
+                        // Дата начала и окончания ставятся сами, их можно поправить.
+                        m = m.copy(
+                            status = i,
+                            startedDay = if (i == MediaStatus.IN_PROGRESS && m.startedDay == null) Dates.today() else m.startedDay,
+                            finishedDay = if (i == MediaStatus.DONE && m.finishedDay == null) Dates.today() else m.finishedDay,
+                        )
+                    }
+                }
             }
+            Gap(8.dp)
+            ProgressEditor(m) { m = it }
             Gap(8.dp)
             Text("Моя оценка${if (m.myRating > 0) ": ${m.myRating}/10" else ""}", fontSize = 13.sp, color = extra.dim)
             Stars10(m.myRating, 24) { m = m.copy(myRating = it) }
@@ -520,6 +608,8 @@ fun MediaCardScreen(nav: NavHostController, id: Long, kind0: Int) {
             FieldButton(if (book) "Прочитано" else "Просмотрено", m.finishedDay?.let { Dates.full(it) } ?: "дата не указана", Modifier.fillMaxWidth(), glyph = "cal/06") { pickDate = true }
             Gap(8.dp)
             TextInput(m.review, { m = m.copy(review = it) }, "Моё мнение", singleLine = false, minLines = 3)
+            Gap(4.dp)
+            TextInput(m.tags, { m = m.copy(tags = it) }, "Мои метки через запятую: в кино, с семьёй, посоветовали")
 
             SectionTitle(if (book) "О книге" else "О фильме")
             TextInput(m.creators, { m = m.copy(creators = it) }, if (book) "Автор(ы)" else "Режиссёр(ы)")
@@ -553,6 +643,11 @@ fun MediaCardScreen(nav: NavHostController, id: Long, kind0: Int) {
                     }
                 }
                 Pill("+ Новый список", false) { newList = true }
+            }
+
+            if (m.id != 0L) {
+                val similar = remember(m.id, allMedia) { MediaCatalog.similar(m, allMedia.filter { it.kind == m.kind }) }
+                SimilarShelf(similar) { o -> save(back = false); nav.navigate(Routes.media(o.id, o.kind)) }
             }
 
             Gap(16.dp)

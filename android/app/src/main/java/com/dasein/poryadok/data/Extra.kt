@@ -347,6 +347,16 @@ data class MediaItem(
     val externalRating: Double? = null,
     val url: String = "",
     val createdAt: Long = 0,
+    /** Сколько серий просмотрено или страниц прочитано. */
+    val progress: Int = 0,
+    /** Всего серий или страниц (0 — не указано). */
+    val progressTotal: Int = 0,
+    /** Когда начал смотреть или читать. */
+    val startedDay: Long? = null,
+    /** Сколько раз пересматривал или перечитывал. */
+    val rewatch: Int = 0,
+    /** Свои метки через запятую: «в кино», «с семьёй», «посоветовали». */
+    val tags: String = "",
 )
 
 /** Свой список фильмов, сериалов или книг с любым названием («Новогодние», «Посоветовали друзья»…). kind = −1 — для всех видов. */
@@ -553,7 +563,7 @@ interface ExtraDao {
         MediaList::class, MediaListItem::class, Page::class, PageBlock::class, Exercise::class, WorkoutPlan::class,
         PlanExercise::class, WorkoutSession::class, SetLog::class, CustomDay::class, HolidayMark::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = false,
 )
 abstract class ExtraDb : RoomDatabase() {
@@ -690,9 +700,20 @@ abstract class ExtraDb : RoomDatabase() {
             }
         }
 
+        /** v9: прогресс, дата начала, пересмотры и свои метки у фильмов, сериалов и книг. */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `media_items` ADD COLUMN `progress` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `media_items` ADD COLUMN `progressTotal` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `media_items` ADD COLUMN `startedDay` INTEGER")
+                db.execSQL("ALTER TABLE `media_items` ADD COLUMN `rewatch` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `media_items` ADD COLUMN `tags` TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun create(context: Context): ExtraDb =
             Room.databaseBuilder(context, ExtraDb::class.java, "dasein_extra.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8).build()
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9).build()
     }
 }
 

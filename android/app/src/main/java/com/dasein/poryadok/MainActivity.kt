@@ -45,6 +45,8 @@ class MainActivity : FragmentActivity() {
         deepLink.value = intent?.let { routeOf(it) }
         if (savedInstanceState == null && intent?.getBooleanExtra(EXTRA_DEMO, false) == true) Graph.scope.launch { DemoData.fill() }
         if (Build.VERSION.SDK_INT >= 33) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        // Виджет перерисовывается при каждом запуске — после обновления сразу виден новый вид (погода вместо графика веса).
+        if (savedInstanceState == null) Graph.scope.launch { runCatching { com.dasein.poryadok.system.Widgets.refresh(applicationContext) } }
 
         setContent {
             val settings by Graph.prefs.settings.collectAsStateWithLifecycle(initialValue = null)

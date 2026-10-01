@@ -110,10 +110,9 @@ internal fun LazyListScope.guideTab(data: TalkRepo.Data) {
     item {
         val sections = remember(data) { data.tips.map { it.section }.distinct() }
         var section by rememberSaveable { mutableStateOf("") }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Pill("Все", section.isEmpty()) { section = "" }
-            sections.forEach { sec -> Pill(sec, sec == section) { section = sec } }
-        }
+        com.dasein.poryadok.ui.common.SingleFilter(
+            "Раздел", sections.map { sec -> com.dasein.poryadok.ui.common.FilterOption(sec, sec, data.tips.count { it.section == sec }) }, section, allLabel = "Все разделы",
+        ) { section = it }
         Gap(10.dp)
         data.tips.filter { section.isEmpty() || it.section == section }.forEach { t -> GuideCard(t) }
     }
@@ -141,10 +140,9 @@ internal fun LazyListScope.phrasesTab(data: TalkRepo.Data) {
         val clipboard = LocalClipboardManager.current
         val situations = remember(data) { data.phrases.map { it.situation }.distinct() }
         var situation by rememberSaveable { mutableStateOf("") }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Pill("Все", situation.isEmpty()) { situation = "" }
-            situations.forEach { t -> Pill(t, t == situation) { situation = t } }
-        }
+        com.dasein.poryadok.ui.common.SingleFilter(
+            "Ситуация", situations.map { t -> com.dasein.poryadok.ui.common.FilterOption(t, t, data.phrases.count { it.situation == t }) }, situation, allLabel = "Все ситуации",
+        ) { situation = it }
         Gap(8.dp)
         data.phrases.filter { situation.isEmpty() || it.situation == situation }.groupBy { it.situation }.forEach { (sit, list) ->
             SectionTitle(sit)

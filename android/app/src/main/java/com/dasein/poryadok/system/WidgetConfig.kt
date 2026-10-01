@@ -35,6 +35,8 @@ data class WidgetBlock(
     val icon: Boolean = true,
     /** Для погоды: какие подробности показывать (ключи WEATHER_FIELDS через запятую; пусто — набор по умолчанию, «-» — ничего). */
     val fields: String = "",
+    /** Для погоды: строка «будет ли сегодня дождь и во сколько». */
+    val rain: Boolean = true,
 ) {
     fun weatherFields(): List<String> = when (fields) {
         "" -> WEATHER_DEFAULT_FIELDS
@@ -133,7 +135,7 @@ data class WidgetConfig(
     fun k(): Float = (if (large) 1.2f else 1f) * textScale.coerceIn(0.6f, 2f)
 
     companion object {
-        val DEFAULT_BLOCKS = listOf(WidgetBlock("weather", 0), WidgetBlock("tasks", 0, 2), WidgetBlock("weight", 1, on = false))
+        val DEFAULT_BLOCKS = listOf(WidgetBlock("weather", 0), WidgetBlock("tasks", 0, 2), WidgetBlock("weight", 0, on = false))
     }
 }
 
@@ -167,7 +169,7 @@ data class WidgetBlockType(val type: String, val title: String, val styles: List
 
 val WIDGET_BLOCK_TYPES = listOf(
     WidgetBlockType("weather", "Погода", listOf("Подробности — если виджет растянут", "Подробности всегда")),
-    WidgetBlockType("weight", "Вес", listOf("Число и изменение", "С графиком за 2 недели")),
+    WidgetBlockType("weight", "Вес", listOf("Число и изменение за неделю")),
     WidgetBlockType("tasks", "Задачи на сегодня", listOf("Список"), counted = true),
     WidgetBlockType("habits", "Привычки", listOf("Счётчик", "Полоса прогресса")),
     WidgetBlockType("food", "Съедено калорий", listOf("Текст", "Полоса к норме")),
@@ -265,6 +267,12 @@ object WidgetModels {
                         val n = w.now
                         val sub = "ветер ${n.windMs.roundToInt()} м/с · " + WeatherLogic.describe(n.code).lowercase()
                         rows += WRow(0, "wx:${n.code}:${if (n.isDay) 1 else 0}", "Погода", WeatherLogic.temp(n.temp), sub, TONE_DIM, route = Routes.WEATHER)
+                        // Будет ли сегодня дождь и во сколько — по часовому прогнозу на оставшуюся часть дня.
+                        if (b.rain) {
+                            val now = java.time.LocalDateTime.now()
+                            val text = WeatherLogic.precipToday(w.hours, now.toLocalDate().toString(), now.hour)
+                            if (text.isNotBlank()) rows += WRow(4, null, (if (text.startsWith("Без")) "☀ " else "☂ ") + text, tone = TONE_DIM, route = Routes.WEATHER)
+                        }
                         weatherDetails(w, b.weatherFields()).chunked(2).forEach { pair ->
                             rows += WRow(4, null, pair.joinToString(" · "), tone = TONE_DIM, route = Routes.WEATHER, extra = b.style == 0)
                         }
@@ -277,7 +285,7 @@ object WidgetModels {
                     val d = weekAgo?.let { last.kg - it.kg }
                     val sub = d?.let { (if (it > 0.05) "▲ +" else if (it < -0.05) "▼ " else "") + fmt1(it) + " за нед." } ?: ""
                     val tone = when { d == null -> TONE_DIM; d > 0.05 -> TONE_BAD; d < -0.05 -> TONE_GOOD; else -> TONE_DIM }
-                    rows += WRow(if (b.style == 1 && recent.size >= 2) 2 else 0, "sport/11", "Вес", fmt1(last.kg) + " кг", sub, tone, spark = recent.map { it.kg }, route = Routes.WEIGHT_TREND)
+                    rows += WRow(0, "sport/11", "Вес", fmt1(last.kg) + " кг", sub, tone, spark = recent.map { it.kg }, route = Routes.WEIGHT_TREND)
                 }
                 "tasks" -> {
                     val tasks = dao.openTasksUntil(today).sortedWith(compareBy({ it.dueDay }, { it.dueMin ?: 9999 }, { -it.priority }))
