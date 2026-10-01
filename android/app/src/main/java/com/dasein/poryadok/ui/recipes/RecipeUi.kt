@@ -188,15 +188,17 @@ fun matches(f: SmartFilter, r: Recipe, m: Macros): Boolean = when (f) {
     SmartFilter.NO_COOK -> r.cookMin == 0
 }
 
-fun searchMatch(q: String, r: Recipe, ing: List<RecipeIngredient>): Boolean {
-    if (q.isBlank()) return true
-    val words = q.lowercase().replace('ё', 'е').split(' ').filter { it.isNotBlank() }
+fun searchMatch(q: String, r: Recipe, ing: List<RecipeIngredient>): Boolean = searchMatch(com.dasein.poryadok.logic.TextQuery.parse(q), r, ing)
+
+/** Поиск по названию, категории, тегам, приёмам пищи и ингредиентам; поддерживает "фразы", -исключения и «или». */
+fun searchMatch(q: com.dasein.poryadok.logic.TextQuery.Query, r: Recipe, ing: List<RecipeIngredient>): Boolean {
+    if (q.isEmpty) return true
     val hay = buildString {
         append(r.name); append(' '); append(r.category); append(' '); append(r.tags); append(' ')
         MealType.parse(r.meals).forEach { append(MealType.name(it)); append(' ') }
         ing.forEach { append(it.name); append(' ') }
-    }.lowercase().replace('ё', 'е')
-    return words.all { it in hay }
+    }
+    return com.dasein.poryadok.logic.TextQuery.matches(hay, q)
 }
 
 /** Выбор рецепта из базы с поиском — для меню, шаблонов и повторов. */

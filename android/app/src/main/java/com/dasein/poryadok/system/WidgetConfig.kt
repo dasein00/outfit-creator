@@ -154,7 +154,6 @@ val WIDGET_BLOCK_TYPES = listOf(
     WidgetBlockType("burned", "Сожжено калорий", listOf("Текст")),
     WidgetBlockType("sleep", "Сон прошлой ночью", listOf("Текст", "Полоса к норме")),
     WidgetBlockType("events", "События сегодня", listOf("Список"), counted = true),
-    WidgetBlockType("focus", "Фокус сегодня", listOf("Текст")),
     WidgetBlockType("workout", "Тренировка", listOf("Текст")),
     WidgetBlockType("budget", "Расходы за месяц", listOf("Текст", "Полоса к бюджету")),
     WidgetBlockType("note", "Избранная заметка", listOf("Заголовок")),
@@ -294,7 +293,7 @@ object WidgetModels {
                 }
                 "focus" -> {
                     val min = dao.focusSessions().first().filter { it.day == today }.sumOf { it.minutes }
-                    rows += WRow(0, "train/18", "Фокус", "$min мин", route = Routes.FOCUS)
+                    rows += WRow(0, "train/18", "Фокус", "$min мин", route = Routes.TODAY)
                 }
                 "workout" -> {
                     val t = Graph.training

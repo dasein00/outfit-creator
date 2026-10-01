@@ -26,7 +26,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -126,10 +125,6 @@ fun TaskEditScreen(nav: NavHostController, id: Long, day: Long, goal: Long) {
         onBack = { save() },
         actions = {
             if (id != 0L) {
-                IconButton(onClick = {
-                    io { Graph.prefs.update { it.copy(focusTaskId = id) } }
-                    save { nav.navigate(Routes.FOCUS) }
-                }) { Icon(Icons.Default.Timer, "Фокус на задаче") }
                 IconAction(Ic.trash, "Удалить") { confirmDelete = true }
             }
             IconButton(onClick = { save() }) { Icon(Icons.Default.Check, "Сохранить") }

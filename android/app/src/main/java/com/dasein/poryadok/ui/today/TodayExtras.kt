@@ -170,7 +170,7 @@ private data class Metric(
     val go: () -> Unit,
 )
 
-private const val DEFAULT_METRICS = "sleep,weight,eaten,protein,workouts,steps,body,streak,focus,mood,overdue,event,money,media,water"
+private const val DEFAULT_METRICS = "sleep,weight,eaten,protein,workouts,steps,body,streak,mood,overdue,event,money,media,water"
 
 /** Выбор и порядок метрик на главной. */
 @Composable
@@ -226,7 +226,6 @@ fun DayMetrics(nav: NavHostController, currency: String) {
     val workouts by observe(emptyList()) { dao.workouts() }
     val habits by observe(emptyList()) { dao.habits() }
     val habitLogs by observe(emptyList()) { dao.habitLogs() }
-    val focus by observe(emptyList()) { dao.focusSessions() }
     val moods by observe(emptyList()) { dao.moods() }
     val tasks by observe(emptyList()) { dao.tasks() }
     val events by observe(emptyList()) { dao.events() }
@@ -257,7 +256,6 @@ fun DayMetrics(nav: NavHostController, currency: String) {
         val done = habitLogs.filter { it.habitId == h.id && it.value >= h.target }.map { it.day }.toSet()
         HabitStats.summary(HabitSchedule(h.daysMask, h.timesPerWeek), done, today, h.createdDay).streak
     }
-    val focusWeek = focus.filter { it.day in weekAgo..today }.sumOf { it.minutes }
     val moodWeek = moods.filter { it.day in weekAgo..today }
     val overdue = tasks.count { !it.done && it.dueDay != null && it.dueDay < today }
     val nextEvent = (0..60).firstNotNullOfOrNull { d -> eventsOn(events, today + d).firstOrNull()?.let { d to it } }
@@ -309,9 +307,6 @@ fun DayMetrics(nav: NavHostController, currency: String) {
             "streak", "ui:check", "Лучшая серия", "$bestStreak",
             streakHabit?.takeIf { bestStreak > 0 }?.name ?: "привычек подряд",
         ) { nav.navigate(Routes.HABITS) },
-        Metric(
-            "focus", "ui:timer", "Фокус", "${focusWeek / 60} ч ${focusWeek % 60} м", "за 7 дней",
-        ) { nav.navigate(Routes.FOCUS) },
         Metric(
             "mood", "ui:smile", "Настроение",
             if (moodWeek.isEmpty()) "—" else "%.1f".format(moodWeek.map { it.level }.average()).replace('.', ',') + " / 5",

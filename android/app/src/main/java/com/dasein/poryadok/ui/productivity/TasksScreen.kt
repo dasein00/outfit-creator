@@ -28,7 +28,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DeleteSweep
-import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
@@ -98,7 +97,6 @@ fun TasksScreen(nav: NavHostController, onBack: (() -> Unit)? = null) {
         onBack = onBack,
         actions = {
             IconButton(onClick = { nav.navigate(Routes.GOALS) }) { Icon(Icons.Default.TrackChanges, "Цели") }
-            IconButton(onClick = { nav.navigate(Routes.FOCUS) }) { Icon(Icons.Default.Timer, "Фокус") }
             if (list == L_DONE) IconAction(Ic.trash, "Очистить") { confirmClear = true }
         },
         fab = {

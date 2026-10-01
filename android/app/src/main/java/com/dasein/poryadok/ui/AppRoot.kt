@@ -62,7 +62,6 @@ import com.dasein.poryadok.ui.notes.NoteEditScreen
 import com.dasein.poryadok.ui.notes.NotesScreen
 import com.dasein.poryadok.ui.notes.TopScreen
 import com.dasein.poryadok.ui.notes.TopsScreen
-import com.dasein.poryadok.ui.productivity.FocusScreen
 import com.dasein.poryadok.ui.productivity.GoalScreen
 import com.dasein.poryadok.ui.productivity.GoalsScreen
 import com.dasein.poryadok.ui.productivity.HabitDetailScreen
@@ -90,7 +89,6 @@ object Routes {
     const val MORE = "more"
     const val HABITS = "habits"
     const val GOALS = "goals"
-    const val FOCUS = "focus"
     const val HEALTH = "health"
     const val WELLBEING = "wellbeing"
     const val NOTES = "notes"
@@ -267,7 +265,6 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable("goal/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
                 GoalScreen(nav, it.long("id"))
             }
-            composable(Routes.FOCUS) { FocusScreen(nav, settings) }
             composable(
                 "txn/{id}?income={income}",
                 arguments = listOf(

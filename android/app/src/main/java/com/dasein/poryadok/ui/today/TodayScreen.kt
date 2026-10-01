@@ -114,7 +114,6 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
     val moods by observe(emptyList()) { dao.moods() }
     val txns by observe(emptyList()) { dao.txns() }
     val budgets by observe(emptyList()) { dao.budgets() }
-    val focus by observe(emptyList()) { dao.focusSessions() }
     val goals by observe(emptyList()) { dao.goals() }
     val profile by observe(null) { dao.profile() }
     val plan by observe(emptyList()) { Graph.extra.plan() }
@@ -131,7 +130,6 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
     val water = dayLogs.firstOrNull { it.day == today }
     val waterGoal = profile?.waterGoalMl ?: 2000
     val moodToday = moods.firstOrNull { it.day == today }
-    val focusToday = focus.filter { it.day == today }.sumOf { it.minutes }
     val ym = YearMonth.now()
     val monthRange = Dates.monthRange(ym)
     val spentToday = txns.filter { it.type == TxnType.EXPENSE && it.day == today }.sumOf { it.amount }
@@ -214,8 +212,8 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                         extra.ok, "$habitsDone/${habitsToday.size}", "привычки",
                     ) { nav.navigate(Routes.HABITS) }
                     RingStat(
-                        Modifier.weight(1f), (focusToday / 120f), Palette.item(2), "$focusToday", "мин фокуса",
-                    ) { nav.navigate(Routes.FOCUS) }
+                        Modifier.weight(1f), ((water?.waterMl ?: 0) / waterGoal.toFloat()), Palette.item(2), "${(water?.waterMl ?: 0) / 100 / 10.0}", "л воды",
+                    ) { nav.navigate(Routes.wellbeing(2)) }
                 }
             }
 

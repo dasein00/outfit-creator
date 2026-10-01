@@ -73,7 +73,6 @@ private val HUB = listOf(
     Hub("sport/24", "Привычки", "серии и статистика", Routes.HABITS),
     Hub("ui:notebook", "Задачи", "списки и проекты", Routes.TASKS),
     Hub("sport/21", "Цели", "этапы и прогресс", Routes.GOALS),
-    Hub("train/18", "Фокус", "помодоро-таймер", Routes.FOCUS),
     Hub("food/02", "Питание", "КБЖУ и калории", Routes.health(0)),
     Hub("sport/11", "Вес и состав тела", "весы, метрики, тренд", Routes.health(1)),
     Hub("sport/00", "Тренировки", "программы, подходы, прогресс", Routes.training(0)),
@@ -189,7 +188,6 @@ fun ReviewScreen(nav: NavHostController, settings: Settings) {
     val logs by observe(emptyList()) { dao.habitLogs() }
     val txns by observe(emptyList()) { dao.txns() }
     val moods by observe(emptyList()) { dao.moods() }
-    val focus by observe(emptyList()) { dao.focusSessions() }
     val sleep by observe(emptyList()) { dao.sleep() }
     val workouts by observe(emptyList()) { dao.workouts() }
     val weights by observe(emptyList()) { dao.weights() }
@@ -207,7 +205,6 @@ fun ReviewScreen(nav: NavHostController, settings: Settings) {
     val spentPrev = txns.filter { it.type == TxnType.EXPENSE && it.day in prevRange }.sumOf { it.amount }
     val income = txns.filter { it.type == TxnType.INCOME && it.day in range }.sumOf { it.amount }
     val weekMoods = moods.filter { it.day in range }
-    val focusMin = focus.filter { it.day in range }.sumOf { it.minutes }
     val weekSleep = sleep.filter { it.day in range }
     val weekWorkouts = workouts.filter { it.day in range }
     val wStart = weights.lastOrNull { it.day < start }?.kg
@@ -232,8 +229,8 @@ fun ReviewScreen(nav: NavHostController, settings: Settings) {
                 }
                 Gap(8.dp)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Stat("${focusMin / 60}ч ${focusMin % 60}м", "фокуса", Modifier.weight(1f))
                     Stat("${weekWorkouts.size}", "тренировок", Modifier.weight(1f))
+                    Stat("${weekMoods.size}", "отметок настроения", Modifier.weight(1f))
                 }
                 SectionTitle("Деньги")
                 Tile {

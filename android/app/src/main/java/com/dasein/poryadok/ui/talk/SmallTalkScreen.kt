@@ -35,7 +35,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedIconButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -72,6 +71,18 @@ import com.dasein.poryadok.ui.common.io
 import com.dasein.poryadok.ui.common.observe
 import com.dasein.poryadok.ui.theme.LocalExtra
 import kotlin.random.Random
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.text.AnnotatedString
+import com.dasein.poryadok.logic.Paging
+import com.dasein.poryadok.logic.TextQuery
+import com.dasein.poryadok.ui.common.PageBar
+import com.dasein.poryadok.ui.common.PageInfo
+import com.dasein.poryadok.ui.common.SearchField
+import com.dasein.poryadok.ui.common.highlighted
+import kotlinx.coroutines.launch
 
 /** База Small Talks: факты (включая старую картотеку о здоровье), истории, вопросы и приёмы. */
 object TalkRepo {
@@ -182,12 +193,13 @@ fun TalkFactCard(onOpen: () -> Unit) {
     }
 }
 
-private val TABS = listOf("Факты", "Истории", "Вопросы", "Темы", "Школа", "Тренажёр", "Фразы", "Избранное")
-private const val FAV_TAB = 7
-private val TAB_GLYPHS = listOf("ui:bulb", "ui:book", "ui:search", "ui:globe", "ui:cap", "ui:target", "ui:notebook", "ui:heart")
+private val TABS = listOf("Факты", "Поиск", "Истории", "Вопросы", "Темы", "Школа", "Тренажёр", "Фразы", "Избранное")
+private const val FAV_TAB = 8
+private val TAB_GLYPHS = listOf("ui:bulb", "ui:search", "ui:book", "ui:people", "ui:globe", "ui:cap", "ui:target", "ui:notebook", "ui:heart")
 private val TAB_HINTS = listOf(
-    "Интересные факты по сферам — те же, что на главной. Листайте стрелками, ★ — в избранное.",
-    "Короткие истории, которые можно пересказать за минуту. Нажмите, чтобы раскрыть.",
+    "Факт дня по выбранным сферам — те же, что на главной. Ниже весь каталог фактов: поиск, страницы, переход на страницу по номеру.",
+    "Поиск по всей базе сразу: факты, истории, вопросы, приёмы, фразы и темы. Можно искать точные выражения в кавычках.",
+    "Короткие истории, которые можно пересказать за минуту. Нажмите на историю, чтобы раскрыть.",
     "Вопросы для разговора по ситуациям: знакомство, работа, свидание, нетворкинг и другие.",
     "Повод месяца и темы с ассоциациями — когда не за что зацепиться.",
     "Приёмы из книг о смолтоке: как начать, поддержать, слушать и красиво закончить разговор.",
@@ -196,7 +208,9 @@ private val TAB_HINTS = listOf(
     "Сохранённые факты и истории — освежите их перед встречей.",
 )
 
-@OptIn(ExperimentalLayoutApi::class)
+/** Как сортировать каталог. */
+private enum class TalkSort(val label: String) { ORDER("По порядку"), RELEVANCE("По совпадению"), ALPHA("А–Я"), SHUFFLE("Вперемешку"), FAV("Сначала ★") }
+
 @Composable
 fun SmallTalkScreen(nav: NavHostController) {
     val ctx = LocalContext.current
@@ -207,59 +221,156 @@ fun SmallTalkScreen(nav: NavHostController) {
         val s = settings ?: return@Screen
         val favorites = SmallTalk.decodeIds(s.talkFavorites)
         Column(Modifier.padding(pad)) {
-        // Вкладки раздела — отдельной полосой сверху, чтобы их не путали с фильтрами сфер.
-        ScrollableTabRow(
-            selectedTabIndex = tab, edgePadding = 12.dp,
-            containerColor = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.primary,
-        ) {
-            TABS.forEachIndexed { i, t ->
-                Tab(
-                    selected = tab == i, onClick = { tab = i },
-                    icon = { Glyph(TAB_GLYPHS[i], 22.dp) },
-                    text = { Text(if (i == FAV_TAB && favorites.isNotEmpty()) "$t · ${favorites.size}" else t, maxLines = 1) },
-                    selectedContentColor = MaterialTheme.colorScheme.primary,
-                    unselectedContentColor = LocalExtra.current.dim,
-                )
+            // Вкладки раздела — отдельной полосой сверху, чтобы их не путали с фильтрами сфер.
+            ScrollableTabRow(
+                selectedTabIndex = tab, edgePadding = 12.dp,
+                containerColor = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.primary,
+            ) {
+                TABS.forEachIndexed { i, t ->
+                    Tab(
+                        selected = tab == i, onClick = { tab = i },
+                        icon = { Glyph(TAB_GLYPHS[i], 22.dp) },
+                        text = { Text(if (i == FAV_TAB && favorites.isNotEmpty()) "$t · ${favorites.size}" else t, maxLines = 1) },
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = LocalExtra.current.dim,
+                    )
+                }
             }
-        }
-        androidx.compose.runtime.key(tab) {
-        LazyColumn(Modifier.padding(horizontal = 16.dp)) {
-            item {
-                Text(TAB_HINTS[tab], fontSize = 13.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 10.dp, bottom = 10.dp))
+            androidx.compose.runtime.key(tab) {
+                when (tab) {
+                    0 -> FactsTab(data, s, favorites)
+                    1 -> SearchTab(data, favorites)
+                    2 -> StoriesTab(data, s, favorites)
+                    3 -> QuestionsTab(data)
+                    4 -> TabList(4) { topicsTab(data) }
+                    5 -> TabList(5) { guideTab(data) }
+                    6 -> TabList(6) { trainerTab(data, s) }
+                    7 -> TabList(7) { phrasesTab(data) }
+                    else -> TabList(FAV_TAB) { favoritesTab(data, favorites) { tab = it } }
+                }
             }
-            when (tab) {
-                0 -> factsTab(data, s, favorites)
-                1 -> storiesTab(data, s, favorites)
-                2 -> questionsTab(data)
-                3 -> topicsTab(data)
-                4 -> guideTab(data)
-                5 -> trainerTab(data, s)
-                6 -> phrasesTab(data)
-                else -> favoritesTab(data, favorites) { tab = it }
-            }
-            item { HowTo("small_talk") }
-            item { Gap(32.dp) }
-        }
-        }
         }
     }
 }
+
+/** Общая обёртка вкладки: подсказка сверху, инструкция и отступ снизу. */
+@Composable
+private fun TabList(
+    tab: Int, state: LazyListState = rememberLazyListState(),
+    content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
+) {
+    LazyColumn(Modifier.padding(horizontal = 16.dp), state = state) {
+        item {
+            Text(TAB_HINTS[tab], fontSize = 13.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 10.dp, bottom = 10.dp))
+        }
+        content()
+        item { HowTo("small_talk") }
+        item { Gap(32.dp) }
+    }
+}
+
+/** Состояние постраничного каталога: страница, размер страницы и прокрутка к его началу. */
+private class PagedState(val list: LazyListState, val scope: kotlinx.coroutines.CoroutineScope, val headIndex: Int) {
+    var page by mutableIntStateOf(0)
+    var size by mutableIntStateOf(20)
+    fun go(p: Int) {
+        page = p
+        scope.launch { list.animateScrollToItem(headIndex) }
+    }
+}
+
+@Composable
+private fun rememberPaged(list: LazyListState, headIndex: Int): PagedState {
+    val scope = rememberCoroutineScope()
+    return remember { PagedState(list, scope, headIndex) }
+}
+
+private fun <T> sorted(items: List<T>, sort: TalkSort, q: TextQuery.Query, seed: Int, favorites: List<Int>, title: (T) -> String, text: (T) -> String, id: (T) -> Int): List<T> =
+    when (sort) {
+        TalkSort.ORDER -> items
+        TalkSort.RELEVANCE -> if (q.isEmpty) items else items.sortedByDescending { TextQuery.score(title(it), text(it), q) }
+        TalkSort.ALPHA -> items.sortedBy { TextQuery.norm(title(it).ifBlank { text(it) }) }
+        TalkSort.SHUFFLE -> items.shuffled(Random(seed))
+        TalkSort.FAV -> items.sortedByDescending { id(it) in favorites }
+    }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SphereChips(counts: Map<String, Int>, selected: Set<String>, onChange: (Set<String>) -> Unit) {
+private fun SortChips(sort: TalkSort, onSort: (TalkSort) -> Unit) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Pill("Все", selected.isEmpty()) { onChange(emptySet()) }
-        SmallTalk.SPHERES.filter { (counts[it.first] ?: 0) > 0 }.forEach { (name, glyph) ->
-            Pill(name, name in selected, glyph) { onChange(if (name in selected) selected - name else selected + name) }
-        }
+        TalkSort.entries.forEach { s -> Pill(s.label, s == sort) { onSort(s) } }
     }
 }
 
-private fun saveSpheres(set: Set<String>) = io { Graph.prefs.update { it.copy(talkSpheres = SmallTalk.encodeSet(set)) } }
+@Composable
+private fun FactsTab(data: TalkRepo.Data, s: AppSettings, favorites: List<Int>) {
+    val listState = rememberLazyListState()
+    val paged = rememberPaged(listState, 2)
+    var q by rememberSaveable { mutableStateOf("") }
+    var sort by rememberSaveable { mutableStateOf(TalkSort.ORDER) }
+    var seed by rememberSaveable { mutableIntStateOf(Random.nextInt()) }
+    var onlyFav by rememberSaveable { mutableStateOf(false) }
+    val spheres = SmallTalk.decodeSet(s.talkSpheres)
+    val query = remember(q) { TextQuery.parse(q) }
+    val pool = remember(data, s.talkSpheres) { SmallTalk.filter(data.facts, spheres) }
+    val found = remember(pool, query, sort, seed, onlyFav, favorites) {
+        sorted(
+            pool.filter { (!onlyFav || it.id in favorites) && TextQuery.matches(it.text + " " + it.tag, query) },
+            sort, query, seed, favorites, { "" }, { it.text }, { it.id },
+        )
+    }
+    LaunchedEffect(q, sort, onlyFav, s.talkSpheres, seed) { paged.page = 0 }
+    val page = Paging.clamp(paged.page, found.size, paged.size)
+    val hl = MaterialTheme.colorScheme.primary.copy(alpha = .22f)
+    TabList(0, listState) {
+        factOfTheDay(data, s, favorites)
+        item(key = "facts_head") {
+            SectionTitle("Каталог фактов · ${pool.size}")
+            SearchField(q, { q = it }, "Слова или \"точное выражение\"")
+            Gap(8.dp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Pill("Только ★", onlyFav) { onlyFav = !onlyFav }
+                com.dasein.poryadok.ui.common.HGap(8.dp)
+                Pill("Перемешать", false) { sort = TalkSort.SHUFFLE; seed = Random.nextInt() }
+            }
+            Gap(6.dp)
+            SortChips(sort) { sort = it }
+            PageInfo(found.size, page, paged.size, { paged.size = it; paged.page = 0 }, "фактов")
+            PageBar(page, Paging.pages(found.size, paged.size), { paged.go(it) })
+            Gap(8.dp)
+            if (found.isEmpty()) Text("Ничего не нашлось. Попробуйте другие слова или сбросьте фильтр сфер.", color = LocalExtra.current.dim, fontSize = 13.sp)
+        }
+        val slice = Paging.slice(found, page, paged.size)
+        itemsIndexed(slice, key = { _, f -> "f${f.id}" }) { i, f ->
+            FactRow(page * paged.size + i + 1, f, f.id in favorites, highlighted(f.text, query, hl)) {
+                saveDeck(SmallTalk.jump(deckOf(s), f.id)); paged.scope.launch { listState.animateScrollToItem(1) }
+            }
+        }
+        item { Gap(6.dp); PageBar(page, Paging.pages(found.size, paged.size), { paged.go(it) }) }
+    }
+}
 
-private fun androidx.compose.foundation.lazy.LazyListScope.factsTab(data: TalkRepo.Data, s: AppSettings, favorites: List<Int>) {
-    item {
+@Composable
+private fun FactRow(n: Int, f: Fact, favorite: Boolean, text: AnnotatedString, onOpen: () -> Unit) {
+    val ctx = LocalContext.current
+    val extra = LocalExtra.current
+    Tile(Modifier.padding(bottom = 8.dp), onClick = onOpen) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("№$n", fontSize = 11.sp, color = extra.dim)
+            Glyph(SmallTalk.glyph(f.tag), 18.dp, Modifier.padding(start = 8.dp))
+            Text(f.tag, Modifier.weight(1f).padding(start = 6.dp), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+            IconButton(onClick = { TalkRepo.share(ctx, f.text) }) { Icon(Icons.Filled.Share, "Поделиться") }
+            IconButton(onClick = { toggleFavorite(f.id) }) {
+                if (favorite) Icon(Icons.Filled.Star, "Убрать из избранного", tint = MaterialTheme.colorScheme.primary)
+                else Icon(Icons.Outlined.StarOutline, "В избранное")
+            }
+        }
+        Text(text, fontSize = 15.sp, lineHeight = 21.sp)
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.factOfTheDay(data: TalkRepo.Data, s: AppSettings, favorites: List<Int>) {
+    item(key = "fact_day") {
         val ctx = LocalContext.current
         val extra = LocalExtra.current
         val spheres = SmallTalk.decodeSet(s.talkSpheres)
@@ -308,48 +419,161 @@ private fun androidx.compose.foundation.lazy.LazyListScope.factsTab(data: TalkRe
                 }
             }
         }
-        FactSearch(data.facts, favorites) { id -> saveDeck(SmallTalk.jump(deckOf(s), id)) }
         Hint(
-            "talk_facts", "Выберите одну или несколько сфер — факты на главной будут только из них. ★ сохраняет факт в «Избранное», " +
-                "кнопка ↻ — случайный факт. Под фактом — фраза, с которой его удобно начать в разговоре.",
+            "talk_facts", "Выберите одну или несколько сфер — факты на главной и в каталоге будут только из них. ★ сохраняет факт в «Избранное», " +
+                "↻ — случайный факт. В каталоге ниже можно искать по словам, листать страницы и перейти на страницу по номеру; " +
+                "нажмите на факт в каталоге — он станет фактом дня.",
             Modifier.padding(top = 12.dp), title = "Как пользоваться",
         )
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FactSearch(facts: List<Fact>, favorites: List<Int>, onPick: (Int) -> Unit) {
-    val extra = LocalExtra.current
-    var q by rememberSaveable { mutableStateOf("") }
-    SectionTitle("Поиск по фактам")
-    OutlinedTextField(q, { q = it }, Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("Например: Ван Гог, пчёлы, Луна") })
-    if (q.trim().length >= 2) {
-        val found = remember(q, facts) { facts.filter { SmallTalk.matches(it.text + " " + it.tag, q) }.take(30) }
-        if (found.isEmpty()) Text("Ничего не нашлось.", color = extra.dim, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
-        found.forEach { f ->
-            Column(Modifier.fillMaxWidth().clickable { onPick(f.id); q = "" }.padding(vertical = 8.dp)) {
-                Text((if (f.id in favorites) "★ " else "") + f.tag, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
-                Text(f.text, fontSize = 14.sp, maxLines = 3)
-            }
+private fun SphereChips(counts: Map<String, Int>, selected: Set<String>, onChange: (Set<String>) -> Unit) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Pill("Все", selected.isEmpty()) { onChange(emptySet()) }
+        SmallTalk.SPHERES.filter { (counts[it.first] ?: 0) > 0 }.forEach { (name, glyph) ->
+            Pill("$name ${counts[name]}", name in selected, glyph) { onChange(if (name in selected) selected - name else selected + name) }
         }
     }
 }
 
-private fun androidx.compose.foundation.lazy.LazyListScope.storiesTab(data: TalkRepo.Data, s: AppSettings, favorites: List<Int>) {
-    item {
-        val extra = LocalExtra.current
-        val spheres = SmallTalk.decodeSet(s.talkSpheres)
-        val counts = remember(data) { data.stories.groupingBy { it.sphere }.eachCount() }
-        SphereChips(counts, spheres) { saveSpheres(it) }
-        Gap(10.dp)
+private fun saveSpheres(set: Set<String>) = io { Graph.prefs.update { it.copy(talkSpheres = SmallTalk.encodeSet(set)) } }
+
+/** Одна запись общей базы для поиска. */
+private data class Hit(val kind: String, val id: Int, val title: String, val text: String, val sphere: String, val glyph: String)
+
+private val KINDS = listOf("Факты", "Истории", "Вопросы", "Приёмы", "Фразы", "Темы")
+
+private fun allHits(data: TalkRepo.Data): List<Hit> = buildList {
+    data.facts.forEach { add(Hit("Факты", it.id, "", it.text, it.tag, SmallTalk.glyph(it.tag))) }
+    data.stories.forEach { add(Hit("Истории", it.id, it.title, it.text, it.sphere, SmallTalk.glyph(it.sphere))) }
+    data.questions.forEach { add(Hit("Вопросы", it.id, "", it.text, it.situation, "ui:people")) }
+    data.tips.forEach { add(Hit("Приёмы", it.id, it.title, it.text + if (it.source.isNotBlank()) "\nИсточник: ${it.source}" else "", it.section, "ui:cap")) }
+    data.phrases.forEach { add(Hit("Фразы", it.id, "", it.text, it.situation, "ui:notebook")) }
+    data.topics.forEachIndexed { i, t -> add(Hit("Темы", -1 - i, t.name, t.words + "\n" + t.questions.joinToString("\n") { "• $it" }, "Темы", "ui:globe")) }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SearchTab(data: TalkRepo.Data, favorites: List<Int>) {
+    val ctx = LocalContext.current
+    val extra = LocalExtra.current
+    val listState = rememberLazyListState()
+    val paged = rememberPaged(listState, 1)
+    var q by rememberSaveable { mutableStateOf("") }
+    var kinds by rememberSaveable { mutableStateOf(setOf<String>()) }
+    var sphere by rememberSaveable { mutableStateOf("") }
+    var sort by rememberSaveable { mutableStateOf(TalkSort.RELEVANCE) }
+    var seed by rememberSaveable { mutableIntStateOf(Random.nextInt()) }
+    val all = remember(data) { allHits(data) }
+    val query = remember(q) { TextQuery.parse(q) }
+    val inKinds = remember(all, kinds) { all.filter { kinds.isEmpty() || it.kind in kinds } }
+    val found = remember(inKinds, query, sphere, sort, seed, favorites) {
+        sorted(
+            inKinds.filter { (sphere.isEmpty() || it.sphere == sphere) && TextQuery.matches(it.title + " " + it.text + " " + it.sphere, query) },
+            sort, query, seed, favorites, { it.title }, { it.text }, { it.id },
+        )
     }
-    val spheres = SmallTalk.decodeSet(s.talkSpheres)
-    val list = data.stories.filter { spheres.isEmpty() || it.sphere in spheres }.ifEmpty { data.stories }
-    items(list, key = { it.id }) { st -> StoryCard(st, st.id in favorites) }
+    val spheres = remember(inKinds, query) {
+        inKinds.filter { TextQuery.matches(it.title + " " + it.text + " " + it.sphere, query) }.groupingBy { it.sphere }.eachCount()
+            .entries.sortedByDescending { it.value }
+    }
+    LaunchedEffect(q, kinds, sphere, sort, seed) { paged.page = 0 }
+    val page = Paging.clamp(paged.page, found.size, paged.size)
+    val hl = MaterialTheme.colorScheme.primary.copy(alpha = .22f)
+    TabList(1, listState) {
+        item(key = "search_head") {
+            SearchField(q, { q = it }, "Например: Ван Гог, \"чёрная дыра\", -кофе")
+            Gap(8.dp)
+            Text("Где искать", fontSize = 12.sp, color = extra.dim)
+            Gap(4.dp)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Pill("Везде ${all.size}", kinds.isEmpty()) { kinds = emptySet() }
+                KINDS.forEach { k ->
+                    val n = all.count { it.kind == k }
+                    Pill("$k $n", k in kinds) { kinds = if (k in kinds) kinds - k else kinds + k }
+                }
+            }
+            if (spheres.size > 1) {
+                Gap(8.dp)
+                Text("Сфера или раздел", fontSize = 12.sp, color = extra.dim)
+                Gap(4.dp)
+                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    item { Pill("Все", sphere.isEmpty()) { sphere = "" } }
+                    items(spheres, key = { it.key }) { (name, n) -> Pill("$name $n", name == sphere) { sphere = if (sphere == name) "" else name } }
+                }
+            }
+            Gap(8.dp)
+            SortChips(sort) { sort = it; if (it == TalkSort.SHUFFLE) seed = Random.nextInt() }
+            PageInfo(found.size, page, paged.size, { paged.size = it; paged.page = 0 }, "найдено")
+            PageBar(page, Paging.pages(found.size, paged.size), { paged.go(it) })
+            Gap(8.dp)
+            if (found.isEmpty()) Text("Ничего не нашлось. Уберите часть слов или фильтров.", color = extra.dim, fontSize = 13.sp)
+        }
+        val slice = Paging.slice(found, page, paged.size)
+        itemsIndexed(slice, key = { _, h -> h.kind + h.id }) { i, h ->
+            var open by rememberSaveable(h.kind + h.id) { mutableStateOf(false) }
+            Tile(Modifier.padding(bottom = 8.dp), onClick = { open = !open }) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("№${page * paged.size + i + 1}", fontSize = 11.sp, color = extra.dim)
+                    Glyph(h.glyph, 18.dp, Modifier.padding(start = 8.dp))
+                    Text("${h.kind} · ${h.sphere}", Modifier.weight(1f).padding(start = 6.dp), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, maxLines = 1)
+                    IconButton(onClick = { TalkRepo.share(ctx, listOf(h.title, h.text).filter { it.isNotBlank() }.joinToString("\n\n")) }) {
+                        Icon(Icons.Filled.Share, "Поделиться")
+                    }
+                    if (h.kind == "Факты" || h.kind == "Истории") IconButton(onClick = { toggleFavorite(h.id) }) {
+                        if (h.id in favorites) Icon(Icons.Filled.Star, "Убрать из избранного", tint = MaterialTheme.colorScheme.primary)
+                        else Icon(Icons.Outlined.StarOutline, "В избранное")
+                    }
+                }
+                if (h.title.isNotBlank()) Text(highlighted(h.title, query, hl), fontWeight = FontWeight.SemiBold)
+                Text(highlighted(h.text, query, hl), fontSize = 14.sp, lineHeight = 20.sp, maxLines = if (open || h.kind == "Факты") Int.MAX_VALUE else 4)
+            }
+        }
+        item { Gap(6.dp); PageBar(page, Paging.pages(found.size, paged.size), { paged.go(it) }) }
+    }
 }
 
 @Composable
-private fun StoryCard(st: SmallTalk.Story, favorite: Boolean) {
+private fun StoriesTab(data: TalkRepo.Data, s: AppSettings, favorites: List<Int>) {
+    val listState = rememberLazyListState()
+    val paged = rememberPaged(listState, 1)
+    var q by rememberSaveable { mutableStateOf("") }
+    var sort by rememberSaveable { mutableStateOf(TalkSort.ORDER) }
+    var seed by rememberSaveable { mutableIntStateOf(Random.nextInt()) }
+    val spheres = SmallTalk.decodeSet(s.talkSpheres)
+    val query = remember(q) { TextQuery.parse(q) }
+    val pool = remember(data, s.talkSpheres) { data.stories.filter { spheres.isEmpty() || it.sphere in spheres }.ifEmpty { data.stories } }
+    val found = remember(pool, query, sort, seed, favorites) {
+        sorted(pool.filter { TextQuery.matches(it.title + " " + it.text + " " + it.sphere, query) }, sort, query, seed, favorites, { it.title }, { it.text }, { it.id })
+    }
+    LaunchedEffect(q, sort, s.talkSpheres, seed) { paged.page = 0 }
+    val page = Paging.clamp(paged.page, found.size, paged.size)
+    val hl = MaterialTheme.colorScheme.primary.copy(alpha = .22f)
+    TabList(2, listState) {
+        item(key = "stories_head") {
+            val counts = remember(data) { data.stories.groupingBy { it.sphere }.eachCount() }
+            SphereChips(counts, spheres) { saveSpheres(it) }
+            Gap(10.dp)
+            SearchField(q, { q = it }, "Поиск по историям")
+            Gap(6.dp)
+            SortChips(sort) { sort = it; if (it == TalkSort.SHUFFLE) seed = Random.nextInt() }
+            PageInfo(found.size, page, paged.size, { paged.size = it; paged.page = 0 }, "историй")
+            PageBar(page, Paging.pages(found.size, paged.size), { paged.go(it) })
+            Gap(8.dp)
+        }
+        items(Paging.slice(found, page, paged.size), key = { it.id }) { st -> StoryCard(st, st.id in favorites, query, hl, forceOpen = !query.isEmpty) }
+        item { Gap(6.dp); PageBar(page, Paging.pages(found.size, paged.size), { paged.go(it) }) }
+    }
+}
+
+@Composable
+private fun StoryCard(
+    st: SmallTalk.Story, favorite: Boolean, query: TextQuery.Query = TextQuery.Query(),
+    hl: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Transparent, forceOpen: Boolean = false,
+) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     var open by rememberSaveable(st.id) { mutableStateOf(false) }
@@ -357,7 +581,7 @@ private fun StoryCard(st: SmallTalk.Story, favorite: Boolean) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Glyph(SmallTalk.glyph(st.sphere), 22.dp)
             Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                Text(st.title, fontWeight = FontWeight.SemiBold)
+                Text(highlighted(st.title, query, hl), fontWeight = FontWeight.SemiBold)
                 Text(st.sphere, fontSize = 12.sp, color = extra.dim)
             }
             IconButton(onClick = { toggleFavorite(st.id) }) {
@@ -365,8 +589,8 @@ private fun StoryCard(st: SmallTalk.Story, favorite: Boolean) {
                 else Icon(Icons.Outlined.StarOutline, "В избранное")
             }
         }
-        if (open) {
-            Text(st.text, fontSize = 15.sp, lineHeight = 22.sp, modifier = Modifier.padding(top = 8.dp))
+        if (open || forceOpen) {
+            Text(highlighted(st.text, query, hl), fontSize = 15.sp, lineHeight = 22.sp, modifier = Modifier.padding(top = 8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 IconButton(onClick = { TalkRepo.share(ctx, "${st.title}\n\n${st.text}") }) { Icon(Icons.Filled.Share, "Поделиться") }
             }
@@ -375,37 +599,55 @@ private fun StoryCard(st: SmallTalk.Story, favorite: Boolean) {
 }
 
 @OptIn(ExperimentalLayoutApi::class)
-private fun androidx.compose.foundation.lazy.LazyListScope.questionsTab(data: TalkRepo.Data) {
-    item {
-        val ctx = LocalContext.current
-        val extra = LocalExtra.current
-        val situations = remember(data) { data.questions.map { it.situation }.distinct() }
-        var situation by rememberSaveable { mutableStateOf("") }
-        val pool = data.questions.filter { situation.isEmpty() || it.situation == situation }
-        var pick by rememberSaveable(situation) { mutableIntStateOf(if (pool.isEmpty()) -1 else Random.nextInt(pool.size)) }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Pill("Все", situation.isEmpty()) { situation = "" }
-            situations.forEach { t -> Pill(t, t == situation) { situation = t } }
-        }
-        Gap(10.dp)
-        pool.getOrNull(pick)?.let { q ->
-            Tile(color = MaterialTheme.colorScheme.primary.copy(alpha = .14f)) {
-                Text(q.situation, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
-                Text(q.text, fontSize = 18.sp, lineHeight = 25.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(vertical = 8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Спросите и слушайте: уточняйте детали из ответа.", Modifier.weight(1f), fontSize = 12.sp, color = extra.dim)
-                    IconButton(onClick = { TalkRepo.share(ctx, q.text) }) { Icon(Icons.Filled.Share, "Поделиться") }
-                    FilledIconButton(
-                        onClick = { if (pool.size > 1) { var n: Int; do { n = Random.nextInt(pool.size) } while (n == pick); pick = n } },
-                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    ) { Icon(Icons.Filled.Refresh, "Другой вопрос") }
+@Composable
+private fun QuestionsTab(data: TalkRepo.Data) {
+    val ctx = LocalContext.current
+    val extra = LocalExtra.current
+    val listState = rememberLazyListState()
+    val paged = rememberPaged(listState, 1)
+    val situations = remember(data) { data.questions.map { it.situation }.distinct() }
+    var situation by rememberSaveable { mutableStateOf("") }
+    var q by rememberSaveable { mutableStateOf("") }
+    val query = remember(q) { TextQuery.parse(q) }
+    val pool = data.questions.filter { situation.isEmpty() || it.situation == situation }
+    val found = remember(pool, query) { pool.filter { TextQuery.matches(it.text + " " + it.situation, query) } }
+    var pick by rememberSaveable(situation) { mutableIntStateOf(if (pool.isEmpty()) -1 else Random.nextInt(pool.size)) }
+    LaunchedEffect(q, situation) { paged.page = 0 }
+    val page = Paging.clamp(paged.page, found.size, paged.size)
+    val hl = MaterialTheme.colorScheme.primary.copy(alpha = .22f)
+    TabList(3, listState) {
+        item(key = "q_head") {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Pill("Все", situation.isEmpty()) { situation = "" }
+                situations.forEach { t -> Pill(t, t == situation) { situation = t } }
+            }
+            Gap(10.dp)
+            pool.getOrNull(pick)?.let { qq ->
+                Tile(color = MaterialTheme.colorScheme.primary.copy(alpha = .14f)) {
+                    Text(qq.situation, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                    Text(qq.text, fontSize = 18.sp, lineHeight = 25.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(vertical = 8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Спросите и слушайте: уточняйте детали из ответа.", Modifier.weight(1f), fontSize = 12.sp, color = extra.dim)
+                        IconButton(onClick = { TalkRepo.share(ctx, qq.text) }) { Icon(Icons.Filled.Share, "Поделиться") }
+                        FilledIconButton(
+                            onClick = { if (pool.size > 1) { var n: Int; do { n = Random.nextInt(pool.size) } while (n == pick); pick = n } },
+                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        ) { Icon(Icons.Filled.Refresh, "Другой вопрос") }
+                    }
                 }
             }
+            SectionTitle(if (situation.isEmpty()) "Все вопросы · ${pool.size}" else "$situation · ${pool.size}")
+            SearchField(q, { q = it }, "Поиск по вопросам")
+            PageInfo(found.size, page, paged.size, { paged.size = it; paged.page = 0 }, "вопросов")
+            PageBar(page, Paging.pages(found.size, paged.size), { paged.go(it) })
         }
-        SectionTitle(if (situation.isEmpty()) "Все вопросы · ${pool.size}" else "$situation · ${pool.size}")
-        pool.forEach { q ->
-            Text("• ${q.text}", fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(vertical = 5.dp))
+        itemsIndexed(Paging.slice(found, page, paged.size), key = { _, it -> it.id }) { i, qq ->
+            Row(Modifier.fillMaxWidth().clickable { TalkRepo.share(ctx, qq.text) }.padding(vertical = 6.dp)) {
+                Text("${page * paged.size + i + 1}.", fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(end = 8.dp))
+                Text(highlighted(qq.text, query, hl), fontSize = 14.sp, lineHeight = 20.sp)
+            }
         }
+        item { Gap(6.dp); PageBar(page, Paging.pages(found.size, paged.size), { paged.go(it) }) }
     }
 }
 

@@ -50,8 +50,8 @@ object Focus {
     }
 
     fun announce(ctx: Context, phase: String) {
-        if (phase == WORK) Alarms.notify(ctx, 7001, Alarms.CH_FOCUS, "Фокус-сессия завершена", "Отличная работа! Сделайте перерыв.", Routes.FOCUS)
-        else Alarms.notify(ctx, 7001, Alarms.CH_FOCUS, "Перерыв окончен", "Готовы к следующему подходу?", Routes.FOCUS)
+        if (phase == WORK) Alarms.notify(ctx, 7001, Alarms.CH_FOCUS, "Фокус-сессия завершена", "Отличная работа! Сделайте перерыв.", Routes.TODAY)
+        else Alarms.notify(ctx, 7001, Alarms.CH_FOCUS, "Перерыв окончен", "Готовы к следующему подходу?", Routes.TODAY)
     }
 
     private suspend fun record(s: Settings, minutes: Int, started: Long) {
