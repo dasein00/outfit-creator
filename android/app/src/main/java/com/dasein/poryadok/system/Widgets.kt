@@ -98,15 +98,7 @@ class TodayWidget : GlanceAppWidget() {
         val ringDp = ((if (compact) size.height.value - 20 else size.height.value - 56) * cfg.ringScale.coerceIn(0.5f, 1.5f))
             .coerceAtMost(size.width.value * 0.5f).coerceAtLeast(56f)
         val ring = remember(m.steps, m.stepsGoal, m.burned, cfg) { WidgetRing.render(context, m.steps, m.stepsGoal, m.burned, cfg.ringStyle()) }
-        val visible = buildList {
-            var used = 0
-            for (r in m.rows) {
-                val h = WidgetModels.rowHeight(r, cfg)
-                if (used + h > avail && isNotEmpty()) break
-                used += h
-                add(r)
-            }
-        }.take(8)
+        val visible = WidgetModels.visible(m.rows, cfg, avail)
         Column(
             GlanceModifier.fillMaxSize().background(ColorProvider(Color(pal.bg))).cornerRadius(cfg.radius.coerceIn(0, 32).dp).padding(10.dp)
                 .clickable(actionStartActivity<MainActivity>()),
@@ -166,6 +158,13 @@ class TodayWidget : GlanceAppWidget() {
             return
         }
         val open = r.route?.let { actionStartActivity<MainActivity>(actionParametersOf(RouteKey to it)) } ?: actionStartActivity<MainActivity>()
+        if (r.kind == 4) {
+            Text(
+                r.title, maxLines = 1, style = TextStyle(color = ColorProvider(labelColor), fontSize = (12.5f * k).sp),
+                modifier = GlanceModifier.fillMaxWidth().padding(start = if (b?.icon != false) (28 * k).dp else 0.dp, bottom = 1.dp).clickable(open),
+            )
+            return
+        }
         Column(GlanceModifier.fillMaxWidth().padding(vertical = 2.dp).clickable(open)) {
             Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 if (showIcon) {

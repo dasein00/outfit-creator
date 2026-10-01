@@ -33,7 +33,22 @@ data class WidgetBlock(
     val labelColor: Long = 0,
     val scale: Float = 1f,
     val icon: Boolean = true,
+    /** Для погоды: какие подробности показывать (ключи WEATHER_FIELDS через запятую; пусто — набор по умолчанию, «-» — ничего). */
+    val fields: String = "",
+) {
+    fun weatherFields(): List<String> = when (fields) {
+        "" -> WEATHER_DEFAULT_FIELDS
+        "-" -> emptyList()
+        else -> fields.split(',').filter { k -> WEATHER_FIELDS.any { it.first == k } }
+    }
+}
+
+/** Подробности погоды на виджете: ключ и название в настройках. */
+val WEATHER_FIELDS = listOf(
+    "pop" to "Вероятность осадков", "feels" to "Ощущается как", "minmax" to "Мин. и макс. за день", "humidity" to "Влажность",
+    "gust" to "Порывы ветра", "pressure" to "Давление", "uv" to "УФ-индекс", "sun" to "Восход и закат", "next" to "Погода через 3 часа",
 )
+val WEATHER_DEFAULT_FIELDS = listOf("pop", "feels", "minmax", "humidity", "gust", "pressure")
 
 /**
  * Как выглядит виджет: тема, заголовок, кольцо шагов слева, крупный шрифт и блоки справа в выбранном порядке.
@@ -69,13 +84,20 @@ data class WidgetConfig(
     /** Версия настроек — чтобы один раз включить новые блоки (погоду) у тех, кто уже настроил виджет. */
     val rev: Int = 0,
 ) {
-    /** Все известные блоки: сохранённые в выбранном порядке, затем новые — выключенными. Погода при первом появлении включается сверху. */
+    /**
+     * Все известные блоки: сохранённые в выбранном порядке, затем новые — выключенными.
+     * Версия 2: вес с графиком по умолчанию убран, погода — первой и включена (вес можно вернуть в редакторе).
+     */
     fun normalized(): WidgetConfig {
         val known = WIDGET_BLOCK_TYPES.map { it.type }
         var kept = blocks.filter { it.type in known }.distinctBy { it.type }
         if (rev < 1 && kept.none { it.type == "weather" }) kept = listOf(WidgetBlock("weather", 0)) + kept
+        if (rev < 2) {
+            val weather = kept.firstOrNull { it.type == "weather" }?.copy(on = true) ?: WidgetBlock("weather", 0)
+            kept = listOf(weather) + kept.filter { it.type != "weather" }.map { if (it.type == "weight") it.copy(on = false) else it }
+        }
         val missing = WIDGET_BLOCK_TYPES.filter { t -> kept.none { it.type == t.type } }.map { WidgetBlock(it.type, on = false) }
-        return copy(blocks = kept + missing, rev = 1)
+        return copy(blocks = kept + missing, rev = 2)
     }
 
     /** Итоговые цвета с учётом темы и своих настроек. */
@@ -111,7 +133,7 @@ data class WidgetConfig(
     fun k(): Float = (if (large) 1.2f else 1f) * textScale.coerceIn(0.6f, 2f)
 
     companion object {
-        val DEFAULT_BLOCKS = listOf(WidgetBlock("weather", 0), WidgetBlock("weight", 1), WidgetBlock("tasks", 0, 2))
+        val DEFAULT_BLOCKS = listOf(WidgetBlock("weather", 0), WidgetBlock("tasks", 0, 2), WidgetBlock("weight", 1, on = false))
     }
 }
 
@@ -144,7 +166,7 @@ data class RingStyle(
 data class WidgetBlockType(val type: String, val title: String, val styles: List<String>, val counted: Boolean = false)
 
 val WIDGET_BLOCK_TYPES = listOf(
-    WidgetBlockType("weather", "Погода", listOf("Небо", "Ветер и давление")),
+    WidgetBlockType("weather", "Погода", listOf("Подробности — если виджет растянут", "Подробности всегда")),
     WidgetBlockType("weight", "Вес", listOf("Число и изменение", "С графиком за 2 недели")),
     WidgetBlockType("tasks", "Задачи на сегодня", listOf("Список"), counted = true),
     WidgetBlockType("habits", "Привычки", listOf("Счётчик", "Полоса прогресса")),
@@ -173,7 +195,9 @@ object WidgetPrefs {
 }
 
 /**
- * Строка виджета. kind: 0 — текст, 1 — текст с полосой, 2 — текст с графиком, 3 — задача (кружок-отметка).
+ * Строка виджета. kind: 0 — текст, 1 — текст с полосой, 2 — текст с графиком, 3 — задача (кружок-отметка),
+ * 4 — мелкая строка подробностей (например, «Осадки 60 % · Ощущается +8°»).
+ * extra — необязательная строка: показывается, только если после остальных блоков осталось место.
  * Одинаково рисуется и в самом виджете, и в предпросмотре в приложении.
  */
 data class WRow(
@@ -189,6 +213,7 @@ data class WRow(
     val taskId: Long? = null,
     /** Блок, из которого строка, — для его оформления (подпись, цвета, размер). */
     val block: WidgetBlock? = null,
+    val extra: Boolean = false,
 )
 
 /** Всё, что нужно для отрисовки: заголовок, кольцо и строки. */
@@ -238,10 +263,11 @@ object WidgetModels {
                     if (w == null) rows += WRow(0, "wx:2:1", "Погода", "", "нажмите, чтобы загрузить", TONE_DIM, route = Routes.WEATHER)
                     else {
                         val n = w.now
-                        val day = w.days.firstOrNull()
-                        val sub = if (b.style == 1) "${WeatherLogic.windName(n.windDir)} ${n.windMs.roundToInt()} м/с · ${WeatherLogic.mmHg(n.pressureHpa)} мм"
-                        else WeatherLogic.describe(n.code) + (day?.let { " · ${WeatherLogic.temp(it.tMin)}…${WeatherLogic.temp(it.tMax)}" } ?: "")
+                        val sub = WeatherLogic.describe(n.code) + " · ветер ${n.windMs.roundToInt()} м/с"
                         rows += WRow(0, "wx:${n.code}:${if (n.isDay) 1 else 0}", "Погода", WeatherLogic.temp(n.temp), sub, TONE_DIM, route = Routes.WEATHER)
+                        weatherDetails(w, b.weatherFields()).chunked(2).forEach { pair ->
+                            rows += WRow(4, null, pair.joinToString(" · "), tone = TONE_DIM, route = Routes.WEATHER, extra = b.style == 0)
+                        }
                     }
                 }
                 "weight" -> {
@@ -337,6 +363,56 @@ object WidgetModels {
     /** Примерная высота строки в dp — чтобы на виджете оказалось столько строк, сколько помещается. */
     fun rowHeight(r: WRow, cfg: WidgetConfig): Int {
         val k = cfg.k() * (r.block?.scale ?: 1f)
-        return (when (r.kind) { 1 -> 40; 2 -> 64; 3 -> 30; else -> 28 } * k).toInt()
+        return (when (r.kind) { 1 -> 40; 2 -> 64; 3 -> 30; 4 -> 20; else -> 28 } * k).toInt()
+    }
+
+    /**
+     * Какие строки поместятся по высоте: сначала обязательные по порядку,
+     * затем в оставшееся место — подробности (extra), на своих местах. Чем больше виджет, тем больше подробностей.
+     */
+    fun visible(rows: List<WRow>, cfg: WidgetConfig, avail: Float): List<WRow> {
+        val chosen = HashSet<Int>()
+        var used = 0
+        for ((i, r) in rows.withIndex()) {
+            if (r.extra) continue
+            val h = rowHeight(r, cfg)
+            if (used + h > avail && chosen.isNotEmpty()) break
+            used += h
+            chosen += i
+        }
+        for ((i, r) in rows.withIndex()) {
+            if (!r.extra) continue
+            // Подробности показываются только под своим блоком, если сам блок уместился.
+            val owner = (i - 1 downTo 0).firstOrNull { !rows[it].extra } ?: continue
+            if (owner !in chosen) continue
+            val h = rowHeight(r, cfg)
+            if (used + h > avail) break
+            used += h
+            chosen += i
+        }
+        return rows.filterIndexed { i, _ -> i in chosen }.take(14)
+    }
+
+    /** Подробности погоды выбранными пунктами. */
+    fun weatherDetails(w: com.dasein.poryadok.logic.WeatherData, fields: List<String>): List<String> {
+        val n = w.now
+        val day = w.days.firstOrNull()
+        return fields.mapNotNull { f ->
+            when (f) {
+                "pop" -> day?.let { "Осадки ${it.pop} %" }
+                "feels" -> "Ощущается ${WeatherLogic.temp(n.feels)}"
+                "minmax" -> day?.let { "${WeatherLogic.temp(it.tMin)}…${WeatherLogic.temp(it.tMax)}" }
+                "humidity" -> "Влажность ${n.humidity} %"
+                "gust" -> if (n.gustMs > 0) "Порывы ${n.gustMs.roundToInt()} м/с" else null
+                "pressure" -> "${WeatherLogic.mmHg(n.pressureHpa)} мм рт. ст."
+                "uv" -> day?.let { "УФ ${it.uv.roundToInt()}" }
+                "sun" -> day?.takeIf { it.sunrise.length >= 16 }?.let { "☀ ${it.sunrise.takeLast(5)}–${it.sunset.takeLast(5)}" }
+                "next" -> {
+                    val now = java.time.LocalDateTime.now().plusHours(3).toString().take(13)
+                    w.hours.firstOrNull { it.time.take(13) == now }?.let { "Через 3 ч ${WeatherLogic.temp(it.temp)}, ${WeatherLogic.describe(it.code).lowercase()}" }
+                }
+                else -> null
+            }
+        }
     }
 }

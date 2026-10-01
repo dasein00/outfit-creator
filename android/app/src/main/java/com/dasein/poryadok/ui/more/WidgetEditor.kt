@@ -53,6 +53,7 @@ import androidx.navigation.NavHostController
 import com.dasein.poryadok.system.TodayWidgetReceiver
 import com.dasein.poryadok.system.WColors
 import com.dasein.poryadok.system.WIDGET_BLOCK_TYPES
+import com.dasein.poryadok.system.WEATHER_FIELDS
 import com.dasein.poryadok.system.WRow
 import com.dasein.poryadok.system.WidgetBlock
 import com.dasein.poryadok.system.WidgetConfig
@@ -203,6 +204,16 @@ fun WidgetEditorScreen(nav: NavHostController) {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(start = 12.dp, bottom = 4.dp)) {
                             if (type.styles.size > 1) type.styles.forEachIndexed { si, sname -> Pill(sname, b.style == si) { setBlock(i) { it.copy(style = si) } } }
                             if (type.counted) (1..5).forEach { n -> Pill("$n", b.count == n) { setBlock(i) { it.copy(count = n) } } }
+                            if (b.type == "weather") {
+                                val on = b.weatherFields()
+                                Text("Подробности:", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
+                                WEATHER_FIELDS.forEach { (key, name) ->
+                                    Pill(name, key in on) {
+                                        val next = WEATHER_FIELDS.map { it.first }.filter { k -> if (k == key) k !in on else k in on }
+                                        setBlock(i) { it.copy(fields = next.joinToString(",").ifEmpty { "-" }) }
+                                    }
+                                }
+                            }
                             Pill("Настроить…", false) { editBlock = i }
                         }
                     }
@@ -315,15 +326,7 @@ private fun WidgetPreview(m: WidgetModel, wDp: Int, hDp: Int) {
     val avail = hDp - 20 - (if (header) 34 * cfg.titleScale else 0f)
     val ringDp = ((if (compact) hDp - 20 else hDp - 56) * cfg.ringScale.coerceIn(0.5f, 1.5f)).coerceAtMost(wDp * .5f).coerceAtLeast(56f)
     val ring = remember(m.steps, m.stepsGoal, m.burned, cfg) { WidgetRing.render(ctx, m.steps, m.stepsGoal, m.burned, cfg.ringStyle()).asImageBitmap() }
-    val visible = buildList {
-        var used = 0
-        for (r in m.rows) {
-            val h = WidgetModels.rowHeight(r, cfg)
-            if (used + h > avail && isNotEmpty()) break
-            used += h
-            add(r)
-        }
-    }.take(8)
+    val visible = WidgetModels.visible(m.rows, cfg, avail.toFloat())
     val shape = RoundedCornerShape(cfg.radius.coerceIn(0, 32).dp)
     Column(
         Modifier.size(wDp.dp, hDp.dp).clip(shape)
@@ -371,6 +374,13 @@ private fun PreviewRow(r: WRow, p: WColors, k0: Float) {
             )
             if (r.value.isNotEmpty()) Text(" " + r.value, color = labelColor, fontSize = (14 * k).sp)
         }
+        return
+    }
+    if (r.kind == 4) {
+        Text(
+            r.title, color = labelColor, fontSize = (12.5f * k).sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth().padding(start = if (b?.icon != false) (28 * k).dp else 0.dp, bottom = 1.dp),
+        )
         return
     }
     val icon = r.icon

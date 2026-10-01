@@ -239,8 +239,9 @@ fun Pill(text: String, selected: Boolean, glyph: String? = null, onClick: () -> 
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (glyph != null) { Glyph(glyph, 18.dp); Spacer(Modifier.width(6.dp)) }
+            // Подпись в одну строку: слово не должно переноситься по слогам («Последн-яя»).
             Text(
-                text, fontSize = 14.sp,
+                text, fontSize = 14.sp, maxLines = 1, softWrap = false,
                 color = if (selected) scheme.surface else LocalExtra.current.dim,
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             )

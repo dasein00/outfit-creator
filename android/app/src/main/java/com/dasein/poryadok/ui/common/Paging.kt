@@ -114,7 +114,7 @@ fun GoToPageDialog(page: Int, pages: Int, onDismiss: () -> Unit, onGo: (Int) -> 
                     keyboardActions = KeyboardActions(onGo = { if (ok) onGo(n!! - 1) }),
                     isError = text.isNotBlank() && !ok,
                 )
-                Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FlowRow(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Pill("Первая", false) { onGo(0) }
                     Pill("Середина", false) { onGo(pages / 2) }
                     Pill("Последняя", false) { onGo(pages - 1) }

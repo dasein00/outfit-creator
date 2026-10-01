@@ -38,7 +38,6 @@ import com.dasein.poryadok.Graph
 import com.dasein.poryadok.data.Recipe
 import com.dasein.poryadok.logic.MealType
 import com.dasein.poryadok.logic.RECIPE_CATEGORIES
-import com.dasein.poryadok.logic.WORLD_CATEGORY
 import com.dasein.poryadok.logic.cuisineOf
 import com.dasein.poryadok.ui.Routes
 import com.dasein.poryadok.ui.common.Empty
@@ -53,8 +52,6 @@ import com.dasein.poryadok.ui.common.io
 import com.dasein.poryadok.ui.theme.LocalExtra
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -65,6 +62,15 @@ import com.dasein.poryadok.ui.common.PageBar
 import com.dasein.poryadok.ui.common.PageInfo
 import com.dasein.poryadok.ui.common.SearchField
 import kotlinx.coroutines.launch
+import com.dasein.poryadok.logic.Fridge
+import com.dasein.poryadok.ui.common.FilterButton
+import com.dasein.poryadok.ui.common.FilterOption
+import com.dasein.poryadok.ui.common.FilterRow
+import com.dasein.poryadok.ui.common.FilterSheet
+import com.dasein.poryadok.ui.common.OptionSheet
+import com.dasein.poryadok.ui.common.SectionTabs
+import com.dasein.poryadok.ui.common.SortFilterBar
+import com.dasein.poryadok.ui.common.observe
 
 private const val ALL = "Все"
 private const val MINE = "Мои рецепты"
@@ -91,21 +97,11 @@ fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int, emb
                 "Кулинарная книга: ${book.recipes.size} рецептов, меню и планирование питания", fontSize = 13.sp, color = LocalExtra.current.dim,
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
-            ScrollableTabRow(
-                selectedTabIndex = tab, edgePadding = 12.dp,
-                containerColor = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.primary,
-            ) {
-                RECIPE_TABS.forEachIndexed { i, t ->
-                    val n = when (i) { 2 -> book.recipes.count { it.favorite }; 3 -> book.recipes.count { it.custom }; 4 -> book.archived.size; else -> 0 }
-                    Tab(
-                        selected = tab == i, onClick = { tab = i },
-                        icon = { Glyph(RECIPE_TAB_GLYPHS[i], 20.dp) },
-                        text = { Text(if (n > 0) "$t · $n" else t, maxLines = 1) },
-                        selectedContentColor = MaterialTheme.colorScheme.primary,
-                        unselectedContentColor = LocalExtra.current.dim,
-                    )
-                }
-            }
+            // Все пять вкладок видны сразу — без прокрутки вбок.
+            SectionTabs(
+                RECIPE_TABS, RECIPE_TAB_GLYPHS, tab,
+                listOf(0, 0, book.recipes.count { it.favorite }, book.recipes.count { it.custom }, book.archived.size),
+            ) { tab = it }
             if (!book.loaded) {
                 FullCenter { CircularProgressIndicator() }
                 return@Column
@@ -123,18 +119,31 @@ fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int, emb
 
 /** Сортировка каталога. */
 private enum class RecipeSort(val label: String) {
-    NAME("А–Я"), FAST("Быстрее"), KCAL("Меньше ккал"), PROTEIN("Больше белка"), EASY("Проще"), NEW("Новые"), RELEVANCE("По совпадению"),
+    NAME("По названию"), FRIDGE("Из холодильника"), FAST("Сначала быстрые"), KCAL("Меньше калорий"), PROTEIN("Больше белка"),
+    EASY("Сначала простые"), NEW("Сначала новые"), RELEVANCE("По совпадению"),
 }
+
+/** Время приготовления и калорийность порции — варианты фильтров. */
+private val TIME_OPTIONS = listOf("15" to "До 15 минут", "30" to "До 30 минут", "45" to "До 45 минут", "60" to "До 1 часа")
+private val KCAL_OPTIONS = listOf("300" to "До 300 ккал", "450" to "До 450 ккал", "600" to "До 600 ккал", "800" to "До 800 ккал")
+
+/** Какой лист фильтра открыт. */
+private enum class CatalogSheet { SORT, ALL, CATEGORY, CUISINE, TIME, KCAL, FEATURES, FRIDGE }
 
 @Composable
 private fun Catalog(nav: NavHostController, book: RecipeBook) {
     var menuFor by remember { mutableStateOf<Recipe?>(null) }
     menuFor?.let { RecipeQuickMenu(nav, it) { menuFor = null } }
+    val settings by observe(null) { Graph.prefs.settings }
+    val fridge = remember(settings?.fridge) { Fridge.decode(settings?.fridge.orEmpty()) }
     var q by rememberSaveable { mutableStateOf("") }
     var cat by rememberSaveable { mutableStateOf(ALL) }
     var filters by rememberSaveable { mutableStateOf(setOf<String>()) }
     var cuisine by rememberSaveable { mutableStateOf("") }
+    var time by rememberSaveable { mutableStateOf("") }
+    var kcal by rememberSaveable { mutableStateOf("") }
     var sort by rememberSaveable { mutableStateOf(RecipeSort.NAME) }
+    var sheet by remember { mutableStateOf<CatalogSheet?>(null) }
     var page by rememberSaveable { mutableIntStateOf(0) }
     var size by rememberSaveable { mutableIntStateOf(20) }
     val listState = rememberLazyListState()
@@ -148,13 +157,28 @@ private fun Catalog(nav: NavHostController, book: RecipeBook) {
             else -> r.category == c || (c in MEAL_CATEGORY && MEAL_CATEGORY.getValue(c) in MealType.parse(r.meals) && r.category !in RECIPE_CATEGORIES.drop(5))
         }
     }
-    val matched = remember(book, query, filters) {
-        book.recipes.filter { r -> searchMatch(query, r, book.ingredients[r.id].orEmpty()) && filters.all { f -> matches(SmartFilter.valueOf(f), r, book.macros(r.id)) } }
+    val names: (Recipe) -> List<String> = { r -> book.ingredients[r.id].orEmpty().map { it.name } }
+    val fits = remember(book, fridge) {
+        if (fridge.isEmpty && !fridge.onlyHave) emptyMap() else book.recipes.associate { it.id to Fridge.fit(names(it), fridge) }
     }
-    val list = remember(matched, cat, cuisine, sort) {
-        val base = matched.filter { r -> inCat(r, cat) && (cat != WORLD_CATEGORY || cuisine.isEmpty() || cuisineOf(r.tags) == cuisine) }
-        when (sort) {
+    val fridgeOn = fits.isNotEmpty()
+    val matched = remember(book, query, filters, time, kcal, fits) {
+        book.recipes.filter { r ->
+            val m = book.macros(r.id)
+            searchMatch(query, r, book.ingredients[r.id].orEmpty()) &&
+                filters.all { f -> matches(SmartFilter.valueOf(f), r, m) } &&
+                (time.isEmpty() || r.totalMin() <= time.toInt()) &&
+                (kcal.isEmpty() || m.kcal <= kcal.toInt()) &&
+                (fits.isEmpty() || fits[r.id]?.ok == true)
+        }
+    }
+    val sorts = RecipeSort.entries.filter { (it != RecipeSort.RELEVANCE || !query.isEmpty) && (it != RecipeSort.FRIDGE || fridgeOn) }
+    val sortNow = if (sort in sorts) sort else RecipeSort.NAME
+    val list = remember(matched, cat, cuisine, sortNow, fits) {
+        val base = matched.filter { r -> inCat(r, cat) && (cuisine.isEmpty() || cuisineOf(r.tags) == cuisine) }
+        when (sortNow) {
             RecipeSort.NAME -> base.sortedWith(compareByDescending<Recipe> { it.favorite }.thenBy { it.name })
+            RecipeSort.FRIDGE -> base.sortedWith(compareBy<Recipe> { fits[it.id]?.let(Fridge::rank) ?: 0 }.thenBy { it.name })
             RecipeSort.FAST -> base.sortedBy { it.totalMin() }
             RecipeSort.KCAL -> base.sortedBy { book.macros(it.id).kcal }
             RecipeSort.PROTEIN -> base.sortedByDescending { book.macros(it.id).protein }
@@ -163,48 +187,89 @@ private fun Catalog(nav: NavHostController, book: RecipeBook) {
             RecipeSort.RELEVANCE -> base.sortedByDescending { TextQuery.score(it.name, it.tags + " " + book.ingredients[it.id].orEmpty().joinToString(" ") { i -> i.name }, query) }
         }
     }
-    LaunchedEffect(q, cat, cuisine, filters, sort) { page = 0 }
+    LaunchedEffect(q, cat, cuisine, filters, sort, time, kcal, fridge) { page = 0 }
     val p = Paging.clamp(page, list.size, size)
     val pages = Paging.pages(list.size, size)
     val go: (Int) -> Unit = { page = it; scope.launch { listState.animateScrollToItem(1) } }
+    val cuisines = remember(book) { book.recipes.mapNotNull { cuisineOf(it.tags) }.distinct().sorted() }
+    val active = listOf(cat != ALL, cuisine.isNotEmpty(), time.isNotEmpty(), kcal.isNotEmpty(), filters.isNotEmpty(), fridgeOn).count { it }
+    val fridgeProducts = remember(book) {
+        book.recipes.flatMap { r -> names(r).distinct() }.filter { !Fridge.isStaple(it) }
+            .groupingBy { it }.eachCount().entries.sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+            .map { it.key to it.value }
+    }
+    fun saveFridge(spec: Fridge.Spec) {
+        io { Graph.prefs.update { it.copy(fridge = Fridge.encode(spec)) } }
+        sort = if (spec.isEmpty && !spec.onlyHave) RecipeSort.NAME else RecipeSort.FRIDGE
+    }
+
+    when (sheet) {
+        CatalogSheet.SORT -> OptionSheet("Сортировка", sorts.map { FilterOption(it.name, it.label) }, setOf(sortNow.name), onDismiss = { sheet = null }) {
+            sort = RecipeSort.valueOf(it.first()); sheet = null
+        }
+        CatalogSheet.CATEGORY -> OptionSheet(
+            "Категория", (listOf(ALL, FAV, MINE) + RECIPE_CATEGORIES).map { c -> FilterOption(c, c, matched.count { inCat(it, c) }) },
+            setOf(cat), onDismiss = { sheet = null },
+        ) { cat = it.firstOrNull() ?: ALL; sheet = null }
+        CatalogSheet.CUISINE -> OptionSheet(
+            "Кухня", listOf(FilterOption("", "Любая", matched.size)) + cuisines.map { c -> FilterOption(c, c, matched.count { cuisineOf(it.tags) == c }) },
+            setOf(cuisine), onDismiss = { sheet = null },
+        ) { cuisine = it.firstOrNull().orEmpty(); sheet = null }
+        CatalogSheet.TIME -> OptionSheet(
+            "Время приготовления", listOf(FilterOption("", "Любое")) + TIME_OPTIONS.map { FilterOption(it.first, it.second) },
+            setOf(time), onDismiss = { sheet = null },
+        ) { time = it.firstOrNull().orEmpty(); sheet = null }
+        CatalogSheet.KCAL -> OptionSheet(
+            "Калорийность порции", listOf(FilterOption("", "Любая")) + KCAL_OPTIONS.map { FilterOption(it.first, it.second) },
+            setOf(kcal), onDismiss = { sheet = null },
+        ) { kcal = it.firstOrNull().orEmpty(); sheet = null }
+        CatalogSheet.FEATURES -> OptionSheet(
+            "Особенности", SmartFilter.entries.map { FilterOption(it.name, it.label.replaceFirstChar(Char::uppercase)) },
+            filters, multi = true, onDismiss = { sheet = null },
+        ) { filters = it; sheet = null }
+        CatalogSheet.FRIDGE -> FridgeSheet(
+            fridgeProducts, fridge,
+            countFor = { spec -> book.recipes.count { Fridge.fit(names(it), spec).ok } },
+            onDismiss = { sheet = null },
+        ) { saveFridge(it); sheet = null }
+        CatalogSheet.ALL -> FilterSheet(
+            "Фильтры", { sheet = null },
+            onReset = if (active == 0) null else ({
+                cat = ALL; cuisine = ""; time = ""; kcal = ""; filters = emptySet(); saveFridge(Fridge.Spec())
+            }),
+            applyLabel = "Показать: ${list.size}", onApply = { sheet = null },
+        ) {
+            FilterRow("Из холодильника", if (fridgeOn) fridgeLabel(fridge) else null) { sheet = CatalogSheet.FRIDGE }
+            FilterRow("Категория", cat.takeIf { it != ALL }) { sheet = CatalogSheet.CATEGORY }
+            FilterRow("Кухня", cuisine.ifEmpty { null }) { sheet = CatalogSheet.CUISINE }
+            FilterRow("Время", TIME_OPTIONS.firstOrNull { it.first == time }?.second) { sheet = CatalogSheet.TIME }
+            FilterRow("Калории", KCAL_OPTIONS.firstOrNull { it.first == kcal }?.second) { sheet = CatalogSheet.KCAL }
+            FilterRow("Особенности", featuresLabel(filters)) { sheet = CatalogSheet.FEATURES }
+        }
+        null -> Unit
+    }
 
     LazyColumn(state = listState, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp)) {
         item {
+            Gap(8.dp)
             SearchField(q, { q = it }, "Блюдо, ингредиенты, тег: «курица рис -грибы»")
             Gap(8.dp)
             Row {
-                Button(onClick = { nav.navigate(Routes.recipeEdit(0)) }, Modifier.weight(1f)) { Text("+ Добавить рецепт") }
+                Button(onClick = { nav.navigate(Routes.recipeEdit(0)) }, Modifier.weight(1f)) { Text("+ Свой рецепт", maxLines = 1, softWrap = false) }
                 HGap(8.dp)
-                OutlinedButton(onClick = { nav.navigate(Routes.MENU_CREATE) }, Modifier.weight(1f)) { Text("Создать меню") }
+                OutlinedButton(onClick = { nav.navigate(Routes.MENU_CREATE) }, Modifier.weight(1f)) { Text("Создать меню", maxLines = 1, softWrap = false) }
             }
-            Gap(10.dp)
+            Gap(4.dp)
         }
         item {
+            SortFilterBar(sortNow.label, { sheet = CatalogSheet.SORT }, active) { sheet = CatalogSheet.ALL }
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(listOf(ALL, FAV, MINE) + RECIPE_CATEGORIES) { c ->
-                    val n = matched.count { inCat(it, c) }
-                    Pill("$c $n", c == cat) { cat = c; cuisine = "" }
-                }
-            }
-            if (cat == WORLD_CATEGORY) {
-                val cuisines = book.recipes.filter { it.category == WORLD_CATEGORY }.mapNotNull { cuisineOf(it.tags) }.distinct().sorted()
-                Gap(8.dp)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Pill("Все кухни", cuisine.isEmpty()) { cuisine = "" }
-                    cuisines.forEach { c -> Pill(c, c == cuisine) { cuisine = if (cuisine == c) "" else c } }
-                }
-            }
-            Gap(8.dp)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                SmartFilter.entries.forEach { f ->
-                    Pill(f.label, f.name in filters) { filters = if (f.name in filters) filters - f.name else filters + f.name }
-                }
-            }
-            Gap(8.dp)
-            Text("Сортировка", fontSize = 12.sp, color = LocalExtra.current.dim)
-            Gap(4.dp)
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(RecipeSort.entries.filter { it != RecipeSort.RELEVANCE || !query.isEmpty }) { s -> Pill(s.label, s == sort) { sort = s } }
+                item { FilterButton("Из холодильника", if (fridgeOn) fridgeLabel(fridge) else null) { sheet = CatalogSheet.FRIDGE } }
+                item { FilterButton("Категория", cat.takeIf { it != ALL }) { sheet = CatalogSheet.CATEGORY } }
+                item { FilterButton("Время", TIME_OPTIONS.firstOrNull { it.first == time }?.second) { sheet = CatalogSheet.TIME } }
+                item { FilterButton("Калории", KCAL_OPTIONS.firstOrNull { it.first == kcal }?.second) { sheet = CatalogSheet.KCAL } }
+                item { FilterButton("Особенности", featuresLabel(filters)) { sheet = CatalogSheet.FEATURES } }
+                item { FilterButton("Кухня", cuisine.ifEmpty { null }) { sheet = CatalogSheet.CUISINE } }
             }
             PageInfo(list.size, p, size, { size = it; page = 0 }, "рецептов")
             PageBar(p, pages, go)
@@ -212,14 +277,36 @@ private fun Catalog(nav: NavHostController, book: RecipeBook) {
             Gap(6.dp)
         }
         if (list.isEmpty()) item {
-            Empty(Ic.search, "Ничего не нашлось", "Измените запрос или фильтры — или добавьте свой рецепт.")
+            Empty(Ic.search, "Ничего не нашлось", if (fridgeOn) "Отметьте в холодильнике больше продуктов или выключите «Только если всё есть»." else "Измените запрос или фильтры — или добавьте свой рецепт.")
         }
         items(Paging.slice(list, p, size), key = { it.id }) { r ->
-            RecipeCard(r, book.macros(r.id), onClick = { nav.navigate(Routes.recipe(r.id)) }, onFavorite = { io { Graph.extra.setFavorite(r.id, !r.favorite) } }, onLongClick = { menuFor = r })
+            Column {
+                RecipeCard(r, book.macros(r.id), onClick = { nav.navigate(Routes.recipe(r.id)) }, onFavorite = { io { Graph.extra.setFavorite(r.id, !r.favorite) } }, onLongClick = { menuFor = r })
+                fits[r.id]?.let { f ->
+                    Text(
+                        if (f.lacking.isEmpty()) "✓ Всё есть дома" else "Не хватает: " + f.lacking.take(4).joinToString(", ") + if (f.lacking.size > 4) " и ещё ${f.lacking.size - 4}" else "",
+                        fontSize = 12.sp, color = if (f.lacking.isEmpty()) MaterialTheme.colorScheme.primary else LocalExtra.current.dim,
+                        modifier = Modifier.padding(start = 8.dp, top = 2.dp, bottom = 6.dp),
+                    )
+                }
+            }
         }
         item { Gap(4.dp); PageBar(p, pages, go) }
         item { HowTo("recipes") }
     }
+}
+
+private fun fridgeLabel(f: Fridge.Spec): String = when {
+    f.main.isNotEmpty() -> f.main.first() + if (f.count > 1) " +${f.count - 1}" else ""
+    f.have.isNotEmpty() -> "Есть: ${f.have.size}"
+    f.missing.isNotEmpty() -> "Без ${f.missing.size} прод."
+    else -> "Всё есть"
+}
+
+private fun featuresLabel(f: Set<String>): String? = when (f.size) {
+    0 -> null
+    1 -> SmartFilter.valueOf(f.first()).label.replaceFirstChar(Char::uppercase)
+    else -> "Особенности: ${f.size}"
 }
 
 /** Архив: блюда, которые не понравились. Они не попадают в каталог и подбор меню, но их можно вернуть. */

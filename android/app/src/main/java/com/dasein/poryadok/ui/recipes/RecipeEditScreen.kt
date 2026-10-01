@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -87,11 +88,19 @@ import kotlin.math.roundToInt
 /** Черновик рецепта переживает поворот экрана. */
 class RecipeDraft : ViewModel() {
     var loaded = false
-    var recipe by mutableStateOf(Recipe(name = "", custom = true))
+    // Порция по умолчанию — обычная тарелка.
+    var recipe by mutableStateOf(Recipe(name = "", custom = true, portionGrams = PLATE_GRAMS))
+    /** «Я съел сейчас»: сколько порций записать в питание при сохранении. */
+    var eaten by mutableStateOf("")
+    var meal by mutableStateOf(MealType.LUNCH)
     val ingredients = mutableStateListOf<RecipeIngredient>()
     val steps = mutableStateListOf<String>()
     var step by mutableStateOf(0)
 }
+
+/** Обычная тарелка — около 300 г готового блюда. */
+const val PLATE_GRAMS = 300.0
+private val PLATE_SIZES = listOf("Полтарелки" to 150.0, "Тарелка" to 300.0, "Глубокая тарелка" to 350.0, "Большая" to 450.0)
 
 private val STEP_TITLES = listOf("Основное", "Ингредиенты", "Шаги", "Параметры", "Сохранение")
 
@@ -100,6 +109,7 @@ fun RecipeEditScreen(nav: NavHostController, id: Long) {
     val d: RecipeDraft = viewModel(key = "recipe-draft-$id")
     val scope = rememberCoroutineScope()
     val extra = LocalExtra.current
+    val ctx = LocalContext.current
     LaunchedEffect(id) {
         if (!d.loaded) {
             d.loaded = true
@@ -122,6 +132,11 @@ fun RecipeEditScreen(nav: NavHostController, id: Long) {
             val exact = RecipeRepo.exactServings(d.ingredients, r)
             val fixed = if (r.portionGrams > 0) r.copy(servings = Math.round(exact).toInt().coerceIn(1, 40)) else r
             val newId = RecipeRepo.saveRecipe(fixed.copy(name = r.name.trim()), d.ingredients.toList(), d.steps.toList())
+            val ate = d.eaten.num() ?: 0.0
+            if (ate > 0) {
+                RecipeRepo.cook(newId, exact, ate, d.meal, addToFood = true)
+                Toast.makeText(ctx, "Рецепт сохранён, ${Cooking.amount(ate)} порц. записано в питание", Toast.LENGTH_SHORT).show()
+            }
             nav.popBackStack()
             if (id == 0L) nav.navigate(Routes.recipe(newId))
         }
@@ -472,15 +487,21 @@ private fun StepParams(d: RecipeDraft) {
     }
     Tile {
         Text(
-            "Укажите вес одной порции — КБЖУ порции, 100 г и всего блюда посчитаются по ингредиентам сами. " +
-                "Если блюдо при готовке уварилось или ужарилось, взвесьте готовое и впишите его вес.",
+            "Порция — сколько помещается в обычную тарелку (≈300 г). КБЖУ порции, 100 г и всего блюда считаются по ингредиентам сами. " +
+                "Если блюдо уварилось или ужарилось, взвесьте всё готовое блюдо и впишите вес.",
             fontSize = 13.sp, color = LocalExtra.current.dim,
         )
+        Gap(8.dp)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            PLATE_SIZES.forEach { (name, g) ->
+                Pill("$name ${Cooking.amount(g)} г", portion.num() == g) { portion = Cooking.amount(g); apply(portion, dish) }
+            }
+        }
         Gap(8.dp)
         Row {
             NumberField(portion, { portion = it; apply(it, dish) }, "Вес 1 порции", Modifier.weight(1f), suffix = "г")
             HGap(8.dp)
-            NumberField(dish, { dish = it; apply(portion, it) }, "Готовое блюдо: ${Cooking.amount(raw)} г", Modifier.weight(1f), suffix = "г")
+            NumberField(dish, { dish = it; apply(portion, it) }, "Всё блюдо (≈${Cooking.amount(raw)} г)", Modifier.weight(1f), suffix = "г")
         }
         val pg = r.portionGrams
         if (pg > 0) {
@@ -524,6 +545,35 @@ private fun StepFinish(d: RecipeDraft) {
         Gap(6.dp)
         MacroLine(RecipeRepo.macros(d.ingredients, r))
         if (d.ingredients.isEmpty()) Text("Без ингредиентов КБЖУ будет нулевым.", color = extra.warn, fontSize = 12.sp)
+    }
+    SectionTitle("Съели сейчас?")
+    Tile {
+        val one = RecipeRepo.macros(d.ingredients, r)
+        Text(
+            "Укажите, сколько порций съели, — при сохранении они запишутся в питание за сегодня. " +
+                "Порция ${if (r.portionGrams > 0) "${Cooking.amount(r.portionGrams)} г" else "из рецепта"}: ${one.kcal.roundToInt()} ккал.",
+            fontSize = 13.sp, color = extra.dim,
+        )
+        Gap(8.dp)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf("" to "Не записывать", "0.5" to "½", "1" to "1", "1.5" to "1½", "2" to "2").forEach { (v, t) ->
+                Pill(t, d.eaten == v) { d.eaten = v }
+            }
+        }
+        Gap(8.dp)
+        NumberField(d.eaten, { d.eaten = it }, "Съедено порций", suffix = "порц.")
+        d.eaten.num()?.takeIf { it > 0 }?.let { n ->
+            val m = one * n
+            Text(
+                "Запишется: ${m.kcal.roundToInt()} ккал · Б ${m.protein.roundToInt()} · Ж ${m.fat.roundToInt()} · У ${m.carbs.roundToInt()}" +
+                    if (r.portionGrams > 0) " (${Cooking.amount(r.portionGrams * n)} г)" else "",
+                fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp),
+            )
+            Gap(6.dp)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                MealType.order.forEach { mt -> Pill(MealType.name(mt), mt == d.meal) { d.meal = mt } }
+            }
+        }
     }
     Gap(6.dp)
     Text("После сохранения рецепт появится в разделе «Мои».", color = extra.dim, fontSize = 13.sp)
