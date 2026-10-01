@@ -26,7 +26,7 @@ sleep 15
 adb exec-out screencap -p > shots/00_today.png
 
 routes=(
-  "tasks" "calendar" "finance" "more" "habits" "goals" "focus"
+  "tasks" "calendar" "finance" "more" "habits" "goals"
   "health?tab=0" "health?tab=1" "health?tab=2" "health?tab=3" "health?tab=4" "health?tab=5"
   "wellbeing?tab=0" "wellbeing?tab=1" "wellbeing?tab=2"
   "notes" "tops" "top/1" "wardrobe" "outfits" "wheel" "review" "settings" "search"

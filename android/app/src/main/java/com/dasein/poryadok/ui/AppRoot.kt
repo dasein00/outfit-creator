@@ -190,13 +190,18 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
     LaunchedEffect(deepLink.value) {
         val link = deepLink.value ?: return@LaunchedEffect
         deepLink.value = null
-        when {
-            '?' !in link && tabs.any { it.route == link } -> nav.openTab(link)
-            tabs.any { it.route == link.substringBefore('?') } -> nav.navigate(link) {
-                popUpTo(nav.graph.findStartDestination().id)
-                launchSingleTop = true
+        // Старые виджеты и напоминания могут вести на удалённый экран (например, «focus») — тогда открываем «Главное».
+        try {
+            when {
+                '?' !in link && tabs.any { it.route == link } -> nav.openTab(link)
+                tabs.any { it.route == link.substringBefore('?') } -> nav.navigate(link) {
+                    popUpTo(nav.graph.findStartDestination().id)
+                    launchSingleTop = true
+                }
+                else -> nav.navigate(link)
             }
-            else -> nav.navigate(link)
+        } catch (_: IllegalArgumentException) {
+            nav.openTab(Routes.TODAY)
         }
     }
 
