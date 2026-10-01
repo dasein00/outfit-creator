@@ -93,6 +93,8 @@ jobs:
 
       - name: Publish screenshots
         if: always()
+        # Загрузка сотни файлов иногда упирается в лимит GitHub на частые запросы — это не ошибка приложения.
+        continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-screens

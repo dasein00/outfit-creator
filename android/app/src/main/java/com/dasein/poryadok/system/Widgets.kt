@@ -183,7 +183,7 @@ class TodayWidget : GlanceAppWidget() {
                 if (r.sub.isNotBlank()) {
                     Spacer(GlanceModifier.width(6.dp))
                     val c = if (r.tone == WidgetModels.TONE_TEXT || r.tone == WidgetModels.TONE_DIM) labelColor else Color(pal.tone(r.tone))
-                    Text(r.sub, maxLines = 1, style = TextStyle(color = ColorProvider(c), fontSize = (13 * k).sp, fontWeight = FontWeight.Bold))
+                    Text(r.sub, maxLines = 1, style = TextStyle(color = ColorProvider(c), fontSize = (13 * k).sp, fontWeight = FontWeight.Bold), modifier = GlanceModifier.defaultWeight())
                 }
             }
             if (r.kind == 1 && r.progress != null) {

@@ -398,13 +398,15 @@ private fun PreviewRow(r: WRow, p: WColors, k0: Float) {
             )
             else {
                 if (!hasIcon || b?.label?.isNotBlank() == true) Text(r.title + " ", color = labelColor, fontSize = (14 * k).sp, maxLines = 1)
-                Text(r.value, color = valueColor, fontSize = (18 * k).sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Text(r.value, color = valueColor, fontSize = (18 * k).sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
             }
             if (r.sub.isNotBlank()) {
                 HGap(6.dp)
+                // Сокращается подпись, а не само значение (температура, вес) — его видно всегда.
                 Text(
                     r.sub, color = if (r.tone == WidgetModels.TONE_TEXT || r.tone == WidgetModels.TONE_DIM) labelColor else Color(p.tone(r.tone)),
-                    fontSize = (13 * k).sp, fontWeight = FontWeight.Bold, maxLines = 1,
+                    fontSize = (13 * k).sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
                 )
             }
         }

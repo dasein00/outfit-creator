@@ -263,7 +263,7 @@ object WidgetModels {
                     if (w == null) rows += WRow(0, "wx:2:1", "Погода", "", "нажмите, чтобы загрузить", TONE_DIM, route = Routes.WEATHER)
                     else {
                         val n = w.now
-                        val sub = WeatherLogic.describe(n.code) + " · ветер ${n.windMs.roundToInt()} м/с"
+                        val sub = "ветер ${n.windMs.roundToInt()} м/с · " + WeatherLogic.describe(n.code).lowercase()
                         rows += WRow(0, "wx:${n.code}:${if (n.isDay) 1 else 0}", "Погода", WeatherLogic.temp(n.temp), sub, TONE_DIM, route = Routes.WEATHER)
                         weatherDetails(w, b.weatherFields()).chunked(2).forEach { pair ->
                             rows += WRow(4, null, pair.joinToString(" · "), tone = TONE_DIM, route = Routes.WEATHER, extra = b.style == 0)
