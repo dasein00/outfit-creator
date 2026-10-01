@@ -102,7 +102,7 @@ object SmallTalk {
         val p = line.split('|', limit = 3)
         if (p.size < 3 || line.startsWith("#") || p[2].isBlank()) null
         else Story(("s:" + p[2].trim()).hashCode(), p[0].trim(), p[1].trim(), p[2].trim())
-    }.distinctBy { it.id }.toList()
+    }.distinctBy { it.id }.distinctBy { it.title.lowercase() }.toList()
 
     fun parseQuestions(text: String): List<Question> = text.lineSequence().mapNotNull { line ->
         val p = line.split('|', limit = 2)

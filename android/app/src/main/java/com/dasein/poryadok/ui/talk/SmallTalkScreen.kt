@@ -35,8 +35,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedIconButton
-import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -221,21 +219,8 @@ fun SmallTalkScreen(nav: NavHostController) {
         val s = settings ?: return@Screen
         val favorites = SmallTalk.decodeIds(s.talkFavorites)
         Column(Modifier.padding(pad)) {
-            // Вкладки раздела — отдельной полосой сверху, чтобы их не путали с фильтрами сфер.
-            ScrollableTabRow(
-                selectedTabIndex = tab, edgePadding = 12.dp,
-                containerColor = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.primary,
-            ) {
-                TABS.forEachIndexed { i, t ->
-                    Tab(
-                        selected = tab == i, onClick = { tab = i },
-                        icon = { Glyph(TAB_GLYPHS[i], 22.dp) },
-                        text = { Text(if (i == FAV_TAB && favorites.isNotEmpty()) "$t · ${favorites.size}" else t, maxLines = 1) },
-                        selectedContentColor = MaterialTheme.colorScheme.primary,
-                        unselectedContentColor = LocalExtra.current.dim,
-                    )
-                }
-            }
+            // Все разделы видны сразу — сеткой 3×3, без прокрутки вбок.
+            TabGrid(tab, favorites.size) { tab = it }
             androidx.compose.runtime.key(tab) {
                 when (tab) {
                     0 -> FactsTab(data, s, favorites)
@@ -247,6 +232,44 @@ fun SmallTalkScreen(nav: NavHostController) {
                     6 -> TabList(6) { trainerTab(data, s) }
                     7 -> TabList(7) { phrasesTab(data) }
                     else -> TabList(FAV_TAB) { favoritesTab(data, favorites) { tab = it } }
+                }
+            }
+        }
+    }
+}
+
+/** Сетка разделов: все девять видны сразу, выбранный подсвечен. */
+@Composable
+private fun TabGrid(tab: Int, favCount: Int, onTab: (Int) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        TABS.indices.chunked(3).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                row.forEach { i ->
+                    val selected = tab == i
+                    androidx.compose.material3.Surface(
+                        onClick = { onTab(i) }, modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (selected) scheme.primary else scheme.surface,
+                        border = if (selected) null else androidx.compose.foundation.BorderStroke(1.dp, scheme.outline.copy(alpha = .5f)),
+                    ) {
+                        Row(
+                            Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        ) {
+                            Glyph(TAB_GLYPHS[i], 20.dp)
+                            Text(
+                                if (i == FAV_TAB && favCount > 0) "${TABS[i]} $favCount" else TABS[i],
+                                Modifier.padding(start = 6.dp), fontSize = 13.sp, maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.SemiBold else null,
+                                color = if (selected) scheme.onPrimary else scheme.onSurface,
+                            )
+                        }
+                    }
                 }
             }
         }
