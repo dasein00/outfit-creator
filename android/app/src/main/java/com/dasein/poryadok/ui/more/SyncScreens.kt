@@ -359,13 +359,14 @@ private fun StepsByHour(today: Long, todayTotal: Int, heightCm: Double?, weightK
                 val kcal = (walk?.kcal ?: 0) + com.dasein.poryadok.logic.Energy.stepsKcal(if (walk != null) rest else total, weightKg, heightCm, settings.walkPace)
                 HourStat("$kcal ккал", "калории", Modifier.weight(1f))
             }
-            WalkPaceBlock(minutes, weightKg, heightCm, settings)
             if (sum.peakHour >= 0) Text(
                 "Самый активный час — %02d:00–%02d:00. Активных часов (от 250 шагов): %d.".format(sum.peakHour, (sum.peakHour + 1) % 24, sum.activeHours),
                 fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp),
             )
             Text("Нажмите на столбик — над ним появится число шагов за час. Два пальца — увеличить.", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
         }
+        // Темп и способ расчёта калорий видны всегда — даже если за день нет разбивки по часам.
+        WalkPaceBlock(minutes, weightKg, heightCm, settings)
     }
 }
 
