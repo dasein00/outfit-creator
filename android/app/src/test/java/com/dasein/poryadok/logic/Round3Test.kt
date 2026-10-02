@@ -8,9 +8,11 @@ import org.junit.Test
 
 class EnergyTest {
     @Test fun stepsEstimate() {
-        assertEquals(279, Energy.stepsKcal(7000, 70.0))
+        // По скорости: обычный темп 4,8 км/ч, MET 3,5, длина шага 0,72 м без роста.
+        assertEquals(184, Energy.stepsKcal(7000, 70.0))
+        assertTrue(Energy.stepsKcal(7000, 70.0, 175.0, 6.4) > Energy.stepsKcal(7000, 70.0, 175.0, 4.8))
         val b = Energy.burned(7387, 78.4, 150, null)
-        assertEquals(330 + 150, b.total)
+        assertEquals(217 + 150, b.total)
         assertFalse(b.fromHealthConnect)
     }
 
@@ -18,7 +20,7 @@ class EnergyTest {
         val b = Energy.burned(5000, 70.0, 0, 450)
         assertEquals(450, b.total)
         assertTrue(b.fromHealthConnect)
-        assertEquals(200, Energy.burned(5000, 70.0, 0, 50).total)
+        assertEquals(131, Energy.burned(5000, 70.0, 0, 50).total)
     }
 }
 
