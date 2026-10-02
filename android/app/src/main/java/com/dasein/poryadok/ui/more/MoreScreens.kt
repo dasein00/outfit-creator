@@ -90,7 +90,8 @@ private val HUB = listOf(
     Hub("ui:bank", "Сбербанк", "операции из уведомлений", Routes.SBER),
     Hub("ui:notebook", "Тетрадь финансов", "импорт и месячные записи", Routes.FIN_NOTEBOOK),
     Hub("ui:v_chart", "Виджет", "что показывать на рабочем столе", Routes.WIDGET_EDITOR),
-    Hub("train/38", "Настройки", "тема, PIN, копия", Routes.SETTINGS),
+    Hub("ui:archive", "Резервное копирование", "всё или по разделам: данные, фото, видео, настройки", Routes.BACKUP),
+    Hub("train/38", "Настройки", "тема, PIN, профиль", Routes.SETTINGS),
 )
 
 @Composable

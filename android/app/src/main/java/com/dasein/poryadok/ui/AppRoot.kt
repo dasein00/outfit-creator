@@ -98,6 +98,7 @@ object Routes {
     const val WHEEL = "wheel"
     const val REVIEW = "review"
     const val SETTINGS = "settings"
+    const val BACKUP = "backup"
     const val SEARCH = "search"
     const val RECIPES = "recipes"
     const val MENU_CREATE = "menuCreate"
@@ -321,6 +322,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable(Routes.WHEEL) { WheelScreen(nav) }
             composable(Routes.REVIEW) { ReviewScreen(nav, settings) }
             composable(Routes.SETTINGS) { SettingsScreen(nav, settings) }
+            composable(Routes.BACKUP) { com.dasein.poryadok.ui.more.BackupScreen(nav) }
             composable(Routes.SEARCH) { SearchScreen(nav) }
 
             composable(

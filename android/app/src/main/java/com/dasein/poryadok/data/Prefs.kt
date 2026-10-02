@@ -3,6 +3,7 @@ package com.dasein.poryadok.data
 import android.content.Context
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.map
 
 private val Context.store by preferencesDataStore("settings")
 
+@kotlinx.serialization.Serializable
 data class Settings(
     val theme: String = "system",
     val accent: Int = 0,
@@ -35,6 +37,10 @@ data class Settings(
     val focusTaskId: Long = 0,
     val focusCycle: Int = 0,
     val stepsHc: Boolean = false,
+    /** Обычный темп ходьбы, км/ч — для расчёта калорий по шагам. */
+    val walkPace: Double = 4.8,
+    /** Определять темп самому по минутам из Health Connect. */
+    val walkPaceAuto: Boolean = true,
     val stepsSensor: Boolean = false,
     val sensorLast: Long = -1L,
     val sensorDay: Long = 0L,
@@ -84,6 +90,8 @@ class Prefs(private val context: Context) {
         val focusTaskId = longPreferencesKey("focusTaskId")
         val focusCycle = intPreferencesKey("focusCycle")
         val stepsHc = booleanPreferencesKey("stepsHc")
+        val walkPace = doublePreferencesKey("walkPace")
+        val walkPaceAuto = booleanPreferencesKey("walkPaceAuto")
         val stepsSensor = booleanPreferencesKey("stepsSensor")
         val sensorLast = longPreferencesKey("sensorLast")
         val sensorDay = longPreferencesKey("sensorDay")
@@ -132,6 +140,8 @@ class Prefs(private val context: Context) {
         focusTaskId = this[K.focusTaskId] ?: 0,
         focusCycle = this[K.focusCycle] ?: 0,
         stepsHc = this[K.stepsHc] ?: false,
+        walkPace = this[K.walkPace] ?: 4.8,
+        walkPaceAuto = this[K.walkPaceAuto] ?: true,
         stepsSensor = this[K.stepsSensor] ?: false,
         sensorLast = this[K.sensorLast] ?: -1L,
         sensorDay = this[K.sensorDay] ?: 0L,
@@ -178,6 +188,8 @@ class Prefs(private val context: Context) {
             p[K.focusTaskId] = s.focusTaskId
             p[K.focusCycle] = s.focusCycle
             p[K.stepsHc] = s.stepsHc
+            p[K.walkPace] = s.walkPace
+            p[K.walkPaceAuto] = s.walkPaceAuto
             p[K.stepsSensor] = s.stepsSensor
             p[K.sensorLast] = s.sensorLast
             p[K.sensorDay] = s.sensorDay

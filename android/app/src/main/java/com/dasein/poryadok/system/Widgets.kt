@@ -60,7 +60,10 @@ object Widgets {
         val dao = Graph.dao
         val today = Dates.today()
         val steps = dao.dayLogNow(today)?.steps ?: 0
-        val burned = Energy.burned(steps, dao.lastWeight()?.kg ?: dao.profileNow()?.startWeight ?: 70.0, dao.workoutKcalOn(today), Graph.extra.dayEnergyOf(today)?.activeKcal).total
+        val burned = Energy.burned(
+            steps, dao.lastWeight()?.kg ?: dao.profileNow()?.startWeight ?: 70.0, dao.workoutKcalOn(today), Graph.extra.dayEnergyOf(today)?.activeKcal,
+            dao.profileNow()?.heightCm, Graph.prefs.now().walkPace,
+        ).total
         return WidgetRing.render(ctx, steps, dao.profileNow()?.stepsGoal ?: 8000, burned)
     }
 

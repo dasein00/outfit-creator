@@ -100,6 +100,47 @@ object Steps {
         return out
     }
 
+    /** Шаги по минутам за день из Health Connect (1440 значений) — для точного темпа и калорий. */
+    suspend fun readHcMinutes(ctx: Context, day: Long): IntArray? {
+        val s = Graph.prefs.now()
+        if (!s.stepsHc || !hcGranted(ctx)) return null
+        return runCatching {
+            val client = HealthConnectClient.getOrCreate(ctx)
+            val date = LocalDate.ofEpochDay(day)
+            val zone = java.time.ZoneId.systemDefault()
+            val start = date.atStartOfDay(zone)
+            val res = client.aggregateGroupByDuration(
+                AggregateGroupByDurationRequest(
+                    metrics = setOf(StepsRecord.COUNT_TOTAL),
+                    timeRangeFilter = TimeRangeFilter.between(start.toInstant(), date.plusDays(1).atStartOfDay(zone).toInstant()),
+                    timeRangeSlicer = java.time.Duration.ofMinutes(1),
+                )
+            )
+            val out = IntArray(1440)
+            res.forEach { r ->
+                val m = java.time.Duration.between(start.toInstant(), r.startTime).toMinutes().toInt()
+                if (m in 0 until 1440) out[m] += (r.result[StepsRecord.COUNT_TOTAL] ?: 0L).toInt()
+            }
+            out
+        }.onFailure { Log.w(TAG, "minutes", it) }.getOrNull()
+    }
+
+    /**
+     * Обычный темп ходьбы по последним дням (медиана скорости минут ходьбы) — сохраняется,
+     * если включено автоопределение. Вызывается при синхронизации не чаще раза в 6 часов.
+     */
+    suspend fun updatePace(ctx: Context) {
+        val s = Graph.prefs.now()
+        if (!s.walkPaceAuto || !s.stepsHc) return
+        val height = Graph.dao.profileNow()?.heightCm
+        val today = com.dasein.poryadok.logic.Dates.today()
+        val all = (0..2).mapNotNull { readHcMinutes(ctx, today - it) }
+        if (all.isEmpty()) return
+        val joined = all.flatMap { it.asList() }.toIntArray()
+        val pace = com.dasein.poryadok.logic.WalkEnergy.typicalPace(joined, height) ?: return
+        if (kotlin.math.abs(pace - s.walkPace) >= 0.1) Graph.prefs.update { it.copy(walkPace = pace) }
+    }
+
     /** Шаги по часам: Health Connect и датчик телефона, в каждом часе — большее. */
     suspend fun hours(ctx: Context, day: Long): IntArray {
         val s = Graph.prefs.now()
@@ -178,8 +219,14 @@ object Steps {
     }
 
     /** Синхронизация всех включённых источников. Возвращает шаги за сегодня или null. */
+    private var paceCheckedAt = 0L
+
     suspend fun sync(ctx: Context): Int? {
         val r = syncInner(ctx)
+        if (System.currentTimeMillis() - paceCheckedAt > 6 * 3600_000L) {
+            paceCheckedAt = System.currentTimeMillis()
+            runCatching { updatePace(ctx) }.onFailure { Log.w(TAG, "pace", it) }
+        }
         runCatching { Widgets.refresh(ctx) }
         return r
     }

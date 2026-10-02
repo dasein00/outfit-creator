@@ -12,6 +12,10 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import kotlinx.coroutines.flow.map
+import com.dasein.poryadok.ui.common.Pill
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -153,7 +157,8 @@ fun StepsScreen(nav: NavHostController, settings: AppSettings) {
                     }
                 }
             }
-            StepsByHour(today, dayLogs.firstOrNull { it.day == today }?.steps ?: 0, profile?.heightCm, profile?.startWeight ?: 70.0, settings.stepsSyncedAt)
+            val lastKg by observe<Double?>(null) { Graph.dao.weights().map { it.lastOrNull()?.kg } }
+            StepsByHour(today, dayLogs.firstOrNull { it.day == today }?.steps ?: 0, profile?.heightCm, lastKg ?: profile?.startWeight ?: 70.0, settings.stepsSyncedAt, settings)
 
             SectionTitle("Последние 14 дней")
             val days = (13 downTo 0).map { today - it }
@@ -312,11 +317,13 @@ fun SberScreen(nav: NavHostController, settings: AppSettings) {
  * ниже — итоги: время в движении, расстояние, калории и самый активный час.
  */
 @Composable
-private fun StepsByHour(today: Long, todayTotal: Int, heightCm: Double?, weightKg: Double, syncedAt: Long) {
+private fun StepsByHour(today: Long, todayTotal: Int, heightCm: Double?, weightKg: Double, syncedAt: Long, settings: AppSettings) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     var day by remember { mutableStateOf(today) }
     val hours by produceState<IntArray?>(null, day, syncedAt) { value = runCatching { Steps.hours(ctx, day) }.getOrNull() ?: IntArray(24) }
+    // Поминутные шаги из Health Connect — для расчёта калорий по реальной скорости каждой минуты.
+    val minutes by produceState<IntArray?>(null, day, syncedAt) { value = runCatching { Steps.readHcMinutes(ctx, day) }.getOrNull() }
     SectionTitle("По часам")
     Tile {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -346,8 +353,13 @@ private fun StepsByHour(today: Long, todayTotal: Int, heightCm: Double?, weightK
             Row(Modifier.fillMaxWidth().padding(top = 12.dp)) {
                 HourStat("${sum.activeMinutes / 60} ч ${sum.activeMinutes % 60} мин", "в движении", Modifier.weight(1f))
                 HourStat("%.1f км".format(total * (sum.km / sum.total.coerceAtLeast(1))).replace('.', ','), "расстояние", Modifier.weight(1f))
-                HourStat("${com.dasein.poryadok.logic.Energy.stepsKcal(total, weightKg)} ккал", "калории", Modifier.weight(1f))
+                val walk = minutes?.takeIf { it.sum() > 0 }?.let { com.dasein.poryadok.logic.WalkEnergy.byMinutes(it, weightKg, heightCm) }
+                // Шаги, которых нет в поминутных данных (датчик телефона), считаются по обычному темпу.
+                val rest = (total - (minutes?.sum() ?: 0)).coerceAtLeast(0)
+                val kcal = (walk?.kcal ?: 0) + com.dasein.poryadok.logic.Energy.stepsKcal(if (walk != null) rest else total, weightKg, heightCm, settings.walkPace)
+                HourStat("$kcal ккал", "калории", Modifier.weight(1f))
             }
+            WalkPaceBlock(minutes, weightKg, heightCm, settings)
             if (sum.peakHour >= 0) Text(
                 "Самый активный час — %02d:00–%02d:00. Активных часов (от 250 шагов): %d.".format(sum.peakHour, (sum.peakHour + 1) % 24, sum.activeHours),
                 fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp),
@@ -357,10 +369,48 @@ private fun StepsByHour(today: Long, todayTotal: Int, heightCm: Double?, weightK
     }
 }
 
+/** Темп и скорость ходьбы: откуда берётся расход калорий, разбор минут и выбор обычного темпа. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun WalkPaceBlock(minutes: IntArray?, weightKg: Double, heightCm: Double?, settings: AppSettings) {
+    val extra = LocalExtra.current
+    val w = com.dasein.poryadok.logic.WalkEnergy
+    val day = minutes?.takeIf { it.sum() > 0 }?.let { w.byMinutes(it, weightKg, heightCm) }
+    Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
+        if (day != null && day.walkMinutes > 0) {
+            Text(
+                "Средняя скорость ходьбы %.1f км/ч · %d мин ходьбы".format(day.avgKmh, day.walkMinutes).replace('.', ','),
+                fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
+            )
+            Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                HourStat("${day.slow} мин", "медленно\n< 4 км/ч", Modifier.weight(1f))
+                HourStat("${day.moderate} мин", "умеренно\n4–5,6 км/ч", Modifier.weight(1f))
+                HourStat("${day.brisk} мин", "бодро\n> 5,6 км/ч", Modifier.weight(1f))
+            }
+        }
+        Text("Обычный темп ходьбы", fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Pill("Авто", settings.walkPaceAuto) { io { Graph.prefs.update { it.copy(walkPaceAuto = true) } } }
+            w.PACES.forEach { (kmh, name) ->
+                Pill("$name ${"%.1f".format(kmh).replace('.', ',')}", !settings.walkPaceAuto && kotlin.math.abs(settings.walkPace - kmh) < 0.05) {
+                    io { Graph.prefs.update { it.copy(walkPace = kmh, walkPaceAuto = false) } }
+                }
+            }
+        }
+        Text(
+            (if (settings.walkPaceAuto) "Сейчас: %.1f км/ч — определяется сам по минутам ходьбы из Health Connect. ".format(settings.walkPace).replace('.', ',') else "") +
+                "Калории считаются по скорости: расход в MET из «Компендиума физической активности» (Ainsworth и соавт.) " +
+                "для этой скорости, минус расход покоя, × вес × время. Скорость = шаги в минуту × длина шага (0,415 роста). " +
+                "Если есть данные Health Connect по минутам — каждая минута считается по своей скорости, иначе — по обычному темпу.",
+            fontSize = 11.sp, color = extra.dim, lineHeight = 15.sp, modifier = Modifier.padding(top = 6.dp),
+        )
+    }
+}
+
 @Composable
 private fun HourStat(value: String, label: String, modifier: Modifier) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-        Text(label, fontSize = 12.sp, color = LocalExtra.current.dim)
+        Text(label, fontSize = 12.sp, color = LocalExtra.current.dim, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }

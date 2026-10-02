@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.dasein.poryadok.Graph
+import kotlinx.coroutines.flow.map
 import com.dasein.poryadok.data.MediaKind
 import com.dasein.poryadok.logic.Dates
 import com.dasein.poryadok.logic.Energy
@@ -112,7 +113,8 @@ fun HealthHubScreen(nav: NavHostController) {
     val stepsGoal = profile?.stepsGoal ?: 8000
     val waterGoal = profile?.waterGoalMl ?: 2000
     val weight = weights.lastOrNull()
-    val burned = Energy.burned(steps, weight?.kg ?: profile?.startWeight ?: 70.0, workouts.filter { it.day == today }.sumOf { it.kcal }, energy.firstOrNull { it.day == today }?.activeKcal)
+    val pace by observe(4.8) { Graph.prefs.settings.map { it.walkPace } }
+    val burned = Energy.burned(steps, weight?.kg ?: profile?.startWeight ?: 70.0, workouts.filter { it.day == today }.sumOf { it.kcal }, energy.firstOrNull { it.day == today }?.activeKcal, profile?.heightCm, pace)
     val lastSleep = sleep.maxByOrNull { it.day }?.takeIf { it.day >= today - 1 }
     val weekStart = Dates.weekStart(today)
     val tiles = listOf(

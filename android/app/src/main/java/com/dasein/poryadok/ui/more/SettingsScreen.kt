@@ -23,6 +23,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Button
 import com.dasein.poryadok.ui.common.HGap
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -174,9 +175,10 @@ fun SettingsScreen(nav: NavHostController, s: Settings) {
             Tile {
                 Hint("backup_about", "Все данные хранятся только на телефоне. Сохраните копию в файл — её можно перенести на новый телефон.", title = "Резервная копия")
                 Gap(8.dp)
+                Button(onClick = { nav.navigate(com.dasein.poryadok.ui.Routes.BACKUP) }, modifier = Modifier.fillMaxWidth()) { Text("Резервное копирование…") }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { exportLauncher.launch("dasein-${Dates.day(Dates.today())}.zip") }, modifier = Modifier.weight(1f)) { Text("Сохранить копию") }
-                    OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) }, modifier = Modifier.weight(1f)) { Text("Восстановить") }
+                    OutlinedButton(onClick = { exportLauncher.launch("dasein-${Dates.day(Dates.today())}.zip") }, modifier = Modifier.weight(1f)) { Text("Быстрая копия") }
+                    OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) }, modifier = Modifier.weight(1f)) { Text("Восстановить всё") }
                 }
                 OutlinedButton(onClick = {
                     scope.launch {

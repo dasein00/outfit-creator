@@ -254,7 +254,10 @@ object WidgetModels {
         val steps = log?.steps ?: 0
         val stepsGoal = profile?.stepsGoal ?: 8000
         val lastW = dao.lastWeight()
-        val burned = Energy.burned(steps, lastW?.kg ?: profile?.startWeight ?: 70.0, dao.workoutKcalOn(today), Graph.extra.dayEnergyOf(today)?.activeKcal).total
+        val burned = Energy.burned(
+            steps, lastW?.kg ?: profile?.startWeight ?: 70.0, dao.workoutKcalOn(today), Graph.extra.dayEnergyOf(today)?.activeKcal,
+            profile?.heightCm, Graph.prefs.now().walkPace,
+        ).total
 
         val rows = mutableListOf<WRow>()
         for (b in cfg.blocks.filter { it.on }) {

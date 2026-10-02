@@ -158,7 +158,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                 val weightKg = weightsAll.lastOrNull()?.kg ?: profile?.startWeight ?: 70.0
                 val stepsNow = water?.steps ?: 0
                 val stepsGoalNow = profile?.stepsGoal ?: 8000
-                val burned = Energy.burned(stepsNow, weightKg, workoutsAll.filter { it.day == today }.sumOf { it.kcal }, energyAll.firstOrNull { it.day == today }?.activeKcal)
+                val burned = Energy.burned(stepsNow, weightKg, workoutsAll.filter { it.day == today }.sumOf { it.kcal }, energyAll.firstOrNull { it.day == today }?.activeKcal, profile?.heightCm, settings.walkPace)
                 Row(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.STEPS) }, padding = 12.dp) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
