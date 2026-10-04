@@ -20,7 +20,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -178,7 +180,9 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
     var pattern by remember { mutableStateOf<CraftPattern.Pattern?>(null) }
     var preview by remember { mutableStateOf<Bitmap?>(null) }
     var busy by remember { mutableStateOf(true) }
-    var showOriginal by remember { mutableStateOf(false) }
+    /** Что показывать: 0 — готовая работа, 1 — схема с символами, 2 — исходное фото. */
+    var view by remember { mutableIntStateOf(1) }
+    var symbols by remember { mutableStateOf<Bitmap?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var photoVersion by remember { mutableIntStateOf(0) }
@@ -193,8 +197,10 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
         val pat = CraftStore.pattern(ctx, p0)
         pattern = pat
         preview = pat?.let { withContext(Dispatchers.Default) { CraftStore.preview(it, p0.kindEnum, (1400 / maxOf(it.width, it.height)).coerceIn(4, 24), p0.round) } }
+        symbols = pat?.let { withContext(Dispatchers.Default) { CraftStore.symbolChart(it, p0.chartStyle) } }
         busy = false
     }
+    LaunchedEffect(p0.chartStyle) { pattern?.let { pt -> symbols = withContext(Dispatchers.Default) { CraftStore.symbolChart(pt, p0.chartStyle) } } }
     fun save(n: CraftProject) { project = n; CraftStore.save(ctx, n) }
     /** Изменение, которое пересчитает схему: если уже есть отметки выложенных клеток — сначала спросить. */
     fun update(f: (CraftProject) -> CraftProject) {
@@ -262,14 +268,18 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 CraftPattern.Kind.entries.forEach { k -> Pill(k.title, p0.kindEnum == k) { update { it.copy(kind = k.name) } } }
             }
-            Gap(10.dp)
+            Gap(8.dp)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("Схема с символами", "Готовая работа", "Фото").forEachIndexed { i, s -> val v = listOf(1, 0, 2)[i]; Pill(s, view == v) { view = v } }
+            }
+            Gap(8.dp)
             // Предпросмотр: можно приблизить двумя пальцами.
             var scale by remember { mutableFloatStateOf(1f) }
             var ox by remember { mutableFloatStateOf(0f) }
             var oy by remember { mutableFloatStateOf(0f) }
-            val shown = if (showOriginal) original else preview
+            val shown = when (view) { 2 -> original; 1 -> symbols ?: preview; else -> preview }
             Box(
-                Modifier.fillMaxWidth().aspectRatio(((pattern?.width ?: 1).toFloat() / (pattern?.height ?: 1)).coerceIn(0.4f, 2.5f))
+                Modifier.fillMaxWidth().height(340.dp)
                     .clip(RoundedCornerShape(14.dp)).background(Color(0xFF1E1B17))
                     .pointerInput(Unit) {
                         detectTransformGestures { _, pan, zoom, _ ->
@@ -281,16 +291,31 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
             ) {
                 shown?.let {
                     Image(
-                        it.asImageBitmap(), null, Modifier.fillMaxWidth().graphicsLayer(scaleX = scale, scaleY = scale, translationX = ox, translationY = oy),
-                        contentScale = ContentScale.Fit, filterQuality = if (showOriginal) FilterQuality.Medium else FilterQuality.None,
+                        it.asImageBitmap(), null, Modifier.fillMaxSize().graphicsLayer(scaleX = scale, scaleY = scale, translationX = ox, translationY = oy),
+                        contentScale = ContentScale.Fit, filterQuality = if (view == 0) FilterQuality.None else FilterQuality.Medium,
                     )
                 }
                 if (busy) CircularProgressIndicator()
             }
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-                Text("Двумя пальцами — приблизить", fontSize = 12.sp, color = extra.dim, modifier = Modifier.weight(1f))
-                TextButton(onClick = { showOriginal = !showOriginal }) { Text(if (showOriginal) "Показать схему" else "Показать фото") }
+            Text("Двумя пальцами — приблизить и рассмотреть символы", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
+            // Цвета с символами — сразу под схемой, как таблица в наборе.
+            pattern?.let { pt ->
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    pt.colors.forEachIndexed { i, t ->
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { colorEdit = i }) {
+                            ColorChip(t, i, 30)
+                            Text(t.code, fontSize = 10.sp, color = extra.dim)
+                        }
+                    }
+                }
             }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { nav.navigate(Routes.craftWork(p0.id)) }, enabled = !busy && pattern != null, modifier = Modifier.weight(1f)) {
+                    Text(if (p0.kindEnum == CraftPattern.Kind.CROSS) "Вышивать" else "Выкладывать")
+                }
+                OutlinedButton(onClick = { printDialog = true }, enabled = !busy && pattern != null, modifier = Modifier.weight(1f)) { Text("PDF / печать") }
+            }
+            Text("Ниже — размер холста, цвета, таблица с заменой цветов, печать и список покупок ↓", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
 
             val pat = pattern
             if (pat != null) {
@@ -306,9 +331,6 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
                         },
                         fontSize = 13.sp, color = extra.dim,
                     )
-                }
-                Button(onClick = { nav.navigate(Routes.craftWork(p0.id)) }, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                    Text(if (kind == CraftPattern.Kind.CROSS) "Вышивать по схеме — отмечать готовое" else "Выкладывать по схеме — отмечать готовое")
                 }
             }
 

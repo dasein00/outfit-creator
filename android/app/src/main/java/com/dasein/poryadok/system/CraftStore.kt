@@ -228,6 +228,17 @@ object CraftStore {
         c.drawText(CraftPattern.symbol(idx), l + cell / 2f, t + cell * .75f, sym)
     }
 
+    /** Схема с символами для экрана: клетки в выбранном виде, символы, сетка через 10 (размер ограничен, чтобы хватило памяти). */
+    fun symbolChart(p: CraftPattern.Pattern, style: Int): Bitmap {
+        val cell = (2400 / maxOf(p.width, p.height)).coerceIn(8, 28)
+        val bmp = Bitmap.createBitmap(p.width * cell, p.height * cell, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp); c.drawColor(Color.WHITE)
+        val fill = Paint(); val sym = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD }
+        for (y in 0 until p.height) for (x in 0 until p.width) drawCell(c, x * cell.toFloat(), y * cell.toFloat(), cell.toFloat(), p.cells[y * p.width + x], p, style, fill, sym)
+        gridLines(c, 0f, 0f, cell.toFloat(), 0, 0, p.width, p.height)
+        return bmp
+    }
+
     private fun gridLines(c: Canvas, ox: Float, oy: Float, cell: Float, x0: Int, y0: Int, cols: Int, rows: Int) {
         val thin = Paint().apply { color = 0x66000000; strokeWidth = cell * .04f }
         val thick = Paint().apply { color = 0xFF000000.toInt(); strokeWidth = cell * .1f }
