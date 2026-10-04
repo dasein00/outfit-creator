@@ -105,9 +105,10 @@ data class WidgetConfig(
     /** Итоговые цвета с учётом темы и своих настроек. */
     fun colors(): WColors {
         val base = when (theme) {
-            1 -> WColors(0xFFF6F1E7.toInt(), 0xFF211D18.toInt(), 0xFF7A7064.toInt(), 0xFFE2D8C6.toInt())
+            // Светлый фон: тёмные акценты, чтобы надписи читались (контраст от 4,5:1).
+            1 -> WColors(0xFFF6F1E7.toInt(), 0xFF211D18.toInt(), 0xFF4A4237.toInt(), 0xFFE2D8C6.toInt(), 0xFF8A5A1C.toInt(), 0xFF3B6A2E.toInt(), 0xFF9A3A25.toInt())
             2 -> WColors(0x99141210.toInt(), 0xFFF0ECE3.toInt(), 0xFFD5CDBF.toInt(), 0x55FFFFFF)
-            else -> WColors(0xFF211D18.toInt(), 0xFFF0ECE3.toInt(), 0xFFA79E90.toInt(), 0xFF3D362C.toInt())
+            else -> WColors(0xFF211D18.toInt(), 0xFFF0ECE3.toInt(), 0xFFC6BDAF.toInt(), 0xFF3D362C.toInt())
         }
         fun pick(c: Long, def: Int) = if (c == 0L) def else c.toInt()
         val bg0 = pick(bgColor, base.bg)

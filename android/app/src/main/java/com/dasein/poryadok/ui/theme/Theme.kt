@@ -21,7 +21,7 @@ object Palette {
     val Stage2 = Color(0xFFDCD6C7)
     val Brass = Color(0xFFC79246)
     val Text = Color(0xFFF0ECE3)
-    val Dim = Color(0xFFA79E90)
+    val Dim = Color(0xFFC6BDAF)
     val Danger = Color(0xFFB4553F)
     val Ok = Color(0xFF8AB07A)
 
@@ -62,9 +62,14 @@ data class Extra(
     val dark: Boolean,
 )
 
-val LocalExtra = staticCompositionLocalOf {
-    Extra(Palette.Ok, Palette.Brass, Palette.Danger, Palette.Dim, Palette.Ink2, Palette.Ink3, Color(0x24F6F3EC), true)
-}
+/** Дополнительные цвета тем. Пары «текст — фон» держат контраст не ниже 4,5:1 (WCAG AA), см. ThemeContrastTest. */
+val DarkExtra = Extra(Palette.Ok, Palette.Brass, Color(0xFFD9785F), Palette.Dim, Palette.Ink2, Palette.Ink3, Color(0x24F6F3EC), true)
+val LightExtra = Extra(Color(0xFF3B6A2E), Color(0xFF8A5A1C), Color(0xFF9A3A25), Color(0xFF4A4237), Color(0xFFFFFCF6), Color(0xFFEDE7DB), Color(0x1F211D18), false)
+
+/** Основной цвет светлой темы: акцент, затемнённый так, чтобы текст им читался на светлом фоне. */
+fun lightPrimary(acc: Color): Color = acc.darken(.6f)
+
+val LocalExtra = staticCompositionLocalOf { DarkExtra }
 
 val Serif = FontFamily.Serif
 
@@ -101,25 +106,24 @@ fun PoryadokTheme(theme: String, accent: Int, content: @Composable () -> Unit) {
         outline = Color(0x40F6F3EC), outlineVariant = Color(0x24F6F3EC),
         error = Palette.Danger, onError = Color.White,
     ) else lightColorScheme(
-        primary = acc.darken(), onPrimary = Color.White,
+        primary = lightPrimary(acc), onPrimary = Color.White,
         primaryContainer = acc.copy(alpha = .22f), onPrimaryContainer = Palette.Ink,
         secondary = Color(0xFF5E8A4F), onSecondary = Color.White,
         secondaryContainer = Color(0xFFE6E0D3), onSecondaryContainer = Palette.Ink,
         tertiary = Color(0xFF3F7AA3),
         background = Color(0xFFF7F3EB), onBackground = Palette.Ink,
         surface = Color(0xFFF7F3EB), onSurface = Palette.Ink,
-        surfaceVariant = Color(0xFFEDE7DB), onSurfaceVariant = Color(0xFF6C6355),
+        surfaceVariant = Color(0xFFEDE7DB), onSurfaceVariant = Color(0xFF4A4237),
         surfaceContainer = Color(0xFFFFFCF6), surfaceContainerHigh = Color(0xFFEDE7DB),
         surfaceContainerLow = Color(0xFFFBF8F2), surfaceContainerLowest = Color.White,
         surfaceContainerHighest = Color(0xFFE3DCCD),
         outline = Color(0x40211D18), outlineVariant = Color(0x1F211D18),
         error = Color(0xFFA2432E), onError = Color.White,
     )
-    val extra = if (dark) Extra(Palette.Ok, Palette.Brass, Palette.Danger, Palette.Dim, Palette.Ink2, Palette.Ink3, Color(0x24F6F3EC), true)
-    else Extra(Color(0xFF4F7F40), Color(0xFFA8742E), Color(0xFFA2432E), Color(0xFF6C6355), Color(0xFFFFFCF6), Color(0xFFEDE7DB), Color(0x1F211D18), false)
+    val extra = if (dark) DarkExtra else LightExtra
     androidx.compose.runtime.CompositionLocalProvider(LocalExtra provides extra) {
         MaterialTheme(colorScheme = scheme, typography = typography, content = content)
     }
 }
 
-private fun Color.darken(f: Float = .78f) = Color(red * f, green * f, blue * f, alpha)
+internal fun Color.darken(f: Float = .78f) = Color(red * f, green * f, blue * f, alpha)

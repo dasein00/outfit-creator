@@ -147,7 +147,7 @@ fun HomeMoneyCard(nav: NavHostController, cur: String) {
 
 @Composable
 private fun Kpi(label: String, value: String, color: androidx.compose.ui.graphics.Color, modifier: Modifier) {
-    Column(modifier.clip(RoundedCornerShape(12.dp)).background(LocalExtra.current.line.copy(alpha = 0.35f)).padding(horizontal = 8.dp, vertical = 6.dp)) {
+    Column(modifier.clip(RoundedCornerShape(12.dp)).background(LocalExtra.current.cardHigh).padding(horizontal = 8.dp, vertical = 6.dp)) {
         Text(label, fontSize = 11.sp, color = LocalExtra.current.dim)
         Text(value, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
