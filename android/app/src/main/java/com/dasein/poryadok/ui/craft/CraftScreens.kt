@@ -211,6 +211,22 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
     }
     val original = remember(id, photoVersion) { runCatching { BitmapFactory.decodeFile(CraftStore.photo(ctx, id).absolutePath) }.getOrNull() }
 
+    val fileName = p0.name.replace(Regex("[^\\p{L}\\p{N} _-]"), "").ifBlank { "Схема" }
+    val legendExporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("image/png")) { uri ->
+        val pat = pattern
+        if (uri != null && pat != null) scope.launch {
+            busy = true
+            message = runCatching {
+                withContext(Dispatchers.IO) {
+                    val b = CraftStore.legendCard(pat, p0)
+                    ctx.contentResolver.openOutputStream(uri)?.use { b.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                    b.recycle()
+                }
+                "Готово: схема (PDF) и таблица цветов с миниатюрой (PNG) сохранены."
+            }.getOrElse { "Не получилось сохранить таблицу: ${it.message}" }
+            busy = false
+        }
+    }
     var exportPaper by remember { mutableStateOf(210 to 297) }
     var exportReal by remember { mutableStateOf(false) }
     val pdfExporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
@@ -219,9 +235,11 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
             busy = true
             message = runCatching {
                 ctx.contentResolver.openOutputStream(uri)?.use { CraftStore.pdf(ctx, pat, p0, it, exportPaper.first, exportPaper.second, exportReal) }
-                "PDF сохранён: бумага ${exportPaper.first}×${exportPaper.second} мм" + if (exportReal) ", натуральная величина" else ""
+                "PDF сохранён: бумага ${exportPaper.first}×${exportPaper.second} мм" + (if (exportReal) ", натуральная величина" else "") + ". Теперь сохраните таблицу цветов."
             }.getOrElse { "Не получилось сохранить: ${it.message}" }
             busy = false
+            // Второй файл — таблица цветов с миниатюрой, как карточка в наборе.
+            legendExporter.launch("$fileName — таблица цветов.png")
         }
     }
     val pngExporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("image/png")) { uri ->
@@ -244,25 +262,28 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
         scope.launch {
             busy = true
             runCatching {
-                val send = Intent(Intent.ACTION_SEND)
-                if (text != null) send.setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
+                val send: Intent
+                if (text != null) send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
                 else {
-                    val f = withContext(Dispatchers.IO) {
+                    // Два файла: схема PDF и таблица цветов с миниатюрой.
+                    val files = withContext(Dispatchers.IO) {
                         val dir = File(ctx.cacheDir, "share").apply { mkdirs() }
-                        val out = File(dir, "schema_${p0.id}.pdf")
-                        out.outputStream().use { CraftStore.pdf(ctx, pat, p0, it) }
-                        out
+                        val pdf = File(dir, "$fileName.pdf")
+                        pdf.outputStream().use { CraftStore.pdf(ctx, pat, p0, it) }
+                        val png = File(dir, "$fileName — таблица цветов.png")
+                        val b = CraftStore.legendCard(pat, p0)
+                        png.outputStream().use { b.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                        b.recycle()
+                        listOf(pdf, png)
                     }
-                    val uri: Uri = FileProvider.getUriForFile(ctx, ctx.packageName + ".files", f)
-                    send.setType("application/pdf").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    val uris = ArrayList(files.map { FileProvider.getUriForFile(ctx, ctx.packageName + ".files", it) as Uri })
+                    send = Intent(Intent.ACTION_SEND_MULTIPLE).setType("*/*").putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
                 ctx.startActivity(Intent.createChooser(send, "Поделиться"))
             }.onFailure { message = "Не получилось поделиться: ${it.message}" }
             busy = false
         }
     }
-    val fileName = p0.name.replace(Regex("[^\\p{L}\\p{N} _-]"), "").ifBlank { "Схема" }
-
     Screen(p0.name, onBack = { nav.popBackStack() }) { pad ->
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -412,11 +433,12 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
                 SectionTitle("Печать и выгрузка")
                 Text("Вид клеток схемы", fontSize = 14.sp)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
-                    listOf("Как на холсте", "Цветная", "Ч/б символы").forEachIndexed { i, s -> Pill(s, p0.chartStyle == i) { save(p0.copy(chartStyle = i)) } }
+                    listOf(1 to "Цветная, как в наборе", 0 to "Светлая", 2 to "Ч/б символы").forEach { (i, s) -> Pill(s, p0.chartStyle == i) { save(p0.copy(chartStyle = i)) } }
                 }
-                Button(onClick = { printDialog = true }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("PDF для печати: A4, A3, A2… или свой размер") }
+                Button(onClick = { printDialog = true }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Выгрузить: схема PDF (A4, A3, A2…) + таблица цветов") }
                 OutlinedButton(onClick = { pngExporter.launch("$fileName.png") }, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("Схема одной картинкой (PNG)") }
-                OutlinedButton(onClick = { share() }, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("Поделиться схемой (PDF)") }
+                OutlinedButton(onClick = { legendExporter.launch("$fileName — таблица цветов.png") }, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("Таблица цветов с миниатюрой (PNG)") }
+                OutlinedButton(onClick = { share() }, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("Поделиться: схема PDF + таблица цветов") }
                 val toBuy = pat.colors.indices.filter { pat.colors[it].code !in stash }
                 OutlinedButton(
                     onClick = {

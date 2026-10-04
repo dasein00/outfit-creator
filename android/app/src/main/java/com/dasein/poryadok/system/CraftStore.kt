@@ -47,8 +47,8 @@ data class CraftProject(
     val onlyStash: Boolean = false,
     /** Замены цветов: номер DMC → номер DMC. */
     val replace: Map<String, String> = emptyMap(),
-    /** Вид схемы: 0 — как на холсте (светлый оттенок + символ), 1 — цветная, 2 — только символы (ч/б печать). */
-    val chartStyle: Int = 0,
+    /** Вид схемы: 1 — цветная, как в наборах (цвет клетки + символ), 0 — светлый оттенок + символ, 2 — только символы (ч/б печать). */
+    val chartStyle: Int = 1,
     /** Подпись схемы, к которой относятся отметки клеток. */
     val progressSig: String = "",
 ) {
@@ -228,6 +228,69 @@ object CraftStore {
         c.drawText(CraftPattern.symbol(idx), l + cell / 2f, t + cell * .75f, sym)
     }
 
+    /**
+     * Карточка «таблица цветов», как в наборах: слева таблица — № цвета, клетка с символом (маркировка на холсте), номер DMC и сколько нужно;
+     * справа — миниатюра готовой работы в рамке.
+     */
+    fun legendCard(p: CraftPattern.Pattern, pr: CraftProject): Bitmap {
+        val kind = pr.kindEnum
+        val counts = p.counts()
+        val rowH = 56
+        val perCol = 40
+        val tables = (p.colors.size + perCol - 1) / perCol
+        val colW = 620
+        val rows = minOf(p.colors.size, perCol)
+        val tableH = 140 + rows * rowH
+        val prev = preview(p, kind, (900 / maxOf(p.width, p.height)).coerceIn(2, 16), pr.round)
+        val picW = 900f; val picH = picW * prev.height / prev.width
+        val W = 60 + tables * (colW + 30) + picW.toInt() + 160
+        val H = maxOf(tableH + 120, picH.toInt() + 260)
+        val bmp = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp); c.drawColor(Color.WHITE)
+        val line = Paint().apply { color = Color.BLACK; strokeWidth = 2f; style = Paint.Style.STROKE }
+        val txt = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK; textSize = 30f }
+        val small = Paint(txt).apply { textSize = 24f; color = 0xFF333333.toInt() }
+        val head = Paint(txt).apply { textSize = 26f; typeface = Typeface.DEFAULT_BOLD }
+        val fill = Paint(); val sym = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD }
+        val unitTitle = when (kind) { CraftPattern.Kind.DIAMOND -> "стразы"; CraftPattern.Kind.CROSS -> "нитки"; CraftPattern.Kind.BEADS -> "бисер" }
+        for (tIdx in 0 until tables) {
+            val x0 = 60f + tIdx * (colW + 30); val y0 = 60f
+            // Шапка таблицы
+            c.drawRect(x0, y0, x0 + colW, y0 + 110, line)
+            val cx = floatArrayOf(x0, x0 + 90, x0 + 230, x0 + 380, x0 + colW)
+            for (x in cx) c.drawLine(x, y0, x, y0 + 110 + rows * rowH, line)
+            c.drawText("№", x0 + 30, y0 + 44, head); c.drawText("цвета", x0 + 8, y0 + 80, small)
+            c.drawText("Символ", cx[1] + 14, y0 + 44, head); c.drawText("на холсте", cx[1] + 12, y0 + 80, small)
+            c.drawText("DMC", cx[2] + 40, y0 + 44, head); c.drawText(unitTitle, cx[2] + 30, y0 + 80, small)
+            c.drawText("Нужно", cx[3] + 60, y0 + 44, head); c.drawText(kind.unit, cx[3] + 60, y0 + 80, small)
+            for (r in 0 until rows) {
+                val i = tIdx * perCol + r
+                val y = y0 + 110 + r * rowH
+                c.drawLine(x0, y + rowH, x0 + colW, y + rowH, line)
+                if (i >= p.colors.size) continue
+                c.drawText("${i + 1}", x0 + 24, y + 40, txt)
+                drawCell(c, cx[1] + 30, y + 4, rowH - 8f, i, p, 1, fill, sym)
+                c.drawText(p.colors[i].code, cx[2] + 20, y + 40, txt)
+                val n = CraftPattern.need(kind, counts[i], pr.count)
+                c.drawText("${counts[i]} · ${fmt(n.amount)} ${n.unit}", cx[3] + 14, y + 38, small)
+            }
+            c.drawRect(x0, y0, x0 + colW, y0 + 110 + rows * rowH, line)
+        }
+        // Миниатюра в рамке
+        val px = 60f + tables * (colW + 30) + 50; val py = 120f
+        val frame = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFC9A44C.toInt() }
+        c.drawRect(px - 36, py - 36, px + picW + 36, py + picH + 36, frame)
+        frame.color = 0xFF8C6A22.toInt(); frame.style = Paint.Style.STROKE; frame.strokeWidth = 6f
+        c.drawRect(px - 36, py - 36, px + picW + 36, py + picH + 36, frame)
+        c.drawRect(px - 6, py - 6, px + picW + 6, py + picH + 6, frame)
+        c.drawBitmap(prev, null, RectF(px, py, px + picW, py + picH), Paint(Paint.FILTER_BITMAP_FLAG))
+        prev.recycle()
+        val w = CraftPattern.sizeCm(kind, p.width, pr.count, pr.round); val h = CraftPattern.sizeCm(kind, p.height, pr.count, pr.round)
+        c.drawText(pr.name, px, py + picH + 90, head.apply { textSize = 34f })
+        c.drawText("${kind.title} · ${p.width}×${p.height} клеток · ${"%.1f".format(w)}×${"%.1f".format(h)} см · цветов ${p.colors.size}", px, py + picH + 136, small)
+        return bmp
+    }
+
     /** Схема с символами для экрана: клетки в выбранном виде, символы, сетка через 10 (размер ограничен, чтобы хватило памяти). */
     fun symbolChart(p: CraftPattern.Pattern, style: Int): Bitmap {
         val cell = (2400 / maxOf(p.width, p.height)).coerceIn(8, 28)
@@ -341,13 +404,14 @@ object CraftStore {
             }
             val rows = if (first) firstRows else nextRows
             val headTxt = Paint(txt).apply { typeface = Typeface.DEFAULT_BOLD }
-            c.drawText("Символ · номер DMC · название · клеток · сколько купить", m, y, headTxt); y += rowH
+            c.drawText("№ · символ · номер DMC · название · клеток · сколько купить", m, y, headTxt); y += rowH
             repeat(rows) {
                 if (i >= p.colors.size) return@repeat
                 val t = p.colors[i]
-                drawCell(c, m, y - 10 * scale, 12f * scale, i, p, pr.chartStyle, fill, sym)
+                c.drawText("${i + 1}", m, y, txt)
+                drawCell(c, m + 18 * scale, y - 10 * scale, 12f * scale, i, p, pr.chartStyle, fill, sym)
                 val n = CraftPattern.need(kind, counts[i], pr.count)
-                c.drawText("DMC ${t.code}   ${t.name}   ${counts[i]}   ${fmt(n.amount)} ${n.unit}", m + 20 * scale, y, txt)
+                c.drawText("DMC ${t.code}   ${t.name}   ${counts[i]}   ${fmt(n.amount)} ${n.unit}", m + 38 * scale, y, txt)
                 y += rowH; i++
             }
             doc.finishPage(page)
