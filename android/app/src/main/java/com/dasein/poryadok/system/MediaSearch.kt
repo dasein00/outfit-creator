@@ -146,7 +146,7 @@ object MediaSearch {
     }
 
     /** Какой каталог соберёт подборку по фильтрам: выбранный, если умеет, иначе TMDB → Кинопоиск → Викиданные. */
-    fun discoverSource(chosen: MediaSource, f: MediaDiscover.Filter): MediaSource {
+    suspend fun discoverSource(chosen: MediaSource, f: MediaDiscover.Filter): MediaSource {
         val prefs = Graph.prefs.now()
         val tmdb = prefs.tmdbToken.isNotBlank(); val kp = prefs.kinopoiskToken.isNotBlank()
         // Поиск по людям без ключа умеют только Викиданные.
