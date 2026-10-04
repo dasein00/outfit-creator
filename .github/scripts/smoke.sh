@@ -30,7 +30,7 @@ routes=(
   "health?tab=0" "health?tab=1" "health?tab=2" "health?tab=3" "health?tab=4" "health?tab=5"
   "wellbeing?tab=0" "wellbeing?tab=1" "wellbeing?tab=2"
   "notes" "tops" "top/1" "wardrobe" "outfits" "wheel" "review" "settings" "search"
-  "finance?tab=1" "finance?tab=2" "finance?tab=3" "finance?tab=4" "calendar?tab=1"
+  "finance?tab=1" "finance?tab=2" "finance?tab=3" "finance?tab=4" "finance?tab=5" "finance?tab=6" "calendar?tab=1"
   "task/1" "txn/0" "habit/1" "habitEdit/0" "goal/1" "event/1" "note/2"
   "recipes" "recipes?tab=1&mode=0" "recipes?tab=1&mode=1" "recipes?tab=1&mode=2" "recipes?tab=2" "recipes?tab=3"
   "recipe/1" "recipe/20" "recipeEdit/0" "menuCreate" "presets" "preset/1" "shopping" "cookHistory"

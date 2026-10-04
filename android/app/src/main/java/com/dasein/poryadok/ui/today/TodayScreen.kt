@@ -112,8 +112,6 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
     val reminders by observe(emptyList()) { dao.reminders() }
     val dayLogs by observe(emptyList()) { dao.dayLogs() }
     val moods by observe(emptyList()) { dao.moods() }
-    val txns by observe(emptyList()) { dao.txns() }
-    val budgets by observe(emptyList()) { dao.budgets() }
     val goals by observe(emptyList()) { dao.goals() }
     val profile by observe(null) { dao.profile() }
     val plan by observe(emptyList()) { Graph.extra.plan() }
@@ -131,10 +129,6 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
     val waterGoal = profile?.waterGoalMl ?: 2000
     val moodToday = moods.firstOrNull { it.day == today }
     val ym = YearMonth.now()
-    val monthRange = Dates.monthRange(ym)
-    val spentToday = txns.filter { it.type == TxnType.EXPENSE && it.day == today }.sumOf { it.amount }
-    val spentMonth = txns.filter { it.type == TxnType.EXPENSE && it.day in monthRange }.sumOf { it.amount }
-    val totalBudget = budgets.firstOrNull { it.categoryId == 0L }?.monthly
     val todayEvents = eventsOn(events, today)
     val todayReminders = remindersOn(reminders, today).filter { !it.done }
     val taskProgressTotal = todayTasks.size + doneToday.size
@@ -373,35 +367,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
             }
 
             item { SectionTitle("Деньги", action = "Финансы") { nav.navigate(Routes.FINANCE) } }
-            item {
-                Tile(onClick = { nav.navigate(Routes.txn(0)) }) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Сегодня потрачено", fontSize = 13.sp, color = extra.dim)
-                            Text(Money.format(spentToday, settings.currency), style = MaterialTheme.typography.titleLarge)
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text("За месяц", fontSize = 13.sp, color = extra.dim)
-                            Text(Money.format(spentMonth, settings.currency), style = MaterialTheme.typography.titleMedium)
-                        }
-                    }
-                    if (totalBudget != null && totalBudget > 0) {
-                        Gap(8.dp)
-                        val level = Money.budgetLevel(spentMonth, totalBudget)
-                        Bar(
-                            (spentMonth / totalBudget).toFloat(),
-                            when (level) { Money.BudgetLevel.OK -> extra.ok; Money.BudgetLevel.NEAR -> extra.warn; Money.BudgetLevel.OVER -> extra.danger },
-                        )
-                        val daysLeft = (monthRange.last - today + 1).toInt()
-                        Text(
-                            "Можно тратить ${Money.format(Money.dailyAllowance(totalBudget, spentMonth, daysLeft), settings.currency)} в день",
-                            fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
-                        )
-                    }
-                    Gap(6.dp)
-                    Text("+ Записать расход", color = MaterialTheme.colorScheme.primary, fontSize = 14.sp)
-                }
-            }
+            item { com.dasein.poryadok.ui.finance.HomeMoneyCard(nav, settings.currency) }
 
             val activeGoals = goals.filter { !it.done }.take(3)
             if (activeGoals.isNotEmpty()) {

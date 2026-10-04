@@ -136,9 +136,9 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
             FloatingActionButton(
                 onClick = {
                     when (tab) {
-                        2 -> editBudget = Budget(categoryId = -1, monthly = 0.0)
-                        3 -> editRecurring = Recurring(title = "", amount = 0.0, accountId = accounts.firstOrNull()?.id ?: 0, nextDay = Dates.today())
-                        4 -> editAccount = Account(name = "")
+                        3 -> editBudget = Budget(categoryId = -1, monthly = 0.0)
+                        4 -> editRecurring = Recurring(title = "", amount = 0.0, accountId = accounts.firstOrNull()?.id ?: 0, nextDay = Dates.today())
+                        5 -> editAccount = Account(name = "")
                         else -> nav.navigate(Routes.txn(0))
                     }
                 },
@@ -148,11 +148,11 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
     ) { pad ->
         Column(Modifier.padding(pad)) {
             ScrollableTabRow(selectedTabIndex = tab, edgePadding = 12.dp, containerColor = MaterialTheme.colorScheme.background) {
-                listOf("Операции", "Обзор", "Бюджеты", "Регулярные", "Счета").forEachIndexed { i, t ->
+                listOf("Операции", "Обзор", "Аналитика", "Бюджеты", "Регулярные", "Счета", "Калькуляторы").forEachIndexed { i, t ->
                     Tab(tab == i, onClick = { tab = i }, text = { Text(t) })
                 }
             }
-            if (tab <= 2) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            if (tab <= 3) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { ymText = ym.minusMonths(1).toString() }) { Icon(Icons.Default.ChevronLeft, "Раньше") }
                 Text(Dates.monthTitle(ym), Modifier.weight(1f), textAlign = TextAlign.Center, style = MaterialTheme.typography.titleMedium)
                 IconButton(onClick = { ymText = ym.plusMonths(1).toString() }) { Icon(Icons.Default.ChevronRight, "Позже") }
@@ -175,9 +175,11 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
             when (tab) {
                 0 -> Operations(nav, month, cats, accounts, cur)
                 1 -> Overview(txns, month, cats, ym, cur) { editCategory = it }
-                2 -> Budgets(month, cats, budgets, ym, cur) { editBudget = it }
-                3 -> RecurringList(recurring, cats, accounts, cur) { editRecurring = it }
-                4 -> Accounts(accounts, txns, cur) { editAccount = it }
+                2 -> FinanceAnalytics(txns, cats, accounts, budgets, ym, cur)
+                3 -> Budgets(month, cats, budgets, ym, cur) { editBudget = it }
+                4 -> RecurringList(recurring, cats, accounts, cur) { editRecurring = it }
+                5 -> Accounts(accounts, txns, cur) { editAccount = it }
+                6 -> FinanceCalculators(cur)
             }
         }
     }

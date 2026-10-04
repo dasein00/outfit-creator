@@ -18,12 +18,20 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
-/** Источники поиска. «Везде» опрашивает все подходящие сразу. Кинопоиску нужен бесплатный личный токен (api.kinopoisk.dev). */
+/**
+ * Источники поиска. «Везде» опрашивает все подходящие сразу.
+ * Без ключа: Википедия, IMDb, TVMaze, iTunes, Шикимори, Google Книги, Open Library.
+ * С бесплатным личным ключом: Кинопоиск (api.kinopoisk.dev) и TMDB (themoviedb.org) — в TMDB больше всего дорам с русскими описаниями.
+ */
 enum class MediaSource(val title: String, val kinds: Set<Int>, val needsToken: Boolean = false) {
     ALL("Везде", setOf(MediaParse.MOVIE, MediaParse.SERIES, MediaParse.BOOK)),
     KINOPOISK("Кинопоиск", setOf(MediaParse.MOVIE, MediaParse.SERIES), needsToken = true),
+    TMDB("TMDB", setOf(MediaParse.MOVIE, MediaParse.SERIES), needsToken = true),
     WIKI("Википедия", setOf(MediaParse.MOVIE, MediaParse.SERIES, MediaParse.BOOK)),
+    IMDB("IMDb", setOf(MediaParse.MOVIE, MediaParse.SERIES)),
     TVMAZE("TVMaze", setOf(MediaParse.SERIES)),
+    ITUNES("iTunes", setOf(MediaParse.MOVIE, MediaParse.SERIES)),
+    SHIKIMORI("Шикимори (аниме)", setOf(MediaParse.MOVIE, MediaParse.SERIES)),
     GOOGLE_BOOKS("Google Книги", setOf(MediaParse.BOOK)),
     OPEN_LIBRARY("Open Library", setOf(MediaParse.BOOK)),
 }
@@ -61,6 +69,23 @@ object MediaSearch {
             }
             MediaSource.ALL -> all(kind, query)
             MediaSource.WIKI -> wiki(kind, query.trim())
+            MediaSource.TMDB -> {
+                val token = Graph.prefs.now().tmdbToken.trim()
+                if (token.isBlank()) error("Нужен ключ TMDB")
+                val type = if (kind == MediaParse.SERIES) "tv" else "movie"
+                // Ключ v4 (длинный JWT) — в заголовке, короткий v3 — параметром.
+                val url = "https://api.themoviedb.org/3/search/$type?language=ru-RU&include_adult=false&query=$q" + if (token.length <= 40) "&api_key=$token" else ""
+                val json = get(url, if (token.length > 40) mapOf("Authorization" to "Bearer $token") else emptyMap())
+                MediaParse.tmdbSearch(json, kind, type)
+            }
+            MediaSource.IMDB -> {
+                val term = query.trim().lowercase()
+                MediaParse.imdbSuggest(get("https://v3.sg.media-imdb.com/suggestion/x/${enc(term).replace("+", "%20")}.json"), kind)
+            }
+            MediaSource.ITUNES -> if (kind == MediaParse.SERIES)
+                MediaParse.itunesTv(get("https://itunes.apple.com/search?term=$q&media=tvShow&entity=tvSeason&country=ru&lang=ru_ru&limit=25"))
+            else MediaParse.itunes(get("https://itunes.apple.com/search?term=$q&media=movie&entity=movie&country=ru&lang=ru_ru&limit=25"))
+            MediaSource.SHIKIMORI -> MediaParse.shikimori(get("https://shikimori.one/api/animes?search=$q&limit=20&order=popularity"), kind)
             MediaSource.TVMAZE -> MediaParse.tvmazeSearch(get("https://api.tvmaze.com/search/shows?q=$q"))
             MediaSource.GOOGLE_BOOKS -> MediaParse.googleBooks(get("https://www.googleapis.com/books/v1/volumes?q=$q&maxResults=25&printType=books"))
             MediaSource.OPEN_LIBRARY -> MediaParse.openLibrary(get("https://openlibrary.org/search.json?q=$q&limit=25"))
@@ -69,11 +94,13 @@ object MediaSearch {
 
     /** Все подходящие каталоги параллельно; Кинопоиск первым (если есть токен), без повторов. */
     private suspend fun all(kind: Int, query: String): List<MediaHit> = coroutineScope {
-        val hasToken = Graph.prefs.now().kinopoiskToken.isNotBlank()
+        val prefs = Graph.prefs.now()
+        val kp = MediaSource.KINOPOISK.takeIf { prefs.kinopoiskToken.isNotBlank() }
+        val tmdb = MediaSource.TMDB.takeIf { prefs.tmdbToken.isNotBlank() }
         val sources = when (kind) {
             MediaParse.BOOK -> listOf(MediaSource.GOOGLE_BOOKS, MediaSource.WIKI, MediaSource.OPEN_LIBRARY)
-            MediaParse.SERIES -> listOfNotNull(MediaSource.KINOPOISK.takeIf { hasToken }, MediaSource.WIKI, MediaSource.TVMAZE)
-            else -> listOfNotNull(MediaSource.KINOPOISK.takeIf { hasToken }, MediaSource.WIKI)
+            MediaParse.SERIES -> listOfNotNull(kp, tmdb, MediaSource.WIKI, MediaSource.TVMAZE, MediaSource.IMDB, MediaSource.ITUNES)
+            else -> listOfNotNull(kp, tmdb, MediaSource.WIKI, MediaSource.IMDB, MediaSource.ITUNES)
         }
         val results = sources.map { s -> async { runCatching { search(s, kind, query) }.getOrDefault(emptyList()) } }.awaitAll()
         MediaParse.mergeHits(results)

@@ -4,6 +4,7 @@ package com.dasein.poryadok.ui.media
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -116,9 +117,10 @@ fun ContinueShelf(items: List<MediaItem>, onOpen: (MediaItem) -> Unit) {
 
 /** Строка списка: постер, название, год и жанры, автор, оценки, статус и прогресс. */
 @Composable
-fun MediaRow(m: MediaItem, onOpen: () -> Unit) {
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+fun MediaRow(m: MediaItem, onLong: (() -> Unit)? = null, onOpen: () -> Unit) {
     val extra = LocalExtra.current
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onOpen).padding(vertical = 4.dp)) {
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).combinedClickable(onClick = onOpen, onLongClick = onLong).padding(vertical = 4.dp)) {
         Poster(m, 64.dp)
         Column(Modifier.weight(1f).padding(start = 10.dp)) {
             Text(m.title, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)

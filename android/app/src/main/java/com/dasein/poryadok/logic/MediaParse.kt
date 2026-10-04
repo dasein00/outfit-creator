@@ -68,6 +68,104 @@ object MediaParse {
         }
     }
 
+    /** iTunes: сезоны сериалов (media=tvShow, entity=tvSeason) — один результат на сериал. */
+    fun itunesTv(text: String): List<MediaHit> {
+        val root = json.parseToJsonElement(text).obj() ?: return emptyList()
+        return root["results"].arr().orEmpty().mapNotNull { e ->
+            val o = e.obj() ?: return@mapNotNull null
+            val show = o["artistName"].str() ?: o["collectionName"].str() ?: return@mapNotNull null
+            MediaHit(
+                kind = SERIES, title = show, year = o["releaseDate"].str()?.take(4)?.toIntOrNull(),
+                posterUrl = o["artworkUrl100"].str()?.replace("100x100bb", "600x600bb").orEmpty(),
+                description = o["longDescription"].str().orEmpty(), genres = o["primaryGenreName"].str().orEmpty(),
+                source = "iTunes", externalId = "itunes:" + (o["artistId"].int() ?: show.hashCode()), url = o["artistViewUrl"].str() ?: o["collectionViewUrl"].str().orEmpty(),
+            )
+        }.distinctBy { it.title.lowercase() }
+    }
+
+    /**
+     * IMDb (подсказки поиска, без ключа): фильмы и сериалы всех стран, в том числе дорамы.
+     * Названия — как в международном прокате, постер — с IMDb.
+     */
+    fun imdbSuggest(text: String, kind: Int): List<MediaHit> {
+        val root = json.parseToJsonElement(text).obj() ?: return emptyList()
+        return root["d"].arr().orEmpty().mapNotNull { e ->
+            val o = e.obj() ?: return@mapNotNull null
+            val id = o["id"].str()?.takeIf { it.startsWith("tt") } ?: return@mapNotNull null
+            val qid = o["qid"].str().orEmpty()
+            val k = when (qid) {
+                "movie", "tvMovie", "short", "video" -> MOVIE
+                "tvSeries", "tvMiniSeries" -> SERIES
+                else -> return@mapNotNull null
+            }
+            if (k != kind) return@mapNotNull null
+            val title = o["l"].str() ?: return@mapNotNull null
+            MediaHit(
+                kind = k, title = title, year = o["y"].int(),
+                posterUrl = o["i"].obj()?.get("imageUrl").str()?.let { u -> u.replace(Regex("""\._V1_.*\.jpg$"""), "._V1_SX600.jpg") }.orEmpty(),
+                cast = o["s"].str()?.split(", ")?.joinToString("\n").orEmpty(),
+                length = listOfNotNull(o["q"].str()?.let { if (it == "TV mini-series") "мини-сериал" else null }, o["yr"].str()?.takeIf { '-' in it || '–' in it }).joinToString(" · "),
+                source = "IMDb", externalId = "imdb:$id", url = "https://www.imdb.com/title/$id/",
+            )
+        }
+    }
+
+    private val TMDB_GENRES = mapOf(
+        28 to "боевик", 12 to "приключения", 16 to "мультфильм", 35 to "комедия", 80 to "криминал", 99 to "документальный",
+        18 to "драма", 10751 to "семейный", 14 to "фэнтези", 36 to "история", 27 to "ужасы", 10402 to "музыка", 9648 to "детектив",
+        10749 to "мелодрама", 878 to "фантастика", 10770 to "телефильм", 53 to "триллер", 10752 to "военный", 37 to "вестерн",
+        10759 to "боевик и приключения", 10762 to "детский", 10763 to "новости", 10764 to "реалити-шоу", 10765 to "фантастика и фэнтези",
+        10766 to "мыльная опера", 10767 to "ток-шоу", 10768 to "война и политика",
+    )
+    private val COUNTRY_RU = mapOf(
+        "KR" to "Южная Корея", "CN" to "Китай", "JP" to "Япония", "TW" to "Тайвань", "TH" to "Таиланд", "HK" to "Гонконг",
+        "PH" to "Филиппины", "IN" to "Индия", "US" to "США", "GB" to "Великобритания", "RU" to "Россия", "FR" to "Франция",
+        "DE" to "Германия", "ES" to "Испания", "IT" to "Италия", "TR" to "Турция", "CA" to "Канада", "AU" to "Австралия",
+    )
+
+    /** TMDB (нужен бесплатный ключ): фильмы и сериалы с русскими названиями и описаниями, лучший выбор для дорам. */
+    fun tmdbSearch(text: String, kind: Int, type0: String? = null): List<MediaHit> {
+        val root = json.parseToJsonElement(text).obj() ?: return emptyList()
+        return root["results"].arr().orEmpty().mapNotNull { e ->
+            val o = e.obj() ?: return@mapNotNull null
+            // В ответах search/movie и search/tv поля media_type нет — тип известен из запроса.
+            val type = o["media_type"].str() ?: type0 ?: if (o["first_air_date"] != null) "tv" else "movie"
+            val k = when (type) { "movie" -> MOVIE; "tv" -> SERIES; else -> return@mapNotNull null }
+            if (k != kind) return@mapNotNull null
+            val title = (o["title"] ?: o["name"]).str() ?: return@mapNotNull null
+            val id = o["id"].int() ?: return@mapNotNull null
+            MediaHit(
+                kind = k, title = title, originalTitle = (o["original_title"] ?: o["original_name"]).str()?.takeIf { it != title }.orEmpty(),
+                year = (o["release_date"] ?: o["first_air_date"]).str()?.take(4)?.toIntOrNull(),
+                posterUrl = o["poster_path"].str()?.let { "https://image.tmdb.org/t/p/w500$it" }.orEmpty(),
+                description = o["overview"].str().orEmpty(),
+                genres = o["genre_ids"].arr().orEmpty().mapNotNull { g -> g.int()?.let { TMDB_GENRES[it] } }.joinToString(", "),
+                countries = o["origin_country"].arr().orEmpty().mapNotNull { c -> c.str()?.let { COUNTRY_RU[it] ?: it } }.joinToString(", "),
+                rating = o["vote_average"].dbl()?.takeIf { it > 0 },
+                source = "TMDB", externalId = "tmdb:$type:$id", url = "https://www.themoviedb.org/$type/$id",
+            )
+        }
+    }
+
+    /** Шикимори (аниме, без ключа, по-русски). Сериалы — kind tv/ona, фильмы — movie. */
+    fun shikimori(text: String, kind: Int): List<MediaHit> =
+        json.parseToJsonElement(text).arr().orEmpty().mapNotNull { e ->
+            val o = e.obj() ?: return@mapNotNull null
+            val k = when (o["kind"].str()) { "movie" -> MOVIE; "tv", "ona", "ova", "tv_special" -> SERIES; else -> return@mapNotNull null }
+            if (k != kind) return@mapNotNull null
+            val name = o["name"].str() ?: return@mapNotNull null
+            val ru = o["russian"].str()
+            MediaHit(
+                kind = k, title = ru ?: name, originalTitle = if (ru != null) name else "",
+                year = o["aired_on"].str()?.take(4)?.toIntOrNull(),
+                posterUrl = o["image"].obj()?.get("original").str()?.let { if (it.startsWith("http")) it else "https://shikimori.one$it" }.orEmpty(),
+                genres = "аниме", countries = "Япония",
+                length = o["episodes"].int()?.takeIf { it > 0 && k == SERIES }?.let { "$it эп." }.orEmpty(),
+                rating = o["score"].str()?.toDoubleOrNull()?.takeIf { it > 0 },
+                source = "Шикимори", externalId = "shiki:" + o["id"].int(), url = o["url"].str()?.let { "https://shikimori.one$it" }.orEmpty(),
+            )
+        }
+
     /** TVMaze (сериалы, без ключа): поиск шоу. */
     fun tvmazeSearch(text: String): List<MediaHit> =
         json.parseToJsonElement(text).arr().orEmpty().mapNotNull { e -> e.obj()?.get("show").obj()?.let { tvmazeShow(it) } }
