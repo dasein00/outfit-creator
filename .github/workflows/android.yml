@@ -42,8 +42,11 @@ jobs:
       - name: Error summary
         if: failure()
         run: |
-          grep -E "^e: |FAILED|AssertionError|What went wrong" -A4 build.log | head -150 || true
-          find app/build/test-results -name "*.xml" -exec grep -l "<failure" {} \; 2>/dev/null | xargs -r grep -h -A6 "<failure" | head -60 || true
+          { grep -E "^e: |FAILED|AssertionError|What went wrong" -A4 build.log | head -150 || true
+            find app/build/test-results -name "*.xml" -exec grep -l "<failure" {} \; 2>/dev/null | xargs -r grep -h -A6 "<failure" | head -60 || true; } > summary.txt
+          cat summary.txt
+          # Одной аннотацией — чтобы причина была видна в API без скачивания логов.
+          echo "::error title=Build summary::$(head -c 6000 summary.txt | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')"
 
       - uses: actions/upload-artifact@v4
         with:
