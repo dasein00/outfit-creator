@@ -179,6 +179,7 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
     var group by rememberSaveable(kind) { mutableStateOf(com.dasein.poryadok.logic.MediaShelf.Group.NONE) }
     var selected by remember(kind) { mutableStateOf(setOf<Long>()) }
     var bulk by remember { mutableStateOf(false) }
+    var renameAll by remember { mutableStateOf(false) }
     var q by rememberSaveable(kind) { mutableStateOf("") }
     var menu by remember { mutableStateOf(false) }
     var import by remember { mutableStateOf(false) }
@@ -236,6 +237,7 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
                     if (kind != MediaKind.BOOK) DropdownMenuItem(text = { Text("Импорт с Кинопоиска") }, leadingIcon = { Glyph("habit/01", 20.dp) }, onClick = { menu = false; nav.navigate(Routes.kpImport(kind)) })
                     DropdownMenuItem(text = { Text("Импорт списка текстом") }, leadingIcon = { Glyph("habit/26", 20.dp) }, onClick = { menu = false; import = true })
                     DropdownMenuItem(text = { Text("Новая папка") }, leadingIcon = { Glyph("ui:folder", 20.dp) }, onClick = { menu = false; newList = true })
+                    DropdownMenuItem(text = { Text("Переименовать папки и статусы") }, leadingIcon = { Glyph("ui:sliders", 20.dp) }, onClick = { menu = false; renameAll = true })
                 }
             }
         },
@@ -252,7 +254,7 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
                     SearchField(q, { q = it }, "Название, режиссёр, актёр, жанр, метка")
                     Gap(8.dp)
                     ContinueShelf(base.filter { it.status == MediaStatus.IN_PROGRESS }.sortedByDescending { it.startedDay ?: 0L }) { nav.navigate(Routes.media(it.id, kind)) }
-                    FolderShelf(base, myLists, listItems, listKey, onSelect = { listKey = it }, onNew = { newList = true }, onEdit = { renameList = it })
+                    FolderShelf(base, myLists, listItems, listKey, onSelect = { listKey = it }, onNew = { newList = true }, onEdit = { renameList = it }, onRenameAll = { renameAll = true })
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         SortButton(MediaSort.entries, sort, { it.label }) { sort = it }
                         Spacer(Modifier.weight(1f))
@@ -368,6 +370,7 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
         RandomPickDialog(kind, planned, onOpen = { random = false; nav.navigate(Routes.media(it.id, kind)) }) { random = false }
     }
     if (import) ImportDialog(kind) { import = false }
+    if (renameAll) RenameAllDialog(kind, myLists) { renameAll = false }
     if (bulk) BulkActionsDialog(
         kind, base.filter { it.id in selected }, myLists, listFilter,
         onNewFolder = { newList = true },

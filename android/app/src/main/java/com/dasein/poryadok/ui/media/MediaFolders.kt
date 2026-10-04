@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dasein.poryadok.Graph
+import com.dasein.poryadok.data.CustomNames
 import com.dasein.poryadok.data.MediaItem
 import com.dasein.poryadok.data.MediaList
 import com.dasein.poryadok.data.MediaListItem
@@ -60,18 +61,22 @@ fun FolderShelf(
     onSelect: (String) -> Unit,
     onNew: () -> Unit,
     onEdit: (MediaList) -> Unit,
+    onRenameAll: () -> Unit = {},
 ) {
     val now = System.currentTimeMillis()
     val ids = base.map { it.id }.toSet()
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp)) {
-        FolderChip("ui:grid", "Все", base.size, selected.isEmpty(), onClick = { onSelect("") })
+        FolderChip("ui:grid", "Все", base.size, selected.isEmpty(), onClick = { onSelect("") }, onLong = onRenameAll)
         folders.forEach { f ->
             val n = items.count { it.listId == f.id && it.mediaId in ids }
             FolderChip(f.glyph.ifBlank { "ui:folder" }, f.name, n, selected == "${f.id}", onClick = { onSelect(if (selected == "${f.id}") "" else "${f.id}") }, onLong = { onEdit(f) })
         }
         MediaShelf.SMART.forEach { s ->
             val n = base.count { s.test(it, now) }
-            if (n > 0 || selected == s.key) FolderChip(s.glyph, s.title, n, selected == s.key, smart = true, onClick = { onSelect(if (selected == s.key) "" else s.key) })
+            if (n > 0 || selected == s.key) FolderChip(
+                s.glyph, CustomNames.get("smart_${s.key}", s.title), n, selected == s.key, smart = true,
+                onClick = { onSelect(if (selected == s.key) "" else s.key) }, onLong = onRenameAll,
+            )
         }
         FolderChip("ui:folder", "+ Папка", -1, false, onClick = onNew)
     }
@@ -218,4 +223,44 @@ private fun MenuRow(glyph: String, text: String, danger: Boolean = false, onClic
         Glyph(glyph, 20.dp)
         Text("   $text", fontSize = 16.sp, color = if (danger) LocalExtra.current.danger else MaterialTheme.colorScheme.onSurface)
     }
+}
+
+/**
+ * Все названия в одном месте: статусы («Хочу посмотреть» → «В планах»), свои папки и умные папки.
+ * Пустое поле — вернуть стандартное название.
+ */
+@Composable
+fun RenameAllDialog(kind: Int, folders: List<MediaList>, onDismiss: () -> Unit) {
+    val extra = LocalExtra.current
+    val defaults = MediaStatus.defaults(kind)
+    val statuses = remember { androidx.compose.runtime.mutableStateListOf(*MediaStatus.names(kind).toTypedArray()) }
+    val smart = remember { androidx.compose.runtime.mutableStateListOf(*MediaShelf.SMART.map { CustomNames.get("smart_${it.key}", it.title) }.toTypedArray()) }
+    val own = remember(folders) { androidx.compose.runtime.mutableStateListOf(*folders.map { it.name }.toTypedArray()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Названия папок и статусов") },
+        text = {
+            Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Статусы", fontWeight = FontWeight.SemiBold)
+                defaults.forEachIndexed { i, d -> TextInput(statuses[i], { statuses[i] = it }, d) }
+                if (folders.isNotEmpty()) {
+                    Text("Мои папки", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                    folders.forEachIndexed { i, f -> TextInput(own[i], { own[i] = it }, f.name) }
+                }
+                Text("Умные папки", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                MediaShelf.SMART.forEachIndexed { i, sm -> TextInput(smart[i], { smart[i] = it }, sm.title) }
+                Text("Пустое поле вернёт стандартное название. Статусы меняются и в карточках, фильтрах и группах.", fontSize = 12.sp, color = extra.dim)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                defaults.forEachIndexed { i, d -> CustomNames.set(MediaStatus.statusKey(kind, i), statuses[i].takeIf { it.trim() != d }) }
+                MediaShelf.SMART.forEachIndexed { i, sm -> CustomNames.set("smart_${sm.key}", smart[i].takeIf { it.trim() != sm.title }) }
+                val changed = folders.mapIndexedNotNull { i, f -> own[i].trim().takeIf { it.isNotBlank() && it != f.name }?.let { f.copy(name = it) } }
+                if (changed.isNotEmpty()) io { changed.forEach { Graph.extra.upsertMediaList(it) } }
+                onDismiss()
+            }) { Text("Сохранить") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+    )
 }

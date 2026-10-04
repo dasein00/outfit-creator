@@ -64,4 +64,14 @@ object MediaShelf {
             else -> entries
         }
     }
+
+    /**
+     * Что поменять в топе «Что посмотреть»: какие карточки добавить и какие пункты убрать.
+     * [planned] — id запланированных карточек, [links] — пункт топа → карточка.
+     */
+    fun watchDiff(planned: List<Long>, links: Map<Long, Long>): Pair<List<Long>, List<Long>> {
+        val set = planned.toSet()
+        val have = links.values.toSet()
+        return planned.filter { it !in have } to links.filter { it.value !in set }.keys.toList()
+    }
 }

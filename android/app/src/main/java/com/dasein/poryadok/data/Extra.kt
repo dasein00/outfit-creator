@@ -312,8 +312,12 @@ object MediaStatus {
     const val IN_PROGRESS = 1
     const val DONE = 2
     const val DROPPED = 3
-    fun names(kind: Int) = if (kind == MediaKind.BOOK) listOf("Хочу прочитать", "Читаю", "Прочитано", "Бросил")
+    fun defaults(kind: Int) = if (kind == MediaKind.BOOK) listOf("Хочу прочитать", "Читаю", "Прочитано", "Бросил")
     else listOf("Хочу посмотреть", "Смотрю", "Просмотрено", "Бросил")
+
+    /** Названия статусов с учётом переименования пользователем (например, «Хочу посмотреть» → «В планах»). */
+    fun names(kind: Int) = defaults(kind).mapIndexed { i, d -> CustomNames.get(statusKey(kind, i), d) }
+    fun statusKey(kind: Int, i: Int) = "status_${kind}_$i"
 }
 
 /** Карточка фильма, сериала или книги в личной коллекции. */

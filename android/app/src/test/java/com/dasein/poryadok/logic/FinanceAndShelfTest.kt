@@ -114,4 +114,14 @@ class FinanceAndShelfTest {
         assertEquals("64 эп.", s.length)
         assertNotNull(s.rating)
     }
+
+    @Test fun watchTopDiffAndDefaultNames() {
+        // Пункт 10 → карточка 1 (ещё в планах), пункт 11 → карточка 2 (уже посмотрели); карточка 3 — новая.
+        val (add, remove) = MediaShelf.watchDiff(listOf(1L, 3L), mapOf(10L to 1L, 11L to 2L))
+        assertEquals(listOf(3L), add)
+        assertEquals(listOf(11L), remove)
+        // Без переименования — стандартные названия статусов.
+        assertEquals("Хочу посмотреть", MediaStatus.names(0)[0])
+        assertEquals("Прочитано", MediaStatus.names(2)[2])
+    }
 }

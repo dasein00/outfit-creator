@@ -66,6 +66,7 @@ object Glyphs {
         "Спорт" to "sport", "Тренировки" to "train", "Сон" to "sleep", "Питание" to "food",
         "Календарь" to "cal", "Праздники" to "fest", "Кино и книги" to "habit", "Медиа" to "books",
         "Цели" to "goals", "День" to "daily", "Жизнь" to "life", "Ночь" to "night",
+        "Кино и стриминг" to "cinema", "Чтение" to "reading", "Жизнь и фитнес" to "lifefit", "Минимализм" to "minimal",
     )
     val DISH_SETS = listOf(
         "Курица" to "chicken", "Салаты и продукты" to "salads", "Паста и вок" to "pasta", "Блюда мира" to "world",
@@ -75,10 +76,10 @@ object Glyphs {
     ) + listOf(
         "Картофель и мясо" to "potmeat", "Рыба и морепродукты" to "seafood", "Тесто, яйца, лепёшки" to "dough",
         "Итальянская паста" to "pasta2", "Блюда из курицы" to "chicken2", "Салат-бар и кухня" to "saladbar", "Протеин и кухня" to "protein",
-        "Бистро и десерты" to "bistro",
+        "Бистро и десерты" to "bistro", "Блюда с грибами" to "mushroom",
     )
     /** Наборы из присланных листов: показываются в любом выборе иконки, не только для блюд. */
-    val SHARED_DISH_SETS = setOf("potmeat", "seafood", "dough", "pasta2", "chicken2", "saladbar", "protein", "bistro")
+    val SHARED_DISH_SETS = setOf("potmeat", "seafood", "dough", "pasta2", "chicken2", "saladbar", "protein", "bistro", "mushroom")
     val UI = listOf(
         "v_film", "v_pot", "v_pulse", "v_plan", "v_bookopen", "v_steps", "v_weight", "v_mountain", "v_spark", "v_chart",
         "home", "calendar", "check", "stats", "pie", "grid", "search", "settings", "flame", "target", "timer", "salad",

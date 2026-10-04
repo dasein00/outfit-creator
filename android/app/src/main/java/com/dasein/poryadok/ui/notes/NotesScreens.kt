@@ -304,6 +304,10 @@ fun TopsScreen(nav: NavHostController, embedded: Boolean = false) {
     val allItems by observe(emptyList()) { Graph.dao.topItems() }
     var create by remember { mutableStateOf(false) }
     val extra = LocalExtra.current
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val media by observe(emptyList()) { Graph.extra.media() }
+    // «Что посмотреть» обновляется сам из фильмов и сериалов со статусом «Хочу посмотреть».
+    androidx.compose.runtime.LaunchedEffect(media.map { it.id to it.status }) { runCatching { com.dasein.poryadok.data.WatchTop.sync(ctx) } }
     Screen(
         title = "Мои топы",
         onBack = if (embedded) null else ({ nav.popBackStack() }),
@@ -323,6 +327,7 @@ fun TopsScreen(nav: NavHostController, embedded: Boolean = false) {
                         Glyph(l.emoji, 30.dp)
                         Column(Modifier.padding(start = 12.dp).weight(1f)) {
                             Text(l.title, style = MaterialTheme.typography.titleMedium)
+                            if (l.id == com.dasein.poryadok.data.WatchTop.listId(ctx)) Text("обновляется сам из «${com.dasein.poryadok.data.MediaStatus.names(0)[0]}»", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
                             Text(
                                 "${mine.size} ${plural(mine.size, "пункт", "пункта", "пунктов")}" +
                                     (mine.firstOrNull()?.let { " · №1 ${it.title}" } ?: ""),
@@ -375,6 +380,9 @@ fun TopScreen(nav: NavHostController, id: Long) {
     var edit by remember { mutableStateOf<TopItem?>(null) }
     var editList by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf(false) }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val isWatch = id == com.dasein.poryadok.data.WatchTop.listId(ctx)
+    val media by observe(emptyList()) { Graph.extra.media() }
     fun move(i: Int, d: Int) {
         val j = i + d
         if (j !in entries.indices) return
@@ -405,13 +413,24 @@ fun TopScreen(nav: NavHostController, id: Long) {
                 )
                 Gap(8.dp)
             }
-            if (entries.isEmpty()) item { Text("Пока пусто — добавьте первый пункт.", color = extra.dim) }
+            if (isWatch) item {
+                Text(
+                    "Сюда сами попадают фильмы и сериалы со статусом «${com.dasein.poryadok.data.MediaStatus.names(0)[0]}». Расставьте их по порядку стрелками; " +
+                        "просмотренные уходят из топа автоматически. Нажатие открывает карточку фильма.",
+                    fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(bottom = 6.dp),
+                )
+            }
+            if (entries.isEmpty()) item { Text(if (isWatch) "В «${com.dasein.poryadok.data.MediaStatus.names(0)[0]}» пока ничего нет." else "Пока пусто — добавьте первый пункт.", color = extra.dim) }
             items(entries.size, key = { entries[it].id }) { i ->
                 val item = entries[i]
                 val medal = when (i) { 0 -> Color(0xFFC79246); 1 -> Color(0xFFA7A9AC); 2 -> Color(0xFFB07A4F); else -> null }
                 Row(
                     Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(RoundedCornerShape(14.dp)).background(extra.card)
-                        .clickable { edit = item }.padding(horizontal = 12.dp, vertical = 8.dp),
+                        .clickable {
+                            val mid = if (isWatch) com.dasein.poryadok.data.WatchTop.mediaOf(ctx, item.id) else null
+                            val m = mid?.let { x -> media.firstOrNull { it.id == x } }
+                            if (m != null) nav.navigate(Routes.media(m.id, m.kind)) else edit = item
+                        }.padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(Modifier.size(width = 34.dp, height = 28.dp), contentAlignment = Alignment.CenterStart) {
@@ -470,6 +489,7 @@ fun TopScreen(nav: NavHostController, id: Long) {
     }
     if (editList) TopListDialog(l) { editList = false }
     if (confirm) ConfirmDialog("Удалить топ «${l.title}»?", "Все пункты тоже удалятся.", onDismiss = { confirm = false }) {
+        com.dasein.poryadok.data.WatchTop.onDeleted(ctx, l.id)
         io { Graph.dao.deleteTopItemsOf(l.id); Graph.dao.deleteTopList(l) }
         nav.popBackStack()
     }
