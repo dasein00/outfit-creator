@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.util.LruCache
 import com.dasein.poryadok.Graph
 import com.dasein.poryadok.data.MediaItem
+import com.dasein.poryadok.logic.MediaDiscover
 import com.dasein.poryadok.logic.MediaHit
 import com.dasein.poryadok.logic.MediaParse
 import kotlinx.coroutines.Dispatchers
@@ -39,10 +40,10 @@ enum class MediaSource(val title: String, val kinds: Set<Int>, val needsToken: B
 object MediaSearch {
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
 
-    private fun get(url: String, headers: Map<String, String> = emptyMap()): String {
+    private fun get(url: String, headers: Map<String, String> = emptyMap(), timeout: Int = 15_000): String {
         val c = URL(url).openConnection() as HttpURLConnection
         c.connectTimeout = 10_000
-        c.readTimeout = 15_000
+        c.readTimeout = timeout
         c.setRequestProperty("User-Agent", "DASEIN/1.0 (Android)")
         c.setRequestProperty("Accept", "application/json")
         headers.forEach { (k, v) -> c.setRequestProperty(k, v) }
@@ -111,11 +112,17 @@ object MediaSearch {
     /** Русскоязычный каталог без ключа: поиск в Викиданных, описание и постер — из статьи Википедии. */
     private fun wiki(kind: Int, query: String): List<MediaHit> {
         val ids = MediaParse.wikiSearch(get("$WD&action=wbsearchentities&language=ru&uselang=ru&type=item&limit=30&search=${enc(query)}"))
+        return wikiByIds(kind, ids, 15, strictKind = true)
+    }
+
+    /** Карточки по id Викиданных: названия, люди, постер и описание из Википедии. */
+    private fun wikiByIds(kind: Int, ids: List<String>, limit: Int, strictKind: Boolean): List<MediaHit> {
         if (ids.isEmpty()) return emptyList()
         val ents = MediaParse.wikiEntities(
             get("$WD&action=wbgetentities&props=${enc("labels|descriptions|claims|sitelinks")}&languages=${enc("ru|en")}&sitefilter=${enc("ruwiki|enwiki")}&ids=${enc(ids.joinToString("|"))}")
         ).associateBy { it.id }
-        val matched = ids.mapNotNull { ents[it] }.filter { MediaParse.wikiKind(it) == kind }.take(15)
+        val all = ids.mapNotNull { ents[it] }
+        val matched = all.filter { MediaParse.wikiKind(it) == kind }.ifEmpty { if (strictKind) emptyList() else all }.take(limit)
         if (matched.isEmpty()) return emptyList()
         val refs = matched.flatMap { e ->
             e.directors.take(3) + e.authors.take(4) + e.creators.take(3) + e.genres.take(4) + e.countries.take(3) +
@@ -136,6 +143,52 @@ object MediaSearch {
         val ru = pages("ru.wikipedia.org", matched.mapNotNull { it.ruTitle })
         val en = pages("en.wikipedia.org", matched.filter { it.ruTitle == null || ru[it.ruTitle]?.first == null }.mapNotNull { it.enTitle })
         return matched.map { e -> MediaParse.wikiHit(e, kind, labels, e.ruTitle?.let { ru[it] }, e.enTitle?.let { en[it] }) }
+    }
+
+    /** Какой каталог соберёт подборку по фильтрам: выбранный, если умеет, иначе TMDB → Кинопоиск → Викиданные. */
+    fun discoverSource(chosen: MediaSource, f: MediaDiscover.Filter): MediaSource {
+        val prefs = Graph.prefs.now()
+        val tmdb = prefs.tmdbToken.isNotBlank(); val kp = prefs.kinopoiskToken.isNotBlank()
+        // Поиск по людям без ключа умеют только Викиданные.
+        if (f.person.isNotBlank()) return MediaSource.WIKI
+        return when {
+            chosen == MediaSource.TMDB && tmdb -> MediaSource.TMDB
+            chosen == MediaSource.KINOPOISK && kp -> MediaSource.KINOPOISK
+            chosen == MediaSource.WIKI -> MediaSource.WIKI
+            tmdb -> MediaSource.TMDB
+            kp -> MediaSource.KINOPOISK
+            else -> MediaSource.WIKI
+        }
+    }
+
+    /** Подборка без названия — только по фильтрам (страна, жанр, годы, режиссёр или актёр, рейтинг). */
+    suspend fun discover(source: MediaSource, kind: Int, f: MediaDiscover.Filter): List<MediaHit> = withContext(Dispatchers.IO) {
+        val series = kind == MediaParse.SERIES
+        when (source) {
+            MediaSource.TMDB -> {
+                val token = Graph.prefs.now().tmdbToken.trim()
+                val headers = if (token.length > 40) mapOf("Authorization" to "Bearer $token") else emptyMap()
+                val key = if (token.length <= 40) "&api_key=$token" else ""
+                val type = if (series) "tv" else "movie"
+                (1..2).flatMap { page ->
+                    runCatching { MediaParse.tmdbSearch(get(MediaDiscover.tmdbUrl(series, f, page) + key, headers), kind, type) }.getOrDefault(emptyList())
+                }.distinctBy { it.externalId }
+            }
+            MediaSource.KINOPOISK -> {
+                val token = Graph.prefs.now().kinopoiskToken
+                MediaParse.kinopoiskSearch(get(MediaDiscover.kinopoiskUrl(series, f), mapOf("X-API-KEY" to token)))
+            }
+            else -> {
+                val people = if (f.person.isBlank()) emptyList()
+                else MediaParse.wikiSearch(get("$WD&action=wbsearchentities&language=ru&uselang=ru&type=item&limit=6&search=${enc(f.person.trim())}")).take(4)
+                if (f.person.isNotBlank() && people.isEmpty()) error("Не нашли человека «${f.person.trim()}» — проверьте написание")
+                val q = MediaDiscover.sparql(series, f, people)
+                val text = runCatching { get("https://query.wikidata.org/sparql?format=json&query=${enc(q)}", mapOf("Accept" to "application/sparql-results+json"), timeout = 50_000) }
+                    .getOrElse { error("Викиданные не успели ответить — уточните фильтры: страну, жанр или годы") }
+                val ids = MediaDiscover.sparqlIds(text)
+                ids.chunked(40).firstOrNull()?.let { wikiByIds(kind, it, 40, strictKind = false) }.orEmpty()
+            }
+        }
     }
 
     /** Подробности (режиссёры, актёры и роли), если источник их отдаёт отдельно. */

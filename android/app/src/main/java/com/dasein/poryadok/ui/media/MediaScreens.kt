@@ -81,6 +81,7 @@ import com.dasein.poryadok.data.MediaKind
 import com.dasein.poryadok.data.MediaStatus
 import com.dasein.poryadok.data.TopItem
 import com.dasein.poryadok.logic.Dates
+import com.dasein.poryadok.logic.MediaDiscover
 import com.dasein.poryadok.logic.MediaHit
 import com.dasein.poryadok.logic.MediaParse
 import com.dasein.poryadok.logic.MediaCatalog
@@ -521,32 +522,64 @@ fun MediaSearchScreen(nav: NavHostController, kind: Int, fillId: Long = 0) {
     val sources = MediaSearch.sourcesFor(kind)
     var source by rememberSaveable { mutableStateOf(MediaSource.ALL.name) }
     var q by rememberSaveable { mutableStateOf("") }
-    var yearText by rememberSaveable { mutableStateOf("") }
+    var filter by remember { mutableStateOf(MediaDiscover.Filter()) }
+    var showFilters by rememberSaveable { mutableStateOf(false) }
+    /** true — показана подборка по фильтрам (без названия), false — поиск по названию. */
+    var discovered by remember { mutableStateOf(false) }
+    var queryYear by remember { mutableStateOf<Int?>(null) }
     var note by remember { mutableStateOf<String?>(null) }
     var results by remember { mutableStateOf<List<MediaHit>>(emptyList()) }
+    val collection by observe(emptyList()) { Graph.extra.media() }
+    val ownedIds = remember(collection) { collection.mapNotNull { it.externalId.ifBlank { null } }.toSet() }
+    val ownedTitles = remember(collection) { collection.map { it.title.lowercase().trim() + "|" + (it.year ?: 0) }.toSet() }
+    fun owned(h: MediaHit) = h.externalId in ownedIds || (h.title.lowercase().trim() + "|" + (h.year ?: 0)) in ownedTitles
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var token by remember { mutableStateOf("") }
     var adding by remember { mutableStateOf<String?>(null) }
     val src = runCatching { MediaSource.valueOf(source) }.getOrDefault(MediaSource.ALL)
     fun run() {
-        if (q.isBlank()) return
-        busy = true; error = null; note = null
-        // «Дюна 2021» — ищем «Дюна» и оставляем только фильмы 2021 года. Отдельное поле «Год» важнее.
-        val (title, yq) = MediaParse.splitYear(q)
-        val year = yearText.trim().toIntOrNull() ?: yq
+        val canDiscover = filter.canDiscover && kind != MediaKind.BOOK
+        if (q.isBlank() && !canDiscover) return
+        busy = true; error = null; note = null; results = emptyList()
         scope.launch {
-            runCatching { MediaSearch.search(src, kind, title) }
-                .onSuccess { all ->
-                    val byYear = MediaParse.filterYear(all, year)
-                    results = if (year != null && byYear.isEmpty()) all else byYear
-                    if (year != null) note = if (byYear.isEmpty() && all.isNotEmpty()) "Вышедших именно в $year году не нашлось — показаны все" else "Только $year год · ${byYear.size}"
-                    if (all.isEmpty()) error = "Ничего не найдено — попробуйте другое написание или другой источник"
-                }
-                .onFailure { error = it.message ?: "Нет соединения с интернетом" }
+            if (q.isBlank()) {
+                // Подборка без названия — только по фильтрам.
+                queryYear = null
+                val from = MediaSearch.discoverSource(src, filter)
+                runCatching { MediaSearch.discover(from, kind, filter) }
+                    .onSuccess { r ->
+                        results = r; discovered = true
+                        note = MediaDiscover.describe(filter, kind == MediaKind.SERIES) + " · ${from.title} · ${r.size}"
+                        if (r.isEmpty()) error = "По этим фильтрам ничего не нашлось — ослабьте их (шире годы, другой жанр)"
+                    }
+                    .onFailure { error = it.message ?: "Нет соединения с интернетом" }
+            } else {
+                // «Дюна 2021» — ищем «Дюна» и оставляем фильмы 2021 года (если фильтр годов не задан).
+                val (title, yq) = MediaParse.splitYear(q)
+                queryYear = yq.takeIf { filter.yearFrom == null && filter.yearTo == null }
+                runCatching { MediaSearch.search(src, kind, title) }
+                    .onSuccess { all ->
+                        results = all; discovered = false
+                        if (all.isEmpty()) error = "Ничего не найдено — попробуйте другое написание или другой источник"
+                    }
+                    .onFailure { error = it.message ?: "Нет соединения с интернетом" }
+            }
             busy = false
         }
     }
+    // Что показать: подборку — как есть (только сортировка и «скрыть своё»), найденное по названию — через все фильтры.
+    val shownFilter = queryYear?.let { y -> filter.copy(yearFrom = y, yearTo = y) } ?: filter
+    val filtered = remember(results, shownFilter, discovered, ownedIds, ownedTitles) {
+        if (discovered) MediaDiscover.Filtered(
+            MediaDiscover.sort(results.filter { !(shownFilter.hideOwned && owned(it)) }, if (shownFilter.sort == MediaDiscover.Sort.TITLE) shownFilter.sort else MediaDiscover.Sort.RELEVANCE), 0,
+        )
+        else MediaDiscover.apply(results, shownFilter, ::owned).let { r ->
+            // Год из запроса не нашёлся — показываем всё, как раньше.
+            if (queryYear != null && r.hits.isEmpty()) MediaDiscover.apply(results, filter, ::owned) else r
+        }
+    }
+    val facets = remember(results, discovered) { if (discovered) emptyList<Pair<String, Int>>() to emptyList() else MediaDiscover.facets(results) }
     Screen("Найти: ${MediaKind.names[kind].lowercase()}", onBack = { nav.popBackStack() }) { pad ->
         LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 40.dp)) {
             item {
@@ -597,28 +630,61 @@ fun MediaSearchScreen(nav: NavHostController, kind: Int, fillId: Long = 0) {
                     }
                     Gap(8.dp)
                 }
+                val canDiscover = filter.canDiscover && kind != MediaKind.BOOK
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.weight(1f)) { TextInput(q, { q = it }, if (kind == MediaKind.BOOK) "Название или автор" else "Название, можно с годом") }
+                    Box(Modifier.weight(1f)) {
+                        TextInput(q, { q = it }, if (kind == MediaKind.BOOK) "Название или автор" else if (canDiscover) "Название — или пусто для подборки" else "Название, можно с годом")
+                    }
                     HGap(6.dp)
-                    Box(Modifier.width(84.dp)) { NumberField(yearText, { yearText = it.filter { c -> c.isDigit() }.take(4) }, "Год") }
+                    Button(onClick = { run() }, enabled = !busy && (q.isNotBlank() || canDiscover)) { Text(if (q.isBlank() && canDiscover) "Подобрать" else "Найти") }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
+                    Pill(if (filter.count > 0) "Фильтры · ${filter.count}" else "Фильтры", showFilters) { showFilters = !showFilters }
                     HGap(6.dp)
-                    Button(onClick = { run() }, enabled = !busy && q.isNotBlank()) { Text("Найти") }
+                    if (kind != MediaKind.BOOK) Text(
+                        if (canDiscover && q.isBlank()) "Без названия — подборка по фильтрам" else "Страна, жанр, годы, режиссёр, актёр, рейтинг",
+                        fontSize = 12.sp, color = extra.dim, modifier = Modifier.weight(1f),
+                    )
+                    if (filter.count > 0) TextButton(onClick = { filter = MediaDiscover.Filter() }) { Text("Сбросить", fontSize = 12.sp) }
+                }
+                if (showFilters) {
+                    Gap(6.dp)
+                    MediaFilterPanel(kind, filter) { filter = it }
+                    if (kind != MediaKind.BOOK) Text(
+                        "Название не вводите — получите подборку: например, «Южная Корея + Мелодрама + 2015–2024» или «Режиссёр: Нолан». " +
+                            "С ключом TMDB или Кинопоиска подборки точнее и с рейтингом; без ключа — из Википедии.",
+                        fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp),
+                    )
                 }
                 note?.let { Text(it, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp)) }
+                if (results.isNotEmpty() && !discovered) {
+                    MediaFacets(facets.first, facets.second, filter) { filter = it }
+                    val hidden = results.size - filtered.hits.size
+                    if (hidden > 0) Text(
+                        "Показано ${filtered.hits.size} из ${results.size}" + (if (filtered.unknown > 0) " · у ${filtered.unknown} в каталоге нет нужных данных" else "") +
+                            (if (queryYear != null && filtered.hits.any { it.year == queryYear }) " · только $queryYear год" else ""),
+                        fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
                 if (busy) Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 error?.let { Text(it, color = extra.warn, fontSize = 13.sp, modifier = Modifier.padding(vertical = 8.dp)) }
                 Gap(6.dp)
             }
-            items(results, key = { it.externalId }) { h ->
+            items(filtered.hits, key = { it.externalId }) { h ->
+                val mine = owned(h)
                 Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.Top) {
                     UrlImage(h.posterUrl, 64.dp)
                     Column(Modifier.weight(1f).padding(start = 10.dp)) {
                         Text(h.title, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text(
-                            listOfNotNull(h.year?.toString(), h.creators.takeIf { it.isNotBlank() }, h.genres.takeIf { it.isNotBlank() }, h.rating?.let { "★ %.1f".format(it) }, h.source).joinToString(" · "),
+                            listOfNotNull(
+                                h.year?.toString(), h.countries.takeIf { it.isNotBlank() }, h.creators.takeIf { it.isNotBlank() }, h.genres.takeIf { it.isNotBlank() },
+                                h.rating?.let { "★ %.1f".format(it) }, h.source,
+                            ).joinToString(" · "),
                             fontSize = 12.sp, color = extra.dim, maxLines = 2, overflow = TextOverflow.Ellipsis,
                         )
                         if (h.description.isNotBlank()) Text(h.description, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        if (mine) Text("✓ Уже в коллекции", fontSize = 12.sp, color = extra.ok, fontWeight = FontWeight.Medium)
                         Row {
                             MediaStatus.names(kind).take(3).forEachIndexed { i, n ->
                                 TextButton(onClick = {

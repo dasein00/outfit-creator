@@ -11,6 +11,7 @@ import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -298,6 +299,7 @@ val TOP_IDEAS = listOf(
     "cal/35" to "Места, где хочу побывать", "habit/03" to "Сериалы", "habit/20" to "Игры", "fest/01" to "Список желаний",
 )
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun TopsScreen(nav: NavHostController, embedded: Boolean = false) {
     val lists by observe(emptyList()) { Graph.dao.topLists() }
@@ -308,6 +310,8 @@ fun TopsScreen(nav: NavHostController, embedded: Boolean = false) {
     val media by observe(emptyList()) { Graph.extra.media() }
     // «Что посмотреть» обновляется сам из фильмов и сериалов со статусом «Хочу посмотреть».
     androidx.compose.runtime.LaunchedEffect(media.map { it.id to it.status }) { runCatching { com.dasein.poryadok.data.WatchTop.sync(ctx) } }
+    val links = remember(allItems) { com.dasein.poryadok.data.TopLinks.all(ctx) }
+    val mediaById = remember(media) { media.associateBy { it.id } }
     Screen(
         title = "Мои топы",
         onBack = if (embedded) null else ({ nav.popBackStack() }),
@@ -334,6 +338,16 @@ fun TopsScreen(nav: NavHostController, embedded: Boolean = false) {
                                 fontSize = 12.sp, color = extra.dim, maxLines = 1, overflow = TextOverflow.Ellipsis,
                             )
                         }
+                    }
+                    TopPosters(mine.mapNotNull { links[it.id]?.let { id -> mediaById[id] } })
+                }
+            }
+            item { ReadyTops(nav, media, lists) }
+            if (lists.isNotEmpty()) item {
+                Text("Новый топ по идее", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 10.dp)) {
+                    TOP_IDEAS.filter { (_, t) -> lists.none { it.title == t } }.forEach { (e, t) ->
+                        Pill(t, false, glyph = e) { io { Graph.dao.upsertTopList(TopList(title = t, emoji = e, sort = lists.size)) } }
                     }
                 }
             }
@@ -369,6 +383,7 @@ private fun TopListDialog(l: TopList, onDismiss: () -> Unit) {
     )
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun TopScreen(nav: NavHostController, id: Long) {
     val extra = LocalExtra.current
@@ -383,6 +398,21 @@ fun TopScreen(nav: NavHostController, id: Long) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val isWatch = id == com.dasein.poryadok.data.WatchTop.listId(ctx)
     val media by observe(emptyList()) { Graph.extra.media() }
+    val links = remember(all) { com.dasein.poryadok.data.TopLinks.all(ctx) }
+    fun linked(item: TopItem) = links[item.id]?.let { x -> media.firstOrNull { it.id == x } }
+    var rankMode by remember { mutableStateOf(false) }
+    var fromCollection by remember { mutableStateOf(false) }
+    var randomPick by remember { mutableStateOf<TopItem?>(null) }
+    fun moveTo(item: TopItem, place: Int) {
+        val m = entries.filter { it.id != item.id }.toMutableList()
+        m.add((place - 1).coerceIn(0, m.size), item)
+        io { Graph.dao.upsertTopItems(m.mapIndexed { k, e -> e.copy(sort = k) }) }
+    }
+    fun share() {
+        val text = l.title + "\n" + entries.mapIndexed { i, e -> "${i + 1}. ${e.title}" + (if (e.rating > 0) " — ${e.rating}/10" else "") + (e.note.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: "") }.joinToString("\n")
+        val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, text)
+        runCatching { ctx.startActivity(android.content.Intent.createChooser(send, "Поделиться топом")) }
+    }
     fun move(i: Int, d: Int) {
         val j = i + d
         if (j !in entries.indices) return
@@ -393,6 +423,9 @@ fun TopScreen(nav: NavHostController, id: Long) {
     fun add() {
         if (newText.isBlank()) return
         val t = newText.trim(); newText = ""
+        if (entries.any { it.title.equals(t, ignoreCase = true) }) {
+            android.widget.Toast.makeText(ctx, "«$t» уже есть в топе", android.widget.Toast.LENGTH_SHORT).show(); return
+        }
         io { Graph.dao.upsertTopItem(TopItem(listId = id, title = t, sort = entries.size)) }
     }
     Screen(
@@ -411,7 +444,12 @@ fun TopScreen(nav: NavHostController, id: Long) {
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = KeyboardActions(onDone = { add() }),
                     trailingIcon = { IconButton(onClick = { add() }) { Icon(Icons.Default.Add, "Добавить") } },
                 )
-                Gap(8.dp)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)) {
+                    if (media.isNotEmpty()) Pill("+ Из коллекции", false, glyph = "books/12") { fromCollection = true }
+                    if (entries.size >= 2) Pill("Что лучше?", false, glyph = "tops/01") { rankMode = true }
+                    if (entries.size >= 2) Pill("Случайный", false, glyph = "tops/00") { randomPick = entries.random() }
+                    if (entries.isNotEmpty()) Pill("Поделиться", false) { share() }
+                }
             }
             if (isWatch) item {
                 Text(
@@ -426,11 +464,13 @@ fun TopScreen(nav: NavHostController, id: Long) {
                 val medal = when (i) { 0 -> Color(0xFFC79246); 1 -> Color(0xFFA7A9AC); 2 -> Color(0xFFB07A4F); else -> null }
                 Row(
                     Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(RoundedCornerShape(14.dp)).background(extra.card)
-                        .clickable {
-                            val mid = if (isWatch) com.dasein.poryadok.data.WatchTop.mediaOf(ctx, item.id) else null
-                            val m = mid?.let { x -> media.firstOrNull { it.id == x } }
-                            if (m != null) nav.navigate(Routes.media(m.id, m.kind)) else edit = item
-                        }.padding(horizontal = 12.dp, vertical = 8.dp),
+                        .combinedClickable(
+                            onClick = {
+                                val m = linked(item)
+                                if (m != null) nav.navigate(Routes.media(m.id, m.kind)) else edit = item
+                            },
+                            onLongClick = { edit = item },
+                        ).padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(Modifier.size(width = 34.dp, height = 28.dp), contentAlignment = Alignment.CenterStart) {
@@ -441,6 +481,7 @@ fun TopScreen(nav: NavHostController, id: Long) {
                             Text("${i + 1}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = if (medal != null) Color(0xFF1B1812) else MaterialTheme.colorScheme.primary)
                         }
                     }
+                    linked(item)?.let { m -> com.dasein.poryadok.ui.media.Poster(m, 34.dp); HGapSmall() }
                     Column(Modifier.weight(1f)) {
                         Text(item.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         val sub = listOfNotNull(if (item.rating > 0) "★ ${item.rating}/10" else null, item.note.takeIf { n -> n.isNotBlank() }).joinToString(" · ")
@@ -457,7 +498,35 @@ fun TopScreen(nav: NavHostController, id: Long) {
             }
         }
     }
+    if (rankMode) TopRankDialog(entries, { linked(it) }, onDone = { r ->
+        io { Graph.dao.upsertTopItems(r.mapIndexed { k, e -> e.copy(sort = k) }) }; rankMode = false
+    }) { rankMode = false }
+    if (fromCollection) AddFromCollectionDialog(id, media, entries.mapNotNull { links[it.id] }.toSet()) { fromCollection = false }
+    randomPick?.let { r ->
+        val m = linked(r)
+        AlertDialog(
+            onDismissRequest = { randomPick = null },
+            title = { Text("Случайный выбор") },
+            text = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    m?.let { com.dasein.poryadok.ui.media.Poster(it, 70.dp); HGapSmall() }
+                    Column {
+                        Text("№${entries.indexOf(r) + 1} · ${r.title}", fontWeight = FontWeight.SemiBold)
+                        if (r.note.isNotBlank()) Text(r.note, fontSize = 12.sp, color = extra.dim)
+                    }
+                }
+            },
+            confirmButton = {
+                Row {
+                    TextButton(onClick = { randomPick = (entries - r).randomOrNull() ?: r }) { Text("Другой") }
+                    if (m != null) TextButton(onClick = { randomPick = null; nav.navigate(Routes.media(m.id, m.kind)) }) { Text("Открыть") }
+                }
+            },
+            dismissButton = { TextButton(onClick = { randomPick = null }) { Text("Закрыть") } },
+        )
+    }
     edit?.let { it0 ->
+        var place by remember(it0) { mutableStateOf("${entries.indexOf(it0) + 1}") }
         var title by remember(it0) { mutableStateOf(it0.title) }
         var note by remember(it0) { mutableStateOf(it0.note) }
         var rating by remember(it0) { mutableStateOf(it0.rating) }
@@ -474,10 +543,19 @@ fun TopScreen(nav: NavHostController, id: Long) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         (1..10).forEach { r -> Pill("$r", rating == r) { rating = if (rating == r) 0 else r } }
                     }
+                    Gap(8.dp)
+                    com.dasein.poryadok.ui.common.NumberField(place, { place = it.filter { c -> c.isDigit() }.take(4) }, "Место в топе (1–${entries.size})", decimal = false)
+                    linked(it0)?.let { m -> TextButton(onClick = { edit = null; nav.navigate(Routes.media(m.id, m.kind)) }) { Text("Открыть карточку «${m.title}»") } }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { io { Graph.dao.upsertTopItem(it0.copy(title = title.trim(), note = note, rating = rating)) }; edit = null }) { Text("Сохранить") }
+                TextButton(onClick = {
+                    val updated = it0.copy(title = title.trim(), note = note, rating = rating)
+                    io { Graph.dao.upsertTopItem(updated) }
+                    val p = place.toIntOrNull()
+                    if (p != null && p != entries.indexOf(it0) + 1) moveTo(updated, p)
+                    edit = null
+                }) { Text("Сохранить") }
             },
             dismissButton = {
                 Row {
@@ -494,3 +572,6 @@ fun TopScreen(nav: NavHostController, id: Long) {
         nav.popBackStack()
     }
 }
+
+@Composable
+private fun HGapSmall() = androidx.compose.foundation.layout.Spacer(Modifier.size(10.dp))
