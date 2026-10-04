@@ -433,7 +433,7 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
                 SectionTitle("Печать и выгрузка")
                 Text("Вид клеток схемы", fontSize = 14.sp)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
-                    listOf(1 to "Цветная, как в наборе", 0 to "Светлая", 2 to "Ч/б символы").forEach { (i, s) -> Pill(s, p0.chartStyle == i) { save(p0.copy(chartStyle = i)) } }
+                    listOf(0 to "Цветная, как в наборе", 1 to "Светлая", 2 to "Ч/б символы").forEach { (i, s) -> Pill(s, p0.chartStyle == i) { save(p0.copy(chartStyle = i)) } }
                 }
                 Button(onClick = { printDialog = true }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Выгрузить: схема PDF (A4, A3, A2…) + таблица цветов") }
                 OutlinedButton(onClick = { pngExporter.launch("$fileName.png") }, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("Схема одной картинкой (PNG)") }

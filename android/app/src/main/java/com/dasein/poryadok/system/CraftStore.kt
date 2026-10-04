@@ -47,8 +47,8 @@ data class CraftProject(
     val onlyStash: Boolean = false,
     /** Замены цветов: номер DMC → номер DMC. */
     val replace: Map<String, String> = emptyMap(),
-    /** Вид схемы: 1 — цветная, как в наборах (цвет клетки + символ), 0 — светлый оттенок + символ, 2 — только символы (ч/б печать). */
-    val chartStyle: Int = 1,
+    /** Вид схемы: 0 — цветная, как в наборах (цвет клетки + символ), 1 — светлый оттенок + символ, 2 — только символы (ч/б печать). */
+    val chartStyle: Int = 0,
     /** Подпись схемы, к которой относятся отметки клеток. */
     val progressSig: String = "",
 ) {
@@ -220,10 +220,10 @@ object CraftStore {
     fun drawCell(c: Canvas, l: Float, t: Float, cell: Float, idx: Int, p: CraftPattern.Pattern, style: Int, fill: Paint, sym: Paint) {
         if (idx < 0) { fill.color = Color.WHITE; c.drawRect(l, t, l + cell, t + cell, fill); return }
         val rgb = p.colors[idx].rgb
-        val bg = when (style) { 1 -> rgb or (0xFF shl 24); 2 -> Color.WHITE; else -> tint(rgb) }
+        val bg = when (style) { 1 -> tint(rgb); 2 -> Color.WHITE; else -> rgb or (0xFF shl 24) }
         fill.color = bg
         c.drawRect(l, t, l + cell, t + cell, fill)
-        sym.color = if (style == 1 && !CraftPattern.symbolDark(rgb)) Color.WHITE else Color.BLACK
+        sym.color = if (style == 0 && !CraftPattern.symbolDark(rgb)) Color.WHITE else Color.BLACK
         sym.textSize = cell * .7f
         c.drawText(CraftPattern.symbol(idx), l + cell / 2f, t + cell * .75f, sym)
     }
@@ -269,7 +269,7 @@ object CraftStore {
                 c.drawLine(x0, y + rowH, x0 + colW, y + rowH, line)
                 if (i >= p.colors.size) continue
                 c.drawText("${i + 1}", x0 + 24, y + 40, txt)
-                drawCell(c, cx[1] + 30, y + 4, rowH - 8f, i, p, 1, fill, sym)
+                drawCell(c, cx[1] + 30, y + 4, rowH - 8f, i, p, 0, fill, sym)
                 c.drawText(p.colors[i].code, cx[2] + 20, y + 40, txt)
                 val n = CraftPattern.need(kind, counts[i], pr.count)
                 c.drawText("${counts[i]} · ${fmt(n.amount)} ${n.unit}", cx[3] + 14, y + 38, small)
