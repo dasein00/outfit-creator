@@ -100,6 +100,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val BACKUP = "backup"
     const val CRAFT = "craft"
+    const val CRAFT_STASH = "craftStash"
     const val SEARCH = "search"
     const val RECIPES = "recipes"
     const val MENU_CREATE = "menuCreate"
@@ -142,6 +143,7 @@ object Routes {
     fun topsHub(tab: Int) = "$TOPS_HUB?tab=$tab"
     fun media(id: Long, kind: Int = 0) = "media/$id?kind=$kind"
     fun craft(id: Long) = "craft/$id"
+    fun craftWork(id: Long) = "craftWork/$id"
     fun mediaSearch(kind: Int) = "$MEDIA_SEARCH?kind=$kind"
     fun bodyDetail(at: Long) = "bodyDetail/$at"
     fun kpImport(kind: Int) = "kpImport?kind=$kind"
@@ -329,6 +331,10 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable("craft/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
                 com.dasein.poryadok.ui.craft.CraftEditorScreen(nav, it.long("id"))
             }
+            composable("craftWork/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
+                com.dasein.poryadok.ui.craft.CraftWorkScreen(nav, it.long("id"))
+            }
+            composable(Routes.CRAFT_STASH) { com.dasein.poryadok.ui.craft.CraftStashScreen(nav) }
             composable(Routes.SEARCH) { SearchScreen(nav) }
 
             composable(

@@ -22,11 +22,14 @@ object CraftPattern {
     data class Pattern(
         val width: Int,
         val height: Int,
-        /** Индекс цвета в [colors] для каждой клетки, построчно. */
+        /** Индекс цвета в [colors] для каждой клетки, построчно; -1 — пустая клетка (фон, который не выкладывают). */
         val cells: IntArray,
         val colors: List<Thread>,
     ) {
-        fun counts(): IntArray = IntArray(colors.size).also { c -> cells.forEach { c[it]++ } }
+        fun counts(): IntArray = IntArray(colors.size).also { c -> cells.forEach { if (it >= 0) c[it]++ } }
+        val filled get() = cells.count { it >= 0 }
+        /** Подпись, по которой видно, что схема не изменилась (иначе отметки прогресса сбрасываются). */
+        fun signature(): String = "$width×$height:" + colors.joinToString(",") { it.code } + ":" + cells.contentHashCode()
     }
 
     // ---------- Цвет ----------
@@ -89,8 +92,16 @@ object CraftPattern {
      * Схема из уже уменьшенной картинки [px] (w×h): не больше [maxColors] цветов DMC.
      * [dither] — сглаживание Флойда — Стейнберга: плавные переходы на портретах и небе, но «шумнее» на плоских участках.
      */
-    fun build(px: IntArray, w: Int, h: Int, maxColors: Int, dither: Boolean, seed: Long = 42): Pattern {
-        val labs = Array(px.size) { lab(px[it]) }
+    fun build(
+        px: IntArray, w: Int, h: Int, maxColors: Int, dither: Boolean, seed: Long = 42,
+        /** Только эти цвета DMC (индексы в [DMC]) — например, «из моих запасов». null — весь каталог. */
+        allowed: Set<Int>? = null,
+        /** Клетки, которые остаются пустыми (фон). */
+        skip: BooleanArray? = null,
+    ): Pattern {
+        val pool = (allowed?.takeIf { it.size >= 2 } ?: DMC.indices.toSet())
+        val all = Array(px.size) { lab(px[it]) }
+        val labs = if (skip == null) all else all.filterIndexed { i, _ -> !skip[i] }.toTypedArray().ifEmpty { all }
         val k = maxColors.coerceIn(2, 80)
         // k-средних с инициализацией k-means++ (детерминированно).
         val rnd = java.util.Random(seed)
@@ -122,18 +133,19 @@ object CraftPattern {
         val chosen = LinkedHashSet<Int>()
         centers.forEach { c ->
             var best = -1; var bd = Double.MAX_VALUE
-            dmcLab.forEachIndexed { i, d -> if (i !in chosen) { val dd = d2(c, d); if (dd < bd) { bd = dd; best = i } } }
+            dmcLab.forEachIndexed { i, d -> if (i in pool && i !in chosen) { val dd = d2(c, d); if (dd < bd) { bd = dd; best = i } } }
             if (best >= 0) chosen += best
         }
         val pal = chosen.toList()
         val palLab = pal.map { dmcLab[it] }
         val cells = IntArray(px.size)
         if (!dither) {
-            for (i in labs.indices) cells[i] = nearestIn(labs[i], palLab)
+            for (i in all.indices) cells[i] = if (skip?.get(i) == true) -1 else nearestIn(all[i], palLab)
         } else {
-            val err = Array(labs.size) { labs[it].clone() }
+            val err = Array(all.size) { all[it].clone() }
             for (y in 0 until h) for (x in 0 until w) {
                 val i = y * w + x
+                if (skip?.get(i) == true) { cells[i] = -1; continue }
                 val p = nearestIn(err[i], palLab)
                 cells[i] = p
                 val e = DoubleArray(3) { err[i][it] - palLab[p][it] }
@@ -145,10 +157,77 @@ object CraftPattern {
             }
         }
         // Убираем цвета, которые в итоге не встретились, и сортируем по частоте.
-        val count = IntArray(pal.size).also { c -> cells.forEach { c[it]++ } }
-        val order = pal.indices.filter { count[it] > 0 }.sortedByDescending { count[it] }
-        val remap = IntArray(pal.size) { -1 }.also { m -> order.forEachIndexed { n, o -> m[o] = n } }
-        return Pattern(w, h, IntArray(cells.size) { remap[cells[it]] }, order.map { DMC[pal[it]] })
+        return compact(Pattern(w, h, cells, pal.map { DMC[it] }))
+    }
+
+    /** Убирает неиспользуемые цвета, склеивает повторы одного номера DMC и сортирует по частоте (символы 1, 2, 3… — самым частым). */
+    fun compact(p: Pattern): Pattern {
+        val byCode = LinkedHashMap<String, Int>()
+        val uniq = ArrayList<Thread>()
+        val first = IntArray(p.colors.size) { i -> byCode.getOrPut(p.colors[i].code) { uniq += p.colors[i]; uniq.size - 1 } }
+        val cells0 = IntArray(p.cells.size) { val c = p.cells[it]; if (c < 0) -1 else first[c] }
+        val count = IntArray(uniq.size).also { c -> cells0.forEach { if (it >= 0) c[it]++ } }
+        val order = uniq.indices.filter { count[it] > 0 }.sortedByDescending { count[it] }
+        val remap = IntArray(uniq.size) { -1 }.also { m -> order.forEachIndexed { n, o -> m[o] = n } }
+        return Pattern(p.width, p.height, IntArray(cells0.size) { val c = cells0[it]; if (c < 0) -1 else remap[c] }, order.map { uniq[it] })
+    }
+
+    /** Замены цветов пользователем: номер DMC → другой номер (можно слить два цвета в один или взять соседний оттенок). */
+    fun replace(p: Pattern, map: Map<String, String>): Pattern {
+        if (map.isEmpty()) return p
+        val byCode = DMC.associateBy { it.code }
+        return compact(p.copy(colors = p.colors.map { t -> map[t.code]?.let { byCode[it] } ?: t }))
+    }
+
+    /** Ближайшие оттенки каталога к цвету — варианты замены. */
+    fun alternatives(t: Thread, n: Int = 8): List<Thread> {
+        val l = lab(t.rgb)
+        return DMC.indices.filter { DMC[it].code != t.code }.sortedBy { d2(l, dmcLab[it]) }.take(n).map { DMC[it] }
+    }
+
+    // ---------- Подготовка фото ----------
+
+    /** Яркость, контраст и насыщенность: от −50 до +50, 0 — без изменений. */
+    fun adjust(px: IntArray, brightness: Int, contrast: Int, saturation: Int): IntArray {
+        if (brightness == 0 && contrast == 0 && saturation == 0) return px
+        val b = brightness * 2.0
+        val c = (100.0 + contrast * 1.6) / 100.0
+        val s = 1.0 + saturation / 50.0
+        return IntArray(px.size) { i ->
+            val p = px[i]
+            var r = (p shr 16 and 255).toDouble(); var g = (p shr 8 and 255).toDouble(); var bl = (p and 255).toDouble()
+            val lum = 0.299 * r + 0.587 * g + 0.114 * bl
+            r = lum + (r - lum) * s; g = lum + (g - lum) * s; bl = lum + (bl - lum) * s
+            r = (r - 128) * c + 128 + b; g = (g - 128) * c + 128 + b; bl = (bl - 128) * c + 128 + b
+            fun cl(v: Double) = v.roundToInt().coerceIn(0, 255)
+            (p and 0xFF000000.toInt()) or (cl(r) shl 16) or (cl(g) shl 8) or cl(bl)
+        }
+    }
+
+    /**
+     * Фон: клетки, связанные с краем картинки и похожие по цвету на преобладающий цвет рамки ([tolerance] — разница на глаз в Lab).
+     * Их можно не выкладывать — как в схемах вышивки с незаполненным фоном.
+     */
+    fun backgroundMask(px: IntArray, w: Int, h: Int, tolerance: Double = 14.0): BooleanArray {
+        val border = buildList { for (x in 0 until w) { add(x); add((h - 1) * w + x) }; for (y in 0 until h) { add(y * w); add(y * w + w - 1) } }
+        // Преобладающий цвет рамки — по грубым корзинам.
+        val bucket = border.groupingBy { val p = px[it]; (p shr 19 and 31) * 1024 + (p shr 11 and 31) * 32 + (p shr 3 and 31) }.eachCount()
+        val top = bucket.maxByOrNull { it.value }?.key ?: return BooleanArray(px.size)
+        val ref = lab(border.first { val p = px[it]; (p shr 19 and 31) * 1024 + (p shr 11 and 31) * 32 + (p shr 3 and 31) == top }.let { px[it] })
+        val tol = tolerance * tolerance
+        val mask = BooleanArray(px.size)
+        val queue = ArrayDeque<Int>()
+        border.forEach { if (!mask[it] && d2(lab(px[it]), ref) <= tol) { mask[it] = true; queue += it } }
+        while (queue.isNotEmpty()) {
+            val i = queue.removeFirst(); val x = i % w; val y = i / w
+            for ((dx, dy) in listOf(1 to 0, -1 to 0, 0 to 1, 0 to -1)) {
+                val xx = x + dx; val yy = y + dy
+                if (xx !in 0 until w || yy !in 0 until h) continue
+                val j = yy * w + xx
+                if (!mask[j] && d2(lab(px[j]), ref) <= tol) { mask[j] = true; queue += j }
+            }
+        }
+        return mask
     }
 
     private fun nearestIn(l: DoubleArray, pal: List<DoubleArray>): Int {
@@ -163,29 +242,33 @@ object CraftPattern {
         val out = p.cells.clone()
         for (y in 0 until h) for (x in 0 until w) {
             val me = p.cells[y * w + x]
+            if (me < 0) continue
             val around = buildList {
                 if (x > 0) add(p.cells[y * w + x - 1]); if (x < w - 1) add(p.cells[y * w + x + 1])
                 if (y > 0) add(p.cells[(y - 1) * w + x]); if (y < h - 1) add(p.cells[(y + 1) * w + x])
             }
             if (around.size >= 3 && around.none { it == me }) {
-                val top = around.groupingBy { it }.eachCount().maxByOrNull { it.value }!!
+                val top = around.filter { it >= 0 }.groupingBy { it }.eachCount().maxByOrNull { it.value } ?: continue
                 if (top.value >= 3) out[y * w + x] = top.key
             }
         }
-        return p.copy(cells = out)
+        return compact(p.copy(cells = out))
     }
 
     // ---------- Материалы ----------
 
     /** Размер готовой работы, см. Алмазная мозаика — страз 2,5 мм; вышивка — канва [count] крестиков на дюйм; бисер — 10/0 (~2,2 мм в ряду). */
-    fun sizeCm(kind: Kind, cells: Int, count: Int = 14): Double = when (kind) {
-        Kind.DIAMOND -> cells * 0.25
+    fun sizeCm(kind: Kind, cells: Int, count: Int = 14, round: Boolean = false): Double = when (kind) {
+        Kind.DIAMOND -> cells * if (round) 0.28 else 0.25
         Kind.CROSS -> cells * 2.54 / count
         Kind.BEADS -> cells * 0.22
     }
 
     /** Сколько клеток в ширину нужно для работы шириной [cm]. */
-    fun cellsFor(kind: Kind, cm: Double, count: Int = 14): Int = (cm / sizeCm(kind, 1, count)).roundToInt().coerceAtLeast(10)
+    fun cellsFor(kind: Kind, cm: Double, count: Int = 14, round: Boolean = false): Int = (cm / sizeCm(kind, 1, count, round)).roundToInt().coerceAtLeast(10)
+
+    /** Популярные размеры холстов для алмазной мозаики, см (ширина × высота). */
+    val CANVASES = listOf(20 to 30, 30 to 40, 40 to 50, 50 to 65, 60 to 80)
 
     data class Need(val amount: Double, val unit: String)
 
@@ -201,13 +284,17 @@ object CraftPattern {
         Kind.BEADS -> Need(ceil(cells * 1.1 / 110 * 10) / 10, "г")
     }
 
-    /** Символы для печатной схемы — различимые даже мелко. */
-    val SYMBOLS = listOf(
-        "●", "▲", "■", "◆", "★", "✚", "✖", "♥", "♣", "♠", "☀", "☾", "✿", "◐", "◑", "▼", "◀", "▶", "⬟", "⬢",
-        "A", "B", "C", "D", "E", "F", "G", "H", "K", "M", "N", "P", "R", "S", "T", "U", "V", "W", "X", "Z",
-        "1", "2", "3", "4", "5", "6", "7", "8", "9", "#", "%", "&", "@", "Ω", "Σ", "Ж", "Ф", "Ш", "Ю", "Я",
-        "α", "β", "δ", "λ", "π", "ψ", "∞", "≈", "÷", "±", "§", "¤", "♪", "☂", "⚑", "✓", "○", "□", "△", "◇",
-    )
+    /**
+     * Символы цветов — как в наборах: сначала 1–9, потом буквы (без похожих на цифры I, O, Q, W), потом значки.
+     * Самым частым цветам достаются самые простые символы. У каждого цвета схемы символ свой, повторов нет.
+     */
+    val SYMBOLS: List<String> = ("123456789".map { "$it" } + "ABCDEFGHJKLMNPRSTUVXYZ".map { "$it" } +
+        listOf("#", "%", "↑", "★", "⊥", "+", "▷", "∀", "Ω", "Σ", "Ж", "Ф", "Ш", "Ю", "Я", "Д", "Л", "П", "Ц", "Б", "Г", "Э",
+            "@", "&", "§", "♥", "♣", "♠", "♦", "●", "▲", "■", "◆", "✓", "×", "÷", "=", "?", "!", "<", ">", "~", "∞", "≈",
+            "π", "λ", "δ", "β", "α", "μ", "ψ", "Ψ", "Φ", "Θ", "Λ", "a", "b", "d", "e", "f", "g", "h", "k", "m", "n", "q", "r", "t")).distinct()
+
+    /** Символ цвета с номером [i]; если цветов больше, чем символов, — двузначные номера. */
+    fun symbol(i: Int): String = SYMBOLS.getOrNull(i) ?: "${i + 1}"
 
     /** Чёрный или белый символ поверх цвета — что читается лучше. */
     fun symbolDark(rgb: Int): Boolean = lab(rgb)[0] > 55

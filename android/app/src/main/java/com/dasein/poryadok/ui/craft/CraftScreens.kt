@@ -25,11 +25,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -45,6 +47,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -68,12 +71,15 @@ import com.dasein.poryadok.logic.CraftPattern
 import com.dasein.poryadok.system.CraftProject
 import com.dasein.poryadok.system.CraftStore
 import com.dasein.poryadok.ui.Routes
+import com.dasein.poryadok.ui.common.Bar
 import com.dasein.poryadok.ui.common.ConfirmDialog
+import com.dasein.poryadok.ui.common.CropDialog
 import com.dasein.poryadok.ui.common.Empty
 import com.dasein.poryadok.ui.common.Gap
 import com.dasein.poryadok.ui.common.Hint
 import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.Ic
+import com.dasein.poryadok.ui.common.NumberField
 import com.dasein.poryadok.ui.common.Pill
 import com.dasein.poryadok.ui.common.Screen
 import com.dasein.poryadok.ui.common.SectionTitle
@@ -84,6 +90,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+
+/** Квадратик цвета с символом — как в таблице цветов набора. */
+@Composable
+fun ColorChip(t: CraftPattern.Thread, index: Int, size: Int = 28) {
+    val extra = LocalExtra.current
+    Box(
+        Modifier.size(size.dp).clip(RoundedCornerShape(6.dp)).background(Color(t.rgb or (0xFF shl 24))).border(1.dp, extra.line, RoundedCornerShape(6.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(CraftPattern.symbol(index), fontSize = (size * .5f).sp, fontWeight = FontWeight.Bold, color = if (CraftPattern.symbolDark(t.rgb)) Color.Black else Color.White)
+    }
+}
 
 /** «Рукоделие»: схемы для алмазной мозаики, вышивки крестом и бисера из любой фотографии. */
 @Composable
@@ -115,12 +133,16 @@ fun CraftHomeScreen(nav: NavHostController) {
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             Text(
                 "Выберите любое фото — приложение превратит его в схему для алмазной мозаики, вышивки крестом или бисера: " +
-                    "подберёт цвета по каталогу DMC, посчитает стразы, мотки или граммы бисера и нарисует схему для печати.",
+                    "подберёт цвета по самой картинке и каталогу DMC, даст каждому цвету свой символ (1, 2, 3… A, B, C…), посчитает материалы " +
+                    "и сделает схему для печати на A4–A0 или в натуральную величину.",
                 fontSize = 14.sp, color = extra.dim, lineHeight = 20.sp,
             )
             Gap(10.dp)
             Button(onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                 Text("Схема из фото")
+            }
+            OutlinedButton(onClick = { nav.navigate(Routes.CRAFT_STASH) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                Text("Мои запасы (${CraftStore.stash(ctx).size} цветов)")
             }
             if (busy) Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Text("  Готовлю фото…")
@@ -135,8 +157,7 @@ fun CraftHomeScreen(nav: NavHostController) {
                         thumb?.let { Image(it.asImageBitmap(), null, Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop) }
                         Column(Modifier.weight(1f).padding(start = 12.dp)) {
                             Text(p.name, fontWeight = FontWeight.SemiBold)
-                            Text("${p.kindEnum.title} · ${p.width} клеток в ширину · ${p.colors} цветов", fontSize = 12.sp, color = extra.dim)
-                            if (p.done.isNotEmpty()) Text("готово цветов: ${p.done.size}", fontSize = 12.sp, color = extra.ok)
+                            Text("${p.kindEnum.title} · ${p.width} клеток в ширину · до ${p.colors} цветов", fontSize = 12.sp, color = extra.dim)
                         }
                     }
                 }
@@ -160,51 +181,81 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
     var showOriginal by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var photoVersion by remember { mutableIntStateOf(0) }
+    var cropAspect by remember { mutableStateOf<Float?>(null) }
+    var pending by remember { mutableStateOf<CraftProject?>(null) }
+    var colorEdit by remember { mutableStateOf<Int?>(null) }
+    var printDialog by remember { mutableStateOf(false) }
     // Настройки, влияющие на расчёт схемы.
-    val key = listOf(p0.kind, p0.width, p0.colors, p0.dither, p0.cleanup)
-    LaunchedEffect(key) {
+    val key = listOf(p0.kind, p0.width, p0.colors, p0.dither, p0.cleanup, p0.brightness, p0.contrast, p0.saturation, p0.removeBg, p0.onlyStash, p0.replace, photoVersion)
+    LaunchedEffect(key, p0.round) {
         busy = true
         val pat = CraftStore.pattern(ctx, p0)
         pattern = pat
-        preview = pat?.let { withContext(Dispatchers.Default) { CraftStore.preview(it, p0.kindEnum, (1400 / maxOf(it.width, it.height)).coerceIn(4, 24)) } }
+        preview = pat?.let { withContext(Dispatchers.Default) { CraftStore.preview(it, p0.kindEnum, (1400 / maxOf(it.width, it.height)).coerceIn(4, 24), p0.round) } }
         busy = false
     }
-    fun update(f: (CraftProject) -> CraftProject) { val n = f(p0); project = n; CraftStore.save(ctx, n) }
-    val original = remember(id) { runCatching { BitmapFactory.decodeFile(CraftStore.photo(ctx, id).absolutePath) }.getOrNull() }
+    fun save(n: CraftProject) { project = n; CraftStore.save(ctx, n) }
+    /** Изменение, которое пересчитает схему: если уже есть отметки выложенных клеток — сначала спросить. */
+    fun update(f: (CraftProject) -> CraftProject) {
+        val n = f(p0)
+        val changesPattern = listOf(n.kind, n.width, n.colors, n.dither, n.cleanup, n.brightness, n.contrast, n.saturation, n.removeBg, n.onlyStash, n.replace) !=
+            listOf(p0.kind, p0.width, p0.colors, p0.dither, p0.cleanup, p0.brightness, p0.contrast, p0.saturation, p0.removeBg, p0.onlyStash, p0.replace)
+        if (changesPattern && CraftStore.hasProgress(ctx, p0)) pending = n else save(n)
+    }
+    val original = remember(id, photoVersion) { runCatching { BitmapFactory.decodeFile(CraftStore.photo(ctx, id).absolutePath) }.getOrNull() }
 
-    val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("image/png")) { uri ->
+    var exportPaper by remember { mutableStateOf(210 to 297) }
+    var exportReal by remember { mutableStateOf(false) }
+    val pdfExporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
+        val pat = pattern
+        if (uri != null && pat != null) scope.launch {
+            busy = true
+            message = runCatching {
+                ctx.contentResolver.openOutputStream(uri)?.use { CraftStore.pdf(ctx, pat, p0, it, exportPaper.first, exportPaper.second, exportReal) }
+                "PDF сохранён: бумага ${exportPaper.first}×${exportPaper.second} мм" + if (exportReal) ", натуральная величина" else ""
+            }.getOrElse { "Не получилось сохранить: ${it.message}" }
+            busy = false
+        }
+    }
+    val pngExporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("image/png")) { uri ->
         val pat = pattern
         if (uri != null && pat != null) scope.launch {
             busy = true
             message = runCatching {
                 withContext(Dispatchers.IO) {
-                    val b = CraftStore.chart(pat, p0.kindEnum, p0.count, p0.name)
+                    val b = CraftStore.chart(pat, p0)
                     ctx.contentResolver.openOutputStream(uri)?.use { b.compress(Bitmap.CompressFormat.PNG, 100, it) }
                     b.recycle()
                 }
-                "Схема сохранена — её можно распечатать или открыть на планшете."
+                "Схема сохранена картинкой."
             }.getOrElse { "Не получилось сохранить: ${it.message}" }
             busy = false
         }
     }
-    fun share() {
+    fun share(text: String? = null) {
         val pat = pattern ?: return
         scope.launch {
             busy = true
             runCatching {
-                val f = withContext(Dispatchers.IO) {
-                    val dir = File(ctx.cacheDir, "share").apply { mkdirs() }
-                    val out = File(dir, "schema_${p0.id}.png")
-                    val b = CraftStore.chart(pat, p0.kindEnum, p0.count, p0.name)
-                    out.outputStream().use { b.compress(Bitmap.CompressFormat.PNG, 100, it) }
-                    b.recycle(); out
+                val send = Intent(Intent.ACTION_SEND)
+                if (text != null) send.setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
+                else {
+                    val f = withContext(Dispatchers.IO) {
+                        val dir = File(ctx.cacheDir, "share").apply { mkdirs() }
+                        val out = File(dir, "schema_${p0.id}.pdf")
+                        out.outputStream().use { CraftStore.pdf(ctx, pat, p0, it) }
+                        out
+                    }
+                    val uri: Uri = FileProvider.getUriForFile(ctx, ctx.packageName + ".files", f)
+                    send.setType("application/pdf").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                val uri: Uri = FileProvider.getUriForFile(ctx, ctx.packageName + ".files", f)
-                ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("image/png").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "Поделиться схемой"))
+                ctx.startActivity(Intent.createChooser(send, "Поделиться"))
             }.onFailure { message = "Не получилось поделиться: ${it.message}" }
             busy = false
         }
     }
+    val fileName = p0.name.replace(Regex("[^\\p{L}\\p{N} _-]"), "").ifBlank { "Схема" }
 
     Screen(p0.name, onBack = { nav.popBackStack() }) { pad ->
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
@@ -244,62 +295,73 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
             val pat = pattern
             if (pat != null) {
                 val kind = p0.kindEnum
-                val wcm = CraftPattern.sizeCm(kind, pat.width, p0.count); val hcm = CraftPattern.sizeCm(kind, pat.height, p0.count)
+                val wcm = CraftPattern.sizeCm(kind, pat.width, p0.count, p0.round); val hcm = CraftPattern.sizeCm(kind, pat.height, p0.count, p0.round)
                 Tile {
                     Text("${pat.width} × ${pat.height} клеток · ${"%.1f".format(wcm)} × ${"%.1f".format(hcm)} см", fontWeight = FontWeight.SemiBold)
                     Text(
-                        "Всего ${pat.cells.size} ${kind.unit}, цветов ${pat.colors.size}" + when (kind) {
-                            CraftPattern.Kind.DIAMOND -> " · страз 2,5 мм, квадратный"
+                        "Выкладывать ${pat.filled} ${kind.unit}, цветов ${pat.colors.size}" + when (kind) {
+                            CraftPattern.Kind.DIAMOND -> if (p0.round) " · круглые стразы 2,8 мм" else " · квадратные стразы 2,5 мм"
                             CraftPattern.Kind.CROSS -> " · канва Аида ${p0.count}"
                             CraftPattern.Kind.BEADS -> " · бисер 10/0"
                         },
                         fontSize = 13.sp, color = extra.dim,
                     )
                 }
-            }
-
-            SectionTitle("Настройки")
-            Text("Ширина: ${p0.width} клеток" + (pattern?.let { " (≈ ${"%.0f".format(CraftPattern.sizeCm(p0.kindEnum, p0.width, p0.count))} см)" } ?: ""), fontSize = 14.sp)
-            var w by remember(p0.id) { mutableFloatStateOf(p0.width.toFloat()) }
-            Slider(w, { w = it }, valueRange = 20f..200f, onValueChangeFinished = { update { it.copy(width = w.toInt()) } })
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf(20, 30, 40, 50, 60).forEach { cm ->
-                    Pill("$cm см", false) { val c = CraftPattern.cellsFor(p0.kindEnum, cm.toDouble(), p0.count).coerceIn(20, 200); w = c.toFloat(); update { it.copy(width = c) } }
+                Button(onClick = { nav.navigate(Routes.craftWork(p0.id)) }, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                    Text(if (kind == CraftPattern.Kind.CROSS) "Вышивать по схеме — отмечать готовое" else "Выкладывать по схеме — отмечать готовое")
                 }
             }
-            Gap(8.dp)
-            Text("Цветов: ${p0.colors}", fontSize = 14.sp)
+
+            SectionTitle("Фото и холст")
+            Text("Размер холста — обрежет фото под пропорции и пересчитает клетки:", fontSize = 13.sp, color = extra.dim)
+            val portrait = (original?.let { it.height >= it.width }) ?: true
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 6.dp)) {
+                CraftPattern.CANVASES.forEach { (a, b) ->
+                    val (w, h) = if (portrait) a to b else b to a
+                    Pill("$w×$h см", false) {
+                        update { it.copy(width = CraftPattern.cellsFor(it.kindEnum, w.toDouble(), it.count, it.round).coerceIn(20, 250)) }
+                        cropAspect = w.toFloat() / h
+                    }
+                }
+                Pill("Обрезать вручную", false) { cropAspect = original?.let { it.width.toFloat() / it.height } ?: 0.75f }
+                Pill("Квадрат", false) { cropAspect = 1f }
+                Pill("Вернуть всё фото", false) { CraftStore.resetCrop(ctx, p0.id); photoVersion++ }
+            }
+            Text("Ширина: ${p0.width} клеток (≈ ${"%.0f".format(CraftPattern.sizeCm(p0.kindEnum, p0.width, p0.count, p0.round))} см)", fontSize = 14.sp)
+            var w by remember(p0.id) { mutableFloatStateOf(p0.width.toFloat()) }
+            Slider(w, { w = it }, valueRange = 20f..250f, onValueChangeFinished = { update { it.copy(width = w.toInt()) } })
+            AdjustSlider("Яркость", p0.brightness) { v -> update { it.copy(brightness = v) } }
+            AdjustSlider("Контраст", p0.contrast) { v -> update { it.copy(contrast = v) } }
+            AdjustSlider("Насыщенность", p0.saturation) { v -> update { it.copy(saturation = v) } }
+
+            SectionTitle("Цвета")
+            Text("Цветов: до ${p0.colors}", fontSize = 14.sp)
             var k by remember(p0.id) { mutableFloatStateOf(p0.colors.toFloat()) }
-            Slider(k, { k = it }, valueRange = 4f..60f, onValueChangeFinished = { update { it.copy(colors = k.toInt()) } })
-            Text("Меньше цветов — проще и дешевле работа, больше — точнее портреты и переходы.", fontSize = 12.sp, color = extra.dim)
+            Slider(k, { k = it }, valueRange = 4f..80f, onValueChangeFinished = { update { it.copy(colors = k.toInt()) } })
+            Text("Цвета подбираются по самой картинке: сначала находятся её главные оттенки, потом — ближайшие нитки и стразы DMC. Меньше цветов — проще работа, больше — точнее портреты.", fontSize = 12.sp, color = extra.dim)
             if (p0.kindEnum == CraftPattern.Kind.CROSS) {
                 Gap(6.dp)
                 Text("Канва Аида", fontSize = 14.sp)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { listOf(11, 14, 16, 18).forEach { c -> Pill("$c", p0.count == c) { update { it.copy(count = c) } } } }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { listOf(11, 14, 16, 18).forEach { c -> Pill("$c", p0.count == c) { save(p0.copy(count = c)) } } }
             }
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
-                Column(Modifier.weight(1f)) {
-                    Text("Плавные переходы", fontSize = 14.sp)
-                    Text("Смешивает соседние цвета точками — для портретов и неба", fontSize = 12.sp, color = extra.dim)
-                }
-                Switch(p0.dither, { on -> update { it.copy(dither = on) } })
-            }
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
-                Column(Modifier.weight(1f)) {
-                    Text("Убрать одиночные клетки", fontSize = 14.sp)
-                    Text("Меньше «конфетти» — работать быстрее", fontSize = 12.sp, color = extra.dim)
-                }
-                Switch(p0.cleanup, { on -> update { it.copy(cleanup = on) } })
+            if (p0.kindEnum == CraftPattern.Kind.DIAMOND) Toggle("Круглые стразы", "2,8 мм вместо квадратных 2,5 мм — холст получится крупнее", p0.round) { on -> save(p0.copy(round = on)) }
+            Toggle("Плавные переходы", "Смешивает соседние цвета точками — для портретов и неба", p0.dither) { on -> update { it.copy(dither = on) } }
+            Toggle("Убрать одиночные клетки", "Меньше «конфетти» — работать быстрее", p0.cleanup) { on -> update { it.copy(cleanup = on) } }
+            Toggle("Не заполнять фон", "Однотонный фон у краёв остаётся пустым — как в вышивке без фона", p0.removeBg) { on -> update { it.copy(removeBg = on) } }
+            val stashSize = CraftStore.stash(ctx).size
+            Toggle("Только из моих запасов", if (stashSize < 2) "Сначала отметьте цвета в «Мои запасы»" else "Подбирать из $stashSize цветов, которые у вас уже есть", p0.onlyStash) { on ->
+                if (on && stashSize < 2) nav.navigate(Routes.CRAFT_STASH) else update { it.copy(onlyStash = on) }
             }
             var name by remember(p0.id) { mutableStateOf(p0.name) }
             Gap(6.dp)
-            TextInput(name, { name = it; update { pr -> pr.copy(name = it.ifBlank { pr.name }) } }, "Название")
+            TextInput(name, { name = it; save(p0.copy(name = it.ifBlank { p0.name })) }, "Название")
 
             if (pat != null) {
                 val kind = p0.kindEnum
                 val counts = pat.counts()
-                SectionTitle("Материалы · ${pat.colors.size} цветов")
-                Text("Отмечайте цвета, которые уже выложили или вышили.", fontSize = 12.sp, color = extra.dim)
+                val stash = CraftStore.stash(ctx)
+                SectionTitle("Таблица цветов · ${pat.colors.size}")
+                Text("У каждого цвета свой символ — им подписаны клетки схемы. Нажмите на цвет, чтобы заменить его другим оттенком или слить с соседним.", fontSize = 12.sp, color = extra.dim)
                 val total = pat.colors.indices.sumOf { CraftPattern.need(kind, counts[it], p0.count).amount }
                 Text(
                     when (kind) {
@@ -309,32 +371,47 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
                     },
                     fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(vertical = 6.dp),
                 )
-                val doneCells = pat.colors.indices.filter { pat.colors[it].code in p0.done }.sumOf { counts[it] }
-                if (pat.cells.isNotEmpty()) com.dasein.poryadok.ui.common.Bar(doneCells.toFloat() / pat.cells.size, extra.ok, Modifier.padding(bottom = 6.dp))
                 pat.colors.forEachIndexed { i, t ->
                     val n = CraftPattern.need(kind, counts[i], p0.count)
-                    val done = t.code in p0.done
-                    Row(Modifier.fillMaxWidth().clickable { update { it.copy(done = if (done) it.done - t.code else it.done + t.code) } }.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(28.dp).clip(RoundedCornerShape(6.dp)).background(Color(t.rgb or (0xFF shl 24))).border(1.dp, extra.line, RoundedCornerShape(6.dp)), contentAlignment = Alignment.Center) {
-                            Text(CraftPattern.SYMBOLS[i % CraftPattern.SYMBOLS.size], fontSize = 14.sp, fontWeight = FontWeight.Bold, color = if (CraftPattern.symbolDark(t.rgb)) Color.Black else Color.White)
-                        }
+                    Row(Modifier.fillMaxWidth().clickable { colorEdit = i }.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("${i + 1}", Modifier.width(26.dp), fontSize = 12.sp, color = extra.dim)
+                        ColorChip(t, i)
                         Column(Modifier.weight(1f).padding(start = 10.dp)) {
                             Text("DMC ${t.code} · ${t.name}", fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                            Text("${counts[i]} ${kind.unit} · ${CraftStore.fmt(n.amount)} ${n.unit}", fontSize = 12.sp, color = extra.dim)
+                            Text(
+                                "${counts[i]} ${kind.unit} · ${CraftStore.fmt(n.amount)} ${n.unit}" + if (t.code in stash) " · есть в запасах" else "",
+                                fontSize = 12.sp, color = if (t.code in stash) extra.ok else extra.dim,
+                            )
                         }
-                        Checkbox(done, { on -> update { it.copy(done = if (on) it.done + t.code else it.done - t.code) } })
                     }
                 }
-                Gap(10.dp)
-                Button(onClick = { exporter.launch("${p0.name.replace(Regex("[^\\p{L}\\p{N} _-]"), "")}.png") }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                    Text("Сохранить схему для печати (PNG)")
+                if (p0.replace.isNotEmpty()) TextButton(onClick = { update { it.copy(replace = emptyMap()) } }) { Text("Отменить замены цветов (${p0.replace.size})") }
+
+                SectionTitle("Печать и выгрузка")
+                Text("Вид клеток схемы", fontSize = 14.sp)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
+                    listOf("Как на холсте", "Цветная", "Ч/б символы").forEachIndexed { i, s -> Pill(s, p0.chartStyle == i) { save(p0.copy(chartStyle = i)) } }
                 }
-                OutlinedButton(onClick = { share() }, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("Поделиться схемой") }
+                Button(onClick = { printDialog = true }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("PDF для печати: A4, A3, A2… или свой размер") }
+                OutlinedButton(onClick = { pngExporter.launch("$fileName.png") }, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("Схема одной картинкой (PNG)") }
+                OutlinedButton(onClick = { share() }, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("Поделиться схемой (PDF)") }
+                val toBuy = pat.colors.indices.filter { pat.colors[it].code !in stash }
+                OutlinedButton(
+                    onClick = {
+                        share(
+                            "Купить для «${p0.name}» (${kind.title}):\n" + toBuy.joinToString("\n") { i ->
+                                val n = CraftPattern.need(kind, counts[i], p0.count)
+                                "DMC ${pat.colors[i].code} — ${pat.colors[i].name}: ${CraftStore.fmt(n.amount)} ${n.unit}"
+                            },
+                        )
+                    },
+                    enabled = !busy && toBuy.isNotEmpty(), modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                ) { Text("Список покупок (${toBuy.size} цветов, без того что есть)") }
                 Hint(
                     "craft_print",
-                    "В схеме для печати каждая клетка подписана символом, жирные линии — через 10 клеток, по краям — номера. " +
-                        "Внизу легенда: символ, номер DMC и сколько материала купить. Цвета на экране и в каталогах немного отличаются — сверяйте по номеру.",
-                    title = "Как читать схему",
+                    "«Схема по листам» — удобно работать: крупные клетки, номера рядов и столбцов, сетка через 10. «Натуральная величина» — клетка ровно под страз или крестик: " +
+                        "распечатайте на нужном формате (A4–A0 или свой), и если холст больше листа, он разделится на части с метками совмещения. Цвета на экране приблизительные — покупайте по номеру DMC.",
+                    title = "Как печатать",
                 )
             }
             message?.let { Tile(Modifier.padding(top = 8.dp)) { Text(it) } }
@@ -342,7 +419,157 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
             Gap(60.dp)
         }
     }
-    if (confirmDelete) ConfirmDialog("Удалить «${p0.name}»?", "Фото и настройки схемы удалятся.", onDismiss = { confirmDelete = false }) {
+    cropAspect?.let { a ->
+        CropDialog(CraftStore.originalPath(ctx, p0.id), a, "crafts", outW = 1600, title = "Кадр для схемы", onDismiss = { cropAspect = null }) { path ->
+            CraftStore.applyCrop(ctx, p0.id, path); cropAspect = null; photoVersion++
+        }
+    }
+    pending?.let { n ->
+        AlertDialog(
+            onDismissRequest = { pending = null },
+            title = { Text("Схема изменится") },
+            text = { Text("Отметки выложенных клеток относятся к текущей схеме и сбросятся. Продолжить?") },
+            confirmButton = { TextButton(onClick = { save(n); pending = null }) { Text("Изменить") } },
+            dismissButton = { TextButton(onClick = { pending = null }) { Text("Оставить как есть") } },
+        )
+    }
+    colorEdit?.let { i ->
+        val pat = pattern
+        if (pat != null && i < pat.colors.size) {
+            val t = pat.colors[i]
+            AlertDialog(
+                onDismissRequest = { colorEdit = null },
+                title = { Row(verticalAlignment = Alignment.CenterVertically) { ColorChip(t, i); Text("  DMC ${t.code}") } },
+                text = {
+                    Column(Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState())) {
+                        Text(t.name, color = extra.dim)
+                        Text("Заменить на соседний оттенок:", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+                        CraftPattern.alternatives(t).forEach { a ->
+                            Row(Modifier.fillMaxWidth().clickable { update { it.copy(replace = it.replace + (t.code to a.code)) }; colorEdit = null }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.size(24.dp).clip(RoundedCornerShape(5.dp)).background(Color(a.rgb or (0xFF shl 24))))
+                                Text("  DMC ${a.code} · ${a.name}", fontSize = 14.sp)
+                            }
+                        }
+                        Text("Слить с цветом схемы:", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+                        pat.colors.forEachIndexed { j, o ->
+                            if (j != i) Row(Modifier.fillMaxWidth().clickable { update { it.copy(replace = it.replace + (t.code to o.code)) }; colorEdit = null }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                ColorChip(o, j, 24)
+                                Text("  DMC ${o.code} · ${o.name}", fontSize = 14.sp)
+                            }
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = { TextButton(onClick = { colorEdit = null }) { Text("Закрыть") } },
+            )
+        }
+    }
+    if (printDialog) {
+        var paper by remember { mutableStateOf("A4") }
+        var land by remember { mutableStateOf(false) }
+        var cw by remember { mutableStateOf("500") }
+        var ch by remember { mutableStateOf("700") }
+        var real by remember { mutableStateOf(false) }
+        AlertDialog(
+            onDismissRequest = { printDialog = false },
+            title = { Text("PDF для печати") },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    Text("Формат бумаги", fontWeight = FontWeight.SemiBold)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
+                        (CraftStore.PAPERS.map { it.first } + "Свой").forEach { n -> Pill(n, paper == n) { paper = n } }
+                    }
+                    if (paper == "Свой") Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(Modifier.weight(1f)) { NumberField(cw, { cw = it }, "Ширина", suffix = "мм", decimal = false) }
+                        Box(Modifier.weight(1f)) { NumberField(ch, { ch = it }, "Высота", suffix = "мм", decimal = false) }
+                    } else Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(land, { land = it }); Text("Альбомная ориентация")
+                    }
+                    Text("Что печатать", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { real = false }) {
+                        androidx.compose.material3.RadioButton(!real, { real = false }); Text("Схема по листам — удобно работать")
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { real = true }) {
+                        androidx.compose.material3.RadioButton(real, { real = true }); Text("Холст в натуральную величину")
+                    }
+                    pattern?.let { pat ->
+                        val wcm = CraftPattern.sizeCm(p0.kindEnum, pat.width, p0.count, p0.round); val hcm = CraftPattern.sizeCm(p0.kindEnum, pat.height, p0.count, p0.round)
+                        Text("Работа: ${"%.1f".format(wcm)} × ${"%.1f".format(hcm)} см", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val size = if (paper == "Свой") (cw.toIntOrNull() ?: 210).coerceIn(50, 3000) to (ch.toIntOrNull() ?: 297).coerceIn(50, 3000)
+                    else CraftStore.PAPERS.first { it.first == paper }.second.let { if (land) it.second to it.first else it }
+                    exportPaper = size; exportReal = real; printDialog = false
+                    pdfExporter.launch("$fileName ${if (paper == "Свой") "${size.first}x${size.second}" else paper}.pdf")
+                }) { Text("Сохранить PDF") }
+            },
+            dismissButton = { TextButton(onClick = { printDialog = false }) { Text("Отмена") } },
+        )
+    }
+    if (confirmDelete) ConfirmDialog("Удалить «${p0.name}»?", "Фото, настройки и отметки удалятся.", onDismiss = { confirmDelete = false }) {
         CraftStore.delete(ctx, p0.id); nav.popBackStack()
+    }
+}
+
+@Composable
+private fun AdjustSlider(label: String, value: Int, onSet: (Int) -> Unit) {
+    var v by remember(value) { mutableFloatStateOf(value.toFloat()) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text("$label ${if (v.toInt() > 0) "+" else ""}${v.toInt()}", fontSize = 13.sp, modifier = Modifier.width(130.dp))
+        Slider(v, { v = it }, valueRange = -50f..50f, onValueChangeFinished = { onSet(v.toInt()) }, modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun Toggle(title: String, sub: String, on: Boolean, onChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
+        Column(Modifier.weight(1f)) {
+            Text(title, fontSize = 14.sp)
+            Text(sub, fontSize = 12.sp, color = LocalExtra.current.dim)
+        }
+        Switch(on, onChange)
+    }
+}
+
+/** «Мои запасы»: какие цвета DMC уже есть — чтобы подбирать схему из них и не покупать лишнее. */
+@Composable
+fun CraftStashScreen(nav: NavHostController) {
+    val ctx = LocalContext.current
+    val extra = LocalExtra.current
+    var stash by remember { mutableStateOf(CraftStore.stash(ctx)) }
+    var q by remember { mutableStateOf("") }
+    var bulk by remember { mutableStateOf("") }
+    fun set(s: Set<String>) { stash = s; CraftStore.setStash(ctx, s) }
+    Screen("Мои запасы", onBack = { nav.popBackStack() }) { pad ->
+        androidx.compose.foundation.lazy.LazyColumn(Modifier.padding(pad), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, bottom = 40.dp)) {
+            item {
+                Text("Отметьте цвета DMC, которые у вас есть (стразы, нитки, бисер). Схему можно подобрать только из них, а в списке покупок они не появятся.", fontSize = 13.sp, color = extra.dim)
+                Gap(8.dp)
+                TextInput(bulk, { bulk = it }, "Добавить номерами: 310, 321, 666, B5200")
+                Row {
+                    TextButton(onClick = {
+                        val codes = CraftPattern.DMC.map { it.code }.toSet()
+                        val add = bulk.split(',', ' ', ';', '\n').map { it.trim() }.filter { c -> c in codes || c.lowercase() in codes }
+                        set(stash + add); bulk = ""
+                    }, enabled = bulk.isNotBlank()) { Text("Добавить") }
+                    TextButton(onClick = { set(emptySet()) }, enabled = stash.isNotEmpty()) { Text("Очистить всё", color = extra.danger) }
+                }
+                TextInput(q, { q = it }, "Поиск: номер или название цвета")
+                Text("Отмечено: ${stash.size} из ${CraftPattern.DMC.size}", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(vertical = 6.dp))
+            }
+            val list = CraftPattern.DMC.filter { q.isBlank() || it.code.contains(q.trim(), true) || it.name.contains(q.trim(), true) }
+            items(list.size) { n ->
+                val t = list[n]
+                val on = t.code in stash
+                Row(Modifier.fillMaxWidth().clickable { set(if (on) stash - t.code else stash + t.code) }.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(26.dp).clip(RoundedCornerShape(6.dp)).background(Color(t.rgb or (0xFF shl 24))).border(1.dp, extra.line, RoundedCornerShape(6.dp)))
+                    Text("  DMC ${t.code} · ${t.name}", Modifier.weight(1f), fontSize = 14.sp)
+                    Checkbox(on, { set(if (it) stash + t.code else stash - t.code) })
+                }
+            }
+        }
     }
 }

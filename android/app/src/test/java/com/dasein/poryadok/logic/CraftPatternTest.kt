@@ -57,4 +57,35 @@ class CraftPatternTest {
         assertEquals(160, CraftPattern.cellsFor(CraftPattern.Kind.DIAMOND, 40.0))
         assertEquals(CraftPattern.DMC.size, CraftPattern.DMC.map { it.code }.toSet().size)
     }
+
+    @Test fun symbolsAreUniqueLikeKits() {
+        assertEquals("1", CraftPattern.symbol(0))
+        assertEquals("9", CraftPattern.symbol(8))
+        assertEquals("A", CraftPattern.symbol(9))
+        assertTrue(CraftPattern.SYMBOLS.size >= 80)
+        assertEquals(CraftPattern.SYMBOLS.size, CraftPattern.SYMBOLS.toSet().size)
+        // Похожих на цифры букв нет.
+        assertTrue(listOf("I", "O", "Q").none { it in CraftPattern.SYMBOLS })
+    }
+
+    @Test fun backgroundAndReplace() {
+        // Белый фон с красным квадратом в центре.
+        val w = 10; val h = 10
+        val px = IntArray(w * h) { i -> val x = i % w; val y = i / w; if (x in 3..6 && y in 3..6) 0xFFC72B3B.toInt() else 0xFFFFFFFF.toInt() }
+        val mask = CraftPattern.backgroundMask(px, w, h)
+        assertEquals(100 - 16, mask.count { it })
+        val p = CraftPattern.build(px, w, h, 4, dither = false, skip = mask)
+        assertEquals(16, p.filled)
+        assertEquals(listOf("321"), p.colors.map { it.code })
+        val r = CraftPattern.replace(p, mapOf("321" to "666"))
+        assertEquals(listOf("666"), r.colors.map { it.code })
+        assertTrue(CraftPattern.alternatives(p.colors[0]).none { it.code == "321" })
+        assertEquals(px.toList(), CraftPattern.adjust(px, 0, 0, 0).toList())
+    }
+
+    @Test fun onlyAllowedColors() {
+        val allowed = CraftPattern.DMC.indices.filter { CraftPattern.DMC[it].code in setOf("310", "B5200", "666") }.toSet()
+        val p = CraftPattern.build(sample(), 40, 20, 5, dither = false, allowed = allowed)
+        assertTrue(p.colors.all { it.code in setOf("310", "B5200", "666") })
+    }
 }
