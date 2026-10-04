@@ -114,6 +114,7 @@ fun BackupScreen(nav: NavHostController) {
                     when {
                         counts == null -> "…"
                         s == BackupSection.SETTINGS -> "настройки приложения" + if (counts.second > 0) " · файлов ${counts.second}" else ""
+                        s == BackupSection.CRAFTS -> "схем ${counts.second / 2}"
                         else -> "записей ${counts.first}" + if (counts.second > 0) " · файлов ${counts.second}" else ""
                     },
                 ) { on -> picked = if (on) picked + s else picked - s }
@@ -218,7 +219,8 @@ private fun ImportPicker(m: BackupManifest, onDismiss: () -> Unit, onImport: (Se
                     val files = m.files[s.name] ?: 0
                     SectionRow(
                         s, s in chosen,
-                        if (s == BackupSection.SETTINGS) "настройки" + if (files > 0) " · файлов $files" else ""
+                        if (s == BackupSection.CRAFTS) "схем ${files / 2}"
+                        else if (s == BackupSection.SETTINGS) "настройки" + if (files > 0) " · файлов $files" else ""
                         else "записей $rec" + if (files > 0) " · файлов $files" else "",
                     ) { on -> chosen = if (on) chosen + s else chosen - s }
                 }
