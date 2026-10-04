@@ -346,7 +346,7 @@ fun FinanceCalculators(cur: String) {
                     CalcResult("Через ${years.ifBlank { "0" }} г.", rub(total, cur), extra.ok)
                     CalcLine("Вложено", rub(put, cur)); CalcLine("Проценты", rub(interest, cur))
                     if (total > 0) Bar((put / total).toFloat(), Palette.item(1), Modifier.padding(top = 6.dp))
-                    Note("Синяя часть — ваши взносы, остальное — проценты. Проценты по вкладам сверх необлагаемого лимита облагаются НДФЛ.")
+                    Note("Закрашенная часть полосы — ваши взносы, остальное — проценты. Проценты по вкладам сверх необлагаемого лимита облагаются НДФЛ.")
                 }
             }
             1 -> {
