@@ -73,6 +73,7 @@ fun NotebookScreen(nav: NavHostController, settings: Settings) {
     val notes by observe<List<FinanceNote>?>(null) { Graph.extra.financeNotes() }
     val txns by observe(emptyList()) { Graph.dao.txns() }
     val records by observe(emptyList()) { Graph.extra.importRecordsLike("nb-inc") }
+    val tableRecords by observe(emptyList()) { Graph.extra.importRecordsLike("nb-day") }
     var preview by remember { mutableStateOf<Notebook.Data?>(null) }
     var report by remember { mutableStateOf<NotebookImport.Report?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -84,7 +85,7 @@ fun NotebookScreen(nav: NavHostController, settings: Settings) {
         scope.launch {
             runCatching { Notebook.parse(readText(ctx, uri)) }
                 .onSuccess { preview = it; error = null; report = null }
-                .onFailure { error = "Файл не распознан: ${it.message ?: it.javaClass.simpleName}. Нужен JSON или CSV из оцифровки тетради." }
+                .onFailure { error = "Файл не распознан: ${it.message ?: it.javaClass.simpleName}. Нужна таблица CSV (Дата; Расход; Доход; Примечание) или JSON/CSV из оцифровки тетради." }
         }
     }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { open(it) } }
@@ -93,6 +94,8 @@ fun NotebookScreen(nav: NavHostController, settings: Settings) {
     val incomeIds = records.map { it.targetId }.toSet()
     val incomeByMonth = txns.filter { it.id in incomeIds }.groupBy { LocalDate.ofEpochDay(it.day).let { d -> d.year to d.monthValue } }
     val allNotes = notes.orEmpty().filter { it.importKey.startsWith("nb:") }
+    val tableIds = tableRecords.map { it.targetId }.toSet()
+    val tableByMonth = txns.filter { it.id in tableIds }.groupBy { LocalDate.ofEpochDay(it.day).let { d -> d.year to d.monthValue } }
     val months = (allNotes.map { it.year to it.month } + incomeByMonth.keys).toSortedSet(compareBy<Pair<Int, Int>>({ it.first }, { it.second })).toList()
 
     Screen("Тетрадь финансов", onBack = { nav.popBackStack() }) { pad ->
@@ -100,8 +103,9 @@ fun NotebookScreen(nav: NavHostController, settings: Settings) {
             Row {
                 AppIcon(Ic.document, 32.dp)
                 HGap(12.dp)
-                Hint("notebook_about", "Импорт оцифрованной бумажной тетради (JSON или CSV). Дневные суммы станут доходами на счёте «${NotebookImport.ACCOUNT}», " +
-                        "а итоги, расходы без даты и выходные — месячными записями. Суммы и даты не меняются.", title = "Что делает импорт")
+                Hint("notebook_about", "Загрузка записей с бумаги. Таблица «Дата · Расход · Доход · Примечание» (CSV) — каждая строка станет расходом или доходом " +
+                        "на счёте «${NotebookImport.ACCOUNT}» в свой день, категория подберётся по примечанию. Оцифровка тетради (JSON или CSV): дневные суммы — доходы, " +
+                        "итоги, расходы без даты и выходные — месячные записи. Суммы и даты не меняются, повторная загрузка не создаёт дублей.", title = "Что делает импорт")
             }
             Gap(10.dp)
             Button(onClick = { picker.launch(arrayOf("application/json", "text/*", "text/csv", "application/octet-stream")) }, Modifier.fillMaxWidth()) {
@@ -111,19 +115,22 @@ fun NotebookScreen(nav: NavHostController, settings: Settings) {
 
             report?.let { r -> ReportCard(r, cur) }
 
-            if (months.isNotEmpty()) {
+            if (tableByMonth.isNotEmpty()) TableMonths(tableByMonth, cur)
+            if (months.isNotEmpty() || tableByMonth.isNotEmpty()) {
                 Row(Modifier.padding(top = 8.dp)) {
-                    OutlinedButton(onClick = { yearDialog = true }, Modifier.weight(1f)) { Text("Изменить год") }
-                    HGap(8.dp)
+                    if (months.isNotEmpty()) {
+                        OutlinedButton(onClick = { yearDialog = true }, Modifier.weight(1f)) { Text("Изменить год") }
+                        HGap(8.dp)
+                    }
                     OutlinedButton(onClick = { confirmWipe = true }, Modifier.weight(1f)) { Text("Удалить данные") }
                 }
-                Text(
+                if (months.isNotEmpty()) Text(
                     "Год в тетради не был указан — при импорте использован ${months.first().first}. Если он другой, поменяйте: месяцы и числа останутся прежними.",
                     fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
                 )
             }
-            if (notes != null && months.isEmpty() && report == null && preview == null) {
-                Empty(Ic.notebook, "Тетрадь ещё не загружена", "Выберите файл finance_handwritten_ocr.json или .csv — после импорта здесь появятся месяцы, итоги и записи для проверки.")
+            if (notes != null && months.isEmpty() && tableByMonth.isEmpty() && report == null && preview == null) {
+                Empty(Ic.notebook, "Тетрадь ещё не загружена", "Выберите таблицу расходов и доходов (.csv) или файл оцифровки тетради — после загрузки здесь появятся месяцы, итоги и записи для проверки.")
             }
             months.forEach { (y, m) ->
                 val monthNotes = allNotes.filter { it.year == y && it.month == m }
@@ -142,14 +149,18 @@ fun NotebookScreen(nav: NavHostController, settings: Settings) {
             title = { Text("Проверка перед импортом") },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
-                    Text("Доходов по дням: ${d.incomes.size} на ${Money.format(d.incomes.sumOf { it.amount }, cur)}")
-                    Text("Дней без записи: ${d.noIncome.size}")
-                    Text("Сумм, записанных отдельно: ${d.written.size}")
-                    Text("Расходов без даты: ${d.expenses.size}")
-                    Text("Требуют проверки: ${a.ambiguous.size}", color = if (a.ambiguous.isNotEmpty()) extra.warn else MaterialTheme.colorScheme.onSurface)
-                    Gap(8.dp)
-                    NumberField(year, { year = it }, "Год записей", decimal = false)
-                    Text("В тетради год не указан, по умолчанию — ${d.year}. Повторный импорт того же файла дублей не создаст.", fontSize = 12.sp, color = extra.dim)
+                    if (d.dated.isNotEmpty() || d.skipped.isNotEmpty()) {
+                        TablePreview(d, cur)
+                    } else {
+                        Text("Доходов по дням: ${d.incomes.size} на ${Money.format(d.incomes.sumOf { it.amount }, cur)}")
+                        Text("Дней без записи: ${d.noIncome.size}")
+                        Text("Сумм, записанных отдельно: ${d.written.size}")
+                        Text("Расходов без даты: ${d.expenses.size}")
+                        Text("Требуют проверки: ${a.ambiguous.size}", color = if (a.ambiguous.isNotEmpty()) extra.warn else MaterialTheme.colorScheme.onSurface)
+                        Gap(8.dp)
+                        NumberField(year, { year = it }, "Год записей", decimal = false)
+                        Text("В тетради год не указан, по умолчанию — ${d.year}. Повторный импорт того же файла дублей не создаст.", fontSize = 12.sp, color = extra.dim)
+                    }
                 }
             },
             confirmButton = {
@@ -179,7 +190,7 @@ fun NotebookScreen(nav: NavHostController, settings: Settings) {
         )
     }
     if (confirmWipe) ConfirmDialog(
-        "Удалить данные тетради?", "Будут удалены импортированные доходы и месячные записи. Файл можно будет загрузить заново.",
+        "Удалить данные тетради?", "Будут удалены загруженные из файлов расходы, доходы и месячные записи. Файл можно будет загрузить заново.",
         onDismiss = { confirmWipe = false },
     ) { scope.launch { NotebookImport.removeAll(); report = null } }
 }
@@ -188,7 +199,17 @@ fun NotebookScreen(nav: NavHostController, settings: Settings) {
 private fun ReportCard(r: NotebookImport.Report, cur: String) {
     val extra = LocalExtra.current
     SectionTitle("Итоги импорта")
-    Tile {
+    if (r.tableExpenses + r.tableIncomes + r.tableSkipped > 0 || r.tableProblems.isNotEmpty()) Tile {
+        Text("Из таблицы добавлено: расходов ${r.tableExpenses}, доходов ${r.tableIncomes}", fontWeight = FontWeight.SemiBold)
+        if (r.tableSkipped > 0) Text("Уже были загружены раньше, пропущено: ${r.tableSkipped}", fontSize = 13.sp, color = extra.dim)
+        Text("Операции на счёте «${NotebookImport.ACCOUNT}» — их видно в «Финансах» по дням и категориям.", fontSize = 13.sp, color = extra.dim)
+        if (r.tableProblems.isNotEmpty()) {
+            Gap(6.dp)
+            Text("Не загружено — проверьте в таблице (${r.tableProblems.size})", fontWeight = FontWeight.SemiBold, color = extra.warn)
+            r.tableProblems.take(30).forEach { Text("• $it", fontSize = 13.sp) }
+        }
+    }
+    if (r.incomeAdded + r.incomeSkipped + r.notesAdded + r.notesSkipped > 0) Tile(Modifier.padding(top = 8.dp)) {
         Text("Доходных записей добавлено: ${r.incomeAdded}" + if (r.incomeSkipped > 0) " (уже были: ${r.incomeSkipped})" else "", fontWeight = FontWeight.SemiBold)
         Text("Месячных записей добавлено: ${r.notesAdded}" + if (r.notesSkipped > 0) " (уже были: ${r.notesSkipped})" else "")
         Text("  · расходов без даты: ${r.expensesAdded}", fontSize = 13.sp, color = extra.dim)
@@ -278,6 +299,60 @@ private fun MonthCard(year: Int, month: Int, incomeSum: Double, incomeDays: Int,
                 "Без записи о доходе / выходной: " + off.mapNotNull { it.day }.sorted().joinToString(", "),
                 fontSize = 12.sp, color = extra.dim,
             )
+        }
+    }
+}
+
+/** Что будет загружено из простой таблицы: суммы, месяцы, категории и строки с ошибками. */
+@Composable
+private fun TablePreview(d: Notebook.Data, cur: String) {
+    val extra = LocalExtra.current
+    val out = d.dated.filterNot { it.income }
+    val inc = d.dated.filter { it.income }
+    Text("Расходов: ${out.size} на ${Money.format(out.sumOf { it.amount }, cur)}")
+    Text("Доходов: ${inc.size} на ${Money.format(inc.sumOf { it.amount }, cur)}")
+    if (d.dated.isNotEmpty()) {
+        val days = d.dated.map { it.epochDay }
+        Text("Даты: с ${LocalDate.ofEpochDay(days.min()).format(DMY)} по ${LocalDate.ofEpochDay(days.max()).format(DMY)}", fontSize = 13.sp, color = extra.dim)
+        Gap(6.dp)
+        Text("Расходы по категориям", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        out.groupBy { it.category }.entries.sortedByDescending { e -> e.value.sumOf { it.amount } }.forEach { (c, l) ->
+            Row(Modifier.fillMaxWidth()) {
+                Text("$c (${l.size})", Modifier.weight(1f), fontSize = 13.sp)
+                Text(Money.format(l.sumOf { it.amount }, cur), fontSize = 13.sp)
+            }
+        }
+    }
+    if (d.skipped.isNotEmpty()) {
+        Gap(6.dp)
+        Text("Не загрузятся (${d.skipped.size})", fontWeight = FontWeight.SemiBold, color = extra.warn, fontSize = 14.sp)
+        d.skipped.take(15).forEach { Text("• $it", fontSize = 12.sp) }
+    }
+    Gap(6.dp)
+    Text("Повторная загрузка того же файла дублей не создаст.", fontSize = 12.sp, color = extra.dim)
+}
+
+private val DMY = java.time.format.DateTimeFormatter.ofPattern("d.MM.yyyy")
+
+/** Загруженное из таблицы, по месяцам: расходы, доходы, разница. */
+@Composable
+private fun TableMonths(byMonth: Map<Pair<Int, Int>, List<com.dasein.poryadok.data.Txn>>, cur: String) {
+    val extra = LocalExtra.current
+    SectionTitle("Из таблицы")
+    Tile {
+        byMonth.entries.sortedWith(compareByDescending<Map.Entry<Pair<Int, Int>, List<com.dasein.poryadok.data.Txn>>> { it.key.first }.thenByDescending { it.key.second }).forEach { (ym, l) ->
+            val out = l.filter { it.type == com.dasein.poryadok.data.TxnType.EXPENSE }.sumOf { it.amount }
+            val inc = l.filter { it.type == com.dasein.poryadok.data.TxnType.INCOME }.sumOf { it.amount }
+            Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+                Column(Modifier.weight(1f)) {
+                    Text("${Notebook.monthName(ym.second)} ${ym.first}", fontWeight = FontWeight.Medium)
+                    Text("${l.size} записей", fontSize = 12.sp, color = extra.dim)
+                }
+                Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
+                    Text("−" + Money.format(out, cur), fontSize = 14.sp)
+                    Text("+" + Money.format(inc, cur), fontSize = 14.sp, color = extra.ok)
+                }
+            }
         }
     }
 }

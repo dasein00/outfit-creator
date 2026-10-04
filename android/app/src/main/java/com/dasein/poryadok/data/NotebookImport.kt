@@ -16,6 +16,8 @@ object NotebookImport {
     const val ACCOUNT = "Тетрадь"
     private const val KIND_INCOME = "nb-inc"
     private const val KIND_NOTE = "nb-note"
+    /** Операции с датой из простой таблицы (шаблона «Дата · Расход · Доход · Примечание»). */
+    private const val KIND_DAY = "nb-day"
 
     data class Report(
         val year: Int,
@@ -28,6 +30,10 @@ object NotebookImport {
         val noIncomeAdded: Int,
         val analysis: Notebook.Analysis,
         val written: List<Notebook.Written>,
+        val tableExpenses: Int = 0,
+        val tableIncomes: Int = 0,
+        val tableSkipped: Int = 0,
+        val tableProblems: List<String> = emptyList(),
     )
 
     private fun incomeKey(i: Notebook.Income) = "nb:inc:%02d-%02d:%s".format(i.month, i.day, Cooking.amount(i.amount))
@@ -47,7 +53,7 @@ object NotebookImport {
         val account = dao.accountsNow().firstOrNull { it.name == ACCOUNT }?.id
             ?: dao.upsertAccount(Account(name = ACCOUNT, emoji = "ui:notebook", color = 7, sort = 50))
         val cats = dao.categoriesNow()
-        val salary = cats.firstOrNull { it.income && it.name.startsWith("Зарплата", ignoreCase = true) }?.id
+        val salary = if (data.incomes.isEmpty()) null else cats.firstOrNull { it.income && it.name.startsWith("Зарплата", ignoreCase = true) }?.id
             ?: dao.upsertCategory(Category(name = "Зарплата/ежедневный доход", emoji = "ui:coins", income = true, color = 3))
         var incAdded = 0; var incSkipped = 0; var notesAdded = 0; var notesSkipped = 0
         var written = 0; var expenses = 0; var off = 0
@@ -94,7 +100,35 @@ object NotebookImport {
                 ) expenses++
             }
         }
-        return Report(year, incAdded, incSkipped, notesAdded, notesSkipped, written, expenses, off, Notebook.analyze(data), data.written)
+        var tOut = 0; var tIn = 0; var tSkip = 0
+        if (data.dated.isNotEmpty()) Graph.db.withTransaction {
+            val catIds = HashMap<Pair<String, Boolean>, Long>()
+            suspend fun categoryId(name: String, income: Boolean): Long = catIds.getOrPut(name.lowercase() to income) {
+                dao.categoriesNow().firstOrNull { it.income == income && it.name.equals(name, ignoreCase = true) }?.id
+                    ?: dao.upsertCategory(Category(name = name, emoji = if (income) "ui:wallet" else "ui:grid", income = income, color = if (income) 3 else 9, sort = 90))
+            }
+            val seen = HashMap<String, Int>()
+            data.dated.forEach { r ->
+                // Две одинаковые траты в один день — две записи; повторная загрузка того же файла — без дублей.
+                val base = "nb:day:${r.epochDay}:${if (r.income) "in" else "out"}:${Cooking.amount(r.amount)}:${r.note.trim().lowercase()}"
+                val n = (seen[base] ?: 0) + 1
+                seen[base] = n
+                val key = "$base#$n"
+                if (x.importRecord(key) != null) { tSkip++; return@forEach }
+                val id = dao.upsertTxn(
+                    Txn(
+                        type = if (r.income) TxnType.INCOME else TxnType.EXPENSE, amount = r.amount, accountId = account,
+                        categoryId = categoryId(r.category, r.income), day = r.epochDay, note = r.note.trim(), createdAt = now,
+                    )
+                )
+                x.putImportRecord(ImportRecord(key, KIND_DAY, id, now))
+                if (r.income) tIn++ else tOut++
+            }
+        }
+        return Report(
+            year, incAdded, incSkipped, notesAdded, notesSkipped, written, expenses, off, Notebook.analyze(data), data.written,
+            tOut, tIn, tSkip, data.skipped,
+        )
     }
 
     /** Год в тетради не записан — его можно поменять: месяц и число остаются прежними. */
@@ -124,6 +158,10 @@ object NotebookImport {
         var n = 0
         val txns = dao.txnsNow().associateBy { it.id }
         x.importRecordsOf(KIND_INCOME).forEach { r ->
+            txns[r.targetId]?.let { dao.deleteTxn(it); n++ }
+            x.deleteImportRecord(r.key)
+        }
+        x.importRecordsOf(KIND_DAY).forEach { r ->
             txns[r.targetId]?.let { dao.deleteTxn(it); n++ }
             x.deleteImportRecord(r.key)
         }

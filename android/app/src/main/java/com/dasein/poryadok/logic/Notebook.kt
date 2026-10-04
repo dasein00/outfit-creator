@@ -28,6 +28,10 @@ object Notebook {
         val written: List<Written>,
         val expenses: List<Expense>,
         val uncertainty: Map<Int, String>,
+        /** Записи с полной датой из простой таблицы «Дата · Расход · Доход · Примечание». */
+        val dated: List<PaperTable.Row> = emptyList(),
+        /** Строки таблицы, которые не удалось разобрать: номер строки и причина. */
+        val skipped: List<String> = emptyList(),
     )
 
     const val UNKNOWN = "Неизвестно"
@@ -77,7 +81,11 @@ object Notebook {
 
     fun parse(text: String): Data {
         val t = text.trimStart('﻿', ' ', '\n', '\r', '\t')
-        return if (t.startsWith("{")) parseJson(t) else parseCsv(t)
+        return when {
+            t.startsWith("{") -> parseJson(t)
+            PaperTable.isTable(t) -> PaperTable.parse(t)
+            else -> parseCsv(t)
+        }
     }
 
     fun parseJson(text: String): Data {
@@ -170,7 +178,7 @@ object Notebook {
         return Data(year, "RUB", incomes, off, written, expenses, emptyMap())
     }
 
-    private fun splitCsv(line: String): List<String> {
+    fun splitCsv(line: String, sep: Char = ','): List<String> {
         val out = mutableListOf<String>()
         val sb = StringBuilder()
         var q = false
@@ -180,7 +188,7 @@ object Notebook {
             when {
                 c == '"' && q && i + 1 < line.length && line[i + 1] == '"' -> { sb.append('"'); i++ }
                 c == '"' -> q = !q
-                c == ',' && !q -> { out += sb.toString(); sb.clear() }
+                c == sep && !q -> { out += sb.toString(); sb.clear() }
                 else -> sb.append(c)
             }
             i++
