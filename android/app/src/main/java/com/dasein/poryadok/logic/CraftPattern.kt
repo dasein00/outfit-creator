@@ -179,6 +179,39 @@ object CraftPattern {
         return compact(p.copy(colors = p.colors.map { t -> map[t.code]?.let { byCode[it] } ?: t }))
     }
 
+    /** Замена цвета схемы на ближайший из запасов: что было, чем заменить и насколько похоже (ΔE в Lab). */
+    data class StashMatch(val from: Thread, val to: Thread, val deltaE: Double) {
+        val quality: String get() = when {
+            deltaE < 6 -> "почти не отличить"
+            deltaE < 14 -> "похожий оттенок"
+            deltaE < 28 -> "заметно отличается"
+            else -> "другой цвет"
+        }
+    }
+
+    /** Для каждого цвета схемы — самый похожий цвет из запасов [stash] (номера DMC). Пусто, если запасов нет. */
+    fun matchStash(colors: List<Thread>, stash: Set<String>): List<StashMatch> {
+        val own = DMC.indices.filter { DMC[it].code in stash }
+        if (own.isEmpty()) return emptyList()
+        return colors.map { t ->
+            val l = lab(t.rgb)
+            val best = own.minBy { d2(l, dmcLab[it]) }
+            StashMatch(t, DMC[best], sqrt(d2(l, dmcLab[best])))
+        }
+    }
+
+    /**
+     * Новая таблица замен, чтобы схема собиралась только из запасов: учитывает уже сделанные замены [old]
+     * (исходный цвет → выбранный), чтобы цепочки не терялись.
+     */
+    fun stashReplace(old: Map<String, String>, matches: List<StashMatch>): Map<String, String> {
+        val to = matches.associate { it.from.code to it.to.code }
+        val out = LinkedHashMap<String, String>()
+        matches.forEach { m -> out[m.from.code] = m.to.code }
+        old.forEach { (k, v) -> out[k] = to[v] ?: v }
+        return out.filter { it.key != it.value }
+    }
+
     /** Ближайшие оттенки каталога к цвету — варианты замены. */
     fun alternatives(t: Thread, n: Int = 8): List<Thread> {
         val l = lab(t.rgb)

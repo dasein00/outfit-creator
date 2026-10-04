@@ -88,4 +88,15 @@ class CraftPatternTest {
         val p = CraftPattern.build(sample(), 40, 20, 5, dither = false, allowed = allowed)
         assertTrue(p.colors.all { it.code in setOf("310", "B5200", "666") })
     }
+
+    @Test fun stashMatchPicksClosestOwnColor() {
+        val dmc = CraftPattern.DMC.associateBy { it.code }
+        val m = CraftPattern.matchStash(listOf(dmc.getValue("310"), dmc.getValue("321")), setOf("3799", "970", "B5200"))
+        assertEquals("3799", m[0].to.code) // чёрный → мой тёмно-серый
+        assertEquals("970", m[1].to.code) // красный → мой оранжевый
+        assertTrue(m[0].deltaE < m[1].deltaE)
+        val r = CraftPattern.stashReplace(mapOf("817" to "321"), m)
+        assertEquals("3799", r["310"]); assertEquals("970", r["321"]); assertEquals("970", r["817"])
+        assertTrue(CraftPattern.matchStash(m.map { it.from }, emptySet()).isEmpty())
+    }
 }

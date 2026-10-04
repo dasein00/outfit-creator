@@ -143,7 +143,7 @@ fun MediaRow(m: MediaItem, onLong: (() -> Unit)? = null, onOpen: () -> Unit) {
 
 /** «Что посмотреть / почитать?»: случайный выбор из списка «Хочу» с учётом фильтров. */
 @Composable
-fun RandomPickDialog(kind: Int, candidates: List<MediaItem>, onOpen: (MediaItem) -> Unit, onDismiss: () -> Unit) {
+fun RandomPickDialog(kind: Int, candidates: List<MediaItem>, source: String = "", onOpen: (MediaItem) -> Unit, onDismiss: () -> Unit) {
     val extra = LocalExtra.current
     var pick by remember { mutableStateOf(candidates.randomOrNull()) }
     AlertDialog(
@@ -151,7 +151,7 @@ fun RandomPickDialog(kind: Int, candidates: List<MediaItem>, onOpen: (MediaItem)
         title = { Text(if (kind == MediaKind.BOOK) "Что почитать?" else "Что посмотреть?") },
         text = {
             val m = pick
-            if (m == null) Text("В списке «${MediaStatus.names(kind)[MediaStatus.PLANNED]}» пока пусто. Добавьте туда то, что хотите посмотреть или прочитать.")
+            if (m == null) Text("В ${source.ifBlank { "«${MediaStatus.names(kind)[MediaStatus.PLANNED]}»" }} пока пусто. Добавьте туда то, что хотите посмотреть или прочитать. Долгое нажатие на кнопку — выбрать другую папку.")
             else Row {
                 Poster(m, 96.dp)
                 Column(Modifier.padding(start = 12.dp)) {
@@ -159,7 +159,7 @@ fun RandomPickDialog(kind: Int, candidates: List<MediaItem>, onOpen: (MediaItem)
                     Text(listOfNotNull(m.year?.toString(), m.genres.ifBlank { null }).joinToString(" · "), fontSize = 12.sp, color = extra.dim)
                     if (m.creators.isNotBlank()) Text(m.creators, fontSize = 12.sp, color = extra.dim)
                     if (m.description.isNotBlank()) Text(m.description, fontSize = 13.sp, maxLines = 5, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
-                    Text("Из ${candidates.size} вариантов", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
+                    Text("Из ${candidates.size} вариантов" + if (source.isNotBlank()) " · $source" else "", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
                 }
             }
         },
@@ -302,6 +302,23 @@ fun SimilarShelf(items: List<MediaItem>, onOpen: (MediaItem) -> Unit) {
                 Text(m.title, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
                 if (m.myRating > 0) Text("★ ${m.myRating}", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
             }
+        }
+    }
+}
+
+/** Кнопка-пилюля с иконкой и долгим нажатием (у OutlinedButton долгого нажатия нет). */
+@Composable
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+fun IconPillButton(glyph: String, text: String, modifier: Modifier = Modifier, onLong: (() -> Unit)? = null, onClick: () -> Unit) {
+    androidx.compose.material3.Surface(
+        shape = RoundedCornerShape(50),
+        color = androidx.compose.ui.graphics.Color.Transparent,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        modifier = modifier.clip(RoundedCornerShape(50)).combinedClickable(onClick = onClick, onLongClick = onLong),
+    ) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center) {
+            com.dasein.poryadok.ui.common.Glyph(glyph, 24.dp)
+            Text(" $text", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium, maxLines = 1, softWrap = false)
         }
     }
 }

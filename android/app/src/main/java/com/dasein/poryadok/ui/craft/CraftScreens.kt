@@ -80,6 +80,7 @@ import com.dasein.poryadok.ui.common.Empty
 import com.dasein.poryadok.ui.common.Gap
 import com.dasein.poryadok.ui.common.Hint
 import com.dasein.poryadok.ui.common.HowTo
+import com.dasein.poryadok.ui.common.IconAction
 import com.dasein.poryadok.ui.common.Ic
 import com.dasein.poryadok.ui.common.NumberField
 import com.dasein.poryadok.ui.common.Pill
@@ -114,6 +115,7 @@ fun CraftHomeScreen(nav: NavHostController) {
     var refresh by remember { mutableStateOf(0) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var toDelete by remember { mutableStateOf<CraftProject?>(null) }
     val projects = remember(refresh) { CraftStore.list(ctx) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) scope.launch {
@@ -153,7 +155,7 @@ fun CraftHomeScreen(nav: NavHostController) {
             SectionTitle("Мои схемы")
             if (projects.isEmpty()) Empty(Ic.image, "Пока нет схем", "Лучше всего получаются фото с крупным объектом и чётким контрастом: портрет, питомец, цветы, пейзаж.")
             projects.forEach { p ->
-                Tile(Modifier.padding(bottom = 8.dp), onClick = { nav.navigate(Routes.craft(p.id)) }) {
+                Tile(Modifier.padding(bottom = 8.dp), onClick = { nav.navigate(Routes.craft(p.id)) }, onLongClick = { toDelete = p }) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         val thumb = remember(p.id) { runCatching { BitmapFactory.decodeFile(CraftStore.photo(ctx, p.id).absolutePath, BitmapFactory.Options().apply { inSampleSize = 8 }) }.getOrNull() }
                         thumb?.let { Image(it.asImageBitmap(), null, Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop) }
@@ -161,11 +163,17 @@ fun CraftHomeScreen(nav: NavHostController) {
                             Text(p.name, fontWeight = FontWeight.SemiBold)
                             Text("${p.kindEnum.title} · ${p.width} клеток в ширину · до ${p.colors} цветов", fontSize = 12.sp, color = extra.dim)
                         }
+                        IconAction(Ic.trash, "Удалить") { toDelete = p }
                     }
                 }
             }
             HowTo("craft")
             Gap(96.dp)
+        }
+    }
+    toDelete?.let { p ->
+        ConfirmDialog("Удалить «${p.name}»?", "Фото, схема, настройки и отметки удалятся.", onDismiss = { toDelete = null }) {
+            CraftStore.delete(ctx, p.id); toDelete = null; refresh++
         }
     }
 }
@@ -190,6 +198,7 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
     var pending by remember { mutableStateOf<CraftProject?>(null) }
     var colorEdit by remember { mutableStateOf<Int?>(null) }
     var printDialog by remember { mutableStateOf(false) }
+    var stashDialog by remember { mutableStateOf(false) }
     // Настройки, влияющие на расчёт схемы.
     val key = listOf(p0.kind, p0.width, p0.colors, p0.dither, p0.cleanup, p0.brightness, p0.contrast, p0.saturation, p0.removeBg, p0.onlyStash, p0.replace, photoVersion)
     LaunchedEffect(key, p0.round) {
@@ -284,7 +293,7 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
             busy = false
         }
     }
-    Screen(p0.name, onBack = { nav.popBackStack() }) { pad ->
+    Screen(p0.name, onBack = { nav.popBackStack() }, actions = { IconAction(Ic.trash, "Удалить схему") { confirmDelete = true } }) { pad ->
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 CraftPattern.Kind.entries.forEach { k -> Pill(k.title, p0.kindEnum == k) { update { it.copy(kind = k.name) } } }
@@ -428,7 +437,11 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
                         }
                     }
                 }
-                if (p0.replace.isNotEmpty()) TextButton(onClick = { update { it.copy(replace = emptyMap()) } }) { Text("Отменить замены цветов (${p0.replace.size})") }
+                val own = pat.colors.count { it.code in stash }
+                OutlinedButton(onClick = { if (stash.isEmpty()) nav.navigate(Routes.CRAFT_STASH) else stashDialog = true }, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                    Text(if (stash.isEmpty()) "Собрать из моих страз — сначала отметьте запасы" else "Собрать из моих страз (своих уже $own из ${pat.colors.size})")
+                }
+                if (p0.replace.isNotEmpty()) TextButton(onClick = { update { it.copy(replace = emptyMap()) } }) { Text("Вернуть исходные цвета (замен: ${p0.replace.size})") }
 
                 SectionTitle("Печать и выгрузка")
                 Text("Вид клеток схемы", fontSize = 14.sp)
@@ -507,6 +520,50 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
                 dismissButton = { TextButton(onClick = { colorEdit = null }) { Text("Закрыть") } },
             )
         }
+    }
+    if (stashDialog) pattern?.let { pat ->
+        val matches = remember(pat) { CraftPattern.matchStash(pat.colors, CraftStore.stash(ctx)) }
+        val merged = pat.colors.size - matches.map { it.to.code }.distinct().size
+        AlertDialog(
+            onDismissRequest = { stashDialog = false },
+            title = { Text("Собрать из моих страз") },
+            text = {
+                Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
+                    Text(
+                        "Каждый цвет схемы заменится самым похожим из ваших запасов. Символы и клетки останутся на месте." +
+                            if (merged > 0) " $merged цв. сольются с соседними — схема станет проще." else "",
+                        fontSize = 13.sp, color = extra.dim,
+                    )
+                    matches.forEachIndexed { i, m ->
+                        val same = m.from.code == m.to.code
+                        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            ColorChip(m.from, i, 26)
+                            Text(" →  ", color = extra.dim)
+                            Box(Modifier.size(26.dp).clip(RoundedCornerShape(6.dp)).background(Color(m.to.rgb or (0xFF shl 24))))
+                            Column(Modifier.weight(1f).padding(start = 8.dp)) {
+                                Text(if (same) "DMC ${m.to.code} — уже есть" else "DMC ${m.from.code} → ${m.to.code} · ${m.to.name}", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                if (!same) Text(
+                                    m.quality, fontSize = 11.sp,
+                                    color = when { m.deltaE < 14 -> extra.ok; m.deltaE < 28 -> extra.warn; else -> extra.danger },
+                                )
+                            }
+                        }
+                    }
+                    Text(
+                        "Совет: если какой-то цвет «другой», добавьте в запасы похожий оттенок или включите «Только из моих запасов» — тогда схема пересчитается целиком из ваших цветов.",
+                        fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val r = CraftPattern.stashReplace(p0.replace, matches)
+                    update { it.copy(replace = r) }; stashDialog = false
+                    message = "Схема собрана из ваших страз: заменено ${matches.count { it.from.code != it.to.code }} цв."
+                }) { Text("Заменить") }
+            },
+            dismissButton = { TextButton(onClick = { stashDialog = false }) { Text("Отмена") } },
+        )
     }
     if (printDialog) {
         var paper by remember { mutableStateOf("A4") }

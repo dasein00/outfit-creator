@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -63,6 +65,7 @@ import kotlin.math.sqrt
  * «Отметить весь цвет», прогресс по каждому цвету и общий. Отметки сохраняются.
  */
 @Composable
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 fun CraftWorkScreen(nav: NavHostController, id: Long) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
@@ -96,7 +99,7 @@ fun CraftWorkScreen(nav: NavHostController, id: Long) {
         val doneBy = remember(pat, version) { IntArray(pat.colors.size).also { c -> pat.cells.forEachIndexed { i, v -> if (v >= 0 && d[i]) c[v]++ } } }
         val total = pat.filled
         val doneTotal = doneBy.sum()
-        Column(Modifier.padding(pad).fillMaxSize()) {
+        Column(Modifier.padding(pad).consumeWindowInsets(pad).navigationBarsPadding().padding(bottom = 8.dp).fillMaxSize()) {
             Column(Modifier.padding(horizontal = 12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Готово ${doneTotal} из $total · ${if (total > 0) doneTotal * 100 / total else 0} %", Modifier.weight(1f), fontWeight = FontWeight.SemiBold)

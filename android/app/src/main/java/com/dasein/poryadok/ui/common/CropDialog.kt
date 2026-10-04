@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -118,7 +119,7 @@ fun CropDialog(
     var oy by remember { mutableFloatStateOf(0f) }
     var saving by remember { mutableStateOf(false) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Column(Modifier.fillMaxSize().background(Color(0xF0101010)).systemBarsPadding().padding(16.dp)) {
+        Column(Modifier.fillMaxSize().background(Color(0xF0101010)).systemBarsPadding().navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 32.dp)) {
             Text(title, color = Color.White, fontSize = 18.sp)
             Text("Двигайте и увеличивайте картинку двумя пальцами — в превью попадёт то, что внутри рамки.", color = Color(0xFFBBBBBB), fontSize = 12.sp)
             BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().padding(vertical = 12.dp)) {
@@ -129,7 +130,9 @@ fun CropDialog(
                 val usableH = areaH - with(density) { 72.dp.toPx() }
                 val fw = min(areaW * .92f, usableH * .92f * aspect)
                 val fh = fw / aspect
-                val frame = Rect(Offset((areaW - fw) / 2, (usableH - fh) / 2), Size(fw, fh))
+                // Кнопки сверху (под заголовком), чтобы не уходили под системные кнопки навигации.
+                val top = with(density) { 64.dp.toPx() }
+                val frame = Rect(Offset((areaW - fw) / 2, top + (usableH - fh) / 2), Size(fw, fh))
                 val b = bmp
                 if (b == null) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -178,7 +181,7 @@ fun CropDialog(
                             drawLine(Color.White.copy(alpha = .35f), Offset(frame.left, y), Offset(frame.right, y), 1f)
                         }
                     }
-                    Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.align(Alignment.TopCenter).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = onDismiss, Modifier.weight(1f)) { Text("Отмена", color = Color.White) }
                         OutlinedButton(onClick = { center() }, Modifier.weight(1f)) { Text("По центру", color = Color.White) }
                         Button(

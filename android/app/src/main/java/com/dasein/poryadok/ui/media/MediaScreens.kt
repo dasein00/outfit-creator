@@ -35,6 +35,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -184,7 +185,9 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
     var menu by remember { mutableStateOf(false) }
     var import by remember { mutableStateOf(false) }
     var stats by remember { mutableStateOf(false) }
-    var random by remember { mutableStateOf(false) }
+    /** Откуда брать случайный тайтл: null — закрыто; иначе название источника и кандидаты. */
+    var random by remember { mutableStateOf<Pair<String, List<MediaItem>>?>(null) }
+    var randomSource by remember { mutableStateOf(false) }
     val lists by observe(emptyList()) { Graph.extra.mediaLists() }
     val listItems by observe(emptyList()) { Graph.extra.mediaListItems() }
     var newList by remember { mutableStateOf(false) }
@@ -292,10 +295,15 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
                     }
                     Gap(8.dp)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { random = true }, Modifier.weight(1f)) {
-                            Text(if (kind == MediaKind.BOOK) "🎲 Что почитать?" else "🎲 Что посмотреть?", maxLines = 1, softWrap = false)
+                        IconPillButton("tops/00", if (kind == MediaKind.BOOK) "Что почитать?" else "Что посмотреть?", Modifier.weight(1f), onLong = { randomSource = true }) {
+                            // По умолчанию — всё, что в «Что посмотреть» (запланированные фильмы и сериалы).
+                            // Своя папка с таким названием важнее статуса.
+                            val folder = myLists.firstOrNull { it.name.trim().lowercase().removeSuffix("?") == (if (kind == MediaKind.BOOK) "что почитать" else "что посмотреть") }
+                            val inFolder = folder?.let { f -> all.orEmpty().filter { m -> listItems.any { it.listId == f.id && it.mediaId == m.id } } }.orEmpty()
+                            val pool = inFolder.ifEmpty { all.orEmpty().filter { it.status == MediaStatus.PLANNED && (if (kind == MediaKind.BOOK) it.kind == MediaKind.BOOK else it.kind != MediaKind.BOOK) } }
+                            random = (if (inFolder.isNotEmpty()) "«${folder!!.name}»" else if (kind == MediaKind.BOOK) "«${MediaStatus.names(kind)[0]}»" else "«Что посмотреть»") to pool
                         }
-                        OutlinedButton(onClick = { stats = true }, Modifier.weight(1f)) { Text("📊 Статистика", maxLines = 1, softWrap = false) }
+                        IconPillButton("tops/01", "Статистика", Modifier.weight(1f)) { stats = true }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
                         Text("Найдено ${list.size} из ${base.size}", fontSize = 12.sp, color = extra.dim, modifier = Modifier.weight(1f))
@@ -365,9 +373,46 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
         }
     }
     if (stats) MediaStatsSheet(kind, base) { stats = false }
-    if (random) {
-        val planned = list.filter { it.status == MediaStatus.PLANNED }.ifEmpty { base.filter { it.status == MediaStatus.PLANNED } }
-        RandomPickDialog(kind, planned, onOpen = { random = false; nav.navigate(Routes.media(it.id, kind)) }) { random = false }
+    random?.let { (src, pool) ->
+        RandomPickDialog(kind, pool, source = src, onOpen = { random = null; nav.navigate(Routes.media(it.id, it.kind)) }) { random = null }
+    }
+    if (randomSource) {
+        val everything = all.orEmpty()
+        val video = kind != MediaKind.BOOK
+        val sameKind = everything.filter { if (video) it.kind != MediaKind.BOOK else it.kind == MediaKind.BOOK }
+        val sources = buildList {
+            add((if (video) "Что посмотреть" else MediaStatus.names(kind)[0]) to sameKind.filter { it.status == MediaStatus.PLANNED })
+            if (video) {
+                add("Фильмы — ${MediaStatus.names(MediaKind.MOVIE)[0].lowercase()}" to everything.filter { it.kind == MediaKind.MOVIE && it.status == MediaStatus.PLANNED })
+                add("Сериалы — ${MediaStatus.names(MediaKind.SERIES)[0].lowercase()}" to everything.filter { it.kind == MediaKind.SERIES && it.status == MediaStatus.PLANNED })
+            }
+            MediaStatus.names(kind).forEachIndexed { i, n -> if (i != MediaStatus.PLANNED) add(n to sameKind.filter { it.status == i }) }
+            myLists.forEach { l -> add("Папка «${l.name}»" to sameKind.filter { m -> listItems.any { it.listId == l.id && it.mediaId == m.id } }) }
+            com.dasein.poryadok.logic.MediaShelf.SMART.forEach { sm ->
+                add(com.dasein.poryadok.data.CustomNames.get("smart_${sm.key}", sm.title) to sameKind.filter { sm.test(it, System.currentTimeMillis()) })
+            }
+            add("Сейчас на экране (с фильтрами)" to list)
+            add("Вся коллекция" to sameKind)
+        }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { randomSource = false },
+            title = { Text("Откуда выбрать случайно?") },
+            text = {
+                Column(Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState())) {
+                    sources.forEach { (name, pool) ->
+                        Row(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable(enabled = pool.isNotEmpty()) { randomSource = false; random = "«$name»" to pool }.padding(vertical = 10.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(name, Modifier.weight(1f), color = if (pool.isEmpty()) extra.dim else MaterialTheme.colorScheme.onSurface)
+                            Text("${pool.size}", color = extra.dim, fontSize = 13.sp)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { randomSource = false }) { Text("Закрыть") } },
+        )
     }
     if (import) ImportDialog(kind) { import = false }
     if (renameAll) RenameAllDialog(kind, myLists) { renameAll = false }
