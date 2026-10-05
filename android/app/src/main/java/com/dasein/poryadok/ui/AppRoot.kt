@@ -335,6 +335,14 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
                 com.dasein.poryadok.ui.craft.CraftWorkScreen(nav, it.long("id"))
             }
             composable(Routes.CRAFT_STASH) { com.dasein.poryadok.ui.craft.CraftStashScreen(nav) }
+            composable(com.dasein.poryadok.ui.health.PressureRoutes.HOME) { com.dasein.poryadok.ui.health.PressureHomeScreen(nav) }
+            composable(
+                "pressureAdd?person={person}&id={id}",
+                arguments = listOf(navArgument("person") { type = NavType.LongType; defaultValue = 0L }, navArgument("id") { type = NavType.LongType; defaultValue = 0L }),
+            ) { com.dasein.poryadok.ui.health.PressureAddScreen(nav, it.long("person"), it.long("id")) }
+            composable("pressurePerson/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
+                com.dasein.poryadok.ui.health.PressurePersonScreen(nav, it.long("id"))
+            }
             composable(Routes.SEARCH) { SearchScreen(nav) }
 
             composable(

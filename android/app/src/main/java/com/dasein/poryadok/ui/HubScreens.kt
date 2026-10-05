@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -117,7 +118,11 @@ fun HealthHubScreen(nav: NavHostController) {
     val burned = Energy.burned(steps, weight?.kg ?: profile?.startWeight ?: 70.0, workouts.filter { it.day == today }.sumOf { it.kcal }, energy.firstOrNull { it.day == today }?.activeKcal, profile?.heightCm, pace)
     val lastSleep = sleep.maxByOrNull { it.day }?.takeIf { it.day >= today - 1 }
     val weekStart = Dates.weekStart(today)
+    val pctx = androidx.compose.ui.platform.LocalContext.current
+    val diary by com.dasein.poryadok.system.PressureStore.flow(pctx).collectAsState()
+    val bp = diary?.let { d -> d.readings.filter { it.personId == (d.people.firstOrNull { p -> p.id == d.current } ?: d.people.firstOrNull())?.id }.maxByOrNull { it.time } }
     val tiles = listOf(
+        HealthTile("ui:heart", "Давление", bp?.let { "${it.sys}/${it.dia}" } ?: "—", bp?.let { com.dasein.poryadok.logic.Pressure.category(it.sys, it.dia).short.lowercase() } ?: "дневник для семьи", null, com.dasein.poryadok.ui.health.PressureRoutes.HOME),
         HealthTile("food/02", "Питание", "$eaten ккал", "из ${plan.targetKcal}", eaten / plan.targetKcal.coerceAtLeast(1).toFloat(), Routes.health(0)),
         HealthTile("sleep/00", "Сон", lastSleep?.let { "${sleepMinutes(it) / 60} ч ${sleepMinutes(it) % 60} м" } ?: "—",
             lastSleep?.let { "${Dates.time(it.bedMin)} → ${Dates.time(it.wakeMin)}" } ?: "нет записи", lastSleep?.let { sleepMinutes(it) / (profile?.sleepGoalMin ?: 480).toFloat() }, Routes.wellbeing(1)),

@@ -22,6 +22,7 @@ enum class BackupSection(
     MEDIA("Фильмы, книги и топы", "habit/01", "коллекция, оценки, отзывы, прогресс, списки, топы и постеры", listOf("posters", "media")),
     NOTES("Заметки", "habit/23", "страницы и блоки с картинками, видео и GIF", listOf("pages")),
     WARDROBE("Гардероб", "ui:hanger", "вещи, посадка и образы с фото", listOf("wardrobe", "outfits")),
+    PRESSURE("Давление и пульс", "ui:heart", "люди, замеры давления и пульса, заметки", listOf("pressure")),
     CRAFTS("Рукоделие", "minimal/04", "схемы алмазной мозаики, вышивки и бисера: фото, настройки, отмеченные цвета", listOf("crafts")),
     SETTINGS("Настройки и виджет", "train/38", "тема, PIN, профиль Small Talks, холодильник, темп ходьбы, вид виджета, свои иконки", listOf("icons"));
 
@@ -68,7 +69,7 @@ enum class BackupSection(
             )
             NOTES -> dst.copy(notes = src.notes, extra = dx.copy(pages = sx.pages, pageBlocks = sx.pageBlocks))
             WARDROBE -> dst.copy(wardrobeItems = src.wardrobeItems, itemFits = src.itemFits, outfits = src.outfits)
-            CRAFTS, SETTINGS -> dst
+            PRESSURE, CRAFTS, SETTINGS -> dst
         }
     }
 
@@ -87,7 +88,7 @@ enum class BackupSection(
             MEDIA -> x.media.size + x.mediaLists.size + b.topLists.size + b.topItems.size
             NOTES -> b.notes.size + x.pages.size + x.pageBlocks.size
             WARDROBE -> b.wardrobeItems.size + b.outfits.size
-            CRAFTS, SETTINGS -> 0
+            PRESSURE, CRAFTS, SETTINGS -> 0
         }
     }
 

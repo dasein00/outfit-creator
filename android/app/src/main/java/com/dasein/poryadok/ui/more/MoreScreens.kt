@@ -74,6 +74,7 @@ private val HUB = listOf(
     Hub("ui:notebook", "Задачи", "списки и проекты", Routes.TASKS),
     Hub("sport/21", "Цели", "этапы и прогресс", Routes.GOALS),
     Hub("food/02", "Питание", "КБЖУ и калории", Routes.health(0)),
+    Hub("ui:heart", "Давление и пульс", "дневник для вас и близких, нормы по возрасту, советы врачей", com.dasein.poryadok.ui.health.PressureRoutes.HOME),
     Hub("sport/11", "Вес и состав тела", "весы, метрики, тренд", Routes.health(1)),
     Hub("sport/00", "Тренировки", "программы, подходы, прогресс", Routes.training(0)),
     Hub("sport/19", "Шаги", "синхронизация с телефоном", Routes.STEPS),
