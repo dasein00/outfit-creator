@@ -316,3 +316,31 @@ svg.i { width: 1.15em; height: 1.15em; fill: none; stroke: currentColor; stroke-
 .chips.icons .chip svg.i { width: 20px; height: 20px; }
 .icon-btn svg.i { width: 22px; height: 22px; }
 .menu-grid a span svg.i { width: 28px; height: 28px; color: var(--accent); }
+
+/* анализы крови */
+.lpill { display: inline-block; max-width: 100%; padding: 1px 9px; border-radius: 12px; font-size: 11.5px; line-height: 1.5; color: #fff; font-weight: 600; }
+.lval .lpill { white-space: nowrap; }
+.lgauge { position: relative; height: 6px; border-radius: 3px; background: var(--bg2); margin: 6px 0 2px; }
+.lg-ok { position: absolute; top: 0; bottom: 0; background: var(--good); opacity: .35; border-radius: 3px; }
+.lg-m { position: absolute; top: -3px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; border: 2px solid var(--card); box-shadow: 0 0 0 1px rgba(0,0,0,.15); }
+.lval { text-align: right; flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; min-width: 70px; }
+.lval b { font-size: 17px; } .lval small { color: var(--ink2); font-size: 11.5px; }
+.ladv { margin: -4px 2px 10px; padding: 8px 10px; background: var(--bg2); border-radius: 10px; }
+.ladvbox { border-left: 3px solid var(--line); padding: 4px 10px; margin: 10px 0; }
+.ladvbox.cur { border-left-color: var(--warn); background: var(--peach2); border-radius: 0 10px 10px 0; }
+details.lgrp { border: 1px solid var(--line); border-radius: 12px; margin: 8px 0; padding: 0 10px; }
+details.lgrp summary { padding: 11px 0; font-weight: 600; cursor: pointer; }
+.lrows { padding-bottom: 8px; }
+.lrow { display: grid; grid-template-columns: 1fr 92px 78px; gap: 6px; align-items: center; padding: 5px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.lrow span small { display: block; color: var(--ink2); font-size: 11.5px; }
+.lrow input, .lrow select { width: 100%; min-height: 38px; border: 1px solid var(--line); border-radius: 10px; padding: 0 8px; background: var(--card); }
+.lrow em { font-style: normal; font-size: 12px; color: var(--ink2); }
+/* давление */
+.bprd { display: grid; grid-template-columns: 14px 1fr 10px 1fr 1fr; gap: 6px; align-items: center; margin-bottom: 6px; }
+.bprd input { width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: 10px; padding: 0 8px; background: var(--card); font-size: 18px; text-align: center; font-variant-numeric: tabular-nums; }
+.bpheat { display: grid; grid-template-columns: 46px repeat(7, 1fr); gap: 3px; font-size: 11px; align-items: center; }
+.bpheat b { font-weight: 500; color: var(--ink2); text-align: center; }
+.bpheat span { height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bpproto { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 6px 10px; font-size: 13.5px; margin-top: 8px; }
+.bpproto b { font-weight: 500; }
+.bpproto span { font-variant-numeric: tabular-nums; font-weight: 600; }
