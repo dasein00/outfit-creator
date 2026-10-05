@@ -1,5 +1,6 @@
 package com.dasein.poryadok.ui.today
 
+import com.dasein.poryadok.ui.common.FitText
 import androidx.compose.foundation.background
 import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.MoodFace
@@ -170,7 +171,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         ProgressRing(stepsNow / stepsGoalNow.coerceAtLeast(1).toFloat(), extra.ok, size = 54.dp, stroke = 6.dp) { Glyph("sport/19", 24.dp, badge = false) }
                                         Column(Modifier.padding(start = 10.dp)) {
-                                            Text(String.format(java.util.Locale.US, "%,d", stepsNow).replace(',', ' '), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                            FitText(String.format(java.util.Locale.US, "%,d", stepsNow).replace(',', ' '), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                                             Text("шагов из ${String.format(java.util.Locale.US, "%,d", stepsGoalNow).replace(',', ' ')}", fontSize = 11.sp, color = extra.dim, maxLines = 1)
                                         }
                                     }
@@ -179,7 +180,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         ProgressRing(burned.total / 600f, Palette.item(0), size = 54.dp, stroke = 6.dp) { Glyph("sport/22", 24.dp, badge = false) }
                                         Column(Modifier.padding(start = 10.dp)) {
-                                            Text("${burned.total}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                            FitText("${burned.total}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                                             Text(
                                                 "ккал сожжено" + if (burned.workouts > 0) " · трен. ${burned.workouts}" else "",
                                                 fontSize = 11.sp, color = extra.dim, maxLines = 2,
@@ -471,7 +472,7 @@ private fun RingStat(modifier: Modifier, progress: Float, color: androidx.compos
         Row(verticalAlignment = Alignment.CenterVertically) {
             ProgressRing(progress, color, size = 32.dp, stroke = 4.dp)
             Column(Modifier.padding(start = 6.dp)) {
-                Text(value, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                FitText(value, style = MaterialTheme.typography.titleMedium)
                 Text(label, fontSize = 10.sp, color = LocalExtra.current.dim, maxLines = 1, softWrap = false)
             }
         }

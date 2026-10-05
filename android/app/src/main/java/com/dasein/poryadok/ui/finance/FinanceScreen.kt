@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.finance
 
+import com.dasein.poryadok.ui.common.FitText
 import androidx.compose.foundation.clickable
 import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.GlyphRow
@@ -378,7 +379,7 @@ private fun RecurringList(list: List<Recurring>, cats: List<Category>, accounts:
         item {
             Tile {
                 Text("Подписки и регулярные платежи", color = extra.dim, fontSize = 13.sp)
-                Text("≈ ${Money.format(monthlyOut, cur)} в месяц", style = MaterialTheme.typography.titleLarge)
+                FitText("≈ ${Money.format(monthlyOut, cur)} в месяц", style = MaterialTheme.typography.titleLarge)
                 Text("Операции добавляются автоматически в день платежа, накануне придёт напоминание.", fontSize = 12.sp, color = extra.dim)
             }
             Gap()
@@ -414,7 +415,7 @@ private fun Accounts(accounts: List<Account>, txns: List<Txn>, cur: String, onEd
         item {
             Tile {
                 Text("Всего на счетах", color = extra.dim, fontSize = 13.sp)
-                Text(Money.format(total, cur), style = MaterialTheme.typography.headlineMedium)
+                FitText(Money.format(total, cur), style = MaterialTheme.typography.headlineMedium)
             }
             Gap()
         }

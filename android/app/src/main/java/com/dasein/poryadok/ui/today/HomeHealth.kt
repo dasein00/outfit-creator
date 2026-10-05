@@ -1,5 +1,6 @@
 package com.dasein.poryadok.ui.today
 
+import com.dasein.poryadok.ui.common.FitText
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -231,7 +232,7 @@ private fun LevelChip(l: Pressure.Level) {
 private fun MiniStat(label: String, value: String, modifier: Modifier) {
     Column(modifier.clip(RoundedCornerShape(10.dp)).background(LocalExtra.current.cardHigh).padding(horizontal = 8.dp, vertical = 5.dp)) {
         Text(label, fontSize = 10.sp, color = LocalExtra.current.dim, maxLines = 1)
-        Text(value, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        FitText(value, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -333,7 +334,7 @@ fun HomeHealthCard(nav: NavHostController, size: Int) {
 private fun RingMini(progress: Float, color: Color, glyph: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         ProgressRing(progress, color, size = 48.dp, stroke = 5.dp) { Glyph(glyph, 22.dp, badge = false) }
-        Text(value, fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+        FitText(value, fontSize = 11.sp, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -345,7 +346,7 @@ private fun Metric(glyph: String, label: String, value: String, sub: String, col
             Glyph(glyph, 16.dp, badge = false)
             Text(" $label", fontSize = 11.sp, color = extra.dim, maxLines = 1)
         }
-        Text(value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = color ?: MaterialTheme.colorScheme.onSurface, maxLines = 1, modifier = Modifier.padding(top = 2.dp))
+        FitText(value, Modifier.padding(top = 2.dp), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = color ?: MaterialTheme.colorScheme.onSurface)
         Text(sub, fontSize = 10.sp, color = extra.dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
         chart()
     }

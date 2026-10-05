@@ -1,5 +1,6 @@
 package com.dasein.poryadok.ui.finance
 
+import com.dasein.poryadok.ui.common.FitText
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -71,11 +72,11 @@ fun HomeMoneyCard(nav: NavHostController, cur: String) {
         Row(verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
                 Text("Всего на счетах", fontSize = 12.sp, color = extra.dim)
-                Text(rub(balance, cur), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                FitText(rub(balance, cur), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text("Сегодня", fontSize = 12.sp, color = extra.dim)
-                Text(if (spentToday > 0) "−" + rub(spentToday, cur) else "0 $cur", style = MaterialTheme.typography.titleMedium)
+                FitText(if (spentToday > 0) "−" + rub(spentToday, cur) else "0 $cur", style = MaterialTheme.typography.titleMedium)
             }
         }
         Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -149,6 +150,6 @@ fun HomeMoneyCard(nav: NavHostController, cur: String) {
 private fun Kpi(label: String, value: String, color: androidx.compose.ui.graphics.Color, modifier: Modifier) {
     Column(modifier.clip(RoundedCornerShape(12.dp)).background(LocalExtra.current.cardHigh).padding(horizontal = 8.dp, vertical = 6.dp)) {
         Text(label, fontSize = 11.sp, color = LocalExtra.current.dim)
-        Text(value, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        FitText(value, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = color)
     }
 }

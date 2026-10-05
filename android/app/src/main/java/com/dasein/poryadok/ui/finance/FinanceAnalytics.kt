@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.finance
 
+import com.dasein.poryadok.ui.common.FitText
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -133,7 +134,7 @@ fun FinanceAnalytics(all: List<Txn>, cats: List<Category>, accounts: List<Accoun
         }
         if (ym == YearMonth.now() && passed in 1 until days) Tile(Modifier.padding(top = 8.dp)) {
             Text("Прогноз на конец месяца", fontSize = 12.sp, color = extra.dim)
-            Text(rub(forecast, cur), style = MaterialTheme.typography.titleLarge)
+            FitText(rub(forecast, cur), style = MaterialTheme.typography.titleLarge)
             val diff = if (m.income > 0) avg.income.coerceAtLeast(m.income) - forecast else null
             if (totalBudget != null) {
                 Bar((forecast / totalBudget).toFloat(), if (forecast > totalBudget) extra.danger else extra.ok, Modifier.padding(vertical = 6.dp))
@@ -215,7 +216,7 @@ fun FinanceAnalytics(all: List<Txn>, cats: List<Category>, accounts: List<Accoun
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("На счетах", fontSize = 12.sp, color = extra.dim)
-                    Text(rub(balance, cur), style = MaterialTheme.typography.titleLarge)
+                    FitText(rub(balance, cur), style = MaterialTheme.typography.titleLarge)
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("хватит на", fontSize = 12.sp, color = extra.dim)
@@ -445,7 +446,7 @@ private fun Calc(title: String, content: @Composable () -> Unit) {
 private fun CalcResult(label: String, value: String, color: Color) {
     Column(Modifier.padding(top = 8.dp)) {
         Text(label, fontSize = 12.sp, color = LocalExtra.current.dim)
-        Text(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, color = color)
+        FitText(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, color = color)
     }
 }
 

@@ -65,6 +65,7 @@ import com.dasein.poryadok.logic.Pressure
 import com.dasein.poryadok.system.PressureStore
 import com.dasein.poryadok.ui.common.ConfirmDialog
 import com.dasein.poryadok.ui.common.DatePickDialog
+import com.dasein.poryadok.ui.common.FitText
 import com.dasein.poryadok.ui.common.Gap
 import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.HGap
@@ -278,7 +279,7 @@ private fun Overview(p: Pressure.Person, rs: List<Pressure.Reading>, t: Pressure
         AvgTile("30 дней", s.last30, t, Modifier.weight(1f))
         Tile(Modifier.weight(1f), padding = 10.dp) {
             Text("В норме", fontSize = 11.sp, color = extra.dim)
-            Text(s.inTargetShare?.let { "${(it * 100).roundToInt()} %" } ?: "—", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            FitText(s.inTargetShare?.let { "${(it * 100).roundToInt()} %" } ?: "—", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             Text("замеров за 30 дн.", fontSize = 10.sp, color = extra.dim)
         }
     }
@@ -331,7 +332,7 @@ private fun AvgTile(label: String, a: Pressure.Avg?, t: Pressure.Target, modifie
     val extra = LocalExtra.current
     Tile(modifier, padding = 10.dp) {
         Text("Среднее · $label", fontSize = 11.sp, color = extra.dim)
-        Text(a?.let { "${it.sys}/${it.dia}" } ?: "—", fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
+        FitText(a?.let { "${it.sys}/${it.dia}" } ?: "—", fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
             color = a?.let { if (t.contains(it.sys, it.dia)) Color(0xFF3E9B5B) else c(Pressure.color(Pressure.category(it.sys, it.dia))) } ?: Color.Unspecified)
         Text(a?.let { "${it.n} зам." + (it.pulse?.let { p -> " · ♥ $p" } ?: "") } ?: "нет данных", fontSize = 10.sp, color = extra.dim)
     }

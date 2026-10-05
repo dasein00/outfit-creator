@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui
 
+import com.dasein.poryadok.ui.common.FitText
 import androidx.compose.foundation.background
 import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.layout.Arrangement
@@ -148,15 +149,15 @@ fun HealthHubScreen(nav: NavHostController) {
                     Text("Баланс за сегодня", fontSize = 12.sp, color = extra.dim)
                     Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.Top) {
                         Column(Modifier.weight(1f)) {
-                            Text("$eaten", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                            FitText("$eaten", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                             Text("съедено, ккал", fontSize = 11.sp, color = extra.dim)
                         }
                         Column(Modifier.weight(1f)) {
-                            Text("${burned.total}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = Palette.item(0))
+                            FitText("${burned.total}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = Palette.item(0))
                             Text("сожжено, ккал", fontSize = 11.sp, color = extra.dim)
                         }
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                            Text("${plan.targetKcal}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                            FitText("${plan.targetKcal}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                             Text("цель, ккал", fontSize = 11.sp, color = extra.dim)
                         }
                     }

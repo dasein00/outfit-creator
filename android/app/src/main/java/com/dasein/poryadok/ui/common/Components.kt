@@ -353,10 +353,7 @@ fun FieldButton(label: String, value: String, modifier: Modifier = Modifier, gly
 @Composable
 fun Stat(value: String, label: String, modifier: Modifier = Modifier, color: Color = Color.Unspecified) {
     Tile(modifier, padding = 12.dp) {
-        Text(
-            value, style = MaterialTheme.typography.titleLarge, color = color, maxLines = 1,
-            modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, overflow = TextOverflow.Ellipsis,
-        )
+        FitText(value, Modifier.fillMaxWidth(), style = MaterialTheme.typography.titleLarge, color = color, textAlign = TextAlign.Center)
         Text(label, fontSize = 11.sp, color = LocalExtra.current.dim, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
     }
 }
