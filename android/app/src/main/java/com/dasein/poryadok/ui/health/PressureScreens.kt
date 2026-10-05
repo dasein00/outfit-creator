@@ -113,9 +113,23 @@ fun PressureHomeScreen(nav: NavHostController) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var deleting by remember { mutableStateOf<Pressure.Reading?>(null) }
     var ortho by remember { mutableStateOf(false) }
+    var imported by remember { mutableStateOf<Pressure.Imported?>(null) }
+    val importer = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch {
+            val text = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { ctx.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() } }.getOrNull()
+            }
+            val r = text?.let { Pressure.parseTable(it) }
+            if (r == null || r.readings.isEmpty()) Toast.makeText(ctx, "В файле не нашлось замеров. Нужны колонки: дата, время, верхнее, нижнее, пульс.", Toast.LENGTH_LONG).show()
+            else imported = r
+        }
+    }
     Screen(
         "Давление и пульс", onBack = { nav.popBackStack() },
-        actions = { if (person != null) IconAction("ui:people", "Профиль") { nav.navigate(PressureRoutes.person(person.id)) } },
+        actions = {
+            IconAction("ui:folder", "Загрузить замеры из файла") { importer.launch(arrayOf("text/*", "application/vnd.ms-excel", "application/octet-stream", "*/*")) }
+            if (person != null) IconAction("ui:people", "Профиль") { nav.navigate(PressureRoutes.person(person.id)) }
+        },
         fab = {
             if (person != null) ExtendedFloatingActionButton(
                 onClick = { nav.navigate(PressureRoutes.add(person.id)) },
@@ -146,6 +160,9 @@ fun PressureHomeScreen(nav: NavHostController) {
                         fontSize = 14.sp, color = extra.dim, lineHeight = 20.sp, modifier = Modifier.padding(top = 6.dp),
                     )
                     Button(onClick = { nav.navigate(PressureRoutes.person(0)) }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) { Text("Добавить человека") }
+                    OutlinedButton(onClick = { importer.launch(arrayOf("text/*", "application/vnd.ms-excel", "application/octet-stream", "*/*")) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                        Text("Загрузить замеры из файла")
+                    }
                 }
                 HowTo("pressure")
                 Gap(80.dp)
@@ -174,6 +191,7 @@ fun PressureHomeScreen(nav: NavHostController) {
         }
     }
     if (ortho && person != null) OrthostaticDialog(person) { ortho = false }
+    imported?.let { im -> ImportDialog(im, d.people, person?.id) { imported = null } }
 }
 
 @Composable
@@ -816,4 +834,58 @@ fun PressurePersonScreen(nav: NavHostController, id: Long) {
     if (confirm && old != null) ConfirmDialog("Удалить «${old.name}»?", "Удалятся и все замеры этого человека.", onDismiss = { confirm = false }) {
         scope.launch { PressureStore.deletePerson(ctx, old.id); nav.popBackStack() }
     }
+}
+
+/** Загрузка замеров: сколько, за какой период, кому — существующему человеку или новому (имя из файла). */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ImportDialog(im: Pressure.Imported, people: List<Pressure.Person>, current: Long?, onDismiss: () -> Unit) {
+    val ctx = LocalContext.current
+    val extra = LocalExtra.current
+    val scope = rememberCoroutineScope()
+    val byName = im.name?.let { n -> people.firstOrNull { it.name.equals(n, ignoreCase = true) } }
+    // 0 — новый человек
+    var target by remember { mutableStateOf(byName?.id ?: if (im.name != null) 0L else current ?: 0L) }
+    var newName by remember { mutableStateOf(im.name ?: "") }
+    var busy by remember { mutableStateOf(false) }
+    val rs = im.readings
+    val df = DateTimeFormatter.ofPattern("d MMM yyyy")
+    val a = Pressure.avg(rs)
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text("Загрузить замеры") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text("${rs.size} замеров · ${Instant.ofEpochMilli(rs.first().time).atZone(zone).format(df)} — ${Instant.ofEpochMilli(rs.last().time).atZone(zone).format(df)}", fontWeight = FontWeight.SemiBold)
+                a?.let { Text("Среднее ${it.sys}/${it.dia}" + (it.pulse?.let { p -> ", пульс $p" } ?: ""), fontSize = 13.sp, color = extra.dim) }
+                val arms = rs.count { it.arm == 1 }
+                if (arms > 0) Text("Правая рука: $arms, левая: ${rs.size - arms}", fontSize = 13.sp, color = extra.dim)
+                if (im.skipped > 0) Text("Пропущено строк без цифр или даты: ${im.skipped}", fontSize = 12.sp, color = extra.warn)
+                Text("Чьи замеры", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    people.forEach { p -> Pill(p.name, target == p.id, glyph = p.glyph) { target = p.id } }
+                    Pill("+ Новый человек", target == 0L) { target = 0L }
+                }
+                if (target == 0L) {
+                    Gap(6.dp)
+                    TextInput(newName, { newName = it }, "Имя: папа, бабушка…")
+                    Text("Возраст, рост, вес и болезни можно заполнить потом в профиле — от них зависит норма.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
+                }
+                Text("Повторы (то же время и те же цифры) не добавятся.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !busy && (target != 0L || newName.isNotBlank()), onClick = {
+                busy = true
+                scope.launch {
+                    val pid = if (target == 0L) PressureStore.upsertPerson(ctx, Pressure.Person(id = 0, name = newName.trim())) else target
+                    val n = PressureStore.importReadings(ctx, pid, rs)
+                    PressureStore.select(ctx, pid)
+                    Toast.makeText(ctx, "Загружено замеров: $n" + if (n < rs.size) " (повторов: ${rs.size - n})" else "", Toast.LENGTH_LONG).show()
+                    busy = false; onDismiss()
+                }
+            }) { Text(if (busy) "…" else "Загрузить") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text("Отмена") } },
+    )
 }

@@ -462,4 +462,75 @@ object Pressure {
             appendLine("Составлено в приложении DASEIN. Не является медицинским заключением.")
         }
     }
+    // ---------- Загрузка из таблицы ----------
+
+    data class Imported(val readings: List<Reading>, val name: String?, val skipped: Int)
+
+    private val DATE_RX = Regex("(\\d{1,2})[./](\\d{1,2})[./](\\d{2,4})|(\\d{4})-(\\d{1,2})-(\\d{1,2})")
+    private val TIME_RX = Regex("(\\d{1,2})[:\\-.](\\d{2})")
+
+    /**
+     * Таблица замеров (CSV из DASEIN, Excel или другого приложения): дата, время, верхнее, нижнее, пульс,
+     * по желанию — рука, положение, аритмия, метки, симптомы, заметка. Разделитель — «;», «,» или табуляция.
+     * Колонки узнаются по заголовкам; без заголовка — по порядку: дата, время, верхнее, нижнее, пульс.
+     * Строка «# Имя» задаёт, чьи это замеры. personId у результата — 0, его ставит загрузка.
+     */
+    fun parseTable(text: String, zone: ZoneId = ZoneId.systemDefault()): Imported {
+        val lines = text.removePrefix("\uFEFF").lines().map { it.trim() }.filter { it.isNotEmpty() }
+        var name: String? = null
+        val body = lines.filter { l -> if (l.startsWith("#")) { name = l.removePrefix("#").trim().ifBlank { null }; false } else true }
+        if (body.isEmpty()) return Imported(emptyList(), name, 0)
+        val sep = when { body.first().contains(';') -> ';'; body.first().contains('\t') -> '\t'; else -> ',' }
+        fun split(l: String): List<String> {
+            val out = mutableListOf<String>(); val cur = StringBuilder(); var q = false
+            for (ch in l) when {
+                ch == '"' -> q = !q
+                ch == sep && !q -> { out += cur.toString().trim(); cur.clear() }
+                else -> cur.append(ch)
+            }
+            out += cur.toString().trim(); return out
+        }
+        val first = split(body.first()).map { it.lowercase() }
+        val hasHeader = first.none { DATE_RX.containsMatchIn(it) } && first.any { it.any(Char::isLetter) }
+        fun col(vararg keys: String) = if (!hasHeader) -1 else first.indexOfFirst { h -> keys.any { it in h } }
+        val cDate = col("дата", "date", "день"); val cTime = col("время", "time")
+        val cSys = col("верх", "сист", "sys"); val cDia = col("ниж", "диаст", "dia")
+        val cPulse = col("пульс", "pulse", "чсс", "heart"); val cArm = col("рука", "arm")
+        val cPos = col("полож", "position"); val cIrr = col("аритм", "irregular", "arrhythm")
+        val cTags = col("метк", "tag"); val cSym = col("симпт", "symptom"); val cNote = col("замет", "коммент", "note", "comment")
+        val rows = if (hasHeader) body.drop(1) else body
+        var skipped = 0
+        val out = mutableListOf<Reading>()
+        rows.forEachIndexed { idx, line ->
+            val f = split(line)
+            fun at(c: Int) = f.getOrNull(c).orEmpty()
+            val dateField = if (cDate >= 0) at(cDate) else f.firstOrNull { DATE_RX.containsMatchIn(it) }.orEmpty()
+            val dm = DATE_RX.find(dateField) ?: run { skipped++; return@forEachIndexed }
+            val date = runCatching {
+                if (dm.groupValues[4].isNotEmpty()) LocalDate.of(dm.groupValues[4].toInt(), dm.groupValues[5].toInt(), dm.groupValues[6].toInt())
+                else LocalDate.of(dm.groupValues[3].toInt().let { if (it < 100) 2000 + it else it }, dm.groupValues[2].toInt(), dm.groupValues[1].toInt())
+            }.getOrNull() ?: run { skipped++; return@forEachIndexed }
+            val afterDate = dateField.substring(dm.range.last + 1)
+            val timeSrc = if (cTime >= 0) at(cTime) else (TIME_RX.find(afterDate)?.value ?: f.firstOrNull { it != dateField && TIME_RX.matches(it) }.orEmpty())
+            val tm = TIME_RX.find(timeSrc)
+            val h = tm?.groupValues?.get(1)?.toIntOrNull()?.takeIf { it in 0..23 } ?: 12
+            val mi = tm?.groupValues?.get(2)?.toIntOrNull()?.takeIf { it in 0..59 } ?: 0
+            val nums: List<Int?> = if (cSys >= 0 && cDia >= 0) listOf(at(cSys).toIntOrNull(), at(cDia).toIntOrNull(), if (cPulse >= 0) at(cPulse).toIntOrNull() else null)
+            else f.filter { it != dateField && it != timeSrc }.mapNotNull { it.toIntOrNull() }.let { listOf(it.getOrNull(0), it.getOrNull(1), it.getOrNull(2)) }
+            val sys = nums[0]; val dia = nums[1]
+            if (sys == null || dia == null || sys !in 50..300 || dia !in 25..200 || dia >= sys) { skipped++; return@forEachIndexed }
+            val armText = (if (cArm >= 0) at(cArm) else f.joinToString(" ")).lowercase()
+            val arm = when { "прав" in armText || "right" in armText || armText.trim() == "п" -> 1; else -> 0 }
+            val posText = at(cPos).lowercase()
+            val pos = when { "леж" in posText || "лёж" in posText || "lying" in posText -> 1; "сто" in posText || "stand" in posText -> 2; else -> 0 }
+            val irr = at(cIrr).lowercase().let { it.isNotBlank() && (it.startsWith("да") || it == "1" || it.startsWith("yes") || "аритм" in it || it == "+") }
+            fun list(c: Int) = at(c).split(',').map { it.trim() }.filter { it.isNotEmpty() }
+            out += Reading(
+                id = 0, personId = 0, time = date.atTime(h, mi).atZone(zone).toInstant().toEpochMilli(),
+                sys = sys, dia = dia, pulse = nums[2]?.takeIf { it in 25..250 }, arm = arm, position = pos, irregular = irr,
+                tags = list(cTags), symptoms = list(cSym), note = at(cNote),
+            )
+        }
+        return Imported(out.sortedBy { it.time }, name, skipped)
+    }
 }

@@ -73,6 +73,16 @@ object PressureStore {
         save(ctx, d.copy(readings = d.readings.filter { it.id != id }))
     }
 
+    /** Загрузка замеров из таблицы к человеку [personId]; повторы (то же время и те же цифры) пропускаются. Возвращает, сколько добавлено. */
+    suspend fun importReadings(ctx: Context, personId: Long, rs: List<Pressure.Reading>): Int {
+        val d = now(ctx)
+        val have = d.readings.filter { it.personId == personId }.map { Triple(it.time / 60_000, it.sys, it.dia) }.toHashSet()
+        var id = newId(d)
+        val fresh = rs.filter { Triple(it.time / 60_000, it.sys, it.dia) !in have }.map { it.copy(id = id++, personId = personId) }
+        if (fresh.isNotEmpty()) save(ctx, d.copy(readings = d.readings + fresh))
+        return fresh.size
+    }
+
     /** CSV для врача или таблицы: дата;время;верхнее;нижнее;пульс;рука;положение;аритмия;метки;симптомы;заметка. */
     fun csv(p: Pressure.Person, rs: List<Pressure.Reading>): String {
         val z = java.time.ZoneId.systemDefault()

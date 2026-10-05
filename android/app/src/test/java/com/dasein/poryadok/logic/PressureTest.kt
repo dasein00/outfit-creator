@@ -80,4 +80,26 @@ class PressureTest {
         assertNull(Pressure.parse("80 120"))
         assertEquals(93.3, Pressure.map(120, 80), 0.05)
     }
+
+    @Test fun importTable() {
+        val zone = ZoneOffset.UTC
+        val csv = "\uFEFFДата;Время;Верхнее;Нижнее;Пульс;Рука;Положение;Аритмия;Метки;Симптомы;Заметка\n" +
+            "02.10.2026;08:20;145;75;63;правая;сидя;;;;из тетради\n" +
+            "02.10.2026;19:08;123;59;66;левая;сидя;да;\"Вечер, Стресс\";;\n" +
+            "мусор;;;\n# Папа\n"
+        val r = Pressure.parseTable(csv, zone)
+        assertEquals("Папа", r.name)
+        assertEquals(2, r.readings.size)
+        assertEquals(1, r.skipped)
+        val a = r.readings[0]
+        assertEquals(145, a.sys); assertEquals(75, a.dia); assertEquals(63, a.pulse); assertEquals(1, a.arm)
+        assertEquals(LocalDate.of(2026, 10, 2).atTime(8, 20).toInstant(zone).toEpochMilli(), a.time)
+        assertTrue(r.readings[1].irregular)
+        assertEquals(listOf("Вечер", "Стресс"), r.readings[1].tags)
+        // Без заголовка, через запятую и с датой в другом виде.
+        val plain = Pressure.parseTable("2026-09-01 07:39,156,85,76\n1.9.26,19:24,135,64", zone)
+        assertEquals(2, plain.readings.size)
+        assertEquals(156, plain.readings[0].sys); assertEquals(76, plain.readings[0].pulse)
+        assertNull(plain.readings[1].pulse)
+    }
 }

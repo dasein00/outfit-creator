@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -131,13 +132,52 @@ fun HomePressureCard(nav: NavHostController, size: Int) {
         v?.let { Text(it.headline, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(it.level.color), modifier = Modifier.padding(top = 2.dp)) }
         val now = System.currentTimeMillis()
         val s = Pressure.stats(rs, t, now)
-        Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        // Средние по дням за 14 дней — по ним видно тренд лучше, чем по отдельным замерам.
+        val byDay = rs.filter { it.time > now - 14 * 86_400_000L }.groupBy { Pressure.day(it) }.toSortedMap()
+        val daySys = byDay.values.map { l -> l.map { it.sys }.average().toFloat() }
+        val dayDia = byDay.values.map { l -> l.map { it.dia }.average().toFloat() }
+        Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             MiniStat("7 дней", s.last7?.let { "${it.sys}/${it.dia}" } ?: "—", Modifier.weight(1f))
+            MiniStat("30 дней", s.last30?.let { "${it.sys}/${it.dia}" } ?: "—", Modifier.weight(1f))
             MiniStat("В норме", s.inTargetShare?.let { "${(it * 100).roundToInt()} %" } ?: "—", Modifier.weight(1f))
-            val recent = rs.takeLast(14)
-            Box(Modifier.weight(1.4f).height(40.dp)) {
-                Sparkline(recent.map { it.sys.toFloat() }, Color(0xFFD9542B), Modifier.fillMaxWidth().height(40.dp), t.sysLow.toFloat()..t.sysHigh.toFloat())
+            MiniStat("Пульс", s.last7?.pulse?.toString() ?: s.last30?.pulse?.toString() ?: "—", Modifier.weight(1f))
+        }
+        if (daySys.size >= 2) {
+            Box(Modifier.fillMaxWidth().padding(top = 8.dp).height(if (size >= 2) 70.dp else 52.dp)) {
+                DualSpark(daySys, dayDia, t)
             }
+            Row {
+                Text("${byDay.firstKey().dayOfMonth}.${"%02d".format(byDay.firstKey().monthValue)}", fontSize = 10.sp, color = extra.dim, modifier = Modifier.weight(1f))
+                Text("среднее за день · зелёное — норма", fontSize = 10.sp, color = extra.dim)
+                Text("  ${byDay.lastKey().dayOfMonth}.${"%02d".format(byDay.lastKey().monthValue)}", fontSize = 10.sp, color = extra.dim)
+            }
+        }
+        // Короткие выводы: утро/вечер, тренд к прошлому месяцу, пульс, руки, распределение.
+        val notes = buildList {
+            val m = s.morning; val e = s.evening
+            if (m != null && e != null) add("Утро ${m.sys}/${m.dia} · вечер ${e.sys}/${e.dia}" + if (m.sys - e.sys >= 15) " — утренний подъём" else "")
+            val l30 = s.last30; val p30 = s.prev30
+            if (l30 != null && p30 != null) {
+                val dd = l30.sys - p30.sys
+                add((if (dd > 0) "▲ +" else if (dd < 0) "▼ " else "= ") + "$dd к прошлому месяцу")
+            }
+            val low = rs.count { it.time > now - 30 * 86_400_000L && (it.pulse ?: 99) < 50 }
+            if (low > 0) add("Пульс ниже 50 — $low раз за месяц: покажите врачу")
+            if (rs.any { it.irregular }) add("Был неровный ритм — стоит сделать ЭКГ")
+            Pressure.armDifference(rs.filter { it.time > now - 30 * 86_400_000L })?.let { if (it >= 10) add("Разница между руками $it мм — мерить на руке с большим давлением") }
+        }
+        notes.take(if (size >= 2) 5 else 3).forEach { n ->
+            Text("• $n", fontSize = 12.sp, color = if ("врачу" in n || "ЭКГ" in n || "▲" in n) extra.warn else extra.dim, maxLines = 2, modifier = Modifier.padding(top = 2.dp))
+        }
+        if (size >= 2 && s.byCategory.isNotEmpty()) {
+            val total = s.byCategory.values.sum().toFloat()
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp).height(10.dp).clip(RoundedCornerShape(5.dp))) {
+                Pressure.Category.entries.forEach { k -> s.byCategory[k]?.let { n -> Box(Modifier.weight(n / total).height(10.dp).background(Color(Pressure.color(k)))) } }
+            }
+            Text(
+                Pressure.Category.entries.filter { (s.byCategory[it] ?: 0) > 0 }.joinToString(" · ") { "${it.short.lowercase()} ${((s.byCategory[it] ?: 0) * 100 / total).roundToInt()}%" },
+                fontSize = 10.sp, color = extra.dim, maxLines = 2, modifier = Modifier.padding(top = 2.dp),
+            )
         }
         if (size >= 2 && d.people.size > 1) {
             Text("Семья", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 10.dp, bottom = 2.dp))
@@ -154,6 +194,23 @@ fun HomePressureCard(nav: NavHostController, size: Int) {
                     lv?.let { Box(Modifier.padding(start = 8.dp).size(10.dp).clip(CircleShape).background(Color(it.color))) }
                 }
             }
+        }
+    }
+}
+
+/** Две линии (верхнее и нижнее) с полосами нормы. */
+@Composable
+private fun DualSpark(sys: List<Float>, dia: List<Float>, t: Pressure.Target) {
+    val lo = minOf(dia.min(), t.diaLow.toFloat()) - 6; val hi = maxOf(sys.max(), t.sysHigh.toFloat()) + 6
+    Canvas(Modifier.fillMaxWidth().fillMaxHeight()) {
+        fun x(i: Int) = size.width * i / (sys.size - 1).coerceAtLeast(1)
+        fun y(v: Float) = size.height * (1f - (v - lo) / (hi - lo))
+        val band = Color(0xFF3E9B5B).copy(alpha = .13f)
+        drawRect(band, Offset(0f, y(t.sysHigh.toFloat())), androidx.compose.ui.geometry.Size(size.width, y(t.sysLow.toFloat()) - y(t.sysHigh.toFloat())))
+        drawRect(band, Offset(0f, y(t.diaHigh.toFloat())), androidx.compose.ui.geometry.Size(size.width, y(t.diaLow.toFloat()) - y(t.diaHigh.toFloat())))
+        listOf(sys to Color(0xFFD9542B), dia to Color(0xFF4C8BD6)).forEach { (vs, col) ->
+            for (i in 0 until vs.size - 1) drawLine(col, Offset(x(i), y(vs[i])), Offset(x(i + 1), y(vs[i + 1])), 3.5f)
+            vs.forEachIndexed { i, v -> drawCircle(col, if (i == vs.size - 1) 6f else 3.5f, Offset(x(i), y(v))) }
         }
     }
 }
