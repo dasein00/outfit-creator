@@ -240,7 +240,7 @@ class MainActivity : Activity() {
     var b=blobs[this.href];
     if(this.download && b){
       var name=this.download, r=new FileReader();
-      r.onload=function(){var s=String(r.result); Android.saveFileBase64(name, b.type||'application/octet-stream', s.substring(s.indexOf(',')+1));};
+      r.onload=function(){var s=String(r.result); Android.saveFileBase64(name, (b.type||'application/octet-stream').split(';')[0], s.substring(s.indexOf(',')+1));};
       r.readAsDataURL(b); return;
     }
     return click.call(this);

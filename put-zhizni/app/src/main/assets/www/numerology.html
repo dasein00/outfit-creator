@@ -6839,12 +6839,7 @@ function doBuildAnketa(){
    "document.getElementById('apladd').click();</scr"+"ipt>"+
    "</body></html>";
 
-  const blob=new Blob([doc],{type:"text/html;charset=utf-8"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="Anketa_"+cons.replace(/\s+/g,"_")+".html";
-  document.body.appendChild(a);a.click();
-  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},600);
+  saveHtmlFile("Anketa_"+cons.replace(/\s+/g,"_")+".html",doc);
 }
 
 /* ---------- Раздел «Ответы клиента» ---------- */
@@ -7040,6 +7035,35 @@ function clientRuntime(){
   };
 }
 
+/* Файл для клиента должен читаться в любой программе. Многие просмотрщики на Android
+   (встроенные в файловые менеджеры и мессенджеры) не смотрят на <meta charset> и
+   угадывают кодировку сами — чаще всего GBK или cp1251, и русский текст превращается
+   в «иероглифы». Поэтому: BOM в начале и только ASCII внутри. Каждый не-ASCII символ
+   записывается escape-последовательностью своего контекста: в разметке — &#N;,
+   в <script> — \uXXXX, в <style> — \XXXX. Браузер собирает из них ровно тот же документ. */
+function asciiSafeHtml(doc){
+  var nonAscii=/[^\x00-\x7f]/g;
+  var cp=function(s){return s.codePointAt(0)};
+  var inHtml=function(s){return s.replace(/[\ud800-\udbff][\udc00-\udfff]|[^\x00-\x7f]/g,function(c){return "&#"+cp(c)+";"})};
+  var inJs=function(s){return s.replace(nonAscii,function(c){return "\\u"+("000"+c.charCodeAt(0).toString(16)).slice(-4)})};
+  var inCss=function(s){return s.replace(/[\ud800-\udbff][\udc00-\udfff]|[^\x00-\x7f]/g,function(c){return "\\"+cp(c).toString(16)+" "})};
+  var out="",re=/(<script\b[^>]*>)([\s\S]*?)(<\/script>)|(<style\b[^>]*>)([\s\S]*?)(<\/style>)/gi,last=0,m;
+  while((m=re.exec(doc))){
+    out+=inHtml(doc.slice(last,m.index));
+    out+=m[1]?inHtml(m[1])+inJs(m[2])+m[3]:inHtml(m[4])+inCss(m[5])+m[6];
+    last=re.lastIndex;
+  }
+  return "﻿"+out+inHtml(doc.slice(last));
+}
+function saveHtmlFile(name,doc){
+  var blob=new Blob([asciiSafeHtml(doc)],{type:"text/html"});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=name;
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},600);
+}
+
 function exportClient(){
   try{ doExportClient() }
   catch(e){
@@ -7233,12 +7257,7 @@ function doExportClient(){
    "("+clientRuntime.toString()+")();</scr"+"ipt>"+
    "</body></html>";
 
-  var blob=new Blob([doc],{type:"text/html;charset=utf-8"});
-  var a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="Razbor_"+(client.replace(/\s+/g,"_"))+".html";
-  document.body.appendChild(a);a.click();
-  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},600);
+  saveHtmlFile("Razbor_"+(client.replace(/\s+/g,"_"))+(demo?"_demo":"")+".html",doc);
 }
 
 /* ============================================================
