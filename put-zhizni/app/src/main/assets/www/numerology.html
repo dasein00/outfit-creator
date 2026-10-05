@@ -763,6 +763,7 @@ svg text{cursor:default}
 <button class="sec" onclick="printPhone()">PDF для телефона</button>
 <button class="sec" onclick="exportClient()">Файл для клиента</button>
 <label class="inlchk"><input type="checkbox" id="cnotes"> поля для заметок клиента</label>
+<label class="inlchk"><input type="checkbox" id="cclean" checked> ясный язык для клиента (без теории)</label>
 <button class="sec" onclick="saveCalc()">Сохранить расчёт</button>
 <span class="filebtn"><button type="button" class="sec">Загрузить расчёт</button><input type="file" accept="application/json,.json" onchange="loadCalc(this)"></span>
 <button class="sec" onclick="selfTest()">Проверка системы</button>
@@ -1258,6 +1259,7 @@ function go(){
     ];
     const TABNAMES=[];GROUPS.forEach(g=>g.tabs.forEach(t=>TABNAMES.push(t.label)));
     window.HZ=buildHanziIndex(CH,ST,US);
+    window.__CALC={CH:CH,ST:ST,US:US,SR:SR,SP:SP,nd:nd,name:MAIN.name,YF:YF,YT:YT};
     BZTABS=buildPicker(GROUPS)+buildTabs(GROUPS);
     BZPANES=`<div id="b1" class="pane">${warnH}${solH}${renderChart(CH,ST,US,SR)}</div>`
       +`<div id="b34" class="pane">${renderPro(CH,!document.getElementById("bt").value)}</div>`
@@ -1334,6 +1336,7 @@ function card(lbl,n,raw,calc){
   const rw=(raw&&raw!==n)?`<div class="raw">${raw}</div>`:"";
   return `<div class="card"><div class="lbl">${lbl}</div><div class="val">${n||"—"}</div>${rw}<div class="planet">${pl}</div><div class="calc">${calc||""}</div></div>`;
 }
+function uniqLow(a){return [...new Set(a.filter(Boolean).map(x=>x.toLowerCase()))]}
 function blk(t,p,extra){return `<div class="blk"><h3>${t}</h3><p>${p}</p>${extra?`<p style="font-size:12px;color:#7a6e5c;font-style:italic">${extra}</p>`:""}</div>`}
 function clr(){["f","i","o","d","a","p2d"].forEach(x=>document.getElementById(x).value="");
 document.getElementById("out").style.display="none";document.getElementById("empty").style.display="block"}
@@ -3949,7 +3952,7 @@ function renderSummary(ch,st,us,nd,sr,sp,name,I,F,O){
   h+=`<div class="blk"><h3>Четыре числа</h3>
   <p><b style="color:var(--cin);font-weight:normal">Ум ${nd.um}</b> (${PL[nd.um].p}) — как человек мыслит. <b style="color:var(--cin);font-weight:normal">Действие ${nd.act}</b> (${PL[nd.act].p}) — как действует. <b style="color:var(--cin);font-weight:normal">Реализация ${nd.real}</b> (${PL[nd.real].p}) — к чему приходит. <b style="color:var(--cin);font-weight:normal">Итог ${nd.itog}</b> (${PL[nd.itog].p}) — что остаётся.</p>
   <p>Главная задача: ${REALNAME[nd.real]||""}. Переход в зрелости: ${REAL2ITOG[nd.real]?REAL2ITOG[nd.real][1]:""}</p>
-  <p>Сильнее всего: ${SW_NUM[nd.um].s[0].toLowerCase()}, ${SW_NUM[nd.act].s[0].toLowerCase()}. Слабее всего: ${SW_NUM[nd.um].w[0].toLowerCase()}, ${SW_NUM[nd.act].w[0].toLowerCase()}.</p>
+  <p>Сильнее всего: ${uniqLow([SW_NUM[nd.um].s[0],SW_NUM[nd.act].s[0],SW_NUM[nd.act].s[1]]).slice(0,2).join(", ")}. Слабее всего: ${uniqLow([SW_NUM[nd.um].w[0],SW_NUM[nd.act].w[0],SW_NUM[nd.act].w[1]]).slice(0,2).join(", ")}.</p>
   <p>Пустые ячейки матрицы: ${(()=>{const g=[];for(let k=1;k<=9;k++)if(!nd.cnt[k])g.push(k);return g.length?g.join(", ")+" — это и есть задание на наработку":"нет, все энергии присутствуют"})()}.</p></div>`;
 
   h+=`<h2>Краткий вывод: Ба-цзы</h2>`;
@@ -7187,6 +7190,76 @@ function clientRuntime(){
   };
 }
 
+/* ============================================================
+   ЯСНЫЙ РАЗБОР ДЛЯ КЛИЕНТА: «Главное о вас» и чистка от теории
+   ============================================================ */
+/* Разделы-справочники: в файл клиента в ясном режиме не идут */
+const CLEAN_SKIP=["b12","b19","b23","b34","b2","b3","b13","p4"];
+/* Подзаголовки h2, под которыми — методика, а не выводы о человеке */
+const CLEAN_DROP_H2=/^(Как читать этот разбор|Общие закономерности|Мост:|Совмещённый профиль|Точки прямого соответствия)/;
+/* Плашки с правилами системы вместо выводов */
+const CLEAN_DROP_MEET=/^(Поправка времени|Полезные Божества по образу|Уверенность в этом выводе|Температурный режим|Отсутствующие элементы|Доминирующие элементы|Границы разбора)/;
+
+function cleanForClient(root){
+  const qa=s=>Array.prototype.slice.call(root.querySelectorAll(s));
+  qa(".note").forEach(x=>x.remove());
+  qa("[style*='font-style:italic']").forEach(x=>x.remove());
+  qa(".meet").forEach(x=>{const b=x.querySelector("b");if(b&&CLEAN_DROP_MEET.test(b.textContent.trim()))x.remove()});
+  qa("h2").forEach(h=>{
+    if(!CLEAN_DROP_H2.test(h.textContent.trim()))return;
+    let n=h.nextElementSibling;
+    while(n&&n.tagName!=="H2"){const nx=n.nextElementSibling;n.remove();n=nx}
+    h.remove();
+  });
+}
+
+function clientSummary(demo){
+  const C=window.__CALC;if(!C)return "";
+  const ch=C.CH,us=C.US,sr=C.SR,nd=C.nd,dm=ch.dm;
+  const low=t=>t?t.charAt(0).toLowerCase()+t.slice(1):"";
+  const trim=t=>String(t||"").replace(/\.+\s*$/,"");
+  const li=a=>"<ul>"+a.map(x=>"<li>"+x+"</li>").join("")+"</ul>";
+  const txtOf=(paneId,h3re)=>{
+    const p=document.getElementById(paneId);if(!p)return "";
+    const h=Array.prototype.find.call(p.querySelectorAll(".blk h3"),x=>h3re.test(x.textContent.trim()));
+    const q=h&&h.parentNode.querySelector("p");return q?q.textContent.trim():"";
+  };
+  const AS=aspects(ch),sorted=Object.keys(AS).sort((a,b)=>AS[b].w-AS[a].w);
+  const zero=sorted.filter(k=>AS[k].w===0);
+  const S1=SW_NUM[nd.um],S2=SW_NUM[nd.act],S3=SW_NUM[nd.real];
+  const strong=uniqLow([...S1.s.slice(0,2),...S2.s.slice(0,2),...S3.s.slice(0,2)]).slice(0,5);
+  const weak=uniqLow([...S1.w.slice(0,2),...S2.w.slice(0,2),...S3.w.slice(0,2)]).slice(0,5);
+  const strongest=ELS.reduce((a,b)=>C.ST.w[a]>C.ST.w[b]?a:b);
+  const life=txtOf("b18",/^Дворец Жизни/)||txtOf("b22",/^Что говорят дворцы/);
+  const real=trim(REALNAME[nd.real]).replace(/^Приходит/,"Вы приходите");
+  const itog=REAL2ITOG[nd.real]?trim(REAL2ITOG[nd.real][1]):"";
+  const cards=[
+    ["Кто вы",`<p>${STRUCT[sr.god]||""}</p><p class="sumimg">Ваш природный образ — ${BZS[dm].img}.</p>`],
+    ["Ваше предназначение",`<p>${real}.</p>${itog?`<p>С годами: ${low(itog)}.</p>`:""}`],
+    ["Как вы смотрите на жизнь",life?`<p>${life}</p>`:""],
+    ["Где вы раскрываетесь",`<p>Легко даётся: ${SPHERE[BZB[ch.pillars[1].b].el]}.</p><p>Ваши роли: ${ASPECT_ROLE[sorted[0]].job}.</p>`],
+    ["Ваши сильные стороны",li(strong),"good"],
+    ["Что вам мешает",li(weak.concat(zero.map(z=>"не хватает: "+ASPECT_ROLE[z].r.toLowerCase()+" — лучше делегировать"))),"bad"],
+    ["Что вас усиливает",`<p>${us.good.map(e=>ELACTION[e]?ELACTION[e].sfera:e).join("; ")}.</p>`+(us.bad.length?`<p class="sumsub">Где вы теряете силы: ${us.bad.map(e=>ELACTION[e]?ELACTION[e].sfera:e).join("; ")}.</p>`:"")],
+    ["Здоровье: на что обратить внимание",`<p>${ELORGAN[ctrl(strongest)]}.</p>`]
+  ].filter(c=>c[1]);
+  const shown=demo?cards.slice(0,2):cards;
+  let h=`<div class="sumgrid">${shown.map(c=>`<div class="sumc${c[2]?" "+c[2]:""}"><h3>${c[0]}</h3>${c[1]}</div>`).join("")}</div>`;
+  if(demo)return h;
+  /* план на год — из расчёта, без терминов системы */
+  const g0=ELACTION[us.good[0]],bd=us.bad.map(e=>ELACTION[e]).filter(Boolean);
+  const steps=[];
+  if(g0)steps.push(["Главная ставка года: "+g0.sfera,"Что сделать: "+g0.dela+"."]);
+  if(us.good[1]&&ELACTION[us.good[1]])steps.push(["Вторая опора: "+ELACTION[us.good[1]].sfera,"Что сделать: "+ELACTION[us.good[1]].dela+"."]);
+  zero.slice(0,1).forEach(z=>steps.push(["Слабое место: "+ASPECT_ROLE[z].r.toLowerCase(),ASPECT_ROLE[z].d+" Если не готовы нарабатывать — поручите это человеку, у которого это сильная сторона."]));
+  if(bd.length)steps.push(["Не ставьте всё на: "+bd.map(x=>x.sfera).join("; "),"Делать в этих сферах можно, но силы там уходят быстрее, а ошибки обходятся дороже."]);
+  if(steps.length)h+=`<h2>Ваш план на год</h2><ol class="sumplan">${steps.map(x=>`<li><b>${x[0]}</b><br>${x[1]}</li>`).join("")}</ol>`;
+  const b22=document.getElementById("b22"),t22=b22?b22.textContent.replace(/\s+/g," "):"";
+  const yAct=(t22.match(/Годы для действия:[^.]*\./)||[""])[0],yNo=(t22.match(/Годы, где не начинают:[^.]*\./)||[""])[0];
+  if(yAct||yNo)h+=`<div class="meet"><b>Ближайшие годы.</b> ${yAct} ${yNo}</div>`;
+  return h;
+}
+
 /* Файл для клиента должен читаться в любой программе. Многие просмотрщики на Android
    (встроенные в файловые менеджеры и мессенджеры) не смотрят на <meta charset> и
    угадывают кодировку сами — чаще всего GBK или cp1251, и русский текст превращается
@@ -7239,12 +7312,14 @@ function doExportClient(){
   var nc=document.getElementById("cnotes");
   var notes=nc?!!nc.checked:false;
   var demo=!!window.__DEMO;
+  var clean=!!(document.getElementById("cclean")||{}).checked;
   var groups=(window.TABGROUPS&&window.TABGROUPS.length)?window.TABGROUPS:[];
-  var body="",navcount=0;
+  var body="",navcount=0,sumDone=false;
   groups.forEach(function(g){
     var inner="";
     g.tabs.forEach(function(t){
       if(typeof isPicked==="function"&&!isPicked(t.id))return;
+      if(clean&&CLEAN_SKIP.indexOf(t.id)>=0)return;
       var pane=document.getElementById(t.id);
       if(!pane||!pane.innerHTML.trim())return;
       navcount++;
@@ -7266,6 +7341,7 @@ function doExportClient(){
       qa2(".sel").forEach(function(x){x.classList.remove("sel")});
       qa2(".dim").forEach(function(x){x.classList.remove("dim")});
       qa2(".hi,.hi2").forEach(function(x){x.classList.remove("hi","hi2")});
+      if(clean)cleanForClient(clone);
       if(demo){
         var blks=qa2(".blk");
         if(blks.length>1){
@@ -7287,10 +7363,18 @@ function doExportClient(){
         .replace(/<button[^>]*class="pdmore"[^>]*>[\s\S]*?<\/button>/g,"")
         .replace(/\bpd(hide|clip|open)\b/g,"")
         .replace(/class="\s*"/g,'class=""');
-      inner+='<section class="csec" id="sec'+navcount+'" data-key="'+t.id+'" data-label="'+t.label+'">'+
-             '<div class="chead"><div class="cgrp">'+g.name+'</div><h2 class="ctitle">'+t.label+'</h2>'+
+      var lbl=(clean&&t.id==="b0")?"Титул":t.label;
+      inner+='<section class="csec" id="sec'+navcount+'" data-key="'+t.id+'" data-label="'+lbl+'">'+
+             '<div class="chead"><div class="cgrp">'+g.name+'</div><h2 class="ctitle">'+lbl+'</h2>'+
              '<span class="carrow">▾</span></div>'+
              '<div class="cbody">'+html+'</div></section>';
+      if(clean&&!sumDone&&t.id==="b0"){
+        var sh=clientSummary(demo);
+        if(sh){sumDone=true;navcount++;
+          inner+='<section class="csec csum" id="sec'+navcount+'" data-key="sum" data-label="Главное о вас">'+
+            '<div class="chead"><div class="cgrp">Начните здесь</div><h2 class="ctitle">Главное о вас</h2><span class="carrow">▾</span></div>'+
+            '<div class="cbody">'+sh+(demo?'<div class="lockbox"><div class="lockfake"><i></i><i></i><i></i><i></i></div><p>&#128274; Сильные стороны, что мешает, что усиливает, здоровье и план на год — в полной версии разбора.</p></div>':'')+'</div></section>';}
+      }
     });
     body+=inner;
   });
@@ -7305,7 +7389,7 @@ function doExportClient(){
     groups.forEach(function(g){
       var items=g.tabs.filter(function(t){
         var pane=document.getElementById(t.id);
-        return pane&&pane.innerHTML.trim()&&!isPicked(t.id)&&(!full||full.indexOf(t.id)>=0);
+        return pane&&pane.innerHTML.trim()&&!isPicked(t.id)&&(!full||full.indexOf(t.id)>=0)&&!(clean&&CLEAN_SKIP.indexOf(t.id)>=0);
       });
       if(items.length)locked+='<div class="lkgrp"><div class="cgrp">'+g.name+'</div>'+
         items.map(function(t){return '<div class="lkitem">&#128274; '+t.label+'</div>'}).join("")+'</div>';
@@ -7338,6 +7422,16 @@ function doExportClient(){
     "white-space:nowrap;overflow:hidden;font-family:Georgia,serif}",
   ".cbuy{border:2px solid var(--cin)!important;background:rgba(157,43,35,.04)}",
   ".cbuy .cbody{padding:24px 26px}",
+  ".sumgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:18px}",
+  ".sumc{border:1px solid var(--line);border-top:3px solid var(--gold);background:#fffdf7;padding:14px 16px}",
+  ".sumc.good{border-top-color:var(--jade)}.sumc.bad{border-top-color:var(--cin)}",
+  ".sumc h3{font-size:15px;color:var(--cin);margin:0 0 8px;font-weight:normal;letter-spacing:.02em}",
+  ".sumc p{font-size:14px;line-height:1.65;margin:0 0 8px}.sumc p:last-child{margin-bottom:0}",
+  ".sumc ul{margin:0 0 0 18px;font-size:14px;line-height:1.65}",
+  ".sumimg,.sumsub{color:var(--ink2);font-style:italic}",
+  ".sumplan{margin:0 0 16px 20px;font-size:14px;line-height:1.65}.sumplan li{margin-bottom:10px}.sumplan b{color:var(--cin);font-weight:normal}",
+  ".csum{border:2px solid var(--gold)!important}",
+  ".cfoot{font-size:12px;color:var(--ink2);border-top:1px dotted var(--line);padding:12px 4px;margin:10px 0 20px}",
   ".lockbox{position:relative;margin:6px 0 14px;border:1px dashed var(--line);background:rgba(201,180,138,.08);padding:14px 16px}",
   ".lockfake i{display:block;height:9px;margin:7px 0;background:linear-gradient(90deg,rgba(74,60,45,.16),rgba(74,60,45,.05));filter:blur(1.5px)}",
   ".lockfake i:nth-child(2){width:86%}.lockfake i:nth-child(3){width:93%}.lockfake i:nth-child(4){width:61%}",
@@ -7421,9 +7515,10 @@ function doExportClient(){
    "</div>"+
    "<div class=\"dragonwrap\">"+taijiSVG()+"</div>"+
    "<div class=\"cwrap\"><nav id=\"cnav\"></nav><main class=\"cmain\">"+
-   "<div class=\"note\" style=\"margin-bottom:18px\">Это ваш личный разбор. Разделы можно сворачивать, отмечать как прочитанные и оставлять к ним заметки — всё сохраняется в этом файле на вашем устройстве. Слова, подчёркнутые пунктиром, — термины: нажмите, чтобы увидеть объяснение. В разделе с рекомендациями отмечайте шаги, которые взяли в работу, а в проверке карты отвечайте на вопросы — файл сам посчитает, насколько точно построена карта.</div>"+
+   (clean?"<div class=\"note\" style=\"margin-bottom:18px\">Это ваш личный разбор. Начните с раздела «Главное о вас» — там самое важное на одном экране. Остальные разделы раскрывают детали: их можно сворачивать, отмечать прочитанными и оставлять заметки. Всё сохраняется в этом файле на вашем устройстве.</div>":"<div class=\"note\" style=\"margin-bottom:18px\">Это ваш личный разбор. Разделы можно сворачивать, отмечать как прочитанные и оставлять к ним заметки — всё сохраняется в этом файле на вашем устройстве. Слова, подчёркнутые пунктиром, — термины: нажмите, чтобы увидеть объяснение. В разделе с рекомендациями отмечайте шаги, которые взяли в работу, а в проверке карты отвечайте на вопросы — файл сам посчитает, насколько точно построена карта.</div>")+
    "<div class=\"cmeet\" style=\"margin:0 0 18px\" id=\"creadcount\"></div>"+
    body+
+   (clean?"<div class=\"cfoot\">Разбор описывает склонности и вероятные сюжеты; решения принимаете вы. Вопросы здоровья, денег и права решайте с профильными специалистами.</div>":"")+
    "<div class=\"signblock\">"+emblemSVG(cons,86)+
      "<div class=\"signtext\"><div class=\"signname\">"+cons+"</div>"+
      (ctag?"<div class=\"signtag\">"+ctag+"</div>":"")+signatureSVG(cons)+(clHtml&&!demo?"<div style=\"margin-top:10px\">"+clHtml+"</div>":"")+"</div></div>"+
@@ -7894,7 +7989,7 @@ function collectData(){
     qtext:g("qtext"),qtopic:g("qtopic"),evkey:g("evkey"),evfrom:g("evfrom"),evto:g("evto"),
     namecand:g("namecand"),ymonth:g("ymonth"),
     events:Array.from(document.querySelectorAll(".erow")).map(r=>({y:r.querySelector(".ey").value,k:r.querySelector(".ek").value})),
-    bsol:c("bsol"),bhistchk:c("bhistchk"),
+    bsol:c("bsol"),bhistchk:c("bhistchk"),cclean:c("cclean"),
     yfrom:g("yfrom"),yto:g("yto"),cpseudo:g("cpseudo"),ctag:g("ctag"),ccontact:g("ccontact"),cprice:g("cprice"),people:people,
     picked:Array.from(document.querySelectorAll(".picksec")).filter(c=>c.checked).map(c=>c.id.replace("sel_","")),
     extra:window.ANKETA_EXTRA||null,
@@ -7936,7 +8031,7 @@ function applyCalc(D){
 
     ["f","i","o","d","a","p2d","bt","bs","btz","blon","bcity","yfrom","yto","cpseudo","ctag","ccontact","cprice",
      "qtext","qtopic","evkey","evfrom","evto","namecand","ymonth"].forEach(k=>set(k,D[k]));
-    chk("bsol",D.bsol);chk("bhistchk",D.bhistchk);
+    chk("bsol",D.bsol);chk("bhistchk",D.bhistchk);chk("cclean",D.cclean===undefined?true:D.cclean);
 
     /* вопросы опросника */
     const ql=document.getElementById("qlist");
