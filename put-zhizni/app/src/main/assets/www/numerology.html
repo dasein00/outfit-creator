@@ -254,6 +254,13 @@ header .emblem{position:absolute;right:44px;top:30px}
 @media(max-width:560px){.mgrid{gap:6px}.mcell{padding:9px 5px}.mcell .mv{font-size:20px}}
 
 /* ---- Выбор разделов ---- */
+.clbar{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap}.clbar input{flex:1;min-width:160px}
+.clrow{border:1px solid var(--line);border-left:4px solid var(--gold);background:#fffdf7;padding:11px 14px;margin-bottom:9px}
+.clrow.cur{box-shadow:0 0 0 2px rgba(157,43,35,.25)}
+.clhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.clhead b{font-weight:normal;font-size:16px}
+.clhead select{width:auto;margin-left:auto;padding:5px 8px;font-size:12.5px}
+.clmeta{font-size:12.5px;color:var(--ink2);margin:7px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.clmeta select{width:auto;padding:4px 7px;font-size:12px}
+.clbtns{display:flex;gap:7px;flex-wrap:wrap}
 #pickwrap{border:1px solid var(--line);background:rgba(255,253,247,.75);
  border-top:2px solid var(--gold);margin-bottom:22px}
 .pickhead{display:flex;justify-content:space-between;align-items:center;gap:14px;
@@ -681,7 +688,14 @@ svg text{cursor:default}
 <div style="margin-top:8px;font-size:12px;color:#5a4a34"><label style="display:inline;text-transform:none;letter-spacing:0;font-size:12.5px"><input type="checkbox" id="bhistchk" checked style="width:auto;margin-right:8px">учитывать историческое время &mdash; декретный час и перевод часов в СССР и России</label></div>
 <div id="bhist" class="hint" style="margin-top:10px"></div>
 </fieldset>
+<fieldset id="clientsfs"><legend><span class="han">客</span>Клиенты: демо &rarr; полный разбор</legend>
+<div class="hint" style="margin:-4px 0 12px">Рабочий цикл: постройте карты, сохраните клиента, отправьте ему <b>демо</b> — пробный файл с водяным знаком, началом каждого раздела и списком того, что откроется в полной версии. После оплаты отметьте статус и одним нажатием соберите <b>полный разбор</b> по выбранному тарифу. Журнал и расчёты хранятся только на этом устройстве.</div>
+<div class="clbar"><input id="clq" placeholder="Поиск по имени" oninput="renderClients()"><button type="button" onclick="saveClient()">Сохранить клиента</button></div>
+<div id="clist"></div>
+</fieldset>
 <fieldset><legend><span class="han">印</span>Подпись консультанта</legend><div class="grid">
+<div><label>Контакт для связи</label><input id="ccontact" placeholder="@ник в Telegram, телефон или ссылка"><div class="hint">в демо-файле станет кнопкой «Написать»</div></div>
+<div><label>Цена полного разбора</label><input id="cprice" placeholder="по тарифу"><div class="hint">пусто — возьмётся цена выбранного тарифа</div></div>
 <div><label>Имя или псевдоним</label><input id="cpseudo" value="Луна" placeholder="Луна"><div class="hint">появится на титуле, в эмблеме и в подписи</div></div>
 <div><label>Строка под именем</label><input id="ctag" value="консультант китайской метафизики" placeholder="специализация или девиз"><div class="hint">специализация или девиз</div></div>
 </div></fieldset>
@@ -1236,7 +1250,7 @@ function go(){
     try{document.getElementById("dragonhost").innerHTML=dragonSVG()}catch(e){}
     const GROUPS=[
       {name:"Титул",han:"序",tabs:[{label:"Титул и как читать",id:"b0"},{label:"Ответ на запрос",id:"b22"},{label:"Резюме",id:"b18"},{label:"Ответы клиента",id:"b33"},{label:"Проверка карты",id:"b19"},{label:"Подбор часа",id:"b23"}]},
-      {name:"Личность",han:"命",tabs:[{label:"Карта Ба-цзы",id:"b1"},{label:"Колесо стихий",id:"b29"},{label:"12 дворцов",id:"b31"},{label:"Тип карты",id:"b13"},{label:"Десять Божеств",id:"b2"},{label:"Комбинации",id:"b3"},{label:"Сильные и слабые",id:"b14"},{label:"Здоровье",id:"b6"},{label:"Числовой код",id:"p1"},{label:"Энергии",id:"p2"},{label:"Матрица",id:"b21"}]},
+      {name:"Личность",han:"命",tabs:[{label:"Карта Ба-цзы",id:"b1"},{label:"Профессиональная карта",id:"b34"},{label:"Колесо стихий",id:"b29"},{label:"12 дворцов",id:"b31"},{label:"Тип карты",id:"b13"},{label:"Десять Божеств",id:"b2"},{label:"Комбинации",id:"b3"},{label:"Сильные и слабые",id:"b14"},{label:"Здоровье",id:"b6"},{label:"Числовой код",id:"p1"},{label:"Энергии",id:"p2"},{label:"Матрица",id:"b21"}]},
       {name:"Время",han:"運",tabs:[{label:"Рекомендации на год",id:"b20"},{label:"Карта жизни",id:"b28"},{label:"Звёздная карта",id:"b32"},{label:"Свиток десятилетий",id:"b30"},{label:"График жизни",id:"b24"},{label:"Прогноз по годам",id:"b7"},{label:"Помесячно",id:"b25"},{label:"Подбор даты",id:"b26"},{label:"Прогностика",id:"b15"}]},
       {name:"Отношения",han:"緣",tabs:[{label:"Дворец Брака",id:"b4"},{label:"Совместимость пары",id:"b9"},{label:"Зачатие и дети",id:"b16"}]},
       {name:"Дело",han:"業",tabs:[{label:"Работа и призвание",id:"b5"},{label:"Путь к успеху",id:"b17"},{label:"Бизнес-партнёрство",id:"b10"},{label:"Команда",id:"b11"},{label:"Подбор имени",id:"b27"}]},
@@ -1246,6 +1260,7 @@ function go(){
     window.HZ=buildHanziIndex(CH,ST,US);
     BZTABS=buildPicker(GROUPS)+buildTabs(GROUPS);
     BZPANES=`<div id="b1" class="pane">${warnH}${solH}${renderChart(CH,ST,US,SR)}</div>`
+      +`<div id="b34" class="pane">${renderPro(CH,!document.getElementById("bt").value)}</div>`
       +`<div id="b13" class="pane">${renderSpecial(ALL)}</div>`
       +`<div id="b2" class="pane">${renderGods(CH,ST,US)}</div>`
       +`<div id="b3" class="pane">${cmH}</div>`
@@ -1299,8 +1314,10 @@ function go(){
     <div id="p5" class="pane">${T.matrix}</div>
     <div id="p6" class="pane">${T.compat}</div>${BZPANES}`;
   try{annotate(document.getElementById("out"))}catch(e){}
+  const hadPick=!!PICKED_RESTORE;
   try{applyPickRestore();pickCount()}catch(e){}
-  try{if(!PICKED_RESTORE&&typeof applyTariff==="function")applyTariff(window.__TARIFF||"full")}catch(e){}
+  try{if(!hadPick&&typeof applyTariff==="function")applyTariff(window.__TARIFF||"full")}catch(e){}
+  try{if(hadPick&&window.__TARIFF&&TARIFFS[window.__TARIFF]){document.querySelectorAll(".tarbtn").forEach(b=>b.classList.toggle("on",b.dataset.t===window.__TARIFF));window.__DEMO=!!TARIFFS[window.__TARIFF].demo}}catch(e){}
   try{document.body.dataset.irun="";interactiveRuntime()}catch(e){try{showError("Интерактивные элементы",e)}catch(x){}}
   document.getElementById("out").style.display="block";
   document.getElementById("empty").style.display="none";
@@ -2104,6 +2121,141 @@ function stars(ch){
       out.push({t:"Звезда одиночества ("+BZB[LONELY[k]].c+")",d:"Периоды внутреннего одиночества, самодостаточность, потребность в личном пространстве. Одна из причин, по которой отношения не завязываются даже при приходе Звезды супруга."})}
   return out;
 }
+
+/* ---------- Профессиональная карта: На Инь, 12 стадий, пустоты, звёзды по столпам ---------- */
+/* Номер пары в 60-летнем цикле по стволу и ветви: n%10=s, n%12=b */
+function jz60(s,b){return ((6*s-5*b)%60+60)%60}
+const NAYIN=[
+["海中金","Золото в море","Металл","скрытый потенциал, ценность, которая раскрывается не сразу"],
+["炉中火","Огонь в очаге","Огонь","огонь ремесла и мастерства: переплавляет сырьё в результат"],
+["大林木","Дерево большого леса","Дерево","масштаб, рост вместе с людьми, сила общины"],
+["路旁土","Земля у дороги","Земля","служение и опора для многих, практичность"],
+["剑锋金","Металл острия меча","Металл","решимость, точность, способность отсекать лишнее"],
+["山头火","Огонь на вершине горы","Огонь","видимость издалека, яркость, публичность"],
+["涧下水","Вода горного ручья","Вода","чистота, упорство, путь в обход препятствий"],
+["城头土","Земля крепостной стены","Земля","защита, надёжность, умение держать границы"],
+["白蜡金","Металл белого воска","Металл","изящество, тонкость, требует закалки обстоятельствами"],
+["杨柳木","Ива","Дерево","гибкость, мягкость, умение выстоять, наклоняясь"],
+["泉中水","Вода источника","Вода","неиссякаемый ресурс, свежие идеи, чистота мотивов"],
+["屋上土","Земля на крыше","Земля","дом и кров: забота, укрытие, семейная опора"],
+["霹雳火","Огонь молнии","Огонь","внезапность, прорывы, мощная, но короткая вспышка"],
+["松柏木","Сосна и кипарис","Дерево","стойкость, долголетие, верность принципам"],
+["长流水","Вода долгого течения","Вода","постоянство, долгий путь, терпение"],
+["沙中金","Золото в песке","Металл","ценность, которую нужно отыскать и отмыть трудом"],
+["山下火","Огонь у подножия горы","Огонь","тёплый, домашний свет: близость, уют, отдача"],
+["平地木","Дерево равнины","Дерево","открытость, обучение, рост на виду у людей"],
+["壁上土","Земля на стене","Земля","структура, порядок, умение встроиться в систему"],
+["金箔金","Металл золотой фольги","Металл","статус и внешний блеск, которому нужна опора"],
+["覆灯火","Огонь лампады","Огонь","свет в темноте: наставничество, ум, ночная работа"],
+["天河水","Вода небесной реки","Вода","вдохновение, идеалы, щедрость без расчёта"],
+["大驿土","Земля большой дороги","Земля","движение, связи, торговля, дороги"],
+["钗钏金","Металл шпилек и браслетов","Металл","красота, эстетика, ценность в деталях"],
+["桑柘木","Шелковица","Дерево","полезность, трудолюбие, кормит других"],
+["大溪水","Вода большого потока","Вода","энергия, напор, способность увлечь за собой"],
+["沙中土","Земля в песке","Земля","подвижная опора: адаптация, перемены"],
+["天上火","Небесный огонь","Огонь","солнце: щедрость, лидерство, видно всем"],
+["石榴木","Гранатовое дерево","Дерево","плодовитость, много идей и детей, богатство внутреннего мира"],
+["大海水","Вода великого моря","Вода","масштаб, глубина, вместимость, широта взглядов"]];
+
+const STAGES=[
+["长生","Рождение","начало пути, поддержка, тяга к росту и учёбе"],
+["沐浴","Купание","уязвимость и обаяние, эксперименты, романтика, соблазны"],
+["冠带","Пояс и шапка","взросление, оформление себя, первые достижения"],
+["临官","Должность","зрелость, самостоятельность, карьера и статус"],
+["帝旺","Расцвет","пик силы: напор, лидерство, но и риск перегиба"],
+["衰","Упадок","спад активности, опыт и рассудительность вместо напора"],
+["病","Болезнь","ослабление: нужна поддержка, бережное отношение к силам"],
+["死","Смерть","остановка: завершение старого, неподвижность"],
+["墓","Хранилище","накопление и консервация: ресурсы, тайны, бережливость"],
+["绝","Обрыв","разрыв с прошлым, точка нуля, резкие повороты"],
+["胎","Зачатие","замысел, новое в зародыше, планы"],
+["养","Вскармливание","вынашивание, опека, подготовка к новому старту"]];
+/* ветвь «Рождения» для каждого ствола; Ян идёт по кругу вперёд, Инь — назад */
+const STAGE0=[11,6,2,9,2,9,5,0,8,3];
+function stageOf(s,b){const st=STAGE0[s];return BZS[s].yy?((b-st+12)%12):((st-b+12)%12)}
+/* пустоты декады (旬空) по столпу */
+function voidOf(p){const st=((p.b-p.s)%12+12)%12;return [(st+10)%12,(st+11)%12]}
+function triad(b){return [[8,0,4],[2,6,10],[5,9,1],[11,3,7]].findIndex(t=>t.includes(b))}
+
+const SHENSHA={
+ noble:["天乙貴人","Благородный человек","помощь покровителей, защита в трудный момент"],
+ acad:["文昌","Звезда учёности","ум, обучаемость, тексты, экзамены, документы"],
+ lu:["祿神","Звезда достатка (Лу)","собственный ресурс и устойчивый доход, здоровье"],
+ blade:["羊刃","Клинок","напор, смелость, конкурентность; риск травм и конфликтов"],
+ peach:["桃花","Цветок персика","обаяние, популярность, внимание противоположного пола"],
+ horse:["驛馬","Почтовая лошадь","переезды, дороги, командировки, перемены места"],
+ canopy:["華蓋","Драгоценный балдахин","искусство, духовность, философия, одиночество творца"],
+ general:["將星","Звезда полководца","авторитет, способность вести за собой, власть"],
+ robbery:["劫煞","Грабящая звезда","внезапные потери и нападения; при силе карты — хватка"],
+ redluan:["紅鸞","Красная звезда","любовь, свадьба, радостные события в семье"],
+ joy:["天喜","Небесная радость","праздники, рождения, приятные новости"]
+};
+const ACAD=[5,6,8,9,8,9,11,0,2,3], LU=[2,3,5,6,5,6,8,9,11,0], BLADE={0:3,2:6,4:6,6:9,8:0};
+const T_PEACH=[9,3,6,0],T_HORSE=[2,8,11,5],T_CANOPY=[4,10,1,7],T_GENERAL=[0,6,9,3],T_ROB=[5,11,2,8];
+
+function proStars(ch,k){
+  const P=ch.pillars,b=P[k].b,out=[];
+  const dm=P[2].s,ys=P[0].s,yb=P[0].b,db=P[2].b;
+  if(NOBLE[dm].includes(b)||NOBLE[ys].includes(b))out.push("noble");
+  if(ACAD[dm]===b)out.push("acad");
+  if(LU[dm]===b)out.push("lu");
+  if(BLADE[dm]===b)out.push("blade");
+  [yb,db].forEach((x,i)=>{ if(i===0?k===0:k===2)return;
+    const t=triad(x);
+    if(T_PEACH[t]===b)out.push("peach");
+    if(T_HORSE[t]===b)out.push("horse");
+    if(T_CANOPY[t]===b)out.push("canopy");
+    if(T_GENERAL[t]===b)out.push("general");
+    if(T_ROB[t]===b)out.push("robbery");
+  });
+  if(k!==0&&((3-yb+12)%12)===b)out.push("redluan");
+  if(k!==0&&((9-yb+12)%12)===b)out.push("joy");
+  return [...new Set(out)];
+}
+function fetalOrigin(ch){return {s:(ch.pillars[1].s+1)%10,b:(ch.pillars[1].b+3)%12}}
+
+function renderPro(ch,noHour){
+  const dm=ch.dm,P=ch.pillars,ord=[3,2,1,0];
+  const dv=voidOf(P[2]),yv=voidOf(P[0]);
+  const cell=(x,st)=>`<td style="text-align:center;border:1px solid #ddd5c4;padding:7px 5px;${st||""}">${x}</td>`;
+  const hd=t=>`<td style="font-size:10px;letter-spacing:.08em;color:#9b917f;text-transform:uppercase;border:1px solid #ddd5c4;padding:7px 6px;white-space:nowrap">${t}</td>`;
+  let h=`<h2>Профессиональная карта</h2>`;
+  h+=`<div class="note">Полная таблица столпов, как её строят мастера: божества стволов и скрытых стволов, мелодия На Инь, двенадцать стадий жизненной силы, пустоты декады и символические звёзды каждого столпа.${noHour?" Час рождения не указан — колонка часа условная.":""}</div>`;
+  h+=`<div style="overflow-x:auto"><table style="background:#fff;min-width:520px">`;
+  h+=`<tr>${hd("")}${ord.map(i=>`<td style="text-align:center;font-size:10px;letter-spacing:.1em;color:#9b917f;text-transform:uppercase;border:1px solid #ddd5c4;padding:7px">${PILNAME[i]}</td>`).join("")}</tr>`;
+  h+=`<tr>${hd("Божество")}${ord.map(i=>cell(i===2?"Господин дня":godOf(dm,P[i].s),"font-size:11.5px;color:#8b6f3f")).join("")}</tr>`;
+  h+=`<tr>${hd("Ствол")}${ord.map(i=>{const S=BZS[P[i].s];return cell(`<span style="font-size:26px;color:${ELCOL[S.el]}">${S.c}</span><div style="font-size:11px;color:#5c5344">${S.r} · ${S.el} ${S.yy?"Ян":"Инь"}</div>`)}).join("")}</tr>`;
+  h+=`<tr>${hd("Ветвь")}${ord.map(i=>{const B=BZB[P[i].b];return cell(`<span style="font-size:26px;color:${ELCOL[B.el]}">${B.c}</span><div style="font-size:11px;color:#5c5344">${B.r} · ${B.a}</div>`)}).join("")}</tr>`;
+  h+=`<tr>${hd("Скрытые")}${ord.map(i=>cell(BZB[P[i].b].hid.map(x=>`<div style="font-size:11px"><span style="color:${ELCOL[BZS[x].el]}">${BZS[x].c}</span> ${godShort(godOf(dm,x))}</div>`).join(""))).join("")}</tr>`;
+  h+=`<tr>${hd("Стадия ГД")}${ord.map(i=>{const g=STAGES[stageOf(dm,P[i].b)];return cell(`${g[0]}<div style="font-size:11px;color:#5c5344">${g[1]}</div>`)}).join("")}</tr>`;
+  h+=`<tr>${hd("На себе")}${ord.map(i=>{const g=STAGES[stageOf(P[i].s,P[i].b)];return cell(`${g[0]}<div style="font-size:11px;color:#5c5344">${g[1]}</div>`)}).join("")}</tr>`;
+  h+=`<tr>${hd("На Инь")}${ord.map(i=>{const n=NAYIN[jz60(P[i].s,P[i].b)>>1];return cell(`${n[0]}<div style="font-size:11px;color:${ELCOL[n[2]]}">${n[1]}</div>`)}).join("")}</tr>`;
+  h+=`<tr>${hd("Пустота")}${ord.map(i=>{const v=[];if(dv.includes(P[i].b)&&i!==2)v.push("от дня");if(yv.includes(P[i].b)&&i!==0)v.push("от года");return cell(v.length?`<b style="color:var(--cin)">空</b><div style="font-size:11px">${v.join(", ")}</div>`:"·")}).join("")}</tr>`;
+  h+=`<tr>${hd("Звёзды")}${ord.map(i=>cell(proStars(ch,i).map(k=>`<div style="font-size:11px;white-space:nowrap" title="${SHENSHA[k][2]}">${SHENSHA[k][0]} ${SHENSHA[k][1]}</div>`).join("")||"·")).join("")}</tr>`;
+  h+=`</table></div>`;
+  h+=`<div style="font-size:11px;color:#9b917f;margin-top:6px;font-style:italic">Стадия ГД — сила Господина дня в ветви столпа. «На себе» — сила ствола в собственной ветви (自坐). Пустоты декады от дня: ${dv.map(b=>BZB[b].c+" "+BZB[b].a).join(", ")}; от года: ${yv.map(b=>BZB[b].c+" "+BZB[b].a).join(", ")}.</div>`;
+
+  const lp=lifePalace(ch).list[0],fo=fetalOrigin(ch);
+  const pil=p=>`${BZS[p.s].c}${BZB[p.b].c} ${BZS[p.s].r} ${BZB[p.b].r}`;
+  h+=`<h2>Дворец Жизни и Зачаточный столп</h2>`;
+  h+=blk("Дворец Жизни 命宮: "+pil(lp)+" — "+NAYIN[jz60(lp.s,lp.b)>>1][1],
+    "Дворец Жизни показывает, куда направлена жизнь человека и в какой среде он раскрывается. Божество ствола дворца — «"+godOf(dm,lp.s)+"»: эта тема окрашивает весь жизненный сценарий. Ветвь "+BZB[lp.b].a+" — "+BZB[lp.b].el+(us0(ch,BZB[lp.b].el)),
+    noHour?"Дворец Жизни зависит от часа рождения: без точного часа он условен.":"");
+  h+=blk("Зачаточный столп 胎元: "+pil(fo)+" — "+NAYIN[jz60(fo.s,fo.b)>>1][1],
+    "Зачаточный столп отражает исходный запас сил, с которым человек пришёл: врождённую конституцию и то, что дано от рождения. Божество — «"+godOf(dm,fo.s)+"», стадия Господина дня в его ветви — "+STAGES[stageOf(dm,fo.b)][1].toLowerCase()+".");
+
+  h+=`<h2>Двенадцать стадий Господина дня</h2>`;
+  const seen=[...new Set(ord.map(i=>stageOf(dm,P[i].b)))];
+  seen.forEach(k=>{const g=STAGES[k];const where=ord.filter(i=>stageOf(dm,P[i].b)===k).map(i=>PILNAME[i].toLowerCase()).join(", ");
+    h+=`<div class="meet"><b>${g[0]} ${g[1]}</b> (столп: ${where}) — ${g[2]}.</div>`});
+  h+=`<h2>Символические звёзды по столпам</h2>`;
+  const all=[];ord.forEach(i=>proStars(ch,i).forEach(k=>all.push([k,i])));
+  if(all.length)all.forEach(([k,i])=>{const s=SHENSHA[k];h+=`<div class="meet"><b>${s[0]} ${s[1]}</b> в столпе ${["года","месяца","дня","часа"][i]} — ${s[2]}. ${PILMEAN[i]?"Сфера проявления: "+PILMEAN[i].toLowerCase()+".":""}</div>`});
+  else h+=`<div class="empty">Главных символических звёзд в карте нет — сюжет жизни задают элементы и такты.</div>`;
+  if(dv.some(b=>P.some((p,i)=>i!==2&&p.b===b)))h+=`<div class="meet"><b>Пустота декады в карте.</b> Столп, ветвь которого попала в пустоту, работает «вполсилы»: его тема важна, но долго не воплощается в материальном. Пустота заполняется, когда ветвь приходит в такте или году — тогда тема резко оживает.</div>`;
+  return h;
+}
+function us0(ch,el){try{const u=useful(ch,strength(ch));return u.good.includes(el)?" — благоприятный элемент карты.":u.bad.includes(el)?" — неблагоприятный элемент карты, среда требует осознанности.":"."}catch(e){return "."}}
 
 /* ---------- Структура карты ---------- */
 const STRUCT={
@@ -6918,7 +7070,7 @@ function clientRuntime(){
       s.classList.toggle("readdone",!!state["read_"+s.id]);};
     m.onclick=function(e){e.stopPropagation();state["read_"+s.id]=!state["read_"+s.id];set();save();counter()};
     set();
-    qs(".chead",s).appendChild(m);
+    var hd=qs(".chead",s);if(hd)hd.appendChild(m);
   });
   function counter(){
     var n=secs.filter(function(s){return state["read_"+s.id]}).length;
@@ -7123,6 +7275,9 @@ function doExportClient(){
           ps.slice(2).forEach(function(x){x.remove()});
         }
         qa2("table,.meet,.lifewrap,.whwrap,.maplayout,.starlayout,.plclayout,.wheel,.elstrip").forEach(function(x){x.remove()});
+        var lk=document.createElement("div");lk.className="lockbox";
+        lk.innerHTML='<div class="lockfake"><i></i><i></i><i></i><i></i></div><p>&#128274; Продолжение раздела «'+t.label+'» — в полной версии разбора.</p>';
+        clone.appendChild(lk);
       }
       var html=clone.innerHTML
         .replace(/<div class="tabs">[\s\S]*?<\/div>/g,"")
@@ -7139,14 +7294,31 @@ function doExportClient(){
     });
     body+=inner;
   });
+  var contact=(document.getElementById("ccontact")||{}).value||"";
+  var cl=(typeof contactLink==="function")?contactLink(contact):null;
+  var clHtml=cl?(cl.href?'<a class="cbtn" href="'+cl.href+'" target="_blank" rel="noopener">'+cl.label+'</a>'
+                         :'<div class="cbtn" style="cursor:default">'+cl.label+'</div>'):"";
   if(demo&&navcount){
-    body+='<section class="csec cbuy"><div class="cbody">'+
+    var up=TARIFFS[window.__UPSELL||"full"]||TARIFFS.full;
+    var price=((document.getElementById("cprice")||{}).value||"").trim()||up.price;
+    var full=up.ids==="ALL"?null:up.ids, locked="";
+    groups.forEach(function(g){
+      var items=g.tabs.filter(function(t){
+        var pane=document.getElementById(t.id);
+        return pane&&pane.innerHTML.trim()&&!isPicked(t.id)&&(!full||full.indexOf(t.id)>=0);
+      });
+      if(items.length)locked+='<div class="lkgrp"><div class="cgrp">'+g.name+'</div>'+
+        items.map(function(t){return '<div class="lkitem">&#128274; '+t.label+'</div>'}).join("")+'</div>';
+    });
+    body+='<section class="csec cbuy" id="secbuy" data-label="Полная версия">'+
+      '<div class="chead"><div class="cgrp">Полная версия</div><h2 class="ctitle">Как получить полный разбор</h2><span class="carrow">▾</span></div><div class="cbody">'+
       '<h2 style="border:none;color:var(--cin)">Это пробная версия разбора</h2>'+
-      '<p>Вы увидели, как система читает карту, и первую часть выводов. Полный разбор — это '+
-      'десятки разделов: прогноз по годам и месяцам, карта жизненного пути, двенадцать дворцов, '+
-      'совместимость, рекомендации на год и живой интерактивный документ, с которым можно работать весь год.</p>'+
-      '<p style="font-size:15px;color:var(--cin)">Если откликнулось — напишите мне, и я подготовлю полный персональный разбор.</p>'+
-      '</div></section>';
+      '<p>Вы увидели, как система читает вашу карту, и начало каждого вывода. В полной версии — «'+up.name+'» — '+
+      'все разделы целиком, прогноз по годам и месяцам, таблицы, графики и живой интерактивный документ, с которым можно работать весь год.</p>'+
+      (locked?'<h3 style="margin:16px 0 8px">Что откроется в полной версии</h3><div class="lklist">'+locked+'</div>':'')+
+      '<div class="cprice">Полный разбор: <b>'+price+'</b></div>'+
+      '<p style="font-size:15px;color:var(--cin)">Если откликнулось — напишите мне, и я подготовлю ваш полный персональный разбор.</p>'+
+      clHtml+'</div></section>';
   }
   if(!navcount){
     var picked=document.querySelectorAll(".picksec").length;
@@ -7166,6 +7338,14 @@ function doExportClient(){
     "white-space:nowrap;overflow:hidden;font-family:Georgia,serif}",
   ".cbuy{border:2px solid var(--cin)!important;background:rgba(157,43,35,.04)}",
   ".cbuy .cbody{padding:24px 26px}",
+  ".lockbox{position:relative;margin:6px 0 14px;border:1px dashed var(--line);background:rgba(201,180,138,.08);padding:14px 16px}",
+  ".lockfake i{display:block;height:9px;margin:7px 0;background:linear-gradient(90deg,rgba(74,60,45,.16),rgba(74,60,45,.05));filter:blur(1.5px)}",
+  ".lockfake i:nth-child(2){width:86%}.lockfake i:nth-child(3){width:93%}.lockfake i:nth-child(4){width:61%}",
+  ".lockbox p{font-size:13px;color:var(--cin);margin:10px 0 0}",
+  ".lklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px}",
+  ".lkgrp .cgrp{margin-bottom:4px}.lkitem{font-size:13px;color:var(--ink2);padding:2px 0}",
+  ".cprice{font-size:16px;margin:8px 0 12px;padding:10px 14px;border-left:3px solid var(--gold);background:rgba(168,133,63,.08)}",
+  ".cbtn{display:inline-block;margin-top:8px;padding:12px 22px;background:var(--cin);color:#fdf6e6!important;text-decoration:none;font-size:14px;letter-spacing:.04em}",
   ".cwrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:250px 1fr;gap:0;align-items:start}",
   "#cnav{position:sticky;top:64px;max-height:calc(100vh - 90px);overflow:auto;padding:18px 14px 30px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:2px}",
   "#cnav a{font-size:12.5px;color:var(--ink2);text-decoration:none;padding:7px 10px;border-left:2px solid transparent;transition:.15s}",
@@ -7246,7 +7426,7 @@ function doExportClient(){
    body+
    "<div class=\"signblock\">"+emblemSVG(cons,86)+
      "<div class=\"signtext\"><div class=\"signname\">"+cons+"</div>"+
-     (ctag?"<div class=\"signtag\">"+ctag+"</div>":"")+signatureSVG(cons)+"</div></div>"+
+     (ctag?"<div class=\"signtag\">"+ctag+"</div>":"")+signatureSVG(cons)+(clHtml&&!demo?"<div style=\"margin-top:10px\">"+clHtml+"</div>":"")+"</div></div>"+
    "</main></div>"+
    "<div id=\"cmodal\"><div class=\"cmbox\"><button id=\"cmclose\">×</button>"+
    "<h3 id=\"cmtitle\"></h3><p id=\"cmbody\"></p></div></div>"+
@@ -7478,6 +7658,99 @@ function showPane(id){
    ============================================================ */
 const PICK_SHORT=["b0","b18","b14","b20","b19"];
 
+/* ============================================================
+   КЛИЕНТЫ: ДЕМО → ОПЛАТА → ПОЛНЫЙ РАЗБОР
+   Журнал хранится на этом устройстве (localStorage). Для каждого
+   клиента сохраняется весь расчёт, поэтому демо и полную версию
+   можно собрать в один клик в любой момент.
+   ============================================================ */
+const CL_KEY="bz.clients.v1";
+const CL_ST={new:["Новый","#9d8a6c"],demo:["Демо отправлено","#a8853f"],wait:["Ждёт оплаты","#c04a34"],
+  paid:["Оплачено","#3f6b57"],full:["Полный отправлен","#3f6b57"],done:["Завершён","#7d8590"]};
+function clEsc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function clRead(){try{const a=JSON.parse(localStorage.getItem(CL_KEY)||"[]");return Array.isArray(a)?a:[]}catch(e){return []}}
+function clWrite(a){try{localStorage.setItem(CL_KEY,JSON.stringify(a));return true}catch(e){alert("Не удалось сохранить журнал клиентов: память браузера переполнена.");return false}}
+function clFind(id){return clRead().find(c=>c.id===id)}
+function clUpdate(id,fn){const a=clRead(),c=a.find(x=>x.id===id);if(!c)return;fn(c);c.upd=new Date().toISOString();clWrite(a);renderClients()}
+function clLog(c,ev){(c.hist=c.hist||[]).push({t:new Date().toISOString(),ev:ev})}
+function clDate(iso){try{return new Date(iso).toLocaleDateString("ru-RU",{day:"numeric",month:"short"})}catch(e){return ""}}
+
+function saveClient(silent){
+  const D=collectData();
+  if(!D.d){alert("Сначала заполните дату рождения.");return null}
+  const name=((D.f?D.f+" ":"")+(D.i||"")+(D.o?" "+D.o:"")).trim()||"Клиент";
+  const a=clRead();
+  let c=a.find(x=>x.id===window.__CLID)||a.find(x=>x.name===name&&x.d===D.d);
+  if(!c){c={id:"c"+Date.now().toString(36),name:name,d:D.d,status:"new",tariff:"full",hist:[]};clLog(c,"создан");a.unshift(c)}
+  c.name=name;c.d=D.d;c.data=D;c.upd=new Date().toISOString();
+  if(D.tariff&&D.tariff!=="free")c.tariff=D.tariff;
+  window.__CLID=c.id;
+  if(clWrite(a)&&!silent)alert("Клиент сохранён: "+name);
+  renderClients();
+  return c.id;
+}
+function openClient(id){
+  const c=clFind(id);if(!c||!c.data)return false;
+  window.__CLID=id;
+  applyCalc(c.data);
+  return true;
+}
+function clientExport(id,kind){
+  if(!openClient(id))return;
+  const c=clFind(id);
+  window.__UPSELL=c.tariff||"full";
+  applyTariff(kind==="demo"?"free":(c.tariff||"full"));
+  doExportClient();
+  clUpdate(id,x=>{
+    if(kind==="demo"){if(x.status==="new")x.status="demo";clLog(x,"демо-файл")}
+    else{x.status="full";clLog(x,"полный разбор ("+((TARIFFS[x.tariff]||{}).name||"")+")")}
+  });
+}
+function delClient(id){
+  const c=clFind(id);if(!c)return;
+  if(!confirm("Удалить клиента «"+c.name+"» из журнала? Расчёт будет удалён с этого устройства."))return;
+  clWrite(clRead().filter(x=>x.id!==id));if(window.__CLID===id)window.__CLID=null;renderClients();
+}
+function renderClients(){
+  const box=document.getElementById("clist");if(!box)return;
+  const q=((document.getElementById("clq")||{}).value||"").trim().toLowerCase();
+  const a=clRead().filter(c=>!q||c.name.toLowerCase().includes(q));
+  const cnt={};clRead().forEach(c=>cnt[c.status]=(cnt[c.status]||0)+1);
+  const sum=Object.keys(CL_ST).filter(k=>cnt[k]).map(k=>`<span style="color:${CL_ST[k][1]}">${CL_ST[k][0]}: <b>${cnt[k]}</b></span>`).join(" · ");
+  let h=sum?`<div class="hint" style="margin:0 0 10px">${sum}</div>`:"";
+  if(!a.length){box.innerHTML=h+`<div class="hint">${q?"Никого не найдено.":"Журнал пуст. Заполните данные человека, постройте карты и нажмите «Сохранить клиента»."}</div>`;return}
+  a.forEach(c=>{
+    const st=CL_ST[c.status]||CL_ST.new;
+    const tar=TARIFF_ORDER.filter(k=>!TARIFFS[k].demo).map(k=>`<option value="${k}"${k===c.tariff?" selected":""}>${TARIFFS[k].name} · ${TARIFFS[k].price}</option>`).join("");
+    const last=(c.hist||[]).slice(-1)[0];
+    h+=`<div class="clrow${c.id===window.__CLID?" cur":""}" style="border-left-color:${st[1]}">
+      <div class="clhead"><b>${clEsc(c.name)}</b> <span class="hint" style="display:inline">${clEsc(c.d)}</span>
+        <select class="clst" onchange="clUpdate('${c.id}',x=>{x.status=this.value;clLog(x,'статус: '+CL_ST[this.value][0])})" style="color:${st[1]}">
+        ${Object.keys(CL_ST).map(k=>`<option value="${k}"${k===c.status?" selected":""}>${CL_ST[k][0]}</option>`).join("")}</select></div>
+      <div class="clmeta">Полная версия: <select class="cltar" onchange="clUpdate('${c.id}',x=>x.tariff=this.value)">${tar}</select>
+        ${last?`<span class="hint" style="display:inline">· ${clDate(last.t)}: ${clEsc(last.ev)}</span>`:""}</div>
+      <div class="clbtns">
+        <button type="button" class="sec mini" onclick="openClient('${c.id}')">Открыть</button>
+        <button type="button" class="sec mini" onclick="clientExport('${c.id}','demo')">Демо клиенту</button>
+        <button type="button" class="mini" onclick="clientExport('${c.id}','full')">Полный клиенту</button>
+        <button type="button" class="sec mini" onclick="delClient('${c.id}')">×</button>
+      </div></div>`;
+  });
+  box.innerHTML=h;
+}
+/* ссылка для связи с консультантом: @ник Telegram, телефон (WhatsApp), почта или любая ссылка */
+function contactLink(c){
+  c=(c||"").trim();if(!c)return null;
+  if(/^https?:\/\//i.test(c))return {href:c,label:"Написать"};
+  if(/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(c))return {href:"mailto:"+c,label:"Написать на почту"};
+  const dg=c.replace(/[^\d]/g,"");
+  if(/^[+\d][\d\s()\-]{8,}$/.test(c)&&dg.length>=10)return {href:"https://wa.me/"+(dg.length===11&&dg[0]==="8"?"7"+dg.slice(1):dg),label:"Написать в WhatsApp"};
+  const nick=c.replace(/^@/,"").replace(/^t\.me\//i,"");
+  if(/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(nick))return {href:"https://t.me/"+nick,label:"Написать в Telegram"};
+  return {href:"",label:c};
+}
+document.addEventListener("DOMContentLoaded",()=>{try{renderClients()}catch(e){}});
+
 /* ---------- Тарифы: наборы разделов под прайс ---------- */
 const TARIFFS={
 "free":{name:"Бесплатная проба",price:"0 ₽",
@@ -7489,7 +7762,7 @@ const TARIFFS={
   ids:["b0","b22","b18","b14","b20","b19"]},
 "full":{name:"Персональный разбор",price:"12 000 – 18 000 ₽",
   desc:"Полный документ по личности и времени: карта, дворцы, десять Божеств, прогноз по годам, карта жизни, помесячные окна.",
-  ids:["b0","b22","b18","b19","b23","b1","b29","b31","b13","b2","b3","b14","b6","b21","b20","b28","b24","b7","b25","b15","b17","b12"]},
+  ids:["b0","b22","b18","b19","b23","b1","b34","b29","b31","b13","b2","b3","b14","b6","b21","b20","b28","b24","b7","b25","b15","b17","b12"]},
 "premium":{name:"Разбор ПРЕМИУМ",price:"18 000 – 25 000 ₽",
   desc:"Всё, что есть в системе: полный разбор, звёздная карта, все визуализации, отношения, дело, приложение. Максимальная подача для интерактивного файла и созвона.",
   ids:"ALL"},
@@ -7622,7 +7895,7 @@ function collectData(){
     namecand:g("namecand"),ymonth:g("ymonth"),
     events:Array.from(document.querySelectorAll(".erow")).map(r=>({y:r.querySelector(".ey").value,k:r.querySelector(".ek").value})),
     bsol:c("bsol"),bhistchk:c("bhistchk"),
-    yfrom:g("yfrom"),yto:g("yto"),cpseudo:g("cpseudo"),ctag:g("ctag"),people:people,
+    yfrom:g("yfrom"),yto:g("yto"),cpseudo:g("cpseudo"),ctag:g("ctag"),ccontact:g("ccontact"),cprice:g("cprice"),people:people,
     picked:Array.from(document.querySelectorAll(".picksec")).filter(c=>c.checked).map(c=>c.id.replace("sel_","")),
     extra:window.ANKETA_EXTRA||null,
     tariff:window.__TARIFF||"full",
@@ -7647,12 +7920,21 @@ function loadCalc(input){
     let D;
     try{D=JSON.parse(rd.result)}catch(e){alert("Файл не читается: это не сохранённый расчёт и не ответы на анкету.");return}
     if(!D||typeof D!=="object"){alert("Файл повреждён.");return}
+    input.value="";
+    window.__CLID=null;
+    applyCalc(D);
+  };
+  rd.onerror=()=>alert("Не удалось прочитать файл.");
+  rd.readAsText(file);
+}
+function applyCalc(D){
+  {
     const set=(id,v)=>{const e=document.getElementById(id);if(e&&v!==undefined&&v!==null)e.value=v};
     const chk=(id,v)=>{const e=document.getElementById(id);if(e&&v!==undefined)e.checked=!!v};
     const last=sel=>{const r=document.querySelectorAll(sel);return r.length?r[r.length-1]:null};
     const put=(row,sel,v)=>{if(!row)return;const e=row.querySelector(sel);if(e)e.value=v};
 
-    ["f","i","o","d","a","p2d","bt","bs","btz","blon","bcity","yfrom","yto","cpseudo","ctag",
+    ["f","i","o","d","a","p2d","bt","bs","btz","blon","bcity","yfrom","yto","cpseudo","ctag","ccontact","cprice",
      "qtext","qtopic","evkey","evfrom","evto","namecand","ymonth"].forEach(k=>set(k,D[k]));
     chk("bsol",D.bsol);chk("bhistchk",D.bhistchk);
 
@@ -7690,16 +7972,14 @@ function loadCalc(input){
 
     window.ANKETA_EXTRA=D.extra||null;
     try{showHist()}catch(e){}
-    input.value="";
     PICKED_RESTORE=D.picked||null;
+    if(D.tariff&&TARIFFS[D.tariff]){window.__TARIFF=D.tariff;window.__DEMO=!!TARIFFS[D.tariff].demo}
     if(D.kind==="anketa"&&!D.d){
       alert("В ответах нет даты рождения — расчёт построить нельзя. Попросите заполнить анкету заново.");
       return;
     }
     go();
-  };
-  rd.onerror=()=>alert("Не удалось прочитать файл.");
-  rd.readAsText(file);
+  }
 }
 
 /* ---------- Печать с пагинацией ---------- */
