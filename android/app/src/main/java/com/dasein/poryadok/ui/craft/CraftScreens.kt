@@ -237,14 +237,16 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
         }
     }
     var exportPaper by remember { mutableStateOf(210 to 297) }
-    var exportReal by remember { mutableStateOf(false) }
+    var exportMode by remember { mutableStateOf(CraftStore.PRINT_FIT) }
     val pdfExporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
         val pat = pattern
         if (uri != null && pat != null) scope.launch {
             busy = true
             message = runCatching {
-                ctx.contentResolver.openOutputStream(uri)?.use { CraftStore.pdf(ctx, pat, p0, it, exportPaper.first, exportPaper.second, exportReal) }
-                "PDF сохранён: бумага ${exportPaper.first}×${exportPaper.second} мм" + (if (exportReal) ", натуральная величина" else "") + ". Теперь сохраните таблицу цветов."
+                ctx.contentResolver.openOutputStream(uri)?.use { CraftStore.pdf(ctx, pat, p0, it, exportPaper.first, exportPaper.second, exportMode) }
+                "PDF сохранён: бумага ${exportPaper.first}×${exportPaper.second} мм" +
+                    when (exportMode) { CraftStore.PRINT_FIT -> ", вся схема на первом листе"; CraftStore.PRINT_REAL -> ", натуральная величина"; else -> ", по листам" } +
+                    ". Теперь сохраните таблицу цветов."
             }.getOrElse { "Не получилось сохранить: ${it.message}" }
             busy = false
             // Второй файл — таблица цветов с миниатюрой, как карточка в наборе.
@@ -570,7 +572,7 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
         var land by remember { mutableStateOf(false) }
         var cw by remember { mutableStateOf("500") }
         var ch by remember { mutableStateOf("700") }
-        var real by remember { mutableStateOf(false) }
+        var mode by remember { mutableStateOf(CraftStore.PRINT_FIT) }
         AlertDialog(
             onDismissRequest = { printDialog = false },
             title = { Text("PDF для печати") },
@@ -583,15 +585,35 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
                     if (paper == "Свой") Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(Modifier.weight(1f)) { NumberField(cw, { cw = it }, "Ширина", suffix = "мм", decimal = false) }
                         Box(Modifier.weight(1f)) { NumberField(ch, { ch = it }, "Высота", suffix = "мм", decimal = false) }
-                    } else Row(verticalAlignment = Alignment.CenterVertically) {
+                    } else if (mode != CraftStore.PRINT_FIT) Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(land, { land = it }); Text("Альбомная ориентация")
                     }
                     Text("Что печатать", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { real = false }) {
-                        androidx.compose.material3.RadioButton(!real, { real = false }); Text("Схема по листам — удобно работать")
+                    listOf(
+                        CraftStore.PRINT_FIT to "Вся схема на одном листе",
+                        CraftStore.PRINT_SHEETS to "По листам — крупные клетки, части склеиваются",
+                        CraftStore.PRINT_REAL to "Холст в натуральную величину",
+                    ).forEach { (k, t) ->
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { mode = k }) {
+                            androidx.compose.material3.RadioButton(mode == k, { mode = k }); Text(t, fontSize = 14.sp)
+                        }
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { real = true }) {
-                        androidx.compose.material3.RadioButton(real, { real = true }); Text("Холст в натуральную величину")
+                    if (mode == CraftStore.PRINT_FIT) pattern?.let { pat ->
+                        val size = if (paper == "Свой") (cw.toIntOrNull() ?: 210).coerceIn(50, 3000) to (ch.toIntOrNull() ?: 297).coerceIn(50, 3000)
+                        else CraftStore.PAPERS.first { it.first == paper }.second
+                        val cell = CraftStore.fitCellMm(pat.width, pat.height, size.first, size.second)
+                        // Какой формат даёт удобную клетку (от 2,5 мм) — подсказка.
+                        val better = CraftStore.PAPERS.firstOrNull { CraftStore.fitCellMm(pat.width, pat.height, it.second.first, it.second.second) >= 2.5 }?.first
+                        Text(
+                            "Вся схема ${pat.width}×${pat.height} клеток встанет на один лист, клетка ≈ ${CraftStore.fmt(cell)} мм. Ориентация выбирается сама." +
+                                when {
+                                    cell >= 2.5 -> " Символы хорошо читаются."
+                                    better != null -> " Символы мелкие — для работы удобнее $better и больше."
+                                    else -> " Символы будут мелкими: для работы удобнее режим «По листам»."
+                                },
+                            fontSize = 12.sp, color = if (cell >= 2.5) extra.ok else extra.warn, modifier = Modifier.padding(top = 4.dp),
+                        )
+                        Text("При печати выберите масштаб 100% или «по размеру страницы». На следующих страницах — таблица цветов.", fontSize = 12.sp, color = extra.dim)
                     }
                     pattern?.let { pat ->
                         val wcm = CraftPattern.sizeCm(p0.kindEnum, pat.width, p0.count, p0.round); val hcm = CraftPattern.sizeCm(p0.kindEnum, pat.height, p0.count, p0.round)
@@ -603,7 +625,7 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
                 TextButton(onClick = {
                     val size = if (paper == "Свой") (cw.toIntOrNull() ?: 210).coerceIn(50, 3000) to (ch.toIntOrNull() ?: 297).coerceIn(50, 3000)
                     else CraftStore.PAPERS.first { it.first == paper }.second.let { if (land) it.second to it.first else it }
-                    exportPaper = size; exportReal = real; printDialog = false
+                    exportPaper = size; exportMode = mode; printDialog = false
                     pdfExporter.launch("$fileName ${if (paper == "Свой") "${size.first}x${size.second}" else paper}.pdf")
                 }) { Text("Сохранить PDF") }
             },

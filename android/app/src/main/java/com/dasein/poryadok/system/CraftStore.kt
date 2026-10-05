@@ -364,7 +364,19 @@ object CraftStore {
      *  - [realSize] = true — «холст в натуральную величину»: клетка ровно размером страза/крестика/бусины, чтобы распечатать и выкладывать прямо поверх
      *    (если холст больше листа — делится на части с номерами частей и метками совмещения).
      */
-    suspend fun pdf(ctx: Context, p: CraftPattern.Pattern, pr: CraftProject, out: OutputStream, paperW: Int = 210, paperH: Int = 297, realSize: Boolean = false) = withContext(Dispatchers.IO) {
+    /** Как печатать схему: вся на одном листе, по листам крупными клетками или в натуральную величину. */
+    const val PRINT_FIT = 0
+    const val PRINT_SHEETS = 1
+    const val PRINT_REAL = 2
+
+    /** Размер клетки (мм), если вся схема помещается на один лист [paperW]×[paperH] мм (с поворотом, если так крупнее). */
+    fun fitCellMm(w: Int, h: Int, paperW: Int, paperH: Int): Double {
+        fun cell(pw: Int, ph: Int) = minOf((pw - 2 * 8.0 - 6) / w, (ph - 2 * 8.0 - 12) / h)
+        return maxOf(cell(paperW, paperH), cell(paperH, paperW))
+    }
+
+    suspend fun pdf(ctx: Context, p: CraftPattern.Pattern, pr: CraftProject, out: OutputStream, paperW: Int = 210, paperH: Int = 297, mode: Int = PRINT_FIT) = withContext(Dispatchers.IO) {
+        val realSize = mode == PRINT_REAL
         val doc = PdfDocument()
         val pw = pt(paperW.toDouble()).toInt(); val ph = pt(paperH.toDouble()).toInt()
         val m = pt(8.0)
@@ -380,6 +392,28 @@ object CraftStore {
         val perX = ((pw - 2 * m - 16 * scale) / cell).toInt().coerceAtLeast(1)
         val perY = ((ph - top - m - 6 * scale) / cell).toInt().coerceAtLeast(1)
         val sheetsX = (p.width + perX - 1) / perX; val sheetsY = (p.height + perY - 1) / perY
+        // 0. Вся схема на одном листе: клетка подбирается под бумагу, лист сам поворачивается альбомно, если так крупнее.
+        if (mode == PRINT_FIT) {
+            val land = (p.width > p.height) != (pw > ph) && p.width != p.height
+            val fw = if (land) ph else pw; val fh = if (land) pw else ph
+            val page = doc.startPage(PdfDocument.PageInfo.Builder(fw, fh, pageNo++).create())
+            val c = page.canvas
+            val labelL = 12 * scale; val labelT = 8 * scale; val headH = 12 * scale
+            val fc = minOf((fw - 2 * m - labelL) / p.width, (fh - 2 * m - headH - labelT) / p.height)
+            val gridW = fc * p.width; val gridH = fc * p.height
+            val ox = (fw - gridW + labelL) / 2; val oy = m + headH + labelT
+            c.drawText(
+                "${pr.name} · вся схема на одном листе · ${paperW}×${paperH} мм${if (land) " (альбомно)" else ""} · ${p.width}×${p.height} клеток · клетка ${fmt(fc * 25.4 / 72.0)} мм",
+                m, m + 9 * scale, txt,
+            )
+            for (y in 0 until p.height) for (x in 0 until p.width) drawCell(c, ox + x * fc, oy + y * fc, fc, p.cells[y * p.width + x], p, pr.chartStyle, fill, sym)
+            gridLines(c, ox, oy, fc, 0, 0, p.width, p.height)
+            val num = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF333333.toInt(); textSize = (fc * 1.2f).coerceIn(4f, 8f * scale); textAlign = Paint.Align.CENTER }
+            for (x in 9 until p.width step 10) c.drawText("${x + 1}", ox + (x + .5f) * fc, oy - 2, num)
+            num.textAlign = Paint.Align.RIGHT
+            for (y in 9 until p.height step 10) c.drawText("${y + 1}", ox - 2, oy + (y + .8f) * fc, num)
+            doc.finishPage(page)
+        }
         // 1. Обложка и таблица цветов.
         val rowH = 14f * scale
         val firstRows = ((ph - m - (m + 340 * scale)) / rowH).toInt().coerceAtLeast(5)
@@ -397,8 +431,11 @@ object CraftStore {
                 prev.recycle()
                 y += 300 * scale + 14 * scale
                 c.drawText(
-                    (if (realSize) "Натуральная величина: клетка ${fmt(CraftPattern.sizeCm(kind, 1, pr.count, pr.round) * 10)} мм" else "Схема по листам") +
-                        " · бумага ${paperW}×${paperH} мм · листов схемы: ${sheetsX * sheetsY} ($sheetsX × $sheetsY)", m, y, txt,
+                    when (mode) {
+                        PRINT_FIT -> "Вся схема — на первом листе · бумага ${paperW}×${paperH} мм"
+                        PRINT_REAL -> "Натуральная величина: клетка ${fmt(CraftPattern.sizeCm(kind, 1, pr.count, pr.round) * 10)} мм · бумага ${paperW}×${paperH} мм · листов схемы: ${sheetsX * sheetsY} ($sheetsX × $sheetsY)"
+                        else -> "Схема по листам · бумага ${paperW}×${paperH} мм · листов схемы: ${sheetsX * sheetsY} ($sheetsX × $sheetsY)"
+                    }, m, y, txt,
                 )
                 y += rowH * 1.5f
             }
@@ -418,6 +455,7 @@ object CraftStore {
             first = false
         }
         // 2. Схема по листам.
+        if (mode != PRINT_FIT) run {
         val num = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF333333.toInt(); textSize = maxOf(6f, cell * .6f).coerceAtMost(10f * scale); textAlign = Paint.Align.CENTER }
         val mark = Paint().apply { color = Color.BLACK; strokeWidth = 0.6f }
         for (sy in 0 until sheetsY) for (sx in 0 until sheetsX) {
@@ -437,6 +475,7 @@ object CraftStore {
             val r = ox + cols * cell; val b = oy + rows * cell; val k = 6f
             listOf(ox to oy, r to oy, ox to b, r to b).forEach { (x, y) -> c.drawLine(x - k, y, x + k, y, mark); c.drawLine(x, y - k, x, y + k, mark) }
             doc.finishPage(page)
+        }
         }
         doc.writeTo(out)
         doc.close()
