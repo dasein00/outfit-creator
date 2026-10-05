@@ -47,7 +47,7 @@ object Pressure {
         /** Цель, назначенная врачом (перекрывает расчётную). */
         val customSys: Int? = null,
         val customDia: Int? = null,
-        val glyph: String = "ui:heart",
+        val glyph: String = "pressure/27",
         val createdAt: Long = 0,
     ) {
         fun age(today: LocalDate = LocalDate.now()): Int? = birthYear?.let { today.year - it }

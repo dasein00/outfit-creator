@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -61,6 +62,7 @@ import com.dasein.poryadok.logic.HabitSchedule
 import com.dasein.poryadok.logic.Money
 import com.dasein.poryadok.logic.plural
 import com.dasein.poryadok.ui.Routes
+import com.dasein.poryadok.data.HomeLayout
 import com.dasein.poryadok.ui.goTab
 import com.dasein.poryadok.data.PlanStatus
 import com.dasein.poryadok.logic.MealType
@@ -144,266 +146,310 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
             )
         },
     ) { pad ->
+        val layout = HomeLayout.state.value
+        val homeRows = HomeLayout.rows(layout)
         LazyColumn(
             Modifier.fillMaxSize().padding(pad),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp),
         ) {
-            item {
-                val weightKg = weightsAll.lastOrNull()?.kg ?: profile?.startWeight ?: 70.0
-                val stepsNow = water?.steps ?: 0
-                val stepsGoalNow = profile?.stepsGoal ?: 8000
-                val burned = Energy.burned(stepsNow, weightKg, workoutsAll.filter { it.day == today }.sumOf { it.kcal }, energyAll.firstOrNull { it.day == today }?.activeKcal, profile?.heightCm, settings.walkPace)
-                Row(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.STEPS) }, padding = 12.dp) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            ProgressRing(stepsNow / stepsGoalNow.coerceAtLeast(1).toFloat(), extra.ok, size = 54.dp, stroke = 6.dp) { Glyph("sport/19", 24.dp, badge = false) }
-                            Column(Modifier.padding(start = 10.dp)) {
-                                Text(String.format(java.util.Locale.US, "%,d", stepsNow).replace(',', ' '), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                                Text("шагов из ${String.format(java.util.Locale.US, "%,d", stepsGoalNow).replace(',', ' ')}", fontSize = 11.sp, color = extra.dim, maxLines = 1)
-                            }
-                        }
-                    }
-                    Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.health(3)) }, padding = 12.dp) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            ProgressRing(burned.total / 600f, Palette.item(0), size = 54.dp, stroke = 6.dp) { Glyph("sport/22", 24.dp, badge = false) }
-                            Column(Modifier.padding(start = 10.dp)) {
-                                Text("${burned.total}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                                Text(
-                                    "ккал сожжено" + if (burned.workouts > 0) " · трен. ${burned.workouts}" else "",
-                                    fontSize = 11.sp, color = extra.dim, maxLines = 2,
-                                )
-                            }
-                        }
-                    }
+            item { Spacer(Modifier.statusBarsPadding().padding(top = 10.dp)) }
+            homeRows.forEach { row ->
+                val e = layout[row.first()]
+                if (HomeLayout.isShortcut(e.id)) {
+                    item(key = "row_" + e.id) { ShortcutRow(nav, row.map { layout[it] }) }
+                    return@forEach
                 }
-                Gap(8.dp)
-                val body = com.dasein.poryadok.ui.health.rememberBodyData()
-                if (body.readings.isNotEmpty()) {
-                    com.dasein.poryadok.ui.health.WeekWeightCard(body.readings, { nav.navigate(Routes.health(1)) })
-                    Gap(8.dp)
-                }
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            Dates.greeting() + if (settings.name.isNotBlank()) ", ${settings.name}" else "",
-                            style = MaterialTheme.typography.headlineSmall,
-                        )
-                        Text("${Dates.weekdayFull(today)}, ${Dates.full(today)}", color = extra.dim, fontSize = 14.sp)
-                    }
-                    IconAction(Ic.search, "Поиск") { nav.navigate(Routes.SEARCH) }
-                    IconAction(Ic.settings, "Настройки") { nav.navigate(Routes.SETTINGS) }
-                }
-                com.dasein.poryadok.ui.weather.WeatherTile(nav)
-                com.dasein.poryadok.ui.calendar.HolidayBanner(nav)
-                Gap(14.dp)
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    RingStat(
-                        Modifier.weight(1f), if (taskProgressTotal == 0) 0f else doneToday.size / taskProgressTotal.toFloat(),
-                        MaterialTheme.colorScheme.primary, "${doneToday.size}/$taskProgressTotal", "задачи",
-                    ) { nav.goTab(Routes.plan(1)) }
-                    RingStat(
-                        Modifier.weight(1f), if (habitsToday.isEmpty()) 0f else habitsDone / habitsToday.size.toFloat(),
-                        extra.ok, "$habitsDone/${habitsToday.size}", "привычки",
-                    ) { nav.navigate(Routes.HABITS) }
-                    RingStat(
-                        Modifier.weight(1f), ((water?.waterMl ?: 0) / waterGoal.toFloat()), Palette.item(2), "${(water?.waterMl ?: 0) / 100 / 10.0}", "л воды",
-                    ) { nav.navigate(Routes.wellbeing(2)) }
-                }
-            }
-
-            item { DayMetrics(nav, settings.currency) }
-
-            item { SectionTitle("Задачи на сегодня", action = "Все") { nav.goTab(Routes.plan(1)) } }
-            if (todayTasks.isEmpty()) item {
-                Tile {
-                    Text(
-                        if (doneToday.isNotEmpty()) "Все задачи на сегодня выполнены" else "На сегодня задач нет. Нажмите «Задача», чтобы добавить.",
-                        color = extra.dim,
-                    )
-                }
-            } else item {
-                Tile(padding = 6.dp) {
-                    todayTasks.take(8).forEach { t ->
-                        val subs = subtasks.filter { it.taskId == t.id }
-                        TaskRow(t, projects.firstOrNull { it.id == t.projectId }, subs.count { it.done }, subs.size, onOpen = {
-                            nav.navigate(Routes.task(t.id))
-                        })
-                    }
-                    if (todayTasks.size > 8) TextButton(onClick = { nav.goTab(Routes.plan(1)) }) {
-                        Text("Ещё ${todayTasks.size - 8}")
-                    }
-                }
-            }
-
-            if (habitsToday.isNotEmpty()) {
-                item { SectionTitle("Привычки", action = "Все") { nav.navigate(Routes.HABITS) } }
-                item {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(habitsToday, key = { it.id }) { h ->
-                            val v = logToday[h.id]?.value ?: 0
-                            val done = v >= h.target
-                            val color = Palette.item(h.color)
-                            Column(
-                                Modifier.width(76.dp).clip(RoundedCornerShape(16.dp))
-                                    .clickable { io { Repo.tapHabit(h, today, v) } }.padding(vertical = 6.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                ProgressRing(v / h.target.toFloat(), color, size = 58.dp, stroke = 5.dp) {
-                                    Box(
-                                        Modifier.size(44.dp).clip(CircleShape)
-                                            .background(if (done) color.copy(alpha = .3f) else extra.card),
-                                        contentAlignment = Alignment.Center,
-                                    ) { Glyph(h.emoji, 26.dp, badge = false) }
+                when (e.id) {
+                    "activity" -> item(key = "activity") {
+                            val weightKg = weightsAll.lastOrNull()?.kg ?: profile?.startWeight ?: 70.0
+                            val stepsNow = water?.steps ?: 0
+                            val stepsGoalNow = profile?.stepsGoal ?: 8000
+                            val burned = Energy.burned(stepsNow, weightKg, workoutsAll.filter { it.day == today }.sumOf { it.kcal }, energyAll.firstOrNull { it.day == today }?.activeKcal, profile?.heightCm, settings.walkPace)
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.STEPS) }, padding = 12.dp) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        ProgressRing(stepsNow / stepsGoalNow.coerceAtLeast(1).toFloat(), extra.ok, size = 54.dp, stroke = 6.dp) { Glyph("sport/19", 24.dp, badge = false) }
+                                        Column(Modifier.padding(start = 10.dp)) {
+                                            Text(String.format(java.util.Locale.US, "%,d", stepsNow).replace(',', ' '), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                            Text("шагов из ${String.format(java.util.Locale.US, "%,d", stepsGoalNow).replace(',', ' ')}", fontSize = 11.sp, color = extra.dim, maxLines = 1)
+                                        }
+                                    }
                                 }
-                                Text(h.name, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = if (done) extra.dim else MaterialTheme.colorScheme.onSurface)
-                                if (h.target > 1) Text("$v/${h.target}", fontSize = 10.sp, color = extra.dim)
+                                Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.health(3)) }, padding = 12.dp) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        ProgressRing(burned.total / 600f, Palette.item(0), size = 54.dp, stroke = 6.dp) { Glyph("sport/22", 24.dp, badge = false) }
+                                        Column(Modifier.padding(start = 10.dp)) {
+                                            Text("${burned.total}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                            Text(
+                                                "ккал сожжено" + if (burned.workouts > 0) " · трен. ${burned.workouts}" else "",
+                                                fontSize = 11.sp, color = extra.dim, maxLines = 2,
+                                            )
+                                        }
+                                    }
+                                }
                             }
-                        }
+                        Gap(8.dp)
                     }
-                }
-            }
-
-            if (todayEvents.isNotEmpty() || todayReminders.isNotEmpty()) {
-                item { SectionTitle("В календаре", action = "Открыть") { nav.goTab(Routes.plan(0)) } }
-                item {
-                    Tile {
-                        todayEvents.forEach { e ->
-                            Row(
-                                Modifier.fillMaxWidth().clickable { nav.navigate(Routes.event(e.id)) }.padding(vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Box(Modifier.size(width = 4.dp, height = 30.dp).clip(RoundedCornerShape(2.dp)).background(Palette.item(e.color)))
-                                Column(Modifier.padding(start = 10.dp)) {
-                                    Text(e.title)
+                    "weight" -> item(key = "weight") {
+                            val body = com.dasein.poryadok.ui.health.rememberBodyData()
+                            if (body.readings.isNotEmpty()) {
+                                com.dasein.poryadok.ui.health.WeekWeightCard(body.readings, { nav.navigate(Routes.health(1)) })
+                                Gap(8.dp)
+                            }
+                    }
+                    "greeting" -> item(key = "greeting") {
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
                                     Text(
-                                        e.startMin?.let { s -> Dates.time(s) + (e.endMin?.let { "–" + Dates.time(it) } ?: "") } ?: "Весь день",
-                                        fontSize = 12.sp, color = extra.dim,
+                                        Dates.greeting() + if (settings.name.isNotBlank()) ", ${settings.name}" else "",
+                                        style = MaterialTheme.typography.headlineSmall,
                                     )
+                                    Text("${Dates.weekdayFull(today)}, ${Dates.full(today)}", color = extra.dim, fontSize = 14.sp)
                                 }
+                                IconAction("ui:sliders", "Настроить главное") { nav.navigate(HOME_EDIT) }
+                                IconAction(Ic.search, "Поиск") { nav.navigate(Routes.SEARCH) }
+                                IconAction(Ic.settings, "Настройки") { nav.navigate(Routes.SETTINGS) }
                             }
-                        }
-                        todayReminders.forEach { r ->
-                            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                CheckDot(false, extra.dim, onClick = { io { dao.upsertReminder(r.copy(done = true)) } }, size = 22.dp)
-                                Text("  ${r.title}", Modifier.weight(1f))
-                                Text(Dates.time(r.min), color = extra.dim, fontSize = 13.sp)
-                            }
-                        }
                     }
-                }
-            }
-
-            item { SectionTitle("Самочувствие") }
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.wellbeing(2)) }) {
-                        Row(verticalAlignment = Alignment.CenterVertically) { Glyph(Glyphs.WATER, 18.dp, badge = false); Text("  Вода", fontSize = 13.sp, color = extra.dim) }
-                        val ml = water?.waterMl ?: 0
-                        Text("$ml / $waterGoal мл", style = MaterialTheme.typography.titleMedium)
-                        Gap(6.dp)
-                        Bar(ml / waterGoal.toFloat(), Palette.item(2))
-                        Gap(6.dp)
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            listOf(250, 500).forEach { add ->
+                    "weather" -> item(key = "weather") { com.dasein.poryadok.ui.weather.WeatherTile(nav) }
+                    "holiday" -> item(key = "holiday") { com.dasein.poryadok.ui.calendar.HolidayBanner(nav) }
+                    "rings" -> item(key = "rings") {
+                        Gap(14.dp)
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                RingStat(
+                                    Modifier.weight(1f), if (taskProgressTotal == 0) 0f else doneToday.size / taskProgressTotal.toFloat(),
+                                    MaterialTheme.colorScheme.primary, "${doneToday.size}/$taskProgressTotal", "задачи",
+                                ) { nav.goTab(Routes.plan(1)) }
+                                RingStat(
+                                    Modifier.weight(1f), if (habitsToday.isEmpty()) 0f else habitsDone / habitsToday.size.toFloat(),
+                                    extra.ok, "$habitsDone/${habitsToday.size}", "привычки",
+                                ) { nav.navigate(Routes.HABITS) }
+                                RingStat(
+                                    Modifier.weight(1f), ((water?.waterMl ?: 0) / waterGoal.toFloat()), Palette.item(2), "${(water?.waterMl ?: 0) / 100 / 10.0}", "л воды",
+                                ) { nav.navigate(Routes.wellbeing(2)) }
+                            }
+                    }
+                    "metrics" -> item(key = "metrics") { DayMetrics(nav, settings.currency) }
+                    "health" -> item(key = "health") { Gap(10.dp); HomeHealthCard(nav, e.size) }
+                    "pressure" -> item(key = "pressure") { Gap(10.dp); HomePressureCard(nav, e.size) }
+                    "tasks" -> {
+                        val taskN = when (e.size) { 0 -> 3; 2 -> 15; else -> 8 }
+                        item { SectionTitle("Задачи на сегодня", action = "Все") { nav.goTab(Routes.plan(1)) } }
+                        if (todayTasks.isEmpty()) item {
+                            Tile {
                                 Text(
-                                    "+$add", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                                        .background(MaterialTheme.colorScheme.primaryContainer)
-                                        .clickable {
-                                            io {
-                                                val d = dao.dayLogNow(today) ?: DayLog(today)
-                                                dao.upsertDayLog(d.copy(waterMl = d.waterMl + add))
-                                            }
-                                        }.padding(horizontal = 10.dp, vertical = 5.dp),
+                                    if (doneToday.isNotEmpty()) "Все задачи на сегодня выполнены" else "На сегодня задач нет. Нажмите «Задача», чтобы добавить.",
+                                    color = extra.dim,
                                 )
                             }
-                        }
-                    }
-                    Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.wellbeing(0)) }) {
-                        Row(verticalAlignment = Alignment.CenterVertically) { Glyph("ui:smile", 18.dp, badge = false); Text("  Настроение", fontSize = 13.sp, color = extra.dim) }
-                        if (moodToday != null) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                MoodFace(moodToday.level, 24.dp)
-                                Text("  " + MOODS[moodToday.level - 1], style = MaterialTheme.typography.titleMedium)
-                            }
-                            if (moodToday.tags.isNotBlank()) Text(moodToday.tags.replace(",", ", "), fontSize = 12.sp, color = extra.dim, maxLines = 2)
-                        } else {
-                            Text("Как вы сегодня?", style = MaterialTheme.typography.titleMedium)
-                            Gap(6.dp)
-                            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                                MOODS.forEachIndexed { i, _ ->
-                                    MoodFace(i + 1, 24.dp, Modifier.clip(CircleShape).clickable {
-                                        io { dao.upsertMood(MoodEntry(at = System.currentTimeMillis(), day = today, level = i + 1)) }
+                        } else item {
+                            Tile(padding = 6.dp) {
+                                todayTasks.take(taskN).forEach { t ->
+                                    val subs = subtasks.filter { it.taskId == t.id }
+                                    TaskRow(t, projects.firstOrNull { it.id == t.projectId }, subs.count { it.done }, subs.size, onOpen = {
+                                        nav.navigate(Routes.task(t.id))
                                     })
                                 }
+                                if (todayTasks.size > taskN) TextButton(onClick = { nav.goTab(Routes.plan(1)) }) {
+                                    Text("Ещё ${todayTasks.size - taskN}")
+                                }
                             }
                         }
-                    }
-                }
-            }
 
-            item {
-                val todayPlan = plan.filter { it.day == today && it.status != PlanStatus.SKIPPED }
-                val next = todayPlan.filter { it.status == PlanStatus.PLANNED }.minByOrNull { MealType.order.indexOf(it.meal) }
-                Gap(10.dp)
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.recipes(1)) }) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Glyph("food/05", 18.dp, badge = false)
-                            Text("  Меню на сегодня", fontSize = 13.sp, color = extra.dim)
+                    }
+                    "habits" -> {
+                        if (habitsToday.isNotEmpty()) {
+                            item { SectionTitle("Привычки", action = "Все") { nav.navigate(Routes.HABITS) } }
+                            item {
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    items(habitsToday, key = { it.id }) { h ->
+                                        val v = logToday[h.id]?.value ?: 0
+                                        val done = v >= h.target
+                                        val color = Palette.item(h.color)
+                                        Column(
+                                            Modifier.width(76.dp).clip(RoundedCornerShape(16.dp))
+                                                .clickable { io { Repo.tapHabit(h, today, v) } }.padding(vertical = 6.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                        ) {
+                                            ProgressRing(v / h.target.toFloat(), color, size = 58.dp, stroke = 5.dp) {
+                                                Box(
+                                                    Modifier.size(44.dp).clip(CircleShape)
+                                                        .background(if (done) color.copy(alpha = .3f) else extra.card),
+                                                    contentAlignment = Alignment.Center,
+                                                ) { Glyph(h.emoji, 26.dp, badge = false) }
+                                            }
+                                            Text(h.name, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = if (done) extra.dim else MaterialTheme.colorScheme.onSurface)
+                                            if (h.target > 1) Text("$v/${h.target}", fontSize = 10.sp, color = extra.dim)
+                                        }
+                                    }
+                                }
+                            }
                         }
-                        if (todayPlan.isEmpty()) {
-                            Text("Не составлено", style = MaterialTheme.typography.titleMedium)
-                            Text("Подобрать блюда →", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
-                        } else {
-                            Text("${todayPlan.sumOf { it.kcal * it.servings }.roundToInt()} ккал", style = MaterialTheme.typography.titleMedium)
+
+                    }
+                    "calendar" -> {
+                        if (todayEvents.isNotEmpty() || todayReminders.isNotEmpty()) {
+                            item { SectionTitle("В календаре", action = "Открыть") { nav.goTab(Routes.plan(0)) } }
+                            item {
+                                Tile {
+                                    todayEvents.forEach { e ->
+                                        Row(
+                                            Modifier.fillMaxWidth().clickable { nav.navigate(Routes.event(e.id)) }.padding(vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Box(Modifier.size(width = 4.dp, height = 30.dp).clip(RoundedCornerShape(2.dp)).background(Palette.item(e.color)))
+                                            Column(Modifier.padding(start = 10.dp)) {
+                                                Text(e.title)
+                                                Text(
+                                                    e.startMin?.let { s -> Dates.time(s) + (e.endMin?.let { "–" + Dates.time(it) } ?: "") } ?: "Весь день",
+                                                    fontSize = 12.sp, color = extra.dim,
+                                                )
+                                            }
+                                        }
+                                    }
+                                    todayReminders.forEach { r ->
+                                        Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            CheckDot(false, extra.dim, onClick = { io { dao.upsertReminder(r.copy(done = true)) } }, size = 22.dp)
+                                            Text("  ${r.title}", Modifier.weight(1f))
+                                            Text(Dates.time(r.min), color = extra.dim, fontSize = 13.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                    }
+                    "wellbeing" -> {
+                        item { SectionTitle("Самочувствие") }
+                        item {
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.wellbeing(2)) }) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) { Glyph(Glyphs.WATER, 18.dp, badge = false); Text("  Вода", fontSize = 13.sp, color = extra.dim) }
+                                    val ml = water?.waterMl ?: 0
+                                    Text("$ml / $waterGoal мл", style = MaterialTheme.typography.titleMedium)
+                                    Gap(6.dp)
+                                    Bar(ml / waterGoal.toFloat(), Palette.item(2))
+                                    Gap(6.dp)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        listOf(250, 500).forEach { add ->
+                                            Text(
+                                                "+$add", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                                                    .background(MaterialTheme.colorScheme.primaryContainer)
+                                                    .clickable {
+                                                        io {
+                                                            val d = dao.dayLogNow(today) ?: DayLog(today)
+                                                            dao.upsertDayLog(d.copy(waterMl = d.waterMl + add))
+                                                        }
+                                                    }.padding(horizontal = 10.dp, vertical = 5.dp),
+                                            )
+                                        }
+                                    }
+                                }
+                                Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.wellbeing(0)) }) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) { Glyph("ui:smile", 18.dp, badge = false); Text("  Настроение", fontSize = 13.sp, color = extra.dim) }
+                                    if (moodToday != null) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            MoodFace(moodToday.level, 24.dp)
+                                            Text("  " + MOODS[moodToday.level - 1], style = MaterialTheme.typography.titleMedium)
+                                        }
+                                        if (moodToday.tags.isNotBlank()) Text(moodToday.tags.replace(",", ", "), fontSize = 12.sp, color = extra.dim, maxLines = 2)
+                                    } else {
+                                        Text("Как вы сегодня?", style = MaterialTheme.typography.titleMedium)
+                                        Gap(6.dp)
+                                        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                            MOODS.forEachIndexed { i, _ ->
+                                                MoodFace(i + 1, 24.dp, Modifier.clip(CircleShape).clickable {
+                                                    io { dao.upsertMood(MoodEntry(at = System.currentTimeMillis(), day = today, level = i + 1)) }
+                                                })
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                    }
+                    "menu" -> {
+                        item {
+                            val todayPlan = plan.filter { it.day == today && it.status != PlanStatus.SKIPPED }
+                            val next = todayPlan.filter { it.status == PlanStatus.PLANNED }.minByOrNull { MealType.order.indexOf(it.meal) }
+                            Gap(10.dp)
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.recipes(1)) }) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Glyph("food/05", 18.dp, badge = false)
+                                        Text("  Меню на сегодня", fontSize = 13.sp, color = extra.dim)
+                                    }
+                                    if (todayPlan.isEmpty()) {
+                                        Text("Не составлено", style = MaterialTheme.typography.titleMedium)
+                                        Text("Подобрать блюда →", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                                    } else {
+                                        Text("${todayPlan.sumOf { it.kcal * it.servings }.roundToInt()} ккал", style = MaterialTheme.typography.titleMedium)
+                                        Text(
+                                            next?.let { "Далее: ${MealType.name(it.meal).lowercase()} — ${it.title}" } ?: "Всё из меню съедено ✓",
+                                            fontSize = 12.sp, color = extra.dim, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                    }
+                    "money" -> {
+                        item { SectionTitle("Деньги", action = "Финансы") { nav.navigate(Routes.FINANCE) } }
+                        item { com.dasein.poryadok.ui.finance.HomeMoneyCard(nav, settings.currency) }
+                    }
+                    "goals" -> {
+                        val goalN = when (e.size) { 0 -> 1; 2 -> 6; else -> 3 }
+                        val activeGoals = goals.filter { !it.done }.take(goalN)
+                        if (activeGoals.isNotEmpty()) {
+                            item { SectionTitle("Цели", action = "Все") { nav.navigate(Routes.GOALS) } }
+                            items(activeGoals, key = { "g" + it.id }) { g ->
+                                val goalTasks = tasks.filter { it.goalId == g.id }
+                                val pr = goalProgress(g, goalTasks.count { it.done }, goalTasks.size)
+                                Tile(Modifier.padding(bottom = 8.dp), onClick = { nav.navigate(Routes.goal(g.id)) }) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Glyph(g.emoji, 24.dp)
+                                        Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                                            Text(g.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            Bar(pr, Palette.item(g.color), Modifier.padding(top = 6.dp))
+                                        }
+                                        Text("${(pr * 100).toInt()}%", color = extra.dim, fontSize = 13.sp)
+                                    }
+                                }
+                            }
+                        }
+
+                    }
+                    "talk" -> {
+                        item {
+                            Gap(18.dp)
+                            com.dasein.poryadok.ui.talk.TalkFactCard { nav.navigate(Routes.SMALL_TALK) }
+                        }
+
+                    }
+                    "quote" -> {
+                        item {
+                            Gap(18.dp)
                             Text(
-                                next?.let { "Далее: ${MealType.name(it.meal).lowercase()} — ${it.title}" } ?: "Всё из меню съедено ✓",
-                                fontSize = 12.sp, color = extra.dim, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                "«${QUOTES[(today % QUOTES.size).toInt()]}»",
+                                fontStyle = FontStyle.Italic, color = extra.dim, fontSize = 14.sp,
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                            )
+                            if (doneToday.isNotEmpty()) Text(
+                                "Сегодня закрыто ${doneToday.size} ${plural(doneToday.size, "задача", "задачи", "задач")} — так держать!",
+                                fontSize = 12.sp, color = extra.ok, modifier = Modifier.padding(8.dp),
                             )
                         }
                     }
                 }
             }
-
-            item { SectionTitle("Деньги", action = "Финансы") { nav.navigate(Routes.FINANCE) } }
-            item { com.dasein.poryadok.ui.finance.HomeMoneyCard(nav, settings.currency) }
-
-            val activeGoals = goals.filter { !it.done }.take(3)
-            if (activeGoals.isNotEmpty()) {
-                item { SectionTitle("Цели", action = "Все") { nav.navigate(Routes.GOALS) } }
-                items(activeGoals, key = { "g" + it.id }) { g ->
-                    val goalTasks = tasks.filter { it.goalId == g.id }
-                    val pr = goalProgress(g, goalTasks.count { it.done }, goalTasks.size)
-                    Tile(Modifier.padding(bottom = 8.dp), onClick = { nav.navigate(Routes.goal(g.id)) }) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Glyph(g.emoji, 24.dp)
-                            Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
-                                Text(g.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Bar(pr, Palette.item(g.color), Modifier.padding(top = 6.dp))
-                            }
-                            Text("${(pr * 100).toInt()}%", color = extra.dim, fontSize = 13.sp)
-                        }
-                    }
+            item {
+                Gap(14.dp)
+                androidx.compose.material3.OutlinedButton(onClick = { nav.navigate(HOME_EDIT) }, modifier = Modifier.fillMaxWidth()) {
+                    Glyph("ui:sliders", 18.dp, badge = false); Text("  Настроить главное")
                 }
-            }
-
-            item {
-                Gap(18.dp)
-                com.dasein.poryadok.ui.talk.TalkFactCard { nav.navigate(Routes.SMALL_TALK) }
-            }
-
-            item {
-                Gap(18.dp)
-                Text(
-                    "«${QUOTES[(today % QUOTES.size).toInt()]}»",
-                    fontStyle = FontStyle.Italic, color = extra.dim, fontSize = 14.sp,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                )
-                if (doneToday.isNotEmpty()) Text(
-                    "Сегодня закрыто ${doneToday.size} ${plural(doneToday.size, "задача", "задачи", "задач")} — так держать!",
-                    fontSize = 12.sp, color = extra.ok, modifier = Modifier.padding(8.dp),
-                )
             }
             item { HowTo("today") }
         }

@@ -756,7 +756,7 @@ fun PressurePersonScreen(nav: NavHostController, id: Long) {
         Column(Modifier.padding(pad).imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             TextInput(p.name, { p = p.copy(name = it) }, "Имя: я, мама, бабушка Валя…")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
-                listOf("ui:heart", "ui:smile", "ui:people", "habit/28", "fest/01", "sport/11").forEach { g ->
+                listOf("pressure/27", "pressure/22", "pressure/01", "pressure/13", "pressure/21", "pressure/05", "ui:smile", "habit/28").forEach { g ->
                     Box(
                         Modifier.size(40.dp).clip(CircleShape).background(if (p.glyph == g) MaterialTheme.colorScheme.primary.copy(alpha = .2f) else extra.card)
                             .clickable { p = p.copy(glyph = g) },

@@ -335,6 +335,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
                 com.dasein.poryadok.ui.craft.CraftWorkScreen(nav, it.long("id"))
             }
             composable(Routes.CRAFT_STASH) { com.dasein.poryadok.ui.craft.CraftStashScreen(nav) }
+            composable(com.dasein.poryadok.ui.today.HOME_EDIT) { com.dasein.poryadok.ui.today.HomeEditScreen(nav) }
             composable(com.dasein.poryadok.ui.health.PressureRoutes.HOME) { com.dasein.poryadok.ui.health.PressureHomeScreen(nav) }
             composable(
                 "pressureAdd?person={person}&id={id}",

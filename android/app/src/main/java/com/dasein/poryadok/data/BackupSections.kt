@@ -22,7 +22,7 @@ enum class BackupSection(
     MEDIA("Фильмы, книги и топы", "habit/01", "коллекция, оценки, отзывы, прогресс, списки, топы и постеры", listOf("posters", "media")),
     NOTES("Заметки", "habit/23", "страницы и блоки с картинками, видео и GIF", listOf("pages")),
     WARDROBE("Гардероб", "ui:hanger", "вещи, посадка и образы с фото", listOf("wardrobe", "outfits")),
-    PRESSURE("Давление и пульс", "ui:heart", "люди, замеры давления и пульса, заметки", listOf("pressure")),
+    PRESSURE("Давление и пульс", "pressure/00", "люди, замеры давления и пульса, заметки", listOf("pressure")),
     CRAFTS("Рукоделие", "minimal/04", "схемы алмазной мозаики, вышивки и бисера: фото, настройки, отмеченные цвета", listOf("crafts")),
     SETTINGS("Настройки и виджет", "train/38", "тема, PIN, профиль Small Talks, холодильник, темп ходьбы, вид виджета, свои иконки", listOf("icons"));
 

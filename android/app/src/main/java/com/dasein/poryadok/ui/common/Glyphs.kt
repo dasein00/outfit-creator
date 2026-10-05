@@ -67,7 +67,7 @@ object Glyphs {
         "Календарь" to "cal", "Праздники" to "fest", "Кино и книги" to "habit", "Медиа" to "books",
         "Цели" to "goals", "День" to "daily", "Жизнь" to "life", "Ночь" to "night",
         "Кино и стриминг" to "cinema", "Чтение" to "reading", "Жизнь и фитнес" to "lifefit", "Минимализм" to "minimal",
-        "Аналитика" to "analytics", "Топы" to "tops",
+        "Аналитика" to "analytics", "Топы" to "tops", "Давление" to "pressure",
     )
     val DISH_SETS = listOf(
         "Курица" to "chicken", "Салаты и продукты" to "salads", "Паста и вок" to "pasta", "Блюда мира" to "world",
