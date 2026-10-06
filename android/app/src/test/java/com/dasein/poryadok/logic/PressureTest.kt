@@ -102,4 +102,43 @@ class PressureTest {
         assertEquals(156, plain.readings[0].sys); assertEquals(76, plain.readings[0].pulse)
         assertNull(plain.readings[1].pulse)
     }
+
+    private fun series(days: Int, sys: (Int) -> Int, dia: (Int) -> Int, now: Long): List<Pressure.Reading> = (0 until days).flatMap { d ->
+        listOf(8, 20).mapIndexed { k, h ->
+            val t = now - d * 86_400_000L - (if (h == 8) 12 else 0) * 3_600_000L
+            Pressure.Reading(d * 10L + k + 1, 1, t, sys(d), dia(d), 70)
+        }
+    }
+
+    @Test fun insightLevels() {
+        val now = LocalDate.of(2026, 10, 5).atTime(22, 0).toInstant(ZoneOffset.UTC).toEpochMilli()
+        val me = Pressure.Person(id = 1, name = "Я", birthYear = 1980)
+        assertEquals(PressureInsight.Status.STABLE, PressureInsight.assess(me, series(14, { 120 }, { 76 }, now), now, ZoneOffset.UTC).status)
+        assertEquals(PressureInsight.Status.ELEVATED, PressureInsight.assess(me, series(14, { 142 }, { 86 }, now), now, ZoneOffset.UTC).status)
+        assertEquals(PressureInsight.Status.MEDICAL, PressureInsight.assess(me, series(14, { 165 }, { 95 }, now), now, ZoneOffset.UTC).status)
+        assertEquals(PressureInsight.Status.MEDICAL, PressureInsight.assess(me.copy(diabetes = true), series(14, { 140 }, { 84 }, now), now, ZoneOffset.UTC).status)
+        // Рост к прошлой неделе на 8 мм при нормальном уровне — наблюдение.
+        val rising = series(14, { d -> if (d < 7) 128 else 120 }, { 78 }, now)
+        assertEquals(PressureInsight.Status.WATCH, PressureInsight.assess(me, rising, now, ZoneOffset.UTC).status)
+        assertEquals(PressureInsight.Status.NO_DATA, PressureInsight.assess(me, series(1, { 130 }, { 80 }, now), now, ZoneOffset.UTC).status)
+        assertTrue(PressureInsight.assess(me, rising, now, ZoneOffset.UTC).basis.any { "Предыдущие 7 дней" in it })
+    }
+
+    @Test fun insightDynamicsStabilityDeviation() {
+        val now = LocalDate.of(2026, 10, 5).atTime(22, 0).toInstant(ZoneOffset.UTC).toEpochMilli()
+        val rs = series(60, { d -> if (d < 30) 124 else 132 }, { d -> if (d < 30) 78 else 82 }, now)
+        val dyn = PressureInsight.dynamics(rs, 30, now)!!
+        assertEquals(-8, dyn.dSys); assertEquals(true, dyn.better)
+        val st = PressureInsight.stability(rs, now)!!
+        assertEquals(100, st.score); assertFalse(st.high)
+        val noisy = series(14, { d -> if (d % 2 == 0) 110 else 150 }, { 80 }, now)
+        assertTrue(PressureInsight.stability(noisy, now)!!.high)
+        val spike = Pressure.Reading(999, 1, now + 1, 145, 92, 70)
+        val dev = PressureInsight.deviation(rs + spike, spike)!!
+        assertEquals(21, dev.dSys); assertTrue(dev.notable)
+        val prof = PressureInsight.dayProfile(series(10, { 130 }, { 80 }, now).map { if (Pressure.hour(it, ZoneOffset.UTC) >= 17) it.copy(sys = 140, dia = 87) else it }, ZoneOffset.UTC)
+        assertTrue(prof.pattern!!, "вечернее давление в среднем выше утреннего на 10/7" in prof.pattern!!)
+        assertTrue(PressureInsight.quality(series(14, { 130 }, { 80 }, now), now, ZoneOffset.UTC).score >= 80)
+        assertEquals(30, PressureInsight.points(rs, now - 30 * 86_400_000L + 1, now, true, ZoneOffset.UTC).size)
+    }
 }

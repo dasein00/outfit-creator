@@ -131,6 +131,23 @@ fun HomePressureCard(nav: NavHostController, size: Int) {
             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp),
         )
         v?.let { Text(it.headline, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(it.level.color), modifier = Modifier.padding(top = 2.dp)) }
+        val assess = com.dasein.poryadok.logic.PressureInsight.assess(p, rs, System.currentTimeMillis())
+        Row(Modifier.padding(top = 6.dp).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Color(assess.status.color).copy(alpha = .12f)).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(10.dp).clip(CircleShape).background(Color(assess.status.color)))
+            Column(Modifier.padding(start = 8.dp)) {
+                Text("По дневнику: ${assess.status.title.lowercase()}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(assess.status.color))
+                Text(assess.simple, fontSize = 12.sp, maxLines = 2)
+            }
+        }
+        val today = java.time.LocalDate.now()
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+            com.dasein.poryadok.logic.PressureInsight.days(rs, p, today.minusDays(6), today).forEach { c ->
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(c.date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale("ru")), fontSize = 9.sp, color = extra.dim)
+                    Box(Modifier.size(14.dp).clip(CircleShape).background(if (c.avg != null) Color(c.color) else extra.line.copy(alpha = .4f)))
+                }
+            }
+        }
         val now = System.currentTimeMillis()
         val s = Pressure.stats(rs, t, now)
         // Средние по дням за 14 дней — по ним видно тренд лучше, чем по отдельным замерам.

@@ -112,6 +112,7 @@ fun PressureHomeScreen(nav: NavHostController) {
     val d = diary ?: PressureStore.Diary()
     val person = d.people.firstOrNull { it.id == d.current } ?: d.people.firstOrNull()
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    var doctor by rememberSaveable { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<Pressure.Reading?>(null) }
     var ortho by remember { mutableStateOf(false) }
     var imported by remember { mutableStateOf<Pressure.Imported?>(null) }
@@ -175,11 +176,17 @@ fun PressureHomeScreen(nav: NavHostController) {
             LatestCard(person, rs.firstOrNull(), target) { nav.navigate(PressureRoutes.add(person.id, it.id)) }
             Gap(10.dp)
             Segments(listOf(0 to "Обзор", 1 to "Дневник", 2 to "Аналитика", 3 to "Советы"), tab, { tab = it })
+            Gap(8.dp)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Pill("Просто", !doctor) { doctor = false }
+                Pill("Для врача", doctor) { doctor = true }
+                Text("  режим оценки", fontSize = 12.sp, color = LocalExtra.current.dim)
+            }
             Gap(10.dp)
             when (tab) {
-                0 -> Overview(person, rs, target)
+                0 -> Overview(person, rs, target, doctor)
                 1 -> Journal(rs, { nav.navigate(PressureRoutes.add(person.id, it.id)) }) { deleting = it }
-                2 -> Analytics(person, rs, target)
+                2 -> Analytics(person, rs, target, doctor)
                 else -> Protocols(person, rs) { ortho = true }
             }
             HowTo("pressure")
@@ -263,34 +270,32 @@ private fun VerdictBox(v: Pressure.Verdict) {
 }
 
 @Composable
-private fun Overview(p: Pressure.Person, rs: List<Pressure.Reading>, t: Pressure.Target) {
+private fun Overview(p: Pressure.Person, rs: List<Pressure.Reading>, t: Pressure.Target, doctor: Boolean) {
     val extra = LocalExtra.current
     val now = System.currentTimeMillis()
-    val s = Pressure.stats(rs, t, now)
+    // 1. Что происходит  2. Меняется ли  3. Что разумно сделать.
+    StatusCard(com.dasein.poryadok.logic.PressureInsight.assess(p, rs, now), doctor)
+    if (doctor) DoctorStats(rs)
+    Gap(8.dp)
+    WeekStrip(p, rs)
+    Gap(8.dp)
+    DeviationCard(rs)
+    Gap(8.dp)
+    ZoomChart(p, rs)
+    Gap(8.dp)
+    DynamicsCard(rs)
+    Gap(8.dp)
+    DayProfileCard(rs)
+    Gap(8.dp)
+    StabilityCard(rs)
+    Gap(8.dp)
+    PressureCalendar(p, rs)
+    ImportantNow(p, rs)
+    SectionTitle("Ваша норма")
     Tile {
-        Text("Норма для ${p.name}", fontSize = 12.sp, color = extra.dim)
         Text(t.label, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
         Text(t.why, fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp)
-        Text("Пульс в покое: 60–100 уд/мин", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
-    }
-    Gap(8.dp)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        AvgTile("7 дней", s.last7, t, Modifier.weight(1f))
-        AvgTile("30 дней", s.last30, t, Modifier.weight(1f))
-        Tile(Modifier.weight(1f), padding = 10.dp) {
-            Text("В норме", fontSize = 11.sp, color = extra.dim)
-            FitText(s.inTargetShare?.let { "${(it * 100).roundToInt()} %" } ?: "—", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-            Text("замеров за 30 дн.", fontSize = 10.sp, color = extra.dim)
-        }
-    }
-    if (rs.size >= 2) {
-        SectionTitle("30 дней")
-        Tile(padding = 10.dp) {
-            TrendChart(rs.filter { it.time > now - 30 * 86_400_000L }.sortedBy { it.time }, t)
-            Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Legend(Color(0xFFD9542B), "верхнее"); Legend(Color(0xFF4C8BD6), "нижнее"); Legend(Color(0xFF3E9B5B).copy(alpha = .4f), "норма")
-            }
-        }
+        Text("Пульс в покое: 60–100 уд/мин · порог для домашних замеров: 135/85", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
     }
     val pr = Pressure.protocol(rs, LocalDate.now())
     SectionTitle("Протокол 7 дней")
@@ -414,12 +419,16 @@ private fun ReadingRow(r: Pressure.Reading, onClick: () -> Unit, onLong: () -> U
 }
 
 @Composable
-private fun Analytics(p: Pressure.Person, rs: List<Pressure.Reading>, t: Pressure.Target) {
+private fun Analytics(p: Pressure.Person, rs: List<Pressure.Reading>, t: Pressure.Target, doctor: Boolean) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     val now = System.currentTimeMillis()
     val s = Pressure.stats(rs, t, now)
     if (rs.size < 3) { Text("Для аналитики нужно хотя бы 3 замера. Лучше — неделя утром и вечером.", color = extra.dim); return }
+    WeeklyReportCard(p, rs)
+    if (!doctor) DoctorStats(rs)
+    PatternsCard(rs)
+    SectionTitle("Подробности")
     @Composable
     fun Insight(title: String, value: String, text: String, col: Color = MaterialTheme.colorScheme.onSurface) {
         Tile(Modifier.padding(bottom = 8.dp)) {
@@ -522,6 +531,7 @@ private fun Analytics(p: Pressure.Person, rs: List<Pressure.Reading>, t: Pressur
 @Composable
 private fun Protocols(p: Pressure.Person, rs: List<Pressure.Reading>, onOrtho: () -> Unit) {
     val extra = LocalExtra.current
+    ChangesCard(p, rs)
     SectionTitle("Что снижает давление")
     Text("Эффект — среднее снижение верхнего давления по исследованиям (ESC/ESH, DASH). Эффекты складываются.", fontSize = 12.sp, color = extra.dim)
     Pressure.habits(p).forEach { h ->
@@ -750,12 +760,14 @@ fun PressurePersonScreen(nav: NavHostController, id: Long) {
     var height by remember { mutableStateOf(p.heightCm?.toString().orEmpty()) }
     var weight by remember { mutableStateOf(p.weightKg?.let { "%.1f".format(it).replace(",", ".").removeSuffix(".0") }.orEmpty()) }
     var cs by remember { mutableStateOf(p.customSys?.toString().orEmpty()) }
+    var waist by remember { mutableStateOf(p.waistCm?.toString().orEmpty()) }
     var cd by remember { mutableStateOf(p.customDia?.toString().orEmpty()) }
     var confirm by remember { mutableStateOf(false) }
     val full = p.copy(
         birthYear = birth.toIntOrNull()?.takeIf { it in 1900..LocalDate.now().year }, heightCm = height.toIntOrNull()?.takeIf { it in 50..250 },
         weightKg = weight.replace(',', '.').toDoubleOrNull()?.takeIf { it in 20.0..350.0 },
         customSys = cs.toIntOrNull()?.takeIf { it in 90..200 }, customDia = cd.toIntOrNull()?.takeIf { it in 50..120 },
+        waistCm = waist.toIntOrNull()?.takeIf { it in 40..250 },
     )
     fun save() {
         if (full.name.isBlank()) { Toast.makeText(ctx, "Введите имя", Toast.LENGTH_SHORT).show(); return }
@@ -791,6 +803,7 @@ fun PressurePersonScreen(nav: NavHostController, id: Long) {
                 Box(Modifier.weight(1f)) { NumberField(height, { height = it.take(3) }, "Рост", suffix = "см", decimal = false) }
                 Box(Modifier.weight(1f)) { NumberField(weight, { weight = it.take(5) }, "Вес", suffix = "кг") }
             }
+            Box(Modifier.padding(top = 6.dp)) { NumberField(waist, { waist = it.take(3) }, "Окружность талии (необязательно)", suffix = "см", decimal = false) }
             full.bmi?.let { b ->
                 Text(
                     "ИМТ ${"%.1f".format(b)} — " + when { b < 18.5 -> "недостаток веса"; b < 25 -> "норма"; b < 30 -> "избыточный вес"; else -> "ожирение" },
@@ -811,6 +824,7 @@ fun PressurePersonScreen(nav: NavHostController, id: Long) {
             Flag("Болезнь почек", "", p.kidney) { p = p.copy(kidney = it) }
             Flag("ИБС, инфаркт или инсульт в прошлом", "", p.heart) { p = p.copy(heart = it) }
             Flag("Курит", "", p.smoker) { p = p.copy(smoker = it) }
+            Flag("Повышенный холестерин", "", p.cholesterol) { p = p.copy(cholesterol = it) }
             Flag("Ослабленный, были падения", "Нужна помощь в быту, кружится голова при вставании", p.frail) { p = p.copy(frail = it) }
             if (p.sex == 1) Flag("Беременность", "", p.pregnant) { p = p.copy(pregnant = it) }
             Gap(6.dp)
