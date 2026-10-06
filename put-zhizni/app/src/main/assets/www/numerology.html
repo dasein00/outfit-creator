@@ -763,7 +763,7 @@ svg text{cursor:default}
 <button class="sec" onclick="printPhone()">PDF для телефона</button>
 <button class="sec" onclick="exportClient()">Файл для клиента</button>
 <label class="inlchk"><input type="checkbox" id="cnotes"> поля для заметок клиента</label>
-<label class="inlchk"><input type="checkbox" id="cclean" checked> ясный язык для клиента (без теории)</label>
+<label class="inlchk">формат файла: <select id="cfmt" style="width:auto;padding:4px 8px;font-size:12.5px"><option value="match" selected>только совпадения систем</option><option value="clear">ясный, по разделам</option><option value="full">полный, с теорией</option></select></label>
 <button class="sec" onclick="saveCalc()">Сохранить расчёт</button>
 <span class="filebtn"><button type="button" class="sec">Загрузить расчёт</button><input type="file" accept="application/json,.json" onchange="loadCalc(this)"></span>
 <button class="sec" onclick="selfTest()">Проверка системы</button>
@@ -1250,8 +1250,8 @@ function go(){
     try{document.getElementById("hdremb").innerHTML=emblemSVG(CONS,74)}catch(e){}
     try{document.getElementById("dragonhost").innerHTML=dragonSVG()}catch(e){}
     const GROUPS=[
-      {name:"Титул",han:"序",tabs:[{label:"Титул и как читать",id:"b0"},{label:"Ответ на запрос",id:"b22"},{label:"Резюме",id:"b18"},{label:"Ответы клиента",id:"b33"},{label:"Проверка карты",id:"b19"},{label:"Подбор часа",id:"b23"}]},
-      {name:"Личность",han:"命",tabs:[{label:"Карта Ба-цзы",id:"b1"},{label:"Профессиональная карта",id:"b34"},{label:"Колесо стихий",id:"b29"},{label:"12 дворцов",id:"b31"},{label:"Тип карты",id:"b13"},{label:"Десять Божеств",id:"b2"},{label:"Комбинации",id:"b3"},{label:"Сильные и слабые",id:"b14"},{label:"Здоровье",id:"b6"},{label:"Числовой код",id:"p1"},{label:"Энергии",id:"p2"},{label:"Матрица",id:"b21"}]},
+      {name:"Титул",han:"序",tabs:[{label:"Титул и как читать",id:"b0"},{label:"Ответ на запрос",id:"b22"},{label:"Резюме",id:"b18"},{label:"Совпадение систем",id:"b35"},{label:"Ответы клиента",id:"b33"},{label:"Проверка карты",id:"b19"},{label:"Подбор часа",id:"b23"}]},
+      {name:"Личность",han:"命",tabs:[{label:"Карта Ба-цзы",id:"b1"},{label:"Профессиональная карта",id:"b34"},{label:"Колесо стихий",id:"b29"},{label:"12 дворцов",id:"b31"},{label:"Тип карты",id:"b13"},{label:"Десять Божеств",id:"b2"},{label:"Комбинации",id:"b3"},{label:"Сильные и слабые",id:"b14"},{label:"Здоровье",id:"b6"},{label:"Числовой код",id:"p1"},{label:"Каббала чисел",id:"b36"},{label:"Энергии",id:"p2"},{label:"Матрица",id:"b21"}]},
       {name:"Время",han:"運",tabs:[{label:"Рекомендации на год",id:"b20"},{label:"Карта жизни",id:"b28"},{label:"Звёздная карта",id:"b32"},{label:"Свиток десятилетий",id:"b30"},{label:"График жизни",id:"b24"},{label:"Прогноз по годам",id:"b7"},{label:"Помесячно",id:"b25"},{label:"Подбор даты",id:"b26"},{label:"Прогностика",id:"b15"}]},
       {name:"Отношения",han:"緣",tabs:[{label:"Дворец Брака",id:"b4"},{label:"Совместимость пары",id:"b9"},{label:"Зачатие и дети",id:"b16"}]},
       {name:"Дело",han:"業",tabs:[{label:"Работа и призвание",id:"b5"},{label:"Путь к успеху",id:"b17"},{label:"Бизнес-партнёрство",id:"b10"},{label:"Команда",id:"b11"},{label:"Подбор имени",id:"b27"}]},
@@ -1259,10 +1259,12 @@ function go(){
     ];
     const TABNAMES=[];GROUPS.forEach(g=>g.tabs.forEach(t=>TABNAMES.push(t.label)));
     window.HZ=buildHanziIndex(CH,ST,US);
-    window.__CALC={CH:CH,ST:ST,US:US,SR:SR,SP:SP,nd:nd,name:MAIN.name,YF:YF,YT:YT};
+    window.__CALC={CH:CH,ST:ST,US:US,SR:SR,SP:SP,nd:nd,name:MAIN.name,YF:YF,YT:YT,SEF:sefariaCalc(D,document.getElementById("bt").value)};
     BZTABS=buildPicker(GROUPS)+buildTabs(GROUPS);
     BZPANES=`<div id="b1" class="pane">${warnH}${solH}${renderChart(CH,ST,US,SR)}</div>`
       +`<div id="b34" class="pane">${renderPro(CH,!document.getElementById("bt").value)}</div>`
+      +`<div id="b35" class="pane">${renderMatchPane()}</div>`
+      +`<div id="b36" class="pane">${renderKabbalaPane()}</div>`
       +`<div id="b13" class="pane">${renderSpecial(ALL)}</div>`
       +`<div id="b2" class="pane">${renderGods(CH,ST,US)}</div>`
       +`<div id="b3" class="pane">${cmH}</div>`
@@ -7191,6 +7193,261 @@ function clientRuntime(){
 }
 
 /* ============================================================
+   КАББАЛА ЧИСЕЛ (по Сефариалу) И ПЛАНЫ ЧИСЕЛ (по Сандеру)
+   Изложено своими словами: смысл источников сохранён, формулировки — собственные.
+   ============================================================ */
+/* «Малый ключ»: число — планета — суть, цвет, гармоничные и конфликтные числа */
+const SEF_KEY={
+1:{pl:"Солнце",t:"самостоятельность, достоинство, умение управлять и стоять на своём",c:"белый",sym:[1,4],anti:[8]},
+2:{pl:"Луна",t:"отношения, симпатии, тонкое чувствование людей; колебания перед выбором",c:"жёлтый, кремовый",sym:[2,7],anti:[8]},
+3:{pl:"Юпитер",t:"рост и расширение, интеллект, достаток и удача в делах",c:"фиолетовый",sym:[3,6],anti:[5,8]},
+4:{pl:"Солнце (Земля)",t:"воплощение замыслов, собственность, положение и вес в обществе",c:"оранжевый, красное золото",sym:[1,4],anti:[8]},
+5:{pl:"Меркурий",t:"рассудок и логика, торговля, поездки, практическая польза",c:"индиго, тёмно-синий",sym:[5,9],anti:[3]},
+6:{pl:"Венера",t:"сотрудничество, союз, искусство, музыка, тяга к гармонии",c:"бирюзовый, нежно-голубой",sym:[3,6],anti:[]},
+7:{pl:"Луна (полная)",t:"влияние на людей, известность, подвижность, умение приспосабливаться",c:"серебристый, опаловый",sym:[2,7],anti:[]},
+8:{pl:"Сатурн",t:"перестройка через испытания: препятствия, потери и то, что после них остаётся прочным",c:"чёрный, тёмно-коричневый",sym:[8],anti:[1,2,3,4]},
+9:{pl:"Марс",t:"энергия, напор, свобода, острота ума и пробивная сила",c:"красный, алый",sym:[5,9],anti:[]}};
+/* Сетка рождения: строки — дух, душа, тело */
+const SEF_GRID=[[3,1,9],[6,7,5],[2,8,4]];
+const SEF_ROW=["Дух: рост, личность, свобода","Душа: чувства, восприятие, разум","Тело: опора, испытания, воплощение"];
+/* Соседние числа сетки образуют «соединения» */
+const SEF_CONJ={
+"1-3":"рост через собственные достижения, удача, признание",
+"1-9":"напор и смелость, воля быть первым, сильный характер",
+"5-7":"живой подвижный ум, гибкость, быстрые решения",
+"6-7":"художественный вкус, утончённость, успех в обществе",
+"2-8":"осторожность и серьёзность; трудности закаляют",
+"4-8":"признание приходит не сразу, через выдержку и труд",
+"3-6":"щедрость, вкус, удача в отношениях и союзах",
+"2-6":"чувствительность, эстетика, мягкость",
+"1-7":"яркие способности, перемены, поездки, интерес к новому",
+"7-8":"глубина переживаний, сдержанность, внутренняя работа",
+"5-9":"острота и проницательность, коммерческая хватка, расчёт",
+"4-5":"практичность и рассудительность, осторожный подход к делу"};
+/* Составные числа (пифагорейский ряд) — ориентиры для консультанта */
+const SEF_COMP={10:"разум, успех, стремление",11:"разлад и риск обмана",12:"благоприятное место и окружение",13:"соблазн неправды — нужна честность",14:"жертвы и утраты на пути",15:"добродетель, культура, честность",16:"чувствительность, удача, любовь к роскоши",17:"риск недооценённости",18:"жёсткость и скупость как ловушка",19:"легкомыслие как ловушка",20:"мудрость, строгость, склонность к меланхолии",21:"тайна, плодовитость, созидание",22:"суровые уроки",23:"бунтарство, фанатизм как риск",24:"путешествия, перемены, непостоянство",25:"ум, потомство",26:"благотворительность, милосердие",27:"храбрость, героизм",28:"знаки, символы, дары",29:"новости, хроника событий",30:"праздники, союзы",31:"доброта, открытость, устремлённость",32:"союз, брак",33:"нежность, изящество",34:"страдание и расплата как урок",35:"здоровье, мир, мастерство",36:"интуиция, одарённость",37:"верность, семейное счастье",38:"зависть и жадность как ловушка",39:"почёт, похвала",40:"праздник, торжество",41:"риск скандала",42:"скудость сил — беречь ресурс",43:"служение идее, вера",44:"подъём, величие",45:"род, потомство",46:"плодородие, изобилие",47:"долгая счастливая жизнь",48:"справедливость, суд",49:"корысть как ловушка",50:"свобода, освобождение"};
+/* Планы чисел по Сандеру и группы «Я / Мы / Все» */
+const SANDER_PLANE={1:"ум",2:"чувства",3:"чувства",4:"дело",5:"дело",6:"чувства",7:"интуиция",8:"ум",9:"интуиция"};
+const SANDER_GROUP={1:"я",2:"я",3:"я",4:"мы",5:"мы",6:"мы",7:"все",8:"все",9:"все"};
+
+function sefariaCalc(dateStr,timeStr){
+  let [Y,M,D]=dateStr.split("-").map(Number);
+  const h=parseInt((timeStr||"12:00").split(":")[0],10);
+  if(h<12){const d=new Date(Y,M-1,D-1);Y=d.getFullYear();M=d.getMonth()+1;D=d.getDate()}
+  const digits=(String(D)+String(M)+String(Y%100).padStart(2,"0")).split("").map(Number).filter(x=>x>0);
+  const raw=digits.reduce((a,b)=>a+b,0),key=numRed(raw);
+  const has=new Set(digits),conj=[];
+  const pos={};SEF_GRID.forEach((r,i)=>r.forEach((n,j)=>pos[n]=[i,j]));
+  Object.keys(SEF_CONJ).forEach(k=>{const [a,b]=k.split("-").map(Number);
+    if(!has.has(a)||!has.has(b))return;
+    const d=Math.abs(pos[a][0]-pos[b][0])+Math.abs(pos[a][1]-pos[b][1]);
+    if(d===1)conj.push([a,b,SEF_CONJ[k]])});
+  return {date:D+"."+M+"."+String(Y%100).padStart(2,"0"),digits:digits,raw:raw,key:key,conj:conj,shifted:h<12};
+}
+
+/* ============================================================
+   СОПОСТАВЛЕНИЕ ДВУХ СИСТЕМ ПО ОБЩИМ ТЕМАМ
+   Каждая система даёт оценку 0…1 по одиннадцати темам. В файл клиента
+   идут только темы, где обе оценки высокие, без упоминания систем.
+   ============================================================ */
+const THEMES={
+lead:{n:"Самостоятельность и лидерство",
+  p:"Вы привыкли решать сами и отвечать за результат. Там, где другие ждут указаний, вы уже действуете, и люди это чувствуют — к вам тянутся за решением.",
+  g:["решительность","готовность взять ответственность","умение начать с нуля"],
+  s:"Вам трудно принимать чужие решения и делиться контролем. Если всё держать на себе, усталость копится незаметно.",
+  r:"роли, где нужно принимать решения и вести за собой: руководство, своё дело, запуск новых направлений",
+  a:"Оставляйте за собой главное решение, а исполнение доверяйте другим."},
+bond:{n:"Люди и отношения",
+  p:"Вы тонко чувствуете людей: настроение, недосказанность, скрытое напряжение. Умеете договариваться так, что обе стороны остаются довольны, и держите вокруг себя свой круг.",
+  g:["эмпатия","умение договариваться","верность своим людям"],
+  s:"Чужое настроение легко становится вашим, а желание сохранить мир иногда заставляет промолчать о важном.",
+  r:"работа с людьми: переговоры, партнёрства, команда, сообщество, сопровождение и консультирование",
+  a:"Прежде чем подстроиться под другого, спросите себя, чего хотите вы."},
+know:{n:"Знание и наставничество",
+  p:"Вам важно понимать, как всё устроено, и вы умеете объяснять сложное простыми словами. Знание для вас — опора, а передавать его вам естественно.",
+  g:["системное мышление","широкий кругозор","умение учить и объяснять"],
+  s:"Можно застрять в подготовке и изучении, так и не перейдя к делу.",
+  r:"обучение, экспертиза, методология, аналитика, консалтинг, работа с информацией",
+  a:"Ставьте себе срок, после которого изученное должно превратиться в действие."},
+break:{n:"Новаторство и свой путь",
+  p:"Вы смотрите на привычное под неожиданным углом и делаете по-своему. В кризис, когда старые правила перестают работать, вы оказываетесь сильнее других.",
+  g:["оригинальность мышления","стойкость в переменах","независимость суждений"],
+  s:"Готовое и стабильное быстро надоедает, а спор с правилами может отнимать больше сил, чем сама задача.",
+  r:"новые продукты и форматы, изобретательство, творческие и антикризисные проекты, реформы",
+  a:"Ломайте только то, на месте чего готовы построить лучше."},
+link:{n:"Общение, связи и движение",
+  p:"Вы легко находите общий язык с самыми разными людьми, быстро схватываете суть и чувствуете выгоду. Дороги, новые знакомства и обмен идеями вас заряжают.",
+  g:["коммуникабельность","гибкость","чутьё на возможности"],
+  s:"Интересов так много, что силы распыляются, а обещания иногда остаются незакрытыми.",
+  r:"торговля, продажи, медиа, логистика, путешествия, посредничество, всё, что соединяет людей и идеи",
+  a:"Выберите два-три главных направления и доводите их до результата."},
+care:{n:"Красота, забота и гармония",
+  p:"У вас развито чувство меры и вкуса. Вы умеете создавать уют и атмосферу, в которой людям хорошо, и сглаживаете острые углы.",
+  g:["вкус и чувство стиля","умение создавать комфорт","дипломатичность"],
+  s:"Неприятные разговоры хочется отложить, а любовь к комфорту иногда мешает рискнуть.",
+  r:"дизайн, искусство, мода, гостеприимство, забота о людях, всё, где важны красота и атмосфера",
+  a:"Не откладывайте трудный разговор: мягкий, но вовремя, он сохраняет гармонию лучше молчания."},
+depth:{n:"Глубина и внутренняя сила",
+  p:"Вы смотрите глубже других и не довольствуетесь поверхностными ответами. Трудности вас не ломают, а закаляют: после кризиса вы становитесь сильнее.",
+  g:["выносливость","трезвый взгляд","способность к глубокой работе"],
+  s:"Склонность уходить в себя и замечать проблемы раньше, чем они появились.",
+  r:"исследования, аналитика, психология, антикризисное управление, работа, требующая сосредоточенности",
+  a:"Делитесь своими выводами — то, что вы видите, полезно не только вам."},
+order:{n:"Порядок и надёжность",
+  p:"На вас можно положиться: вы держите слово, строите вдолгую и наводите порядок там, где его не было. Ответственность для вас естественна.",
+  g:["надёжность","умение строить на годы","чувство ответственности"],
+  s:"Стремление всё контролировать может обернуться жёсткостью и недоверием к людям.",
+  r:"управление, финансы, юриспруденция, системы и процессы, государственные и крупные структуры",
+  a:"Оставляйте людям пространство для своих решений — так порядок держится без вашего постоянного участия."},
+serve:{n:"Справедливость и защита",
+  p:"Вы остро чувствуете несправедливость и готовы встать на защиту. Энергии и выносливости у вас много, и вы направляете её на то, что считаете важным.",
+  g:["чувство справедливости","энергия и выносливость","способность защищать"],
+  s:"Можно вмешаться, когда не просили, и вспылить там, где хватило бы твёрдого слова.",
+  r:"служение людям и делу: медицина, право, безопасность, спорт, общественная работа",
+  a:"Сначала спросите, нужна ли помощь, — так ваша сила работает точнее."},
+money:{n:"Деньги и предприимчивость",
+  p:"Вы видите возможность там, где другие видят риск, и умеете превращать идеи в доход. Масштаб и результат вас мотивируют.",
+  g:["деловая хватка","умение считать","готовность к разумному риску"],
+  s:"Азарт может перевесить расчёт, а деньги уходят так же быстро, как приходят.",
+  r:"своё дело, сделки, инвестиции, продажи, управление проектами с понятным финансовым результатом",
+  a:"Откладывайте часть каждого дохода до того, как начнёте его тратить."},
+express:{n:"Самовыражение и публичность",
+  p:"Вам важно, чтобы вас видели и слышали. Вы ярко подаёте себя и идеи, заражаете энтузиазмом и легко оказываетесь в центре внимания.",
+  g:["яркость","креативность","умение увлечь других"],
+  s:"Без отклика и признания энергия быстро гаснет.",
+  r:"выступления, маркетинг, творчество, медиа, личный бренд, преподавание",
+  a:"Создавайте то, что ценно и без аплодисментов, — тогда признание становится бонусом, а не топливом."}};
+const THEME_DEV={
+lead:"Учитесь принимать решения без долгих консультаций: начните с небольших.",
+bond:"Ищите союзников: многое у вас получится быстрее в паре, чем в одиночку.",
+know:"Изучайте одну тему системно, а не урывками: знания станут вашей опорой.",
+break:"Позволяйте себе пробовать новое в безопасном объёме, без риска для главного.",
+link:"Расширяйте круг знакомств: нужные люди и возможности приходят через общение.",
+care:"Уделяйте внимание обстановке и отдыху — это не роскошь, а ресурс.",
+depth:"Оставляйте время на тишину и анализ перед важными решениями.",
+order:"Наведите порядок хотя бы в одной сфере — графике, деньгах или документах.",
+serve:"Выберите одно дело, которое делаете не ради выгоды, — оно даст смысл.",
+money:"Ведите учёт денег: даже простая таблица меняет отношение к доходу.",
+express:"Чаще показывайте свою работу людям — молчаливый результат часто остаётся незамеченным."};
+const THEME_ORDER=Object.keys(THEMES);
+
+const NUM_TAGS={1:{lead:1,express:.3},2:{bond:1,care:.4,depth:.2},3:{know:1,money:.3,express:.2},4:{break:1,express:.4},5:{link:1,money:.5,know:.2},6:{care:1,bond:.4,express:.3},7:{depth:1,know:.3},8:{order:1,money:.3},9:{serve:1,lead:.4}};
+const GOD_TAGS={"Друзья":{bond:.7,lead:.4,link:.3},"Грабитель богатства":{lead:.7,money:.4,link:.3},"Дух наслаждения":{care:.9,express:.5},"Вызов власти":{express:1,break:.8},"Прямые деньги":{money:.8,order:.6},"Непрямые деньги":{money:1,link:.6,break:.2},"Прямая власть":{order:1,serve:.4},"7-й убийца":{lead:.7,serve:.6,depth:.4},"Прямая печать":{know:1,care:.4},"Косая печать":{depth:1,know:.6,break:.2}};
+const EL_TAGS={"Дерево":{know:.6,care:.3,bond:.2},"Огонь":{express:.9,lead:.3},"Земля":{care:.5,order:.5,serve:.2},"Металл":{order:.7,serve:.6},"Вода":{link:.8,depth:.5}};
+const ASP_TAGS={"Друзья":{bond:.5,link:.5},"Самовыражение":{express:.6,break:.4},"Деньги":{money:1},"Власть":{order:.7,serve:.3},"Ресурс":{know:.7,depth:.3}};
+const EL_PLANE={"Дерево":"чувства","Огонь":"чувства","Земля":"дело","Металл":"ум","Вода":"интуиция"};
+const PLANE_TXT={ум:"Вы человек ума: сначала понимаете и раскладываете по полочкам, потом действуете. Логика и ясная картина дают вам спокойствие.",
+  чувства:"Вы человек чувства: решения рождаются из ощущения правильного, а атмосфера и отношения значат для вас больше, чем сухие цифры.",
+  дело:"Вы человек дела: вам важен осязаемый результат, и лучше всего вы понимаете мир через то, что можно сделать руками и проверить на практике.",
+  интуиция:"Вы человек интуиции: часто знаете ответ раньше, чем можете его объяснить, и эти предчувствия редко подводят."};
+
+function addTags(acc,map,w,src,list){Object.keys(map).forEach(k=>{acc[k]=(acc[k]||0)+map[k]*w;if(list&&map[k]*w>=.3)(list[k]=list[k]||[]).push(src)})}
+function normTags(acc){const m=Math.max(...THEME_ORDER.map(k=>acc[k]||0))||1;const o={};THEME_ORDER.forEach(k=>o[k]=(acc[k]||0)/m);return o}
+
+function matchSystems(C){
+  const nd=C.nd,ch=C.CH,sr=C.SR,us=C.US;
+  const N={},Ns={},B={},Bs={};
+  [["um",.9,"Число Ума"],["act",1.1,"Число Действия"],["real",1.3,"Число Реализации"],["itog",.6,"Число Итога"]].forEach(([k,w,l])=>
+    addTags(N,NUM_TAGS[nd[k]],w,l+" "+nd[k],Ns));
+  const sef=C.SEF;
+  if(sef){addTags(N,NUM_TAGS[sef.key],1,"Ключевое число "+sef.key+" (Сефариал)",Ns);
+    sef.conj.forEach(c=>{addTags(N,NUM_TAGS[c[0]],.3,"соединение "+c[0]+"–"+c[1],Ns);addTags(N,NUM_TAGS[c[1]],.3,"соединение "+c[0]+"–"+c[1],Ns)})}
+  for(let k=1;k<=9;k++)if(nd.cnt[k]>=2)addTags(N,NUM_TAGS[k],.15*(nd.cnt[k]-1),"в дате "+nd.cnt[k]+"×"+k,Ns);
+  addTags(B,GOD_TAGS[sr.god]||{},1.3,"Структура «"+sr.god+"»",Bs);
+  addTags(B,EL_TAGS[BZS[ch.dm].el],.9,"Элемент Личности "+BZS[ch.dm].c+" "+BZS[ch.dm].el,Bs);
+  const AS=aspects(ch),mx=Math.max(...Object.keys(AS).map(k=>AS[k].w))||1;
+  Object.keys(AS).forEach(a=>{if(AS[a].w>0)addTags(B,ASP_TAGS[a]||{},.9*AS[a].w/mx,"аспект «"+a+"» "+AS[a].w.toFixed(1),Bs)});
+  const n=normTags(N),b=normTags(B);
+  const rows=THEME_ORDER.map(k=>{const lo=Math.min(n[k],b[k]);
+    const st=n[k]>=.5&&b[k]>=.5?"match":n[k]<=.15&&b[k]<=.15?"weak":n[k]>=.5&&b[k]<.3?"num":b[k]>=.5&&n[k]<.3?"bz":"part";
+    return {k:k,n:n[k],b:b[k],lo:lo,st:st,ns:Ns[k]||[],bs:Bs[k]||[]}});
+  let match=rows.filter(r=>r.st==="match").sort((a,c)=>c.lo-a.lo);
+  if(!match.length)match=rows.slice().sort((a,c)=>c.lo-a.lo).filter(r=>r.lo>=.3).slice(0,2);
+  match=match.slice(0,4);
+  const weak=rows.filter(r=>r.st==="weak");
+  /* стихии: Ло Шу чисел против благоприятных и неблагоприятных стихий карты */
+  const numEl={};["um","act","real"].forEach(k=>{const e=LOSHU[nd[k]];(numEl[e]=numEl[e]||[]).push(k)});
+  const elMatch=us.good.filter(e=>numEl[e]),elClash=us.bad.filter(e=>numEl[e]);
+  /* склад: план по Сандеру против стихии Элемента Личности */
+  const pc={};["um","act","real","itog"].forEach(k=>{const p=SANDER_PLANE[nd[k]];pc[p]=(pc[p]||0)+1});
+  const numPlane=Object.keys(pc).sort((a,c)=>pc[c]-pc[a])[0],bzPlane=EL_PLANE[BZS[ch.dm].el];
+  /* предназначение: тема Числа Реализации против темы Структуры */
+  const realTag=Object.keys(NUM_TAGS[nd.real]).sort((a,c)=>NUM_TAGS[nd.real][c]-NUM_TAGS[nd.real][a])[0];
+  const godMap=GOD_TAGS[sr.god]||{},godTag=Object.keys(godMap).sort((a,c)=>godMap[c]-godMap[a])[0];
+  const purpose=realTag===godTag||match.some(m=>m.k===realTag)?realTag:match.some(m=>m.k===godTag)?godTag:(match[0]||{}).k;
+  return {rows:rows,match:match,weak:weak,numEl:numEl,elMatch:elMatch,elClash:elClash,numPlane:numPlane,bzPlane:bzPlane,planeMatch:numPlane===bzPlane,purpose:purpose,realTag:realTag,godTag:godTag};
+}
+
+/* ---------- Панель консультанта: две системы отдельно и сводка совпадений ---------- */
+function renderMatchPane(){
+  const C=window.__CALC;if(!C)return "";
+  const M=matchSystems(C),nd=C.nd,ch=C.CH,sr=C.SR,us=C.US,sef=C.SEF;
+  const pct=v=>Math.round(v*100);
+  const top=(key)=>M.rows.slice().sort((a,c)=>c[key]-a[key]).slice(0,3);
+  const ST={match:["совпадает","var(--jade)"],num:["только числа","var(--gold)"],bz:["только Ба-цзы","var(--gold)"],part:["частично","#9d8a6c"],weak:["общая слабая зона","var(--cin)"]};
+  let h=`<h2>Совпадение систем</h2><div class="note">Раздел только для вас: в файл клиента он не попадает. Клиент получает лишь темы, где обе системы сходятся, — единым текстом, без названий систем.</div>`;
+  h+=`<div class="pairgrid"><div class="pcard"><h3>По числам</h3><p style="font-size:13px">Ум ${nd.um} «${NUM9[nd.um].name}», Действие ${nd.act} «${NUM9[nd.act].name}», Реализация ${nd.real} «${NUM9[nd.real].name}», Итог ${nd.itog}.${sef?" Ключевое число по Сефариалу — "+sef.key+" ("+SEF_KEY[sef.key].pl+").":""}</p>
+    <ul style="margin-left:18px;font-size:13px">${top("n").map(r=>`<li><b>${THEMES[r.k].n}</b> — ${pct(r.n)}%<br><span style="color:#9d8a6c">${r.ns.slice(0,3).join(", ")}</span></li>`).join("")}</ul>
+    <p style="font-size:12.5px">Склад по планам чисел: <b>${M.numPlane}</b>.</p></div>
+  <div class="pcard"><h3>По Ба-цзы</h3><p style="font-size:13px">Элемент Личности ${BZS[ch.dm].c} ${BZS[ch.dm].r} (${BZS[ch.dm].el}), структура «${sr.god}», благоприятные: ${us.good.join(", ")}.</p>
+    <ul style="margin-left:18px;font-size:13px">${top("b").map(r=>`<li><b>${THEMES[r.k].n}</b> — ${pct(r.b)}%<br><span style="color:#9d8a6c">${r.bs.slice(0,3).join(", ")}</span></li>`).join("")}</ul>
+    <p style="font-size:12.5px">Склад по стихии Элемента Личности: <b>${M.bzPlane}</b>.</p></div></div>`;
+  h+=`<h2>Темы: сравнение</h2><table><tr><th>Тема</th><th>Числа</th><th>Ба-цзы</th><th>Итог</th></tr>${M.rows.slice().sort((a,c)=>c.lo-a.lo).map(r=>`<tr><td>${THEMES[r.k].n}</td>
+    <td><div style="background:#f0ebdf;height:9px;width:90px"><div style="height:9px;width:${pct(r.n)}%;background:var(--gold)"></div></div></td>
+    <td><div style="background:#f0ebdf;height:9px;width:90px"><div style="height:9px;width:${pct(r.b)}%;background:var(--cin)"></div></div></td>
+    <td style="color:${ST[r.st][1]};font-size:12px">${ST[r.st][0]}${M.match.some(m=>m.k===r.k)?' <b style="color:var(--cin)">→ клиенту</b>':""}</td></tr>`).join("")}</table>`;
+  h+=`<div class="meet"><b>Стихии.</b> Числа Ума, Действия и Реализации по квадрату Ло Шу: ${Object.keys(M.numEl).join(", ")}. ${M.elMatch.length?"Совпадают с благоприятными стихиями карты: "+M.elMatch.join(", ")+" — это уйдёт клиенту как «что вас поддерживает».":"С благоприятными стихиями карты не совпадают."} ${M.elClash.length?"Конфликт: "+M.elClash.join(", ")+" — по числам опора, по карте расход сил.":""}</div>`;
+  h+=`<div class="meet"><b>Склад.</b> Числа: ${M.numPlane}; Ба-цзы: ${M.bzPlane}. ${M.planeMatch?"Совпадает — блок «Ваш склад» уйдёт клиенту.":"Расходится — клиенту не идёт."}</div>`;
+  h+=`<div class="meet"><b>Предназначение.</b> Реализация ведёт к теме «${THEMES[M.realTag].n}», структура — к теме «${THEMES[M.godTag].n}». ${M.realTag===M.godTag?"Системы указывают в одну сторону.":"Направления разные; в файл клиента взята тема «"+(M.purpose?THEMES[M.purpose].n:"—")+"»."}</div>`;
+  h+=`<h2>Что получит клиент</h2><div class="blk"><p>${M.match.length?"Темы: "+M.match.map(m=>"«"+THEMES[m.k].n+"»").join(", ")+".":"Сильных совпадений нет — файл будет коротким."} ${M.weak.length?"Общие зоны роста: "+M.weak.map(w=>"«"+THEMES[w.k].n+"»").join(", ")+".":""}</p></div>`;
+  return h;
+}
+
+/* ---------- Панель консультанта: Каббала чисел и планы чисел ---------- */
+function renderKabbalaPane(){
+  const C=window.__CALC;if(!C||!C.SEF)return "";
+  const s=C.SEF,nd=C.nd,K=SEF_KEY[s.key];
+  let h=`<h2>Каббала чисел</h2><div class="note">По Сефариалу. Цифры даты (день, месяц, две последние цифры года) раскладываются по сетке «дух — душа — тело». Если рождение было до полудня, берётся предыдущий день: солнечная дата начинается в полдень.${s.shifted?" Здесь так и сделано: использована дата "+s.date+".":""}</div>`;
+  h+=`<table style="width:auto;margin-bottom:10px">${SEF_GRID.map((r,i)=>`<tr>${r.map(n=>{const c=s.digits.filter(d=>d===n).length;return `<td style="width:56px;height:46px;text-align:center;font-size:18px;color:${c?"var(--cin)":"#d8ccb2"}">${c?String(n).repeat(c):n}<div style="font-size:9.5px;color:#9d8a6c">${SEF_KEY[n].pl.split(" ")[0]}</div></td>`}).join("")}<td style="font-size:11.5px;color:#7a6e5c">${SEF_ROW[i]}</td></tr>`).join("")}</table>`;
+  h+=blk("Ключевое число "+s.key+" — "+K.pl,"Сумма цифр даты "+s.raw+" → "+s.key+". Главная нота характера: "+K.t+"."+(SEF_COMP[s.raw]?" Составное число "+s.raw+": "+SEF_COMP[s.raw]+".":""));
+  if(s.conj.length)h+=`<div class="meet"><b>Соединения в сетке:</b> ${s.conj.map(c=>c[0]+"–"+c[1]+" ("+SEF_KEY[c[0]].pl.split(" ")[0]+" и "+SEF_KEY[c[1]].pl.split(" ")[0]+"): "+c[2]).join("; ")}.</div>`;
+  const bad=[1,2,3,4,5,6,7,8,9].filter(n=>K.anti.includes(n)||SEF_KEY[n].anti.includes(s.key));
+  h+=`<div class="meet"><b>Удачные даты</b> — с суммой ${s.key}${K.sym.filter(n=>n!==s.key).length?" и "+K.sym.filter(n=>n!==s.key).join(", "):""}. ${bad.length?"<b>Неудачные</b> — с суммой "+bad.join(", ")+".":""} <b>Цвет:</b> ${K.c}. <b>Гармоничные партнёры</b> — с ключевым числом ${K.sym.join(", ")}${bad.length?"; напряжённые — "+bad.join(", "):""}.</div>`;
+  const pc={},gc={};["um","act","real","itog"].forEach(k=>{pc[SANDER_PLANE[nd[k]]]=(pc[SANDER_PLANE[nd[k]]]||0)+1;gc[SANDER_GROUP[nd[k]]]=(gc[SANDER_GROUP[nd[k]]]||0)+1});
+  const money=["um","act","real","itog"].filter(k=>[1,4,8].includes(nd[k])).length,spend=["um","act","real","itog"].filter(k=>nd[k]===5).length;
+  h+=`<h2>Планы чисел</h2><div class="note">По Сандеру: каждое число относится к одному из четырёх планов — ум (1, 8), чувства (2, 3, 6), дело (4, 5), интуиция (7, 9) — и к одной из групп: «я» (1–3), «мы» (4–6), «все» (7–9).</div>`;
+  h+=`<div class="meet"><b>Планы:</b> ${Object.keys(pc).map(p=>p+" — "+pc[p]).join(", ")}. <b>Группы:</b> ${Object.keys(gc).map(g=>"«"+g+"» — "+gc[g]).join(", ")}. ${gc["я"]>=2?"Акцент на себе и личном развитии.":gc["мы"]>=2?"Акцент на близком круге: семье, партнёрах, команде.":gc["все"]>=2?"Акцент на служении широкому кругу людей.":""} ${money?"Денежных чисел (1, 4, 8): "+money+" — есть способность зарабатывать.":""} ${spend?"Число 5 — склонность легко тратить.":""}</div>`;
+  return h;
+}
+
+/* ---------- Файл клиента: только совпадения, без названий систем ---------- */
+function matchClientSections(demo){
+  const C=window.__CALC;if(!C)return [];
+  const M=matchSystems(C),us=C.US;
+  const T=k=>THEMES[k];
+  const uniq=a=>[...new Set(a)];
+  const secs=[];
+  const words=M.match.map(m=>T(m.k).n.toLowerCase());
+  let main=`<div class="sumgrid">`+M.match.map(m=>`<div class="sumc"><h3>${T(m.k).n}</h3><p>${T(m.k).p}</p></div>`).join("")+`</div>`;
+  if(M.planeMatch)main+=`<div class="meet">${PLANE_TXT[M.numPlane]}</div>`;
+  secs.push(["Главное о вас","Начните здесь",(words.length?`<p class="sumlead">Ваши ключевые темы: <b>${words.join(", ")}</b>.</p>`:"")+main]);
+  if(M.purpose)secs.push(["Ваше предназначение","Путь",`<div class="sumc" style="border-top-color:var(--cin)"><h3>${T(M.purpose).n}</h3><p>${T(M.purpose).p}</p><p><b>Где вы раскрываетесь:</b> ${T(M.purpose).r}.</p></div>`+
+    (M.match.filter(m=>m.k!==M.purpose).length?`<p class="sumsub" style="margin-top:12px">Ещё подходят: ${M.match.filter(m=>m.k!==M.purpose).map(m=>T(m.k).r).join("; ")}.</p>`:"")]);
+  secs.push(["Сильные стороны","Опора",`<ul class="sumlist">${uniq(M.match.flatMap(m=>T(m.k).g)).map(x=>`<li>${x}</li>`).join("")}</ul>`]);
+  const grow=M.match.map(m=>`<li>${T(m.k).s}</li>`).concat(M.weak.slice(0,2).map(w=>`<li>${THEME_DEV[w.k]}</li>`));
+  if(grow.length)secs.push(["Зоны роста","Внимание",`<ul class="sumlist">${grow.join("")}</ul>`]);
+  if(M.elMatch.length)secs.push(["Что вас поддерживает","Ресурс",M.elMatch.map(e=>`<div class="sumc good"><h3>${ELACTION[e].sfera.charAt(0).toUpperCase()+ELACTION[e].sfera.slice(1)}</h3><p>Что делать: ${ELACTION[e].dela}.</p></div>`).join("")]);
+  secs.push(["Ваши шаги","Действие",`<ol class="sumplan">${M.match.map(m=>`<li>${T(m.k).a}</li>`).concat(M.elMatch.slice(0,1).map(e=>`<li>${ELACTION[e].dela.split(";")[0].trim().replace(/^./,c=>c.toUpperCase())}.</li>`)).join("")}</ol>`]);
+  if(demo){
+    const lock='<div class="lockbox"><div class="lockfake"><i></i><i></i><i></i><i></i></div><p>&#128274; Продолжение — в полной версии разбора.</p></div>';
+    const m0=M.match[0];
+    const first=(words.length?`<p class="sumlead">Ваши ключевые темы: <b>${words.join(", ")}</b>.</p>`:"")+(m0?`<div class="sumgrid"><div class="sumc"><h3>${T(m0.k).n}</h3><p>${T(m0.k).p}</p></div></div>`:"");
+    return [[secs[0][0],secs[0][1],first+lock]].concat(secs.slice(1,3).map(x=>[x[0],x[1],lock]));
+  }
+  return secs;
+}
+
+/* ============================================================
    ЯСНЫЙ РАЗБОР ДЛЯ КЛИЕНТА: «Главное о вас» и чистка от теории
    ============================================================ */
 /* Разделы-справочники: в файл клиента в ясном режиме не идут */
@@ -7203,6 +7460,7 @@ const CLEAN_DROP_MEET=/^(Поправка времени|Полезные Бож
 function cleanForClient(root){
   const qa=s=>Array.prototype.slice.call(root.querySelectorAll(s));
   qa(".note").forEach(x=>x.remove());
+  qa(".cover-sys").forEach(x=>x.remove());
   qa("[style*='font-style:italic']").forEach(x=>x.remove());
   qa(".meet").forEach(x=>{const b=x.querySelector("b");if(b&&CLEAN_DROP_MEET.test(b.textContent.trim()))x.remove()});
   qa("h2").forEach(h=>{
@@ -7312,14 +7570,17 @@ function doExportClient(){
   var nc=document.getElementById("cnotes");
   var notes=nc?!!nc.checked:false;
   var demo=!!window.__DEMO;
-  var clean=!!(document.getElementById("cclean")||{}).checked;
+  var fmt=(document.getElementById("cfmt")||{}).value||"match";
+  var clean=fmt!=="full",matchMode=fmt==="match";
   var groups=(window.TABGROUPS&&window.TABGROUPS.length)?window.TABGROUPS:[];
   var body="",navcount=0,sumDone=false;
   groups.forEach(function(g){
     var inner="";
     g.tabs.forEach(function(t){
       if(typeof isPicked==="function"&&!isPicked(t.id))return;
+      if(t.id==="b35")return; /* сводка совпадений — только для консультанта */
       if(clean&&CLEAN_SKIP.indexOf(t.id)>=0)return;
+      if(matchMode&&t.id!=="b0")return;
       var pane=document.getElementById(t.id);
       if(!pane||!pane.innerHTML.trim())return;
       navcount++;
@@ -7368,7 +7629,14 @@ function doExportClient(){
              '<div class="chead"><div class="cgrp">'+g.name+'</div><h2 class="ctitle">'+lbl+'</h2>'+
              '<span class="carrow">▾</span></div>'+
              '<div class="cbody">'+html+'</div></section>';
-      if(clean&&!sumDone&&t.id==="b0"){
+      if(matchMode&&!sumDone&&t.id==="b0"){
+        sumDone=true;
+        matchClientSections(demo).forEach(function(ms){navcount++;
+          inner+='<section class="csec csum" id="sec'+navcount+'" data-key="m'+navcount+'" data-label="'+ms[0]+'">'+
+            '<div class="chead"><div class="cgrp">'+ms[1]+'</div><h2 class="ctitle">'+ms[0]+'</h2><span class="carrow">▾</span></div>'+
+            '<div class="cbody">'+ms[2]+'</div></section>';});
+      }
+      if(clean&&!matchMode&&!sumDone&&t.id==="b0"){
         var sh=clientSummary(demo);
         if(sh){sumDone=true;navcount++;
           inner+='<section class="csec csum" id="sec'+navcount+'" data-key="sum" data-label="Главное о вас">'+
@@ -7386,7 +7654,9 @@ function doExportClient(){
     var up=TARIFFS[window.__UPSELL||"full"]||TARIFFS.full;
     var price=((document.getElementById("cprice")||{}).value||"").trim()||up.price;
     var full=up.ids==="ALL"?null:up.ids, locked="";
-    groups.forEach(function(g){
+    if(matchMode){var shownM=matchClientSections(true).length;
+      locked='<div class="lkgrp">'+matchClientSections(false).map(function(x,i){return '<div class="lkitem">'+(i<1?'&#9675; ':'&#128274; ')+x[0]+'</div>'}).join("")+'</div>';}
+    if(!matchMode)groups.forEach(function(g){
       var items=g.tabs.filter(function(t){
         var pane=document.getElementById(t.id);
         return pane&&pane.innerHTML.trim()&&!isPicked(t.id)&&(!full||full.indexOf(t.id)>=0)&&!(clean&&CLEAN_SKIP.indexOf(t.id)>=0);
@@ -7398,7 +7668,7 @@ function doExportClient(){
       '<div class="chead"><div class="cgrp">Полная версия</div><h2 class="ctitle">Как получить полный разбор</h2><span class="carrow">▾</span></div><div class="cbody">'+
       '<h2 style="border:none;color:var(--cin)">Это пробная версия разбора</h2>'+
       '<p>Вы увидели, как система читает вашу карту, и начало каждого вывода. В полной версии — «'+up.name+'» — '+
-      'все разделы целиком, прогноз по годам и месяцам, таблицы, графики и живой интерактивный документ, с которым можно работать весь год.</p>'+
+      (matchMode?'ваш полный портрет: предназначение, сильные стороны, зоны роста, то, что вас поддерживает, и конкретные шаги.</p>':'все разделы целиком, прогноз по годам и месяцам, таблицы, графики и живой интерактивный документ, с которым можно работать весь год.</p>')+
       (locked?'<h3 style="margin:16px 0 8px">Что откроется в полной версии</h3><div class="lklist">'+locked+'</div>':'')+
       '<div class="cprice">Полный разбор: <b>'+price+'</b></div>'+
       '<p style="font-size:15px;color:var(--cin)">Если откликнулось — напишите мне, и я подготовлю ваш полный персональный разбор.</p>'+
@@ -7431,6 +7701,8 @@ function doExportClient(){
   ".sumimg,.sumsub{color:var(--ink2);font-style:italic}",
   ".sumplan{margin:0 0 16px 20px;font-size:14px;line-height:1.65}.sumplan li{margin-bottom:10px}.sumplan b{color:var(--cin);font-weight:normal}",
   ".csum{border:2px solid var(--gold)!important}",
+  ".sumlead{font-size:15px;margin:0 0 14px}.sumlead b{color:var(--cin);font-weight:normal}",
+  ".sumlist{margin:0 0 6px 20px;font-size:14.5px;line-height:1.75}",
   ".cfoot{font-size:12px;color:var(--ink2);border-top:1px dotted var(--line);padding:12px 4px;margin:10px 0 20px}",
   ".lockbox{position:relative;margin:6px 0 14px;border:1px dashed var(--line);background:rgba(201,180,138,.08);padding:14px 16px}",
   ".lockfake i{display:block;height:9px;margin:7px 0;background:linear-gradient(90deg,rgba(74,60,45,.16),rgba(74,60,45,.05));filter:blur(1.5px)}",
@@ -7678,7 +7950,7 @@ function renderCover(client,birth,cons,tag,chart,tabs){
    <div class="cover-n">${client}</div>
    <div class="cover-b">${birth}</div>
    <div class="cover-r"></div>
-   <div class="cover-s">Числовая психология и Ба-цзы &middot; ${today}</div>
+   <div class="cover-s"><span class="cover-sys">Числовая психология и Ба-цзы &middot; </span>${today}</div>
    <div class="cover-c">${cons}${tag?"<br><span>"+tag+"</span>":""}</div>
   </div>`;
 
@@ -7989,7 +8261,7 @@ function collectData(){
     qtext:g("qtext"),qtopic:g("qtopic"),evkey:g("evkey"),evfrom:g("evfrom"),evto:g("evto"),
     namecand:g("namecand"),ymonth:g("ymonth"),
     events:Array.from(document.querySelectorAll(".erow")).map(r=>({y:r.querySelector(".ey").value,k:r.querySelector(".ek").value})),
-    bsol:c("bsol"),bhistchk:c("bhistchk"),cclean:c("cclean"),
+    bsol:c("bsol"),bhistchk:c("bhistchk"),cfmt:g("cfmt"),
     yfrom:g("yfrom"),yto:g("yto"),cpseudo:g("cpseudo"),ctag:g("ctag"),ccontact:g("ccontact"),cprice:g("cprice"),people:people,
     picked:Array.from(document.querySelectorAll(".picksec")).filter(c=>c.checked).map(c=>c.id.replace("sel_","")),
     extra:window.ANKETA_EXTRA||null,
@@ -8031,7 +8303,7 @@ function applyCalc(D){
 
     ["f","i","o","d","a","p2d","bt","bs","btz","blon","bcity","yfrom","yto","cpseudo","ctag","ccontact","cprice",
      "qtext","qtopic","evkey","evfrom","evto","namecand","ymonth"].forEach(k=>set(k,D[k]));
-    chk("bsol",D.bsol);chk("bhistchk",D.bhistchk);chk("cclean",D.cclean===undefined?true:D.cclean);
+    chk("bsol",D.bsol);chk("bhistchk",D.bhistchk);set("cfmt",D.cfmt||(D.cclean===false?"full":"match"));
 
     /* вопросы опросника */
     const ql=document.getElementById("qlist");
