@@ -83,15 +83,15 @@ object TutorRoutes {
 }
 
 /** Озвучка слов (английский голос телефона). */
-class Speaker(ctx: android.content.Context) {
+class Speaker(ctx: android.content.Context) : TextToSpeech.OnInitListener {
     private var ready = false
-    private val tts = TextToSpeech(ctx.applicationContext) { st ->
-        ready = st == TextToSpeech.SUCCESS
-        if (ready) runCatching { tts().language = Locale.US; tts().setSpeechRate(.9f) }
+    private val tts: TextToSpeech = TextToSpeech(ctx.applicationContext, this)
+    override fun onInit(status: Int) {
+        ready = status == TextToSpeech.SUCCESS
+        if (ready) runCatching { tts.language = Locale.US; tts.setSpeechRate(.9f) }
     }
-    private fun tts() = tts
     fun say(text: String) { if (ready) tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, text) }
-    fun close() = runCatching { tts.stop(); tts.shutdown() }
+    fun close() { runCatching { tts.stop(); tts.shutdown() } }
 }
 
 @Composable
