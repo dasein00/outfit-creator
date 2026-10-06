@@ -84,6 +84,7 @@ val HUB = listOf(
     Hub("habit/23", "Заметки", "страницы, статьи, картинки", Routes.NOTES),
     Hub("habit/01", "Фильмы, сериалы, книги", "коллекция и отзывы", Routes.topsHub(0)),
     Hub("ui:hanger", "Гардероб", "образы на манекене", Routes.WARDROBE),
+    Hub("tutor/00", "Репетитор", "английский: слова на каждый день, тренировки, повторение", com.dasein.poryadok.ui.tutor.TutorRoutes.HOME),
     Hub("minimal/04", "Рукоделие", "алмазная мозаика, вышивка, бисер — схема из любого фото", Routes.CRAFT),
     Hub("ui:people", "Small Talks", "факты, истории и вопросы для разговора", Routes.SMALL_TALK),
     Hub("ui:wheel", "Колесо баланса", "8 сфер жизни", Routes.WHEEL),

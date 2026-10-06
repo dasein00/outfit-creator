@@ -136,7 +136,7 @@ fun Poster(item: MediaItem, width: Dp, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun UrlImage(url: String, width: Dp) {
+fun UrlImage(url: String, width: Dp) {
     val bmp by produceState<android.graphics.Bitmap?>(null, url) { value = MediaSearch.thumb(url) }
     Box(Modifier.width(width).aspectRatio(2f / 3f).clip(RoundedCornerShape(8.dp)).background(LocalExtra.current.cardHigh)) {
         bmp?.let { Image(it.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }

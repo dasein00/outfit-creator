@@ -214,6 +214,8 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                     }
                     "weather" -> item(key = "weather") { com.dasein.poryadok.ui.weather.WeatherTile(nav) }
                     "holiday" -> item(key = "holiday") { com.dasein.poryadok.ui.calendar.HolidayBanner(nav) }
+                    "tutor" -> item(key = "tutor") { Gap(10.dp); com.dasein.poryadok.ui.tutor.HomeWordCard(nav) }
+                    "history" -> item(key = "history") { Gap(10.dp); com.dasein.poryadok.ui.calendar.HomeHistoryCard(nav) }
                     "rings" -> item(key = "rings") {
                         Gap(14.dp)
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

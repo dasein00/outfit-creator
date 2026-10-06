@@ -23,6 +23,8 @@ object HomeLayout {
         Block("weight", "Вес за неделю", "sport/11", "График веса и изменение"),
         Block("weather", "Погода", "ui:sun", "Сейчас и прогноз"),
         Block("holiday", "Праздники", "ui:gift", "Ближайший праздник"),
+        Block("tutor", "Слово дня (английский)", "tutor/00", "Слово, перевод, пример с переводом и озвучка"),
+        Block("history", "В этот день в истории", "cal/23", "Событие дня с подробным контекстом"),
         Block("rings", "Задачи, привычки, вода", "ui:check", "Три кольца прогресса дня"),
         Block("metrics", "Показатели дня", "analytics/00", "Сон, питание, тренировки, траты"),
         Block("health", "Здоровье: главное", "pressure/01", "Давление, пульс, сон, шаги, вода, вес — с инфографикой", SIZES3),
@@ -39,7 +41,7 @@ object HomeLayout {
     )
 
     val DEFAULT = listOf(
-        "activity", "weight", "greeting", "weather", "holiday", "rings", "metrics", "health", "pressure",
+        "activity", "weight", "greeting", "weather", "holiday", "tutor", "history", "rings", "metrics", "health", "pressure",
         "tasks", "habits", "calendar", "wellbeing", "menu", "money", "goals", "talk", "quote",
     ).map { Entry(it, CATALOG.first { b -> b.id == it }.defaultSize) }
 
@@ -62,7 +64,26 @@ object HomeLayout {
     fun encode(l: List<Entry>) = l.joinToString(";") { "${it.id}|${it.size}" }
 
     /** Текущая раскладка; экраны перерисовываются при изменении. */
-    val state = mutableStateOf(decode(sp()?.getString(KEY, null)) ?: DEFAULT)
+    /** Новые плашки, которые появились после того, как раскладку уже настроили, — вставляются после «Праздников» один раз. */
+    private val ADDED = listOf(2 to listOf("tutor", "history"))
+    private const val VERSION_KEY = "home_layout_v"
+
+    fun migrate(saved: List<Entry>, version: Int): List<Entry> {
+        var l = saved
+        ADDED.filter { it.first > version }.forEach { (_, ids) ->
+            val missing = ids.filter { id -> l.none { it.id == id } }.map { Entry(it, block(it)?.defaultSize ?: 1) }
+            if (missing.isEmpty()) return@forEach
+            val at = l.indexOfFirst { it.id == "holiday" }.let { if (it >= 0) it + 1 else l.indexOfFirst { e -> e.id == "weather" }.let { w -> if (w >= 0) w + 1 else 0 } }
+            l = l.take(at) + missing + l.drop(at)
+        }
+        return l
+    }
+
+    val state = mutableStateOf(
+        (decode(sp()?.getString(KEY, null))?.let { migrate(it, sp()?.getInt(VERSION_KEY, 1) ?: 1) } ?: DEFAULT).also {
+            sp()?.edit()?.putInt(VERSION_KEY, ADDED.maxOf { a -> a.first })?.putString(KEY, encode(it))?.apply()
+        },
+    )
     private val history = ArrayDeque<List<Entry>>()
     val canUndo = mutableStateOf(false)
 
