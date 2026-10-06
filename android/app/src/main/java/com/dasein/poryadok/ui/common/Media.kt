@@ -7,7 +7,24 @@ import android.net.Uri
 import android.os.Build
 import android.webkit.MimeTypeMap
 import android.widget.ImageView
+import android.widget.MediaController
 import android.widget.VideoView
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -93,4 +110,47 @@ fun MediaView(path: String, modifier: Modifier = Modifier, crop: Boolean = false
             }
         }
     }
+}
+
+/**
+ * Видео со звуком: не стартует само, касание показывает кнопки плеера (пуск, пауза, перемотка),
+ * «⛶» открывает ролик на весь экран.
+ */
+@Composable
+fun VideoPlayer(path: String, modifier: Modifier = Modifier) {
+    var full by remember { mutableStateOf(false) }
+    Box(modifier.background(Color.Black)) {
+        AndroidView(
+            factory = { c -> playerView(c, path, autoplay = false) },
+            onRelease = { it.stopPlayback() },
+            modifier = Modifier.fillMaxSize(),
+        )
+        Text(
+            "⛶", color = Color.White, fontSize = 18.sp,
+            modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).clip(RoundedCornerShape(10.dp))
+                .background(Color.Black.copy(alpha = .55f)).clickable { full = true }.padding(horizontal = 9.dp, vertical = 2.dp),
+        )
+    }
+    if (full) Dialog(onDismissRequest = { full = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxSize().background(Color.Black)) {
+            AndroidView(
+                factory = { c -> playerView(c, path, autoplay = true) },
+                onRelease = { it.stopPlayback() },
+                modifier = Modifier.align(Alignment.Center).fillMaxWidth(),
+            )
+            Text(
+                "✕", color = Color.White, fontSize = 22.sp,
+                modifier = Modifier.align(Alignment.TopEnd).padding(14.dp).clip(RoundedCornerShape(12.dp))
+                    .background(Color.Black.copy(alpha = .55f)).clickable { full = false }.padding(horizontal = 12.dp, vertical = 4.dp),
+            )
+        }
+    }
+}
+
+private fun playerView(c: Context, path: String, autoplay: Boolean) = VideoView(c).apply {
+    val mc = MediaController(c)
+    mc.setAnchorView(this)
+    setMediaController(mc)
+    setVideoPath(path)
+    setOnPreparedListener { mp -> mp.setVolume(1f, 1f); if (autoplay) { start(); mc.show(2500) } else seekTo(1) }
 }

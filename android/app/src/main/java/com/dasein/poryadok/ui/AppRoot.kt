@@ -337,6 +337,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable(Routes.CRAFT_STASH) { com.dasein.poryadok.ui.craft.CraftStashScreen(nav) }
             composable(com.dasein.poryadok.ui.tutor.TutorRoutes.HOME) { com.dasein.poryadok.ui.tutor.TutorHomeScreen(nav) }
             composable(com.dasein.poryadok.ui.tutor.TutorRoutes.WORDS) { com.dasein.poryadok.ui.tutor.TutorWordsScreen(nav) }
+            composable(com.dasein.poryadok.ui.tutor.TutorRoutes.DICT) { com.dasein.poryadok.ui.tutor.TutorDictScreen(nav) }
             composable(
                 "tutorSession?mode={mode}&topic={topic}",
                 arguments = listOf(navArgument("mode") { type = NavType.StringType; defaultValue = "learn" }, navArgument("topic") { type = NavType.StringType; defaultValue = "" }),

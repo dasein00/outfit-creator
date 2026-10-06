@@ -2,9 +2,7 @@ package com.dasein.poryadok.ui.recipes
 
 import android.content.Intent
 import android.net.Uri
-import android.widget.MediaController
 import android.widget.Toast
-import android.widget.VideoView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -33,7 +31,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import com.dasein.poryadok.Graph
 import com.dasein.poryadok.data.Recipe
 import com.dasein.poryadok.ui.common.ConfirmDialog
@@ -172,21 +169,6 @@ fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolea
     }
 }
 
-/** Проигрыватель локального файла: не стартует сам, внизу стандартные кнопки. */
+/** Проигрыватель локального файла: со звуком, не стартует сам, внизу стандартные кнопки, можно на весь экран. */
 @Composable
-private fun LocalVideo(path: String, modifier: Modifier) {
-    AndroidView(
-        factory = { c ->
-            VideoView(c).apply {
-                val mc = MediaController(c)
-                mc.setAnchorView(this)
-                setMediaController(mc)
-                setVideoPath(path)
-                setOnPreparedListener { seekTo(1) }
-                setOnClickListener { if (isPlaying) pause() else start() }
-            }
-        },
-        onRelease = { it.stopPlayback() },
-        modifier = modifier,
-    )
-}
+private fun LocalVideo(path: String, modifier: Modifier) = com.dasein.poryadok.ui.common.VideoPlayer(path, modifier)

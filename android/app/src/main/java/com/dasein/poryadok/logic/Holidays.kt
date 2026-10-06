@@ -29,7 +29,7 @@ object HolidayCats {
     )
     /** Цвет категории (ARGB). */
     val colors = mapOf(
-        "ru" to 0xFFD25B4BL, "prof" to 0xFF5B8DD2L, "intl" to 0xFF4BA38CL, "odd" to 0xFFE0B23CL, "am" to 0xFFE08A3CL,
+        "ru" to 0xFFD25B4BL, "prof" to 0xFF5B8DD2L, "intl" to 0xFF4BA38CL, "odd" to 0xFF9B6BD6L, "am" to 0xFFE08A3CL,
         "orth" to 0xFFC7A46AL, "arm" to 0xFFB06FC4L, "folk" to 0xFF8CC46EL, "my" to 0xFFE06A9AL,
     )
 }
@@ -82,8 +82,10 @@ object HolidayRules {
                 val dow = DayOfWeek.of(parts[2].toInt())
                 val n = parts[3].toInt()
                 val first = LocalDate.of(year, month, 1)
-                if (n > 0) first.with(TemporalAdjusters.dayOfWeekInMonth(n, dow)).takeIf { it.monthValue == month }
-                else first.with(TemporalAdjusters.lastInMonth(dow))
+                // Пятая часть — сдвиг в днях (Чёрная пятница — день после четвёртого четверга ноября).
+                val shift = parts.getOrNull(4)?.toLong() ?: 0L
+                (if (n > 0) first.with(TemporalAdjusters.dayOfWeekInMonth(n, dow)).takeIf { it.monthValue == month }
+                else first.with(TemporalAdjusters.lastInMonth(dow)))?.plusDays(shift)
             }
             "near" -> {
                 val (m, d) = md(parts[1])
@@ -126,9 +128,16 @@ object HolidayRules {
                     else -> mapOf(1 to "первый", 2 to "второй", 3 to "третий", 4 to "четвёртый", -1 to "последний")
                 }
                 val monthsNom = listOf("января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря")
-                "Каждый год в ${ord[n] ?: ""} ${dows[wd - 1]} ${monthsNom[p[1].toInt() - 1]}"
+                val base = "${ord[n] ?: ""} ${dows[wd - 1]} ${monthsNom[p[1].toInt() - 1]}"
+                when (val shift = p.getOrNull(4)?.toIntOrNull() ?: 0) {
+                    0 -> "Каждый год в $base"
+                    1 -> "Каждый год: следующий день после того, как наступит $base"
+                    else -> "Каждый год: ${shift} дн. после — $base"
+                }
             }
-            "near" -> "Воскресенье, ближайшее к ${mdText(p[1])}"
+            "near" -> listOf("Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье")[(p.getOrNull(2)?.toIntOrNull() ?: 7) - 1].let { d ->
+                "$d, ближайш${if (d in setOf("Среда", "Пятница", "Суббота")) "ая" else if (d == "Воскресенье") "ее" else "ий"} к ${mdText(p[1])}"
+            }
             "before" -> "Суббота перед ${mdText(p[1])}"
             "doy" -> "${p[1]}-й день года"
             else -> ""

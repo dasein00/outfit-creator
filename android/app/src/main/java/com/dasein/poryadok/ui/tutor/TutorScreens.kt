@@ -79,19 +79,47 @@ import kotlin.random.Random
 object TutorRoutes {
     const val HOME = "tutor"
     const val WORDS = "tutorWords"
+    const val DICT = "tutorDict"
     fun session(mode: String, topic: String = "") = "tutorSession?mode=$mode&topic=$topic"
 }
 
-/** Озвучка слов (английский голос телефона). */
+/**
+ * Озвучка слов голосом телефона. Предпочитает английский голос, установленный на телефон, —
+ * тогда произношение работает без интернета.
+ */
 class Speaker(ctx: android.content.Context) : TextToSpeech.OnInitListener {
     private var ready = false
     private val tts: TextToSpeech = TextToSpeech(ctx.applicationContext, this)
+    /** null — ещё проверяем; true — английский голос есть на телефоне; false — голоса нет или нужен интернет. */
+    val offline = mutableStateOf<Boolean?>(null)
     override fun onInit(status: Int) {
         ready = status == TextToSpeech.SUCCESS
-        if (ready) runCatching { tts.language = Locale.US; tts.setSpeechRate(.9f) }
+        if (!ready) { offline.value = false; return }
+        runCatching {
+            tts.language = Locale.US
+            tts.setSpeechRate(.9f)
+            val local = tts.voices.orEmpty().filter { v ->
+                v.locale.language == "en" && !v.isNetworkConnectionRequired &&
+                    TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED !in v.features.orEmpty()
+            }
+            val best = local.sortedWith(compareBy<android.speech.tts.Voice>({ v -> when (v.locale.country) { "US" -> 0; "GB" -> 1; else -> 2 } }, { v -> -v.quality })).firstOrNull()
+            if (best != null) tts.voice = best
+            offline.value = best != null
+        }.onFailure { offline.value = false }
     }
     fun say(text: String) { if (ready) tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, text) }
     fun close() { runCatching { tts.stop(); tts.shutdown() } }
+
+    companion object {
+        /** Открывает установку голосовых данных (английский для работы без интернета). */
+        fun installVoice(ctx: android.content.Context) {
+            val intents = listOf(
+                android.content.Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA),
+                android.content.Intent("com.android.settings.TTS_SETTINGS"),
+            )
+            intents.firstOrNull { i -> runCatching { ctx.startActivity(i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess }
+        }
+    }
 }
 
 @Composable
@@ -103,7 +131,7 @@ fun rememberSpeaker(): Speaker {
 }
 
 @Composable
-private fun SpeakButton(sp: Speaker, text: String, size: Int = 36) {
+internal fun SpeakButton(sp: Speaker, text: String, size: Int = 36) {
     Box(
         Modifier.size(size.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = .15f)).clickable { sp.say(text) },
         contentAlignment = Alignment.Center,
@@ -126,7 +154,8 @@ fun TutorHomeScreen(nav: NavHostController) {
     val streak = Tutor.streak(s.goalDays.toSet(), today)
     var settings by remember { mutableStateOf(!s.onboarded) }
     Screen("Репетитор", onBack = { nav.popBackStack() }, actions = {
-        IconAction("tutor/05", "Словарь") { nav.navigate(TutorRoutes.WORDS) }
+        IconAction("tutor/01", "Большой словарь") { nav.navigate(TutorRoutes.DICT) }
+        IconAction("tutor/05", "Мои слова") { nav.navigate(TutorRoutes.WORDS) }
         IconAction("ui:sliders", "Настройки") { settings = true }
     }) { pad ->
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {

@@ -11,6 +11,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -81,7 +82,9 @@ import com.dasein.poryadok.ui.common.GlyphField
 import com.dasein.poryadok.ui.common.HGap
 import com.dasein.poryadok.ui.common.Hint
 import com.dasein.poryadok.ui.common.LineChart
+import com.dasein.poryadok.ui.common.Media
 import com.dasein.poryadok.ui.common.MediaView
+import com.dasein.poryadok.ui.common.VideoPlayer
 import com.dasein.poryadok.ui.common.MoodFace
 import com.dasein.poryadok.ui.common.NumberField
 import com.dasein.poryadok.ui.common.Pill
@@ -517,10 +520,11 @@ fun ExerciseScreen(nav: NavHostController, id: Long) {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(media) { m ->
                         Box {
-                            MediaView(m, Modifier.size(220.dp).clip(RoundedCornerShape(14.dp)).background(extra.card), crop = false)
+                            if (Media.isVideo(m)) VideoPlayer(m, Modifier.size(260.dp, 220.dp).clip(RoundedCornerShape(14.dp)))
+                            else MediaView(m, Modifier.size(220.dp).clip(RoundedCornerShape(14.dp)).background(extra.card), crop = false)
                             Text(
                                 "✕", fontSize = 14.sp,
-                                modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).clip(RoundedCornerShape(12.dp)).background(extra.card)
+                                modifier = Modifier.align(Alignment.TopStart).padding(6.dp).clip(RoundedCornerShape(12.dp)).background(extra.card)
                                     .clickable { e = ex.copy(media = media.filter { it != m }.joinToString("\n")) }.padding(horizontal = 8.dp, vertical = 2.dp),
                             )
                         }
@@ -528,7 +532,7 @@ fun ExerciseScreen(nav: NavHostController, id: Long) {
                 }
                 Gap(8.dp)
             }
-            OutlinedButton(onClick = { addMedia() }) { Text("+ Фото, GIF или видео техники") }
+            OutlinedButton(onClick = { addMedia() }) { Text("+ Фото, GIF или видео техники (со звуком)") }
             Gap(8.dp)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 GlyphField(ex.glyph, { g -> e = ex.copy(glyph = g) })
@@ -669,6 +673,8 @@ fun SessionScreen(nav: NavHostController, id: Long) {
                     val pe = list.firstNotNullOfOrNull { it.planExerciseId }?.let { pid -> planEx.firstOrNull { it.id == pid } }
                     val prev = allSets.filter { it.exerciseId == exId && it.sessionId != id && it.done }
                         .groupBy { it.sessionId }.maxByOrNull { (sid, _) -> sessions.firstOrNull { it.id == sid }?.startedAt ?: 0 }?.value
+                    val video = e?.media?.lines()?.firstOrNull { it.isNotBlank() && Media.isVideo(it) }
+                    var showVideo by remember(exId) { mutableStateOf(false) }
                     Tile(padding = 12.dp) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { nav.navigate(Routes.exercise(exId)) }) {
                             val first = e?.media?.lines()?.firstOrNull { it.isNotBlank() }
@@ -684,6 +690,14 @@ fun SessionScreen(nav: NavHostController, id: Long) {
                                     fontSize = 12.sp, color = extra.dim,
                                 )
                             }
+                            if (video != null) Text(
+                                if (showVideo) "Скрыть" else "▶ Видео", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { showVideo = !showVideo }.padding(horizontal = 8.dp, vertical = 4.dp),
+                            )
+                        }
+                        if (showVideo && video != null) {
+                            Gap(6.dp)
+                            VideoPlayer(video, Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(12.dp)))
                         }
                         Gap(6.dp)
                         Row(Modifier.fillMaxWidth()) {

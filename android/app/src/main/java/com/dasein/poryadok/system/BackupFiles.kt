@@ -50,14 +50,14 @@ data class BackupPrefs(
 object BackupFiles {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     /** Безопасные пути внутри архива: «папка/файл», без «..». */
-    private val SAFE_ENTRY = Regex("^[a-z_]+/[A-Za-z0-9_.\\-]+$")
+    private val SAFE_ENTRY = Regex("^[a-z_]+/([a-z_]+/)?[A-Za-z0-9_.\\-]+$")
     private val SKIP_DIRS = setOf("datastore", "profileInstalled")
     private val SHARED = listOf("widget", "ui_state")
 
-    /** Папки с файлами пользователя и их файлы. */
+    /** Папки с файлами пользователя и их файлы (вместе с одной вложенной папкой, например recipes/video). */
     private fun userDirs(ctx: Context): Map<String, List<File>> =
         ctx.filesDir.listFiles().orEmpty().filter { it.isDirectory && it.name !in SKIP_DIRS && !it.name.startsWith(".") }
-            .associate { d -> d.name to d.listFiles().orEmpty().filter { it.isFile } }
+            .associate { d -> d.name to d.walkTopDown().maxDepth(2).filter { it.isFile && SAFE_ENTRY.matches(d.name + "/" + it.relativeTo(d).invariantSeparatorsPath) }.toList() }
 
     /** Сколько записей и файлов в каждом разделе сейчас на телефоне. */
     suspend fun localSummary(ctx: Context): Map<BackupSection, Pair<Int, Int>> = withContext(Dispatchers.IO) {
@@ -124,7 +124,7 @@ object BackupFiles {
                 }
                 dirs.forEach { (dir, list) ->
                     list.forEach { f ->
-                        zip.putNextEntry(ZipEntry("$dir/${f.name}"))
+                        zip.putNextEntry(ZipEntry("$dir/${f.relativeTo(File(ctx.filesDir, dir)).invariantSeparatorsPath}"))
                         f.inputStream().use { it.copyTo(zip) }
                         zip.closeEntry()
                         files++; bytes += f.length()

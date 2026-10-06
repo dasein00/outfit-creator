@@ -466,6 +466,8 @@ private fun Mine(nav: NavHostController, book: RecipeBook) {
     LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp)) {
         item {
             Button(onClick = { nav.navigate(Routes.recipeEdit(0)) }, Modifier.fillMaxWidth()) { Text("+ Добавить рецепт") }
+            Gap(8.dp)
+            RecipeShareButtons(list)
             Gap(10.dp)
         }
         if (list.isEmpty()) item {
@@ -489,12 +491,15 @@ internal fun CenterNote(text: String) {
 @Composable
 private fun RecipeQuickMenu(nav: NavHostController, r: Recipe, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
+    var share by remember { mutableStateOf(false) }
+    if (share) { ShareRecipesDialog(listOf(r), setOf(r.id)) { share = false; onDismiss() }; return }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(r.name) },
         text = {
             Column {
                 TextButton(onClick = { onDismiss(); nav.navigate(Routes.recipe(r.id)) }, Modifier.fillMaxWidth()) { Text("Открыть рецепт") }
+                TextButton(onClick = { share = true }, Modifier.fillMaxWidth()) { Text("Поделиться рецептом (файл)") }
                 TextButton(onClick = { io { Graph.extra.setFavorite(r.id, !r.favorite) }; onDismiss() }, Modifier.fillMaxWidth()) {
                     Text(if (r.favorite) "Убрать из избранного" else "В избранное")
                 }
