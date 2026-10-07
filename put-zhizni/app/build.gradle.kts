@@ -51,4 +51,5 @@ android {
 dependencies {
     implementation("androidx.health.connect:connect-client:1.1.0-alpha07")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("com.google.mlkit:translate:17.0.3")
 }

@@ -284,6 +284,16 @@ class Bridge(private val act: MainActivity) {
         try { act.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + act.packageName))) } catch (_: Exception) {}
     }
 
+    // ---------- Репетитор: произношение и перевод фраз ----------
+
+    @JavascriptInterface fun speak(text: String, lang: String, rate: Float) = Speech.speak(act, text, lang, rate)
+    @JavascriptInterface fun ttsCheck(lang: String): Int = try { Speech.check(act, lang) } catch (e: Exception) { -2 }
+    @JavascriptInterface fun ttsInstall() = act.runOnUiThread { Speech.installVoices(act) }
+    @JavascriptInterface fun mtTranslate(text: String, from: String, to: String, allowDownload: Boolean) {
+        act.runOnUiThread { OnDeviceTranslate.translate(text, from, to, allowDownload) { callback("mt", it) } }
+    }
+    @JavascriptInterface fun mtModels() { act.runOnUiThread { OnDeviceTranslate.modelsJson { callback("mtModels", it) } } }
+
     // ---------- Сон по использованию телефона ----------
 
     @JavascriptInterface fun usageAllowed(): Boolean = SleepDetector.allowed(act)
