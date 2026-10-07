@@ -113,7 +113,19 @@ fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolea
                 Text("Файл видео не найден", color = extra.dim)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Видео ${i + 1}", fontSize = 12.sp, color = extra.dim, modifier = Modifier.weight(1f))
+                val size = if (RecipeVideos.isLink(v)) 0L else File(v).length()
+                Text(
+                    "Видео ${i + 1}" + if (size > 0) " · ${com.dasein.poryadok.system.VideoCompress.mb(size)}" else "",
+                    fontSize = 12.sp, color = extra.dim, modifier = Modifier.weight(1f),
+                )
+                if (size > 8L * 1024 * 1024) com.dasein.poryadok.ui.common.CompressVideoButton(v) { new ->
+                    save(videos.map { if (it == v) new else it })
+                    // Тот же файл мог быть прикреплён к копии рецепта — обновляем путь и там.
+                    io {
+                        Graph.extra.recipesNow().filter { it.id != recipeId && v in RecipeVideos.list(it) }
+                            .forEach { r -> Graph.extra.setVideos(r.id, RecipeVideos.list(r).map { x -> if (x == v) new else x }.joinToString("\n")) }
+                    }
+                }
                 TextButton(onClick = { remove = v }) { Text("Убрать", color = extra.danger) }
             }
         }

@@ -1,15 +1,11 @@
-@file:OptIn(ExperimentalLayoutApi::class)
-
 package com.dasein.poryadok.ui.recipes
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -81,31 +77,33 @@ fun FridgeSheet(
         swipeToClose = false,
         onApply = { onApply(cur) },
     ) {
+        var help by remember { mutableStateOf(false) }
         Text(
-            "Выберите, что отмечаете, и нажимайте на продукты. Основной — блюдо обязательно с ним. " +
-                "Есть — что лежит дома: покажутся все блюда, где есть хотя бы один из этих продуктов, сначала те, для которых всё есть. " +
-                "Нет — блюда, где есть хотя бы один такой продукт, не покажутся. Закрыть — крестиком.",
-            fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
+            if (help) "Основной — блюдо обязательно с ним. Есть — что лежит дома: покажутся все блюда, где есть хотя бы один из этих продуктов, " +
+                "сначала те, для которых всё есть. Нет — блюда, где есть хотя бы один такой продукт, не покажутся. Закрыть — крестиком."
+            else "Выберите режим и нажимайте на продукты.  ⓘ Подробнее",
+            fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp, modifier = Modifier.clickable { help = !help },
         )
-        Gap(10.dp)
+        Gap(8.dp)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             MODES.forEachIndexed { i, m -> Pill(m, mode == i) { mode = i } }
         }
         if (!cur.isEmpty) {
-            Gap(10.dp)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                main.sorted().forEach { n -> Pill("★ $n  ✕", true) { main -= n } }
-                have.sorted().forEach { n -> Pill("✓ $n  ✕", false) { have -= n } }
-                missing.sorted().forEach { n -> Pill("✕ $n", false) { missing -= n } }
+            Gap(8.dp)
+            // Выбранное — одной строкой с прокруткой вбок, чтобы список продуктов не уезжал вниз.
+            Text(
+                listOfNotNull(
+                    main.size.takeIf { it > 0 }?.let { "★ $it" }, have.size.takeIf { it > 0 }?.let { "✓ $it" }, missing.size.takeIf { it > 0 }?.let { "✕ $it" },
+                ).joinToString("   ") + "  — нажмите, чтобы убрать",
+                fontSize = 12.sp, color = extra.dim,
+            )
+            androidx.compose.foundation.lazy.LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            ) {
+                items(main.sorted()) { n -> Pill("★ $n  ✕", true) { main -= n } }
+                items(have.sorted()) { n -> Pill("✓ $n  ✕", false) { have -= n } }
+                items(missing.sorted()) { n -> Pill("✕ $n", false) { missing -= n } }
             }
-        }
-        Gap(8.dp)
-        Row(Modifier.fillMaxWidth().clickable { onlyHave = !onlyHave }, verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("Только если всё есть", fontSize = 15.sp)
-                Text("Соль, вода, сахар, масло и специи считаются имеющимися", fontSize = 12.sp, color = extra.dim)
-            }
-            Switch(onlyHave, { onlyHave = it })
         }
         Gap(8.dp)
         OutlinedTextField(
@@ -115,7 +113,7 @@ fun FridgeSheet(
         )
         val nq = Fridge.norm(q)
         val shown = products.filter { nq.isEmpty() || nq in Fridge.norm(it.first) }
-        LazyColumn(Modifier.heightIn(max = 300.dp).padding(top = 4.dp)) {
+        LazyColumn(Modifier.height(340.dp).padding(top = 4.dp)) {
             items(shown, key = { it.first }) { (name, n) ->
                 val mark = when (name) { in main -> "★"; in have -> "✓"; in missing -> "✕"; else -> "" }
                 Row(
@@ -131,6 +129,14 @@ fun FridgeSheet(
                 }
             }
             if (shown.isEmpty()) item { Text("Такого продукта нет в рецептах", color = extra.dim, modifier = Modifier.padding(vertical = 12.dp)) }
+        }
+        Gap(4.dp)
+        Row(Modifier.fillMaxWidth().clickable { onlyHave = !onlyHave }, verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Только если всё есть", fontSize = 15.sp)
+                Text("Соль, вода, сахар, масло и специи считаются имеющимися", fontSize = 12.sp, color = extra.dim)
+            }
+            Switch(onlyHave, { onlyHave = it })
         }
     }
 }

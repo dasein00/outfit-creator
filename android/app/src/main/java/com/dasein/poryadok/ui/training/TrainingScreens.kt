@@ -520,6 +520,7 @@ fun ExerciseScreen(nav: NavHostController, id: Long) {
             if (media.isNotEmpty()) {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(media) { m ->
+                        Column {
                         Box {
                             if (Media.isVideo(m)) VideoPlayer(m, Modifier.size(260.dp, 220.dp).clip(RoundedCornerShape(14.dp)))
                             else MediaView(m, Modifier.size(220.dp).clip(RoundedCornerShape(14.dp)).background(extra.card), crop = false)
@@ -528,6 +529,13 @@ fun ExerciseScreen(nav: NavHostController, id: Long) {
                                 modifier = Modifier.align(Alignment.TopStart).padding(6.dp).clip(RoundedCornerShape(12.dp)).background(extra.card)
                                     .clickable { e = ex.copy(media = media.filter { it != m }.joinToString("\n")) }.padding(horizontal = 8.dp, vertical = 2.dp),
                             )
+                        }
+                        if (Media.isVideo(m) && java.io.File(m).length() > 8L * 1024 * 1024) com.dasein.poryadok.ui.common.CompressVideoButton(m) { new ->
+                            val upd = ex.copy(media = media.map { if (it == m) new else it }.joinToString("\n"))
+                            e = upd
+                            // Исходный файл уже удалён — сразу сохраняем новый путь.
+                            if (id != 0L) io { t.upsertExercise(upd) }
+                        }
                         }
                     }
                 }

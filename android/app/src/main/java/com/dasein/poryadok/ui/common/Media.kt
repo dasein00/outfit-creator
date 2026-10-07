@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
@@ -91,6 +92,7 @@ object Media {
 fun VideoAddButtons(dir: String, onPicked: (String) -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf<String?>(null) }
     fun take(uri: Uri?) {
         if (uri == null) return
         scope.launch {
@@ -98,13 +100,36 @@ fun VideoAddButtons(dir: String, onPicked: (String) -> Unit) {
                 android.widget.Toast.makeText(ctx, "Это не видео. Подходят mp4, mov, 3gp, webm, mkv, avi", android.widget.Toast.LENGTH_LONG).show()
                 return@launch
             }
-            android.widget.Toast.makeText(ctx, "Копирую видео…", android.widget.Toast.LENGTH_SHORT).show()
-            val path = Media.importRaw(ctx, uri, dir)
-            if (path == null) android.widget.Toast.makeText(ctx, "Не удалось добавить видео", android.widget.Toast.LENGTH_SHORT).show() else onPicked(path)
+            busy = "Копирую видео…"
+            var path = Media.importRaw(ctx, uri, dir)
+            if (path == null) {
+                busy = null
+                android.widget.Toast.makeText(ctx, "Не удалось добавить видео", android.widget.Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            // Сжимаем: 480p и около 1 Мбит/с — звук и картинка остаются, места занимает в разы меньше.
+            if (withContext(Dispatchers.IO) { com.dasein.poryadok.system.VideoCompress.worth(path!!) }) {
+                val before = File(path!!).length()
+                busy = "Сжимаю видео (${com.dasein.poryadok.system.VideoCompress.mb(before)})… Не закрывайте экран"
+                path = com.dasein.poryadok.system.VideoCompress.replace(ctx, path!!)
+                val after = File(path!!).length()
+                if (after < before) android.widget.Toast.makeText(
+                    ctx, "Видео сжато: ${com.dasein.poryadok.system.VideoCompress.mb(before)} → ${com.dasein.poryadok.system.VideoCompress.mb(after)}", android.widget.Toast.LENGTH_LONG,
+                ).show()
+            }
+            busy = null
+            onPicked(path!!)
         }
     }
     val gallery = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { take(it) }
     val files = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { take(it) }
+    busy?.let { msg ->
+        androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 6.dp)) {
+            androidx.compose.material3.CircularProgressIndicator(Modifier.padding(end = 10.dp).size(20.dp), strokeWidth = 2.dp)
+            Text(msg, fontSize = 13.sp)
+        }
+        return
+    }
     androidx.compose.foundation.layout.Row {
         androidx.compose.material3.OutlinedButton(
             onClick = { gallery.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)) },
@@ -208,4 +233,28 @@ private fun playerView(c: Context, path: String, autoplay: Boolean) = VideoView(
     setMediaController(mc)
     setVideoPath(path)
     setOnPreparedListener { mp -> mp.setVolume(1f, 1f); if (autoplay) { start(); mc.show(2500) } else seekTo(1) }
+}
+
+/** Кнопка «Сжать» для уже добавленного видео: перекодирует в 480p и заменяет файл. */
+@Composable
+fun CompressVideoButton(path: String, onDone: (String) -> Unit) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var busy by remember(path) { mutableStateOf(false) }
+    if (busy) {
+        Text("Сжимаю…", fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp))
+        return
+    }
+    androidx.compose.material3.TextButton(onClick = {
+        busy = true
+        scope.launch {
+            val before = File(path).length()
+            val out = com.dasein.poryadok.system.VideoCompress.replace(ctx, path)
+            busy = false
+            if (out != path) {
+                onDone(out)
+                android.widget.Toast.makeText(ctx, "Видео сжато: ${com.dasein.poryadok.system.VideoCompress.mb(before)} → ${com.dasein.poryadok.system.VideoCompress.mb(File(out).length())}", android.widget.Toast.LENGTH_LONG).show()
+            } else android.widget.Toast.makeText(ctx, "Это видео уже компактное или не сжимается", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }) { Text("Сжать") }
 }
