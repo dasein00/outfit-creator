@@ -22,9 +22,16 @@ object HistoryRepo {
     private fun cacheFile(ctx: Context, d: LocalDate) = File(File(ctx.cacheDir, "history").apply { mkdirs() }, "${md(d)}.json")
 
     /** Сначала то, что есть без сети; [online] — дополнить из Википедии (кэш на месяц). */
+    private val memo = java.util.concurrent.ConcurrentHashMap<LocalDate, List<HistoryDay.Event>>()
+
+    /** Уже загруженное за день — чтобы плашка при прокрутке сразу была нужной высоты, без рывков. */
+    fun cached(d: LocalDate): List<HistoryDay.Event>? = memo[d]
+
     suspend fun day(ctx: Context, d: LocalDate, online: Boolean = true): List<HistoryDay.Event> = withContext(Dispatchers.IO) {
         val own = builtIn(ctx)[md(d)].orEmpty()
-        HistoryDay.merge(own, wikiText(ctx, d, online)?.let { HistoryDay.parseWiki(it) }.orEmpty())
+        HistoryDay.merge(own, wikiText(ctx, d, online)?.let { HistoryDay.parseWiki(it) }.orEmpty()).also { r ->
+            if (r.size >= (memo[d]?.size ?: 0)) memo[d] = r
+        }
     }
 
     /** Ответ Википедии «В этот день» за дату (события, рождения): из кэша или из сети. Нужен и «Истории», и «Культуре». */
@@ -68,10 +75,14 @@ object CultureRepo {
         com.dasein.poryadok.logic.CultureDay.parseBuiltIn(ctx.assets.open("culture/culture.json").bufferedReader().use { it.readText() })
     }.getOrDefault(emptyMap()).also { builtIn = it }
 
+    private val memo = java.util.concurrent.ConcurrentHashMap<LocalDate, List<com.dasein.poryadok.logic.CultureDay.Item>>()
+
+    fun cached(d: LocalDate): List<com.dasein.poryadok.logic.CultureDay.Item>? = memo[d]
+
     suspend fun day(ctx: Context, d: LocalDate, online: Boolean = true): List<com.dasein.poryadok.logic.CultureDay.Item> = withContext(Dispatchers.IO) {
         com.dasein.poryadok.logic.CultureDay.merge(
             builtIn(ctx)[HistoryRepo.md(d)].orEmpty(),
             HistoryRepo.wikiText(ctx, d, online)?.let { com.dasein.poryadok.logic.CultureDay.parseWiki(it) }.orEmpty(),
-        )
+        ).also { r -> if (r.size >= (memo[d]?.size ?: 0)) memo[d] = r }
     }
 }

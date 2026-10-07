@@ -123,11 +123,12 @@ fun HomeHistoryCard(nav: NavHostController) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     val today = LocalDate.now()
-    var events by remember { mutableStateOf<List<HistoryDay.Event>>(emptyList()) }
+    var events by remember { mutableStateOf(HistoryRepo.cached(today).orEmpty()) }
     var idx by rememberSaveable { mutableIntStateOf(0) }
     LaunchedEffect(today) {
-        events = HistoryRepo.day(ctx, today, online = false)
-        events = HistoryRepo.day(ctx, today, online = true)
+        // Повторно (при прокрутке назад) — сразу из памяти, без «пустой» плашки и прыжка списка.
+        if (HistoryRepo.cached(today) == null) events = HistoryRepo.day(ctx, today, online = false)
+        events = HistoryRepo.day(ctx, today, online = true).takeIf { it.size >= events.size } ?: events
     }
     val list = events.ifEmpty { HistoryRepo.nearestBuiltIn(ctx, today)?.second.orEmpty() }
     if (list.isEmpty()) return

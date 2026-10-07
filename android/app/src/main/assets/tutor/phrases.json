@@ -874,6 +874,587 @@
 "Mind your step — the floor is wet.",
 "Осторожно — пол мокрый.",
 "phrase"
+],
+[
+"a dime a dozen",
+"пруд пруди, на каждом шагу",
+"Coffee shops here are a dime a dozen.",
+"Кофеен здесь пруд пруди.",
+"idiom"
+],
+[
+"against the clock",
+"наперегонки со временем, в спешке",
+"We worked against the clock to finish.",
+"Мы работали наперегонки со временем, чтобы успеть.",
+"idiom"
+],
+[
+"at the drop of a hat",
+"мгновенно, без раздумий",
+"He'd travel at the drop of a hat.",
+"Он готов отправиться в путь в любую минуту.",
+"idiom"
+],
+[
+"back to the drawing board",
+"начать всё заново",
+"The design failed — back to the drawing board.",
+"Проект провалился — начинаем заново.",
+"idiom"
+],
+[
+"barking up the wrong tree",
+"обращаться не по адресу, ошибаться",
+"If you think I took it, you're barking up the wrong tree.",
+"Если думаешь, что это взял я, ты ошибаешься.",
+"idiom"
+],
+[
+"beat the clock",
+"успеть в срок",
+"We beat the clock and handed it in on time.",
+"Мы успели и сдали вовремя.",
+"idiom"
+],
+[
+"bend over backwards",
+"из кожи вон лезть",
+"She bent over backwards to help us.",
+"Она из кожи вон лезла, чтобы нам помочь.",
+"idiom"
+],
+[
+"between a rock and a hard place",
+"между молотом и наковальней",
+"I'm between a rock and a hard place.",
+"Я между молотом и наковальней.",
+"idiom"
+],
+[
+"bite off more than you can chew",
+"взвалить на себя слишком много",
+"I bit off more than I could chew with three projects.",
+"Взяв три проекта, я взвалил на себя слишком много.",
+"idiom"
+],
+[
+"blow off steam",
+"выпустить пар",
+"I go running to blow off steam.",
+"Я бегаю, чтобы выпустить пар.",
+"idiom"
+],
+[
+"born with a silver spoon in your mouth",
+"родиться в рубашке, в богатой семье",
+"He was born with a silver spoon in his mouth.",
+"Он родился в богатой семье.",
+"idiom"
+],
+[
+"bury the hatchet",
+"зарыть топор войны, помириться",
+"After years of arguing they buried the hatchet.",
+"После многих лет ссор они помирились.",
+"idiom"
+],
+[
+"by the book",
+"строго по правилам",
+"She does everything by the book.",
+"Она всё делает строго по правилам.",
+"idiom"
+],
+[
+"call the shots",
+"командовать, принимать решения",
+"Who calls the shots in this team?",
+"Кто принимает решения в этой команде?",
+"idiom"
+],
+[
+"come rain or shine",
+"в любую погоду, что бы ни случилось",
+"I'll be there, come rain or shine.",
+"Я приду, что бы ни случилось.",
+"idiom"
+],
+[
+"cut someone some slack",
+"дать поблажку, не судить строго",
+"Cut him some slack — he's new.",
+"Не будь к нему строг — он новенький.",
+"idiom"
+],
+[
+"devil's advocate",
+"адвокат дьявола (спорить ради спора)",
+"Let me play devil's advocate for a moment.",
+"Позволь мне побыть адвокатом дьявола.",
+"idiom"
+],
+[
+"down to earth",
+"приземлённый, простой в общении",
+"Despite her fame, she's very down to earth.",
+"Несмотря на славу, она очень простая.",
+"idiom"
+],
+[
+"drive someone up the wall",
+"довести до белого каления",
+"That noise drives me up the wall.",
+"Этот шум доводит меня до белого каления.",
+"idiom"
+],
+[
+"face the music",
+"отвечать за последствия",
+"He broke the rules and now he has to face the music.",
+"Он нарушил правила и теперь должен отвечать.",
+"idiom"
+],
+[
+"feel blue",
+"грустить, хандрить",
+"I'm feeling a bit blue today.",
+"Мне сегодня грустно.",
+"idiom"
+],
+[
+"from scratch",
+"с нуля",
+"I baked the cake from scratch.",
+"Я испёк торт с нуля.",
+"idiom"
+],
+[
+"get the ball rolling",
+"начать дело, сдвинуть с места",
+"Let's get the ball rolling on this project.",
+"Давайте сдвинем проект с места.",
+"idiom"
+],
+[
+"give someone the cold shoulder",
+"холодно обойтись, игнорировать",
+"She gave me the cold shoulder at the party.",
+"На вечеринке она меня демонстративно игнорировала.",
+"idiom"
+],
+[
+"go with the flow",
+"плыть по течению",
+"Don't plan too much — just go with the flow.",
+"Не планируй слишком много — плыви по течению.",
+"idiom"
+],
+[
+"have a chip on your shoulder",
+"быть обиженным на весь мир",
+"He has a chip on his shoulder about his education.",
+"Он комплексует из-за своего образования.",
+"idiom"
+],
+[
+"hear it through the grapevine",
+"узнать по сарафанному радио",
+"I heard it through the grapevine that you're moving.",
+"Я слышал краем уха, что ты переезжаешь.",
+"idiom"
+],
+[
+"hit the road",
+"отправиться в путь",
+"It's late — time to hit the road.",
+"Поздно — пора в путь.",
+"idiom"
+],
+[
+"hold your horses",
+"не гони лошадей, погоди",
+"Hold your horses! We haven't decided yet.",
+"Погоди! Мы ещё не решили.",
+"idiom"
+],
+[
+"in a nutshell",
+"в двух словах",
+"In a nutshell, the plan worked.",
+"В двух словах — план сработал.",
+"idiom"
+],
+[
+"it takes two to tango",
+"в ссоре виноваты оба",
+"Don't blame only him — it takes two to tango.",
+"Не вини только его — виноваты оба.",
+"idiom"
+],
+[
+"jump the gun",
+"поспешить, опередить события",
+"Let's not jump the gun before the results.",
+"Не будем спешить до результатов.",
+"idiom"
+],
+[
+"keep something at bay",
+"держать на расстоянии, сдерживать",
+"Vitamins help keep colds at bay.",
+"Витамины помогают держать простуду на расстоянии.",
+"idiom"
+],
+[
+"know the ropes",
+"знать все тонкости дела",
+"Ask Tom — he knows the ropes.",
+"Спроси Тома — он знает все тонкости.",
+"idiom"
+],
+[
+"leave no stone unturned",
+"перевернуть всё вверх дном, сделать всё возможное",
+"The police left no stone unturned.",
+"Полиция сделала всё возможное.",
+"idiom"
+],
+[
+"let off the hook",
+"отпустить, освободить от ответственности",
+"I'll let you off the hook this time.",
+"На этот раз я тебя прощаю.",
+"idiom"
+],
+[
+"make ends meet",
+"сводить концы с концами",
+"They struggle to make ends meet.",
+"Они с трудом сводят концы с концами.",
+"idiom"
+],
+[
+"off the top of my head",
+"навскидку, сходу",
+"Off the top of my head, about fifty people.",
+"Навскидку — человек пятьдесят.",
+"idiom"
+],
+[
+"on thin ice",
+"на тонком льду, в рискованном положении",
+"You're on thin ice after being late again.",
+"Опоздав снова, ты рискуешь.",
+"idiom"
+],
+[
+"once bitten, twice shy",
+"обжёгшись на молоке, дуют на воду",
+"Once bitten, twice shy — I won't lend him money again.",
+"Обжёгшись на молоке, дуют на воду — больше не дам ему в долг.",
+"idiom"
+],
+[
+"play it by ear",
+"действовать по обстоятельствам",
+"We don't have a plan — let's play it by ear.",
+"Плана нет — будем действовать по обстоятельствам.",
+"idiom"
+],
+[
+"pull yourself together",
+"взять себя в руки",
+"Pull yourself together and try again.",
+"Возьми себя в руки и попробуй снова.",
+"idiom"
+],
+[
+"put all your eggs in one basket",
+"ставить всё на одну карту",
+"Don't put all your eggs in one basket.",
+"Не ставь всё на одну карту.",
+"idiom"
+],
+[
+"rule of thumb",
+"эмпирическое правило, на глазок",
+"As a rule of thumb, drink two litres of water a day.",
+"Как правило, нужно пить два литра воды в день.",
+"idiom"
+],
+[
+"save for a rainy day",
+"откладывать на чёрный день",
+"I save a little money for a rainy day.",
+"Я откладываю немного на чёрный день.",
+"idiom"
+],
+[
+"see the light at the end of the tunnel",
+"видеть свет в конце туннеля",
+"After months of work we see the light at the end of the tunnel.",
+"После месяцев работы мы видим свет в конце туннеля.",
+"idiom"
+],
+[
+"sleep on it",
+"отложить решение до утра",
+"Don't decide now — sleep on it.",
+"Не решай сейчас — утро вечера мудренее.",
+"idiom"
+],
+[
+"small talk",
+"светская беседа, разговор ни о чём",
+"I'm not good at small talk.",
+"Я не умею вести светские беседы.",
+"idiom"
+],
+[
+"start off on the wrong foot",
+"неудачно начать",
+"We started off on the wrong foot, but now we're friends.",
+"Мы неудачно начали, но теперь дружим.",
+"idiom"
+],
+[
+"take a rain check",
+"отложить на потом (приглашение)",
+"Can I take a rain check on dinner?",
+"Можно перенести ужин на другой раз?",
+"idiom"
+],
+[
+"the tip of the iceberg",
+"верхушка айсберга",
+"These problems are just the tip of the iceberg.",
+"Эти проблемы — лишь верхушка айсберга.",
+"idiom"
+],
+[
+"think outside the box",
+"мыслить нестандартно",
+"We need to think outside the box.",
+"Нам нужно мыслить нестандартно.",
+"idiom"
+],
+[
+"tie the knot",
+"пожениться",
+"They're tying the knot in June.",
+"Они женятся в июне.",
+"idiom"
+],
+[
+"touch wood",
+"тьфу-тьфу, чтоб не сглазить",
+"I've never been ill, touch wood.",
+"Я ни разу не болел, тьфу-тьфу.",
+"idiom"
+],
+[
+"turn a blind eye",
+"закрывать глаза на что-то",
+"The teacher turned a blind eye to the noise.",
+"Учитель закрыл глаза на шум.",
+"idiom"
+],
+[
+"walk on eggshells",
+"ходить на цыпочках, быть крайне осторожным",
+"Around him I feel like I'm walking on eggshells.",
+"Рядом с ним я боюсь сказать лишнее.",
+"idiom"
+],
+[
+"water under the bridge",
+"дело прошлое, что было, то прошло",
+"Forget our argument — it's water under the bridge.",
+"Забудь нашу ссору — это дело прошлое.",
+"idiom"
+],
+[
+"you can say that again",
+"и не говори! абсолютно согласен",
+"It's freezing! — You can say that again!",
+"Холодрыга! — И не говори!",
+"idiom"
+],
+[
+"I'm starving",
+"Умираю с голоду",
+"Let's eat — I'm starving!",
+"Давай поедим — умираю с голоду!",
+"phrase"
+],
+[
+"I'm off",
+"Я пошёл, я ухожу",
+"Right, I'm off. See you tomorrow!",
+"Ну всё, я пошёл. До завтра!",
+"phrase"
+],
+[
+"Is this seat taken?",
+"Это место занято?",
+"Excuse me, is this seat taken?",
+"Простите, это место занято?",
+"phrase"
+],
+[
+"What do you mean?",
+"Что ты имеешь в виду?",
+"What do you mean by 'later'?",
+"Что ты имеешь в виду под «позже»?",
+"phrase"
+],
+[
+"Could you say that again?",
+"Не могли бы вы повторить?",
+"Sorry, could you say that again more slowly?",
+"Простите, не могли бы повторить помедленнее?",
+"phrase"
+],
+[
+"How much is it?",
+"Сколько это стоит?",
+"How much is this jacket?",
+"Сколько стоит эта куртка?",
+"phrase"
+],
+[
+"I'd like…",
+"Я бы хотел… (вежливая просьба, заказ)",
+"I'd like a cappuccino, please.",
+"Мне капучино, пожалуйста.",
+"phrase"
+],
+[
+"Can I pay by card?",
+"Можно оплатить картой?",
+"Can I pay by card here?",
+"Здесь можно оплатить картой?",
+"phrase"
+],
+[
+"Where is the nearest…?",
+"Где ближайший…?",
+"Where is the nearest pharmacy?",
+"Где ближайшая аптека?",
+"phrase"
+],
+[
+"I'm lost",
+"Я заблудился",
+"Sorry, I'm lost. Where is the station?",
+"Извините, я заблудился. Где вокзал?",
+"phrase"
+],
+[
+"That's a good point",
+"Хорошее замечание, верно подмечено",
+"That's a good point, I hadn't thought of it.",
+"Верно подмечено, я об этом не подумал.",
+"phrase"
+],
+[
+"I agree with you",
+"Я с тобой согласен",
+"I agree with you completely.",
+"Я полностью с тобой согласен.",
+"phrase"
+],
+[
+"I'm not so sure about that",
+"Я в этом не уверен (мягкое несогласие)",
+"Cheaper is better? I'm not so sure about that.",
+"Дешевле — значит лучше? Я не уверен.",
+"phrase"
+],
+[
+"It's not a big deal",
+"Ничего страшного, пустяки",
+"You forgot? It's not a big deal.",
+"Забыл? Ничего страшного.",
+"phrase"
+],
+[
+"Never again!",
+"Больше никогда!",
+"Camping in the rain? Never again!",
+"Поход под дождём? Больше никогда!",
+"phrase"
+],
+[
+"Better safe than sorry",
+"Береженого бог бережёт",
+"Take an umbrella — better safe than sorry.",
+"Возьми зонт — береженого бог бережёт.",
+"phrase"
+],
+[
+"Good luck!",
+"Удачи!",
+"Good luck with your interview!",
+"Удачи на собеседовании!",
+"phrase"
+],
+[
+"Congratulations!",
+"Поздравляю!",
+"Congratulations on your new job!",
+"Поздравляю с новой работой!",
+"phrase"
+],
+[
+"Happy birthday!",
+"С днём рождения!",
+"Happy birthday! Have a great day!",
+"С днём рождения! Отличного дня!",
+"phrase"
+],
+[
+"Sorry to bother you",
+"Извините за беспокойство",
+"Sorry to bother you, but could you help me?",
+"Извините за беспокойство, не могли бы помочь?",
+"phrase"
+],
+[
+"Are you kidding?",
+"Ты шутишь?",
+"You quit your job? Are you kidding?",
+"Ты уволился? Ты шутишь?",
+"phrase"
+],
+[
+"Calm down",
+"Успокойся",
+"Calm down, everything is fine.",
+"Успокойся, всё хорошо.",
+"phrase"
+],
+[
+"Mind your own business",
+"Не лезь не в своё дело",
+"It's my choice — mind your own business.",
+"Это мой выбор — не лезь не в своё дело.",
+"phrase"
+],
+[
+"You never know",
+"Как знать, никогда не знаешь",
+"Buy a ticket — you never know!",
+"Купи билет — как знать!",
+"phrase"
+],
+[
+"It's worth it",
+"Оно того стоит",
+"The view from the top? It's worth it.",
+"Вид с вершины? Оно того стоит.",
+"phrase"
 ]
 ]
 }

@@ -146,11 +146,11 @@ fun HomeCultureCard(nav: NavHostController) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     val today = LocalDate.now()
-    var items by remember { mutableStateOf<List<CultureDay.Item>>(emptyList()) }
+    var items by remember { mutableStateOf(CultureRepo.cached(today).orEmpty()) }
     var idx by rememberSaveable { mutableIntStateOf(0) }
     LaunchedEffect(today) {
-        items = CultureRepo.day(ctx, today, online = false)
-        items = CultureRepo.day(ctx, today, online = true)
+        if (CultureRepo.cached(today) == null) items = CultureRepo.day(ctx, today, online = false)
+        items = CultureRepo.day(ctx, today, online = true).takeIf { it.size >= items.size } ?: items
     }
     val list = items
     Tile(onClick = { nav.navigate(Routes.calendar(4)) }) {
