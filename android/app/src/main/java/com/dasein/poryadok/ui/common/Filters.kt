@@ -173,7 +173,6 @@ fun FilterSheet(
     ModalBottomSheet(
         onDismissRequest = { if (swipeToClose) onDismiss() },
         sheetState = state,
-        sheetGesturesEnabled = swipeToClose,
         containerColor = MaterialTheme.colorScheme.surface,
     ) {
         SheetHeader(title, onDismiss, onReset)
