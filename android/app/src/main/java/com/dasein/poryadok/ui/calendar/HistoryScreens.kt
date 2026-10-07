@@ -42,6 +42,7 @@ import com.dasein.poryadok.logic.HistoryDay
 import com.dasein.poryadok.system.HistoryRepo
 import com.dasein.poryadok.ui.Routes
 import com.dasein.poryadok.ui.common.Glyph
+import com.dasein.poryadok.ui.common.PrevNext
 import com.dasein.poryadok.ui.common.Tile
 import com.dasein.poryadok.ui.theme.LocalExtra
 import java.time.LocalDate
@@ -81,7 +82,7 @@ fun HistoryTab(selectedDay: Long) {
             }
             else -> {
                 Text("Событий: ${list.size}. Нажмите на событие, чтобы прочитать подробный контекст.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(bottom = 6.dp))
-                list.forEachIndexed { i, e -> EventCard(e, startOpen = i == 0) }
+                list.forEachIndexed { i, e -> EventCard(e, startOpen = i == 0, date = date) }
             }
         }
         Text("Источники: подборка DASEIN и раздел «В этот день» русской Википедии.", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(vertical = 16.dp))
@@ -89,11 +90,13 @@ fun HistoryTab(selectedDay: Long) {
 }
 
 @Composable
-fun EventCard(e: HistoryDay.Event, startOpen: Boolean) {
+fun EventCard(e: HistoryDay.Event, startOpen: Boolean, date: LocalDate? = null) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     var open by remember(e) { mutableStateOf(startOpen) }
-    Tile(Modifier.padding(bottom = 8.dp), onClick = { open = !open }) {
+    val like = historyLike(e, date)
+    val liked = com.dasein.poryadok.system.Likes.isLiked(com.dasein.poryadok.ui.common.rememberLikes(), like)
+    Tile(Modifier.padding(bottom = 8.dp), onClick = { open = !open }, color = com.dasein.poryadok.ui.common.likedColor(liked)) {
         Row(verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
                 Text(
@@ -102,6 +105,7 @@ fun EventCard(e: HistoryDay.Event, startOpen: Boolean) {
                 )
                 Text(if (e.source == "DASEIN") e.title else e.text, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 21.sp, modifier = Modifier.padding(top = 6.dp))
             }
+            com.dasein.poryadok.ui.common.LikeButton(like, liked)
         }
         val body = if (e.source == "DASEIN") e.text else ""
         if (body.isNotBlank()) Text(body, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 6.dp))
@@ -115,14 +119,26 @@ fun EventCard(e: HistoryDay.Event, startOpen: Boolean) {
     }
 }
 
-/** Плашка «В этот день в истории» на главном: событие с контекстом, «Ещё событие», переход в календарь. */
+internal fun historyLike(e: HistoryDay.Event, date: LocalDate?) = com.dasein.poryadok.system.Likes.Like(
+    com.dasein.poryadok.system.Likes.HISTORY,
+    title = if (e.source == "DASEIN") e.title else e.text,
+    text = listOf(if (e.source == "DASEIN") e.text else "", e.context).filter { it.isNotBlank() }.joinToString(" ").take(600),
+    date = date?.let { "%02d-%02d".format(it.monthValue, it.dayOfMonth) }.orEmpty(),
+    year = e.year,
+    tags = listOfNotNull(e.title.takeIf { e.source != "DASEIN" && it.isNotBlank() }),
+)
+
+/**
+ * Плашка «В этот день в истории» на главном: событие с контекстом, стрелки ‹ › (позиция сохраняется до конца дня),
+ * «+» — отметить понравившееся.
+ */
 @Composable
 fun HomeHistoryCard(nav: NavHostController) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     val today = LocalDate.now()
     var events by remember { mutableStateOf(HistoryRepo.cached(today).orEmpty()) }
-    var idx by rememberSaveable { mutableIntStateOf(0) }
+    val pos = com.dasein.poryadok.ui.common.rememberDayPos("history", today.toEpochDay())
     LaunchedEffect(today) {
         // Повторно (при прокрутке назад) — сразу из памяти, без «пустой» плашки и прыжка списка.
         if (HistoryRepo.cached(today) == null) events = HistoryRepo.day(ctx, today, online = false)
@@ -130,8 +146,11 @@ fun HomeHistoryCard(nav: NavHostController) {
     }
     val list = events.ifEmpty { HistoryRepo.nearestBuiltIn(ctx, today)?.second.orEmpty() }
     if (list.isEmpty()) return
-    val e = list[idx % list.size]
-    Tile(onClick = { nav.navigate(Routes.calendar(3)) }) {
+    val i = pos.value.coerceIn(0, list.lastIndex)
+    val e = list[i]
+    val like = historyLike(e, today)
+    val liked = com.dasein.poryadok.system.Likes.isLiked(com.dasein.poryadok.ui.common.rememberLikes(), like)
+    Tile(onClick = { nav.navigate(Routes.calendar(3)) }, color = com.dasein.poryadok.ui.common.likedColor(liked)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Glyph("cal/23", 22.dp, badge = false)
             Text("  В этот день в истории", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
@@ -142,13 +161,14 @@ fun HomeHistoryCard(nav: NavHostController) {
                 Text(e.yearLabel, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 Text(if (e.source == "DASEIN") e.title else e.text, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, lineHeight = 20.sp, maxLines = 4, overflow = TextOverflow.Ellipsis)
             }
+            com.dasein.poryadok.ui.common.LikeButton(like, liked)
         }
         val ctxText = listOf(if (e.source == "DASEIN") e.text else "", e.context).filter { it.isNotBlank() }.joinToString(" ")
         if (ctxText.isNotBlank()) Text(ctxText, fontSize = 13.sp, lineHeight = 18.sp, color = extra.dim, maxLines = 5, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
-        Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = { idx++ }) { Text("Ещё событие") }
-            TextButton(onClick = { nav.navigate(Routes.calendar(3)) }) { Text("Все ${list.size} →") }
-            Text("${idx % list.size + 1}/${list.size}", fontSize = 11.sp, color = extra.dim, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
+        Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            PrevNext(i, list.size, { pos.value = i - 1 }, { pos.value = i + 1 })
+            Box(Modifier.weight(1f))
+            TextButton(onClick = { nav.navigate(Routes.calendar(3)) }) { Text("Все →") }
         }
     }
 }

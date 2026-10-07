@@ -139,10 +139,11 @@ fun HealthScreen(nav: NavHostController, initialTab: Int) {
     val plan = Nutrition.plan(profile.input(current))
     Screen(title = "Здоровье и тело", onBack = { nav.popBackStack() }) { pad ->
         Column(Modifier.padding(pad)) {
-            ScrollableTabRow(selectedTabIndex = tab, edgePadding = 12.dp, containerColor = MaterialTheme.colorScheme.background) {
-                listOf("Питание", "Вес", "Замеры", "Тренировки", "Калькулятор", "Прогресс").forEachIndexed { i, t ->
-                    Tab(tab == i, onClick = { tab = i }, text = { Text(t) })
-                }
+            // Калькулятор КБЖУ убран из вкладок; норма калорий по-прежнему считается по «Замерам».
+            if (tab == 4) tab = 0
+            val tabs = listOf(0 to "Питание", 1 to "Вес", 2 to "Замеры", 3 to "Тренировки", 5 to "Прогресс")
+            ScrollableTabRow(selectedTabIndex = tabs.indexOfFirst { it.first == tab }.coerceAtLeast(0), edgePadding = 12.dp, containerColor = MaterialTheme.colorScheme.background) {
+                tabs.forEach { (i, t) -> Tab(tab == i, onClick = { tab = i }, text = { Text(t) }) }
             }
             Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
                 if (profileOrNull == null) Text("Загрузка…", Modifier.padding(16.dp), color = LocalExtra.current.dim)

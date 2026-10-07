@@ -43,6 +43,7 @@ import com.dasein.poryadok.logic.Dates
 import com.dasein.poryadok.system.CultureRepo
 import com.dasein.poryadok.ui.Routes
 import com.dasein.poryadok.ui.common.Glyph
+import com.dasein.poryadok.ui.common.PrevNext
 import com.dasein.poryadok.ui.common.Pill
 import com.dasein.poryadok.ui.common.Tile
 import com.dasein.poryadok.ui.theme.LocalExtra
@@ -101,7 +102,7 @@ fun CultureTab(selectedDay: Long) {
                     else "Под эти фильтры ничего нет — попробуйте «Все страны».",
                     color = extra.dim, fontSize = 14.sp,
                 ) else Text("Найдено: ${shown.size}. Нажмите, чтобы прочитать подробнее.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(bottom = 6.dp))
-                shown.forEach { CultureCard(it) }
+                shown.forEach { CultureCard(it, date) }
             }
         }
         Text("Источники: подборка DASEIN и раздел «В этот день» русской Википедии.", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(vertical = 16.dp))
@@ -115,12 +116,14 @@ private fun RegionBadge(r: String) {
 }
 
 @Composable
-fun CultureCard(i: CultureDay.Item) {
+fun CultureCard(i: CultureDay.Item, date: LocalDate? = null) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     var open by remember(i) { mutableStateOf(false) }
     val now = LocalDate.now().year
-    Tile(Modifier.padding(bottom = 8.dp), onClick = { open = !open }) {
+    val like = cultureLike(i, date)
+    val liked = com.dasein.poryadok.system.Likes.isLiked(com.dasein.poryadok.ui.common.rememberLikes(), like)
+    Tile(Modifier.padding(bottom = 8.dp), onClick = { open = !open }, color = com.dasein.poryadok.ui.common.likedColor(liked)) {
         Row(verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -131,12 +134,19 @@ fun CultureCard(i: CultureDay.Item) {
                 Text(kindLabel(i, now), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
                 Text(i.text, fontSize = 14.sp, lineHeight = 19.sp, modifier = Modifier.padding(top = 4.dp), maxLines = if (open) 20 else 3, overflow = TextOverflow.Ellipsis)
             }
+            com.dasein.poryadok.ui.common.LikeButton(like, liked)
         }
         if (open && i.context.isNotBlank()) Text(i.context, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 8.dp))
         if (open && i.url.isNotBlank()) TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(i.url))) } }) { Text("Читать в Википедии") }
         if (!open && i.context.isNotBlank()) Text("Подробнее ▾", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
     }
 }
+
+internal fun cultureLike(i: CultureDay.Item, date: LocalDate?) = com.dasein.poryadok.system.Likes.Like(
+    com.dasein.poryadok.system.Likes.CULTURE,
+    title = i.name, text = i.text, date = date?.let { "%02d-%02d".format(it.monthValue, it.dayOfMonth) }.orEmpty(), year = i.year,
+    tags = listOf(if (i.kind == CultureDay.BIRTH) "день рождения" else "событие", i.region),
+)
 
 /** Плашка «В этот день в культуре» на главном: звезда или премьера дня, «Ещё», переход в календарь. */
 @Composable
@@ -145,13 +155,16 @@ fun HomeCultureCard(nav: NavHostController) {
     val extra = LocalExtra.current
     val today = LocalDate.now()
     var items by remember { mutableStateOf(CultureRepo.cached(today).orEmpty()) }
-    var idx by rememberSaveable { mutableIntStateOf(0) }
+    val pos = com.dasein.poryadok.ui.common.rememberDayPos("culture", today.toEpochDay())
+    val likes = com.dasein.poryadok.ui.common.rememberLikes()
     LaunchedEffect(today) {
         if (CultureRepo.cached(today) == null) items = CultureRepo.day(ctx, today, online = false)
         items = CultureRepo.day(ctx, today, online = true).takeIf { it.size >= items.size } ?: items
     }
     val list = items
-    Tile(onClick = { nav.navigate(Routes.calendar(4)) }) {
+    val cur = list.getOrNull(pos.value.coerceIn(0, (list.size - 1).coerceAtLeast(0)))
+    val curLiked = cur != null && com.dasein.poryadok.system.Likes.isLiked(likes, cultureLike(cur, today))
+    Tile(onClick = { nav.navigate(Routes.calendar(4)) }, color = com.dasein.poryadok.ui.common.likedColor(curLiked)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Glyph("habit/01", 22.dp, badge = false)
             Text("  В этот день в культуре", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
@@ -161,7 +174,8 @@ fun HomeCultureCard(nav: NavHostController) {
             Text("Дни рождения звёзд и премьеры подгрузятся из Википедии, когда будет интернет.", fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
             return@Tile
         }
-        val i = list[idx % list.size]
+        val n = pos.value.coerceIn(0, list.lastIndex)
+        val i = list[n]
         Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -172,10 +186,12 @@ fun HomeCultureCard(nav: NavHostController) {
                 Text(kindLabel(i, today.year), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
                 Text(i.text, fontSize = 13.sp, lineHeight = 18.sp, color = extra.dim, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
             }
+            com.dasein.poryadok.ui.common.LikeButton(cultureLike(i, today), curLiked)
         }
-        Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = { idx++ }) { Text("Ещё") }
-            TextButton(onClick = { nav.navigate(Routes.calendar(4)) }) { Text("Все ${list.size} →") }
+        Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            PrevNext(n, list.size, { pos.value = n - 1 }, { pos.value = n + 1 })
+            Box(Modifier.weight(1f))
+            TextButton(onClick = { nav.navigate(Routes.calendar(4)) }) { Text("Все →") }
         }
     }
 }

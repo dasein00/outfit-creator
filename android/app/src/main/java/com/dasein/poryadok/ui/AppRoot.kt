@@ -341,6 +341,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable(Routes.CRAFT_STASH) { com.dasein.poryadok.ui.craft.CraftStashScreen(nav) }
             composable(com.dasein.poryadok.ui.tutor.TutorRoutes.HOME) { com.dasein.poryadok.ui.tutor.TutorHomeScreen(nav) }
             composable(com.dasein.poryadok.ui.tutor.TutorRoutes.WORDS) { com.dasein.poryadok.ui.tutor.TutorWordsScreen(nav) }
+            composable(com.dasein.poryadok.ui.more.LIKES_ROUTE) { com.dasein.poryadok.ui.more.LikesScreen(nav) }
             composable(com.dasein.poryadok.ui.tutor.TutorRoutes.DICT) { com.dasein.poryadok.ui.tutor.TutorDictScreen(nav) }
             composable(
                 "${com.dasein.poryadok.ui.tutor.TutorRoutes.TRANSLATE}?tab={tab}",

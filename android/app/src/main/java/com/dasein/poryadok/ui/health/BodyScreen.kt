@@ -389,7 +389,7 @@ internal fun TrendSection(readings: List<BodyMetric>, profile: BodyProfile) {
     Segments(Period.entries.map { it to it.label }, period, { period = it })
     Gap(6.dp)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        listOf("weight" to "Вес", "fat" to "Жир %", "bmi" to "ИМТ", "muscle" to "Мышцы %", "water" to "Вода %").forEach { (k, l) -> Pill(l, metric == k) { metric = k } }
+        listOf("weight" to "Вес", "fat" to "Жир %", "bmi" to "ИМТ").forEach { (k, l) -> Pill(l, metric == k) { metric = k } }
     }
     if (period == Period.CUSTOM) Row(Modifier.padding(top = 6.dp)) {
         FieldButton("С", Dates.label(from), Modifier.weight(1f)) { pick = 1 }

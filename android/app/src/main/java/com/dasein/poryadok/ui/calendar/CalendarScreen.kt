@@ -103,7 +103,10 @@ fun CalendarScreen(nav: NavHostController, initialTab: Int, onBack: (() -> Unit)
     Screen(
         title = "Календарь",
         onBack = onBack,
-        actions = { IconButton(onClick = { selected = Dates.today() }) { Icon(Icons.Default.Today, "Сегодня") } },
+        actions = {
+            IconButton(onClick = { nav.navigate(com.dasein.poryadok.ui.more.LIKES_ROUTE) }) { Text("♥", fontSize = 20.sp, color = com.dasein.poryadok.ui.common.LikeGreen) }
+            IconButton(onClick = { selected = Dates.today() }) { Icon(Icons.Default.Today, "Сегодня") }
+        },
         fab = {
             Box {
                 FloatingActionButton(onClick = { addMenu = true }, containerColor = MaterialTheme.colorScheme.primary) {

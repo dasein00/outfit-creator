@@ -202,6 +202,17 @@ internal fun HolidayDetails(h: Holiday, mark: HolidayMark?) {
     InfoPart("Откуда появился", h.about)
     InfoPart("Как отмечают", h.how)
     InfoPart("Интересно знать", h.facts)
+    val like = com.dasein.poryadok.system.Likes.Like(
+        com.dasein.poryadok.system.Likes.HOLIDAY, h.name, h.about.take(500), h.rule.removePrefix("fixed:"), 0, listOfNotNull(HolidayCats.names[h.cat]),
+    )
+    val liked = com.dasein.poryadok.system.Likes.isLiked(com.dasein.poryadok.ui.common.rememberLikes(), like)
+    Row(
+        Modifier.padding(top = 10.dp).clip(RoundedCornerShape(12.dp)).background(com.dasein.poryadok.ui.common.likedColor(liked)).padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        com.dasein.poryadok.ui.common.LikeButton(like, liked, 30)
+        Text(if (liked) "  В понравившемся" else "  Нравится — добавить в понравившееся", fontSize = 13.sp)
+    }
     Text("Выделить цветом в календаре", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         MARK_COLORS.forEach { c ->

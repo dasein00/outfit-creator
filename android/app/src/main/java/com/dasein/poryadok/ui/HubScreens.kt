@@ -133,7 +133,6 @@ fun HealthHubScreen(nav: NavHostController) {
         HealthTile("ui:drop", "Вода", "${log?.waterMl ?: 0} мл", "из $waterGoal", (log?.waterMl ?: 0) / waterGoal.toFloat(), Routes.wellbeing(2)),
         HealthTile("train/27", "Замеры", "см", "талия, бёдра…", null, Routes.health(2)),
         HealthTile("ui:smile", "Настроение", "дневник", "и инсайты", null, Routes.wellbeing(0)),
-        HealthTile("train/03", "Калькулятор", "КБЖУ", "норма калорий", null, Routes.health(4)),
         HealthTile("fest/23", "Фото прогресса", "до/после", "анфас, профиль", null, Routes.health(5)),
     )
     var editing by remember { mutableStateOf<HealthTile?>(null) }

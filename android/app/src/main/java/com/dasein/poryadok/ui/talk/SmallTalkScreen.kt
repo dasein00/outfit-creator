@@ -158,14 +158,17 @@ fun TalkFactCard(onOpen: () -> Unit) {
     val fact = SmallTalk.current(facts, deck) ?: return
     val read = SmallTalk.read(facts, deck)
 
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(extra.card).padding(14.dp)) {
+    val like = com.dasein.poryadok.system.Likes.Like(com.dasein.poryadok.system.Likes.FACT, fact.text, tags = listOf(fact.tag))
+    val liked = com.dasein.poryadok.system.Likes.isLiked(com.dasein.poryadok.ui.common.rememberLikes(), like)
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(com.dasein.poryadok.ui.common.likedColor(liked)).padding(14.dp)) {
         Row(Modifier.clickable(onClick = onOpen), verticalAlignment = Alignment.CenterVertically) {
             Glyph(SmallTalk.glyph(fact.tag), 22.dp)
             Column(Modifier.weight(1f).padding(start = 10.dp)) {
                 Text("Интересный факт", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 Text("${fact.tag} · Small Talks", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
             }
-            Text("$read из ${facts.size}", fontSize = 12.sp, color = extra.dim)
+            Text("$read из ${facts.size}  ", fontSize = 12.sp, color = extra.dim)
+            com.dasein.poryadok.ui.common.LikeButton(like, liked)
         }
         AnimatedContent(fact, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "fact") { f ->
             Text(

@@ -445,7 +445,7 @@ fun WeightTrendScreen(nav: NavHostController) {
             Segments(TrendPeriod.entries.map { it to it.label }, period, { period = it })
             Gap(8.dp)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf("weight" to "Вес", "fat" to "Жир %", "bmi" to "ИМТ", "muscle" to "Мышцы кг", "water" to "Вода %", "visceral" to "Висц. жир")
+                listOf("weight" to "Вес", "fat" to "Жир %", "bmi" to "ИМТ")
                     .forEach { (k, l) -> Pill(l, metric == k) { metric = k } }
             }
             if (period == TrendPeriod.CUSTOM) Row(Modifier.padding(top = 8.dp)) {
