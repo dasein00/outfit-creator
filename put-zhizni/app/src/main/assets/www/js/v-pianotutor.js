@@ -56,7 +56,7 @@
   const ITEMS = (() => {
     const out = [];
     // клавиатура
-    for (let pc = 0; pc < 12; pc++) out.push({ id: "k" + pc, t: "keys", lv: WHITE.includes(pc) ? 1 : 2, title: NM[pc] + (WHITE.includes(pc) ? "" : " / " + NMF[pc]), ans: "латинское обозначение: " + LT[pc] + (WHITE.includes(pc) ? "" : " / " + EN[(LPC.indexOf(pc + 1) + 7) % 7] + "♭"), midi: [60 + pc], pc,
+    for (let pc = 0; pc < 12; pc++) out.push({ id: "k" + pc, t: "keys", lv: WHITE.includes(pc) ? 1 : 2, title: NM[pc] + (WHITE.includes(pc) ? "" : " / " + NMF[pc]), ans: "латинское обозначение: " + (WHITE.includes(pc) ? EN[LPC.indexOf(pc)] : EN[LPC.indexOf(pc - 1)] + "♯ / " + EN[LPC.indexOf(pc + 1)] + "♭"), midi: [60 + pc], pc,
       ex: WHITE.includes(pc) ? (pc === 0 ? "Белая клавиша слева от группы из двух чёрных." : pc === 5 ? "Белая клавиша слева от группы из трёх чёрных." : "Белая клавиша: считайте от «до» — до, ре, ми, фа, соль, ля, си.") : "Чёрная клавиша: " + NM[pc - 1] + " с диезом = " + NMF[pc + 1 > 11 ? 0 : pc + 1] + " с бемолем." });
     // ноты на стане
     for (let i = 0; i <= 12; i++) out.push({ id: "t" + i, t: "treble", lv: i >= 2 && i <= 10 ? 1 : 2, title: DIA[i % 7] + " " + (i < 7 ? "первой" : "второй") + " октавы", ans: DIA[i % 7], staff: ["treble", i], midi: [60 + Math.floor(i / 7) * 12 + MAJ[i % 7]], ex: i === 0 ? "На первой добавочной линейке снизу." : "Скрипичный ключ: нижняя линейка — ми первой октавы, ключ обвивает линейку соль." });
