@@ -344,3 +344,34 @@ details.lgrp summary { padding: 11px 0; font-weight: 600; cursor: pointer; }
 .bpproto { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 6px 10px; font-size: 13.5px; margin-top: 8px; }
 .bpproto b { font-weight: 500; }
 .bpproto span { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* читалка */
+.rbook { display: flex; gap: 12px; align-items: center; padding: 10px 2px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.rbook:last-child { border-bottom: 0; }
+.rbook .tx { flex: 1; min-width: 0; } .rbook .tx b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rbook .tx small { display: block; color: var(--ink2); font-size: 12px; margin-bottom: 4px; }
+.rcov { width: 46px; height: 64px; object-fit: cover; border-radius: 6px; flex: 0 0 auto; box-shadow: var(--shadow); }
+.rcov.ph { display: flex; align-items: center; justify-content: center; background: var(--accent2); color: var(--accent); font-size: 10px; font-weight: 700; }
+.rdr { position: fixed; inset: 0; z-index: 200; background: var(--rb); color: var(--rf); display: flex; flex-direction: column; }
+.rdr-top { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 4px; padding: max(6px, env(safe-area-inset-top)) 6px 6px; background: var(--rb); border-bottom: 1px solid rgba(128,128,128,.25); transform: translateY(-110%); transition: transform .2s; z-index: 2; }
+.rdr-top .icon-btn { color: var(--rf); }
+.rdr-t { flex: 1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rdr.ui .rdr-top { transform: none; }
+.rdr-sc { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.rdr-body { max-width: 760px; margin: 0 auto; padding: 56px 20px 60px; font-family: var(--rff); font-size: var(--rs); line-height: var(--rl); text-align: justify; hyphens: auto; }
+.rdr-body p { margin: 0 0 .55em; text-indent: 1.4em; }
+.rdr-body h1, .rdr-body h2, .rdr-body h3 { font-family: var(--rff); text-align: center; text-indent: 0; margin: 1.6em 0 .8em; line-height: 1.3; }
+.rdr-body img { max-width: 100%; height: auto; display: block; margin: 1em auto; }
+.rdr-body blockquote { margin: 1em 0 1em 1.5em; font-style: italic; }
+.rdr-body .poem { margin: 1em 0 1em 2em; } .rdr-body .ta { text-align: right; font-style: italic; }
+.rdr-body .note { color: inherit; opacity: .7; font-size: .8em; vertical-align: super; }
+.rdr-body a { color: inherit; }
+.rdr-ch + .rdr-ch { border-top: 1px dashed rgba(128,128,128,.3); margin-top: 2em; padding-top: 1em; }
+.rdr-load { text-align: center; opacity: .7; margin-top: 30vh; text-indent: 0 !important; }
+.rdr-body.fixed { max-width: none; padding: 56px 0 50px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.rdr-pg { background: #fff; position: relative; box-shadow: 0 1px 6px rgba(0,0,0,.2); }
+.rdr-pg span { position: absolute; top: 50%; left: 0; right: 0; text-align: center; color: #aaa; font-size: 14px; }
+.rdr-pg canvas { position: absolute; inset: 0; }
+.rdr-bot { position: absolute; bottom: 0; left: 0; right: 0; text-align: center; font-size: 12px; opacity: .6; padding: 4px 0 max(6px, env(safe-area-inset-bottom)); pointer-events: none; }
+.rdr-panel { position: absolute; left: 0; right: 0; bottom: 0; max-height: 70vh; overflow-y: auto; background: var(--card); color: var(--ink); border-radius: 18px 18px 0 0; padding: 16px; box-shadow: 0 -6px 30px rgba(0,0,0,.25); z-index: 3; }
+.rdr-panel h3 { margin-bottom: 10px; }

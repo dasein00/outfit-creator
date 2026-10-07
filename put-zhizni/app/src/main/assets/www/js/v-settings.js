@@ -13,7 +13,7 @@
         ["health", "{{i:heart}}", "Здоровье и вес"], ["bp", "{{i:activity}}", "Давление и пульс"], ["labs", "{{i:droplet}}", "Анализы крови"], ["food", "{{i:apple}}", "Дневник питания"], ["recipes", "{{i:soup}}", "Рецепты и меню"],
         ["recipes/shop", "{{i:shopping-cart}}", "Список покупок"], ["workouts", "{{i:dumbbell}}", "Тренировки"], ["health/balance", "{{i:radar}}", "Баланс жизни"],
         ["money", "{{i:wallet}}", "Финансы"], ["learn", "{{i:graduation-cap}}", "Обучение"], ["hobbies", "{{i:palette}}", "Хобби"],
-        ["culture", "{{i:library}}", "Книги / фильмы / сериалы"], ["culturecal", "{{i:clapperboard}}", "Календарь культуры"], ["piano", "{{i:piano}}", "Пианино"], ["tarot", "{{i:wand-sparkles}}", "Таро"],
+        ["culture", "{{i:library}}", "Книги / фильмы / сериалы"], ["culturecal", "{{i:clapperboard}}", "Календарь культуры"], ["reader", "{{i:book-open}}", "Читалка"], ["piano", "{{i:piano}}", "Пианино"], ["tarot", "{{i:wand-sparkles}}", "Таро"],
         ["ketu", "{{i:leaf}}", "Кету"], ["bazi", "{{i:orbit}}", "Бацзы"], ["english", "{{i:languages}}", "Английский"],
         ["latin", "{{i:landmark}}", "Латынь"], ["piano/songs", "{{i:guitar}}", "Песни на пианино"], ["stats", "{{i:chart-column}}", "Статистика"],
         ["book", "{{i:book}}", "Книга PRIME ERA"], ["ideas", "{{i:lightbulb}}", "Идеи"], ["settings", "{{i:settings}}", "Настройки"]

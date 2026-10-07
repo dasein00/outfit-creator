@@ -218,7 +218,7 @@ class MainActivity : Activity() {
 
         fun mimeOf(path: String): String = when (path.substringAfterLast('.', "").lowercase()) {
             "html" -> "text/html"
-            "js" -> "application/javascript"
+            "js", "mjs" -> "application/javascript"
             "css" -> "text/css"
             "png" -> "image/png"
             "svg" -> "image/svg+xml"
