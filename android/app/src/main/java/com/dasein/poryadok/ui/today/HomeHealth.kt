@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.today
 
 import com.dasein.poryadok.ui.common.FitText
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
