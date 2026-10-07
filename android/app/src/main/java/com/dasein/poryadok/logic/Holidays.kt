@@ -22,15 +22,15 @@ data class Holiday(
 data class HolidayBase(val version: Int = 1, val holidays: List<Holiday> = emptyList())
 
 object HolidayCats {
-    val ORDER = listOf("ru", "prof", "intl", "odd", "am", "orth", "arm", "folk", "my")
+    val ORDER = listOf("ru", "prof", "intl", "odd", "world", "am", "orth", "arm", "folk", "my")
     val names = mapOf(
-        "ru" to "Россия", "prof" to "Профессиональные", "intl" to "Международные", "odd" to "Необычные", "am" to "Армения",
+        "ru" to "Россия", "prof" to "Профессиональные", "intl" to "Международные", "odd" to "Необычные", "world" to "Народы мира", "am" to "Армения",
         "orth" to "Православные", "arm" to "Армянская церковь", "folk" to "Народные", "my" to "Мои",
     )
     /** Цвет категории (ARGB). */
     val colors = mapOf(
-        "ru" to 0xFFD25B4BL, "prof" to 0xFF5B8DD2L, "intl" to 0xFF4BA38CL, "odd" to 0xFF9B6BD6L, "am" to 0xFFE08A3CL,
-        "orth" to 0xFFC7A46AL, "arm" to 0xFFB06FC4L, "folk" to 0xFF8CC46EL, "my" to 0xFFE06A9AL,
+        "ru" to 0xFFD25B4BL, "prof" to 0xFF5B8DD2L, "intl" to 0xFF4BA38CL, "odd" to 0xFF9B6BD6L, "world" to 0xFF3FA7C9L, "am" to 0xFFE08A3CL,
+        "orth" to 0xFFC7A46AL, "arm" to 0xFF9C6B4EL, "folk" to 0xFF8CC46EL, "my" to 0xFFE06A9AL,
     )
 }
 
@@ -118,7 +118,7 @@ object HolidayRules {
         return when (p.getOrNull(0)) {
             "fixed" -> "Каждый год ${mdText(p[1])}"
             "eo" -> shift(p[1].toInt(), "православной Пасхи").replaceFirstChar { it.uppercase() }
-            "ew" -> shift(p[1].toInt(), "Пасхи Армянской церкви").replaceFirstChar { it.uppercase() }
+            "ew" -> shift(p[1].toInt(), "Пасхи по григорианскому календарю (католической и армянской)").replaceFirstChar { it.uppercase() }
             "nth" -> {
                 val wd = p[2].toInt()
                 val n = p[3].toInt()

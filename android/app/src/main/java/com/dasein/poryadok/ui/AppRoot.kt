@@ -155,7 +155,10 @@ object Routes {
     fun session(id: Long) = "session/$id"
 }
 
-private data class Tab(val route: String, val label: String, val icon: String)
+internal data class Tab(val route: String, val label: String, val icon: String) {
+    /** Маршрут без параметров — так его называет навигация. */
+    val base get() = route.substringBefore('?')
+}
 
 private val tabs = listOf(
     Tab(Routes.TODAY, "Главное", "ui:home"),
@@ -190,7 +193,8 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
     val nav = rememberNavController()
     val entry by nav.currentBackStackEntryAsState()
     val current = entry?.destination?.route?.substringBefore('?')
-    val showBar = tabs.any { it.route == current }
+    val barTabs by NavTabs.state
+    val showBar = barTabs.any { it.base == current }
 
     LaunchedEffect(deepLink.value) {
         val link = deepLink.value ?: return@LaunchedEffect
@@ -381,13 +385,13 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable(Routes.FIN_NOTEBOOK) { NotebookScreen(nav, settings) }
         }
         if (showBar) {
-            var editTab by remember { mutableStateOf<Tab?>(null) }
+            var editTab by remember { mutableStateOf<Pair<Int, Tab>?>(null) }
             NavigationBar(containerColor = MaterialTheme.colorScheme.background, tonalElevation = 0.dp) {
-                tabs.forEach { t ->
-                    TabButton(t, current == t.route, { nav.openTab(t.route) }) { editTab = t }
+                barTabs.forEachIndexed { i, t ->
+                    TabButton(t, current == t.base, { nav.openTab(t.route) }) { editTab = i to t }
                 }
             }
-            editTab?.let { t -> com.dasein.poryadok.ui.common.SectionEditDialog(t.route, t.label, t.icon) { editTab = null } }
+            editTab?.let { (i, t) -> TabMenu(nav, i, t) { editTab = null } }
         }
     }
 }

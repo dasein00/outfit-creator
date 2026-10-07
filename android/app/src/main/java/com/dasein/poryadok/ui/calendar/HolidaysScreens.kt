@@ -271,14 +271,30 @@ fun HolidayBanner(nav: NavHostController) {
             tm.filter { it.custom != null }.forEach { add(BannerLine(it, "завтра", true)) }
             t.filter { it.custom == null }.forEach { add(BannerLine(it, "сегодня", false)) }
         }
-        if (lines.isNotEmpty()) false to lines
-        else true to upcomingEntries(ctx, today, 45, custom, marks, hidden)
-            .sortedWith(compareBy({ it.first }, { it.second.custom == null }))
+        // Если сегодня ничего нет — ближайшие важные праздники; если и их нет (например, виды скрыты) — любые ближайшие.
+        fun soon(list: List<Pair<LocalDate, DayEntry>>) = list.sortedWith(compareBy({ it.first }, { it.second.custom == null }))
             .take(3)
             .map { (d, e) -> BannerLine(e, "${Dates.weekdayShort(d.toEpochDay())}, ${Dates.short(d.toEpochDay())} · ${whenText(d)}", e.custom != null) }
+        when {
+            lines.isNotEmpty() -> false to lines
+            else -> true to soon(upcomingEntries(ctx, today, 45, custom, marks, hidden)).ifEmpty {
+                soon((1..30).flatMap { k -> Dates.day(today + k).let { d -> HolidayRepo.entries(ctx, d, custom, marks).map { d to it } } })
+            }
+        }
     }
     val (upcoming, lines) = data
-    if (lines.isEmpty()) return
+    if (lines.isEmpty()) {
+        // Плашка не исчезает совсем: даже без праздников ведёт в календарь праздников.
+        Gap(8.dp)
+        Tile(onClick = { nav.navigate(Routes.calendar(2)) }, padding = 12.dp) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Glyph("fest/03", 26.dp, badge = false)
+                Text("Праздники и события — открыть календарь", fontSize = 14.sp, modifier = Modifier.padding(start = 10.dp).weight(1f))
+                Text("›", fontSize = 22.sp, color = extra.dim)
+            }
+        }
+        return
+    }
     Gap(8.dp)
     Tile(onClick = { nav.navigate(Routes.calendar(2)) }, color = Color(lines.first().entry.color).copy(alpha = .14f), padding = 12.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {

@@ -122,7 +122,7 @@ fun MoreScreen(nav: NavHostController) {
                 Hint("more_data", "Все данные хранятся только на этом телефоне. Делайте резервную копию в настройках.", Modifier.padding(8.dp), title = "Где хранятся данные")
             }
             item(span = { GridItemSpan(2) }) {
-                Text("Удерживайте раздел, чтобы сменить его название и иконку.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(horizontal = 8.dp))
+                Text("Удерживайте раздел, чтобы сменить его название и иконку. Удерживайте кнопку нижней панели, чтобы заменить её любым разделом.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(horizontal = 8.dp))
             }
             item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) { HowTo("more") }
         }

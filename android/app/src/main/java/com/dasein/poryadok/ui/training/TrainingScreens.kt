@@ -84,6 +84,7 @@ import com.dasein.poryadok.ui.common.Hint
 import com.dasein.poryadok.ui.common.LineChart
 import com.dasein.poryadok.ui.common.Media
 import com.dasein.poryadok.ui.common.MediaView
+import com.dasein.poryadok.ui.common.VideoAddButtons
 import com.dasein.poryadok.ui.common.VideoPlayer
 import com.dasein.poryadok.ui.common.MoodFace
 import com.dasein.poryadok.ui.common.NumberField
@@ -532,7 +533,8 @@ fun ExerciseScreen(nav: NavHostController, id: Long) {
                 }
                 Gap(8.dp)
             }
-            OutlinedButton(onClick = { addMedia() }) { Text("+ Фото, GIF или видео техники (со звуком)") }
+            OutlinedButton(onClick = { addMedia() }, modifier = Modifier.fillMaxWidth()) { Text("+ Фото или GIF техники") }
+            VideoAddButtons("training") { path -> e = e?.copy(media = (e?.media.orEmpty().lines().filter { it.isNotBlank() } + path).joinToString("\n")) }
             Gap(8.dp)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 GlyphField(ex.glyph, { g -> e = ex.copy(glyph = g) })

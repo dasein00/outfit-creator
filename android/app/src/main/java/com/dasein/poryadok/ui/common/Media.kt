@@ -45,21 +45,76 @@ import java.io.File
 
 /** Картинки, GIF и видео, которые пользователь прикрепляет к заметкам и упражнениям. */
 object Media {
-    fun isVideo(path: String) = path.substringAfterLast('.', "").lowercase() in setOf("mp4", "webm", "3gp", "mkv", "mov")
+    val VIDEO_EXT = setOf("mp4", "m4v", "webm", "3gp", "3g2", "mkv", "mov", "avi", "mpg", "mpeg", "ts", "mts", "m2ts", "wmv", "flv", "ogv")
+    fun isVideo(path: String) = path.substringAfterLast('.', "").lowercase() in VIDEO_EXT
     fun isGif(path: String) = path.substringAfterLast('.', "").lowercase() == "gif"
+
+    /** Имя файла, как его видит пользователь (в нём настоящее расширение: .mp4, .mov…). */
+    private fun displayName(ctx: Context, uri: Uri): String? = runCatching {
+        ctx.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+            if (c.moveToFirst()) c.getString(0) else null
+        }
+    }.getOrNull()
+
+    /** Расширение файла: из имени, из типа или по умолчанию (видео — mp4, иначе jpg). */
+    fun extensionOf(ctx: Context, uri: Uri): String {
+        val mime = ctx.contentResolver.getType(uri).orEmpty()
+        val fromName = (displayName(ctx, uri) ?: uri.lastPathSegment)?.substringAfterLast('.', "")?.lowercase()?.takeIf { it.length in 2..5 && it.all(Char::isLetterOrDigit) }
+        return fromName
+            ?: MimeTypeMap.getSingleton().getExtensionFromMimeType(mime)?.takeIf { it != "bin" }
+            ?: if (mime.startsWith("video") || mime == "application/mp4") "mp4" else "jpg"
+    }
+
+    /** Это видео? По типу файла или по расширению. */
+    fun isVideoUri(ctx: Context, uri: Uri): Boolean {
+        val mime = ctx.contentResolver.getType(uri).orEmpty()
+        return mime.startsWith("video") || mime == "application/mp4" || extensionOf(ctx, uri) in VIDEO_EXT
+    }
 
     /** Копирует файл как есть (без пережатия — GIF остаётся анимированным) в папку приложения. */
     suspend fun importRaw(ctx: Context, uri: Uri, dir: String): String? = withContext(Dispatchers.IO) {
         runCatching {
-            val mime = ctx.contentResolver.getType(uri) ?: ""
-            val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime)
-                ?: uri.lastPathSegment?.substringAfterLast('.', "")?.takeIf { it.length in 2..4 }
-                ?: if (mime.startsWith("video")) "mp4" else "jpg"
+            val ext = extensionOf(ctx, uri)
             val folder = File(ctx.filesDir, dir).apply { mkdirs() }
             val f = File(folder, "m_${System.currentTimeMillis()}.$ext")
             ctx.contentResolver.openInputStream(uri)?.use { input -> f.outputStream().use { input.copyTo(it) } } ?: return@runCatching null
             f.absolutePath
         }.getOrNull()
+    }
+}
+
+/**
+ * Добавление видео: «Из галереи» — системный выбор фото и видео (видит все ролики телефона: mp4, mov, 3gp…),
+ * «Из файлов» — любой файл из «Загрузок», диска, Telegram. Файл копируется в папку [dir].
+ */
+@Composable
+fun VideoAddButtons(dir: String, onPicked: (String) -> Unit) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    fun take(uri: Uri?) {
+        if (uri == null) return
+        scope.launch {
+            if (!Media.isVideoUri(ctx, uri)) {
+                android.widget.Toast.makeText(ctx, "Это не видео. Подходят mp4, mov, 3gp, webm, mkv, avi", android.widget.Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            android.widget.Toast.makeText(ctx, "Копирую видео…", android.widget.Toast.LENGTH_SHORT).show()
+            val path = Media.importRaw(ctx, uri, dir)
+            if (path == null) android.widget.Toast.makeText(ctx, "Не удалось добавить видео", android.widget.Toast.LENGTH_SHORT).show() else onPicked(path)
+        }
+    }
+    val gallery = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { take(it) }
+    val files = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { take(it) }
+    androidx.compose.foundation.layout.Row {
+        androidx.compose.material3.OutlinedButton(
+            onClick = { gallery.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)) },
+            modifier = Modifier.weight(1f),
+        ) { Text("+ Видео из галереи", maxLines = 1) }
+        androidx.compose.foundation.layout.Spacer(Modifier.padding(4.dp))
+        androidx.compose.material3.OutlinedButton(
+            onClick = { files.launch(arrayOf("video/*", "application/mp4", "application/octet-stream", "*/*")) },
+            modifier = Modifier.weight(1f),
+        ) { Text("+ Из файлов", maxLines = 1) }
     }
 }
 
@@ -71,7 +126,7 @@ fun rememberMediaPicker(dir: String, video: Boolean = false, onPicked: (String) 
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) scope.launch { Media.importRaw(ctx, uri, dir)?.let(onPicked) }
     }
-    return { launcher.launch(if (video) arrayOf("image/*", "video/*") else arrayOf("image/*")) }
+    return { launcher.launch(if (video) arrayOf("image/*", "video/*", "application/mp4") else arrayOf("image/*")) }
 }
 
 /** Картинка по пути; GIF проигрывается (Android 9+), видео — зациклено без звука. */

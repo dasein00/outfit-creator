@@ -48,5 +48,9 @@ class EnDictTest {
         assertEquals(LocalDate.of(2026, 1, 25), HolidayRules.dateIn("nth:01:7:-1", 2026))  // день без интернета
         assertEquals(LocalDate.of(2026, 5, 29), HolidayRules.dateIn("nth:05:5:-1", 2026))  // день соседей
         assertEquals("Суббота, ближайшая к 17 июня", HolidayRules.describe("near:06-17:6"))
+        assertEquals(LocalDate.of(2026, 2, 16), HolidayRules.dateIn("ew:-48", 2026))  // День булочек в Исландии — понедельник
+        assertEquals(LocalDate.of(2026, 2, 12), HolidayRules.dateIn("ew:-52", 2026))  // Бабий четверг
+        assertEquals(LocalDate.of(2026, 6, 7), HolidayRules.dateIn("ew:63", 2026))    // Эль Колачо — воскресенье
+        assertEquals(LocalDate.of(2026, 8, 26), HolidayRules.dateIn("nth:08:3:-1", 2026)) // Ла Томатина
     }
 }

@@ -89,15 +89,6 @@ fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolea
     var remove by remember { mutableStateOf<String?>(null) }
     fun save(list: List<String>) = onChange(list.distinct())
 
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        if (uri != null) scope.launch {
-            Toast.makeText(ctx, "Копирую видео…", Toast.LENGTH_SHORT).show()
-            val path = Media.importRaw(ctx, uri, "recipes/video")
-            if (path == null) Toast.makeText(ctx, "Не удалось добавить видео", Toast.LENGTH_SHORT).show()
-            else save(videos + path)
-        }
-    }
-
     SectionTitle("Видео рецепта")
     if (videos.isEmpty()) Text(
         "Прикрепите ролик из галереи или ссылку на видео (YouTube, VK, Rutube) — он будет под рукой во время готовки.",
@@ -128,9 +119,10 @@ fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolea
         }
     }
     Row {
-        OutlinedButton(onClick = { picker.launch(arrayOf("video/*")) }, Modifier.weight(1f)) { Text("+ Из галереи") }
-        HGap(8.dp)
-        OutlinedButton(onClick = { addLink = true }, Modifier.weight(1f)) { Text("+ Ссылка") }
+        Column(Modifier.weight(1f)) {
+            com.dasein.poryadok.ui.common.VideoAddButtons("recipes/video") { path -> save(videos + path) }
+            OutlinedButton(onClick = { addLink = true }, Modifier.fillMaxWidth()) { Text("+ Ссылка на видео (YouTube, VK, Rutube)") }
+        }
     }
 
     if (addLink) {
