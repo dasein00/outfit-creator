@@ -156,7 +156,7 @@ fun rememberMediaPicker(dir: String, video: Boolean = false, onPicked: (String) 
 
 /** Картинка по пути; GIF проигрывается (Android 9+), видео — зациклено без звука. */
 @Composable
-fun MediaView(path: String, modifier: Modifier = Modifier, crop: Boolean = false) {
+fun MediaView(path: String, modifier: Modifier = Modifier, crop: Boolean = false) = androidx.compose.runtime.key(path) {
     when {
         Media.isVideo(path) -> AndroidView(
             factory = { c ->
@@ -197,7 +197,8 @@ fun MediaView(path: String, modifier: Modifier = Modifier, crop: Boolean = false
  * «⛶» открывает ролик на весь экран.
  */
 @Composable
-fun VideoPlayer(path: String, modifier: Modifier = Modifier) {
+fun VideoPlayer(path: String, modifier: Modifier = Modifier) = androidx.compose.runtime.key(path) {
+    // key(path): при удалении или замене ролика проигрыватель создаётся заново, а не показывает прежний файл.
     var full by remember { mutableStateOf(false) }
     Box(modifier.background(Color.Black)) {
         AndroidView(

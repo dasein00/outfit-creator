@@ -493,6 +493,7 @@ private fun TargetDialog(pe: PlanExercise, e: Exercise?, onDismiss: () -> Unit, 
 @Composable
 fun ExerciseScreen(nav: NavHostController, id: Long) {
     val t = Graph.training
+    val ctx = LocalContext.current
     val extra = LocalExtra.current
     val existing by observe<Exercise?>(null, id) { t.exercise(id) }
     val sets by observe(emptyList(), id) { t.setsOfExercise(id) }
@@ -519,7 +520,7 @@ fun ExerciseScreen(nav: NavHostController, id: Long) {
             val media = ex.media.lines().filter { it.isNotBlank() }
             if (media.isNotEmpty()) {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(media) { m ->
+                    items(media, key = { it }) { m ->
                         Column {
                         Box {
                             if (Media.isVideo(m)) VideoPlayer(m, Modifier.size(260.dp, 220.dp).clip(RoundedCornerShape(14.dp)))
@@ -527,7 +528,15 @@ fun ExerciseScreen(nav: NavHostController, id: Long) {
                             Text(
                                 "✕", fontSize = 14.sp,
                                 modifier = Modifier.align(Alignment.TopStart).padding(6.dp).clip(RoundedCornerShape(12.dp)).background(extra.card)
-                                    .clickable { e = ex.copy(media = media.filter { it != m }.joinToString("\n")) }.padding(horizontal = 8.dp, vertical = 2.dp),
+                                    .clickable {
+                                        val upd = ex.copy(media = media.filter { it != m }.joinToString("\n"))
+                                        e = upd
+                                        // Убираем сразу: сохраняем упражнение и удаляем файл, если он больше нигде не нужен.
+                                        io {
+                                            if (id != 0L) t.upsertExercise(upd)
+                                            if (m.startsWith(ctx.filesDir.absolutePath) && t.exercisesNow().none { x -> x.id != upd.id && m in x.media.lines() }) java.io.File(m).delete()
+                                        }
+                                    }.padding(horizontal = 8.dp, vertical = 2.dp),
                             )
                         }
                         if (Media.isVideo(m) && java.io.File(m).length() > 8L * 1024 * 1024) com.dasein.poryadok.ui.common.CompressVideoButton(m) { new ->
