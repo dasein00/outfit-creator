@@ -437,3 +437,13 @@ details.lgrp summary { padding: 11px 0; font-weight: 600; cursor: pointer; }
 .tw-gloss small { color: var(--ink2); font-size: 12px; }
 .tw-acc { margin-top: 8px; }
 .tw-acc .chip { min-width: 40px; font-size: 16px; }
+
+/* ---------- Репетитор фортепиано ---------- */
+.pt-kb { width: 100%; max-width: 360px; display: block; margin: 10px auto 0; }
+.pt-kb .w { fill: #fff; stroke: #b9b2c4; stroke-width: .8; }
+.pt-kb .b { fill: #2b2733; }
+.pt-kb .on { fill: var(--peach); stroke: #b9b2c4; stroke-width: .8; }
+.pt-kb .onb { fill: var(--accent); }
+.pt-vis { color: var(--ink); }
+.pt-vis .staff { max-width: 280px; display: block; margin: 0 auto; }
+.tw-opts.pt-7 { grid-template-columns: repeat(4, 1fr); }

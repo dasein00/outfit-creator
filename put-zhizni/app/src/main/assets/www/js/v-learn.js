@@ -84,6 +84,7 @@
     s += '<line x1="' + (idx < lineBase + 4 ? 147.5 : 132.5) + '" x2="' + (idx < lineBase + 4 ? 147.5 : 132.5) + '" y1="' + y + '" y2="' + (idx < lineBase + 4 ? y - 36 : y + 36) + '" stroke="currentColor" stroke-width="1.5"/>';
     return s + "</svg>";
   };
+  A.staffSvg = (clef, idx) => staffSvg(clef, idx);
   const noteMidi = (clef, idx) => { const base = clef === "treble" ? 60 : 36; const oct = Math.floor(idx / 7), st = [0, 2, 4, 5, 7, 9, 11][idx % 7]; return base + oct * 12 + st; };
 
   /* ---------- Таро: иллюстрации колоды Райдера — Уэйта (1909, общественное достояние) ---------- */
@@ -255,6 +256,7 @@
           (r.ketu.edge ? '<div class="warn" style="margin-top:8px">Кету близко к границе знака или накшатры — из-за разницы среднего и истинного узла результат может отличаться.</div>' : "") +
           '<p class="small muted" style="margin-top:8px">Аянамша: ' + dms(r.ayan) + " · тропический Раху: " + dms(r.tropRahu) + " · JD " + r.JD.toFixed(4) + "</p>" +
           '<div class="quote"><b>Кету в знаке ' + esc(r.ketu.sign) + ":</b> " + esc(K.signs[r.ketu.si].split(": ").slice(1).join(": ")) + "</div>" +
+          '<div class="card" style="margin:10px 0 0;box-shadow:none;background:var(--bg2)"><h3>Разбор: Кету в знаке ' + esc(r.ketu.sign) + '</h3><p class="small muted">Ведическая традиция (джйотиш): Кету показывает привычное и «уже пройденное», Раху напротив — направление роста.</p><p>' + esc(K.signDeep[r.ketu.si]) + "</p>" + (K.lordDeep[K.nakshatras[r.ketu.nk][1]] ? "<p>" + esc(K.lordDeep[K.nakshatras[r.ketu.nk][1]]) + "</p>" : "") + "</div>" +
           '<p class="small"><b>Накшатра ' + esc(K.nakshatras[r.ketu.nk][0]) + "</b>: управитель " + esc(K.nakshatras[r.ketu.nk][1]) + ", символ — " + esc(K.nakshatras[r.ketu.nk][3]) + ", темы — " + esc(K.nakshatras[r.ketu.nk][4]) + '.</p><p class="small muted">Дом Кету зависит от асцендента, для которого нужен полный расчёт карты; он здесь не вычисляется.</p></div>';
       }
       return h;
@@ -487,6 +489,7 @@
       const tot = (subj) => sum(A.col("learn").filter((x) => x.subject === subj).map((x) => x.min));
       const pm = sum(A.col("psess").map((s) => s.min));
       const mods = [
+        ["pianotutor", "{{i:piano}}", "Репетитор фортепиано", (() => { const t = A.db().ptutor; const n = t ? Object.keys(t.srs || {}).length : 0; return n ? n + " элементов в повторениях" : "ноты, аккорды, слух, гаммы — понемногу каждый день"; })()],
         ["piano", "{{i:piano}}", "Самоучитель пианино", Object.keys(P.done).length + "/" + L().PIANO.length + " уроков · " + fmtDur(pm)],
         ["tarot", "{{i:wand-sparkles}}", "Обучатель по Таро", L().TAROT.filter((c) => (T.box[c.id] || {}).b >= 3).length + "/78 карт выучено"],
         ["ketu", "{{i:leaf}}", "Модуль Кету", Object.keys(A.db().ketu.lessons).length + "/" + L().KETU.lessons.length + " уроков"],
