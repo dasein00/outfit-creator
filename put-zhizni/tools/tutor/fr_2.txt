@@ -1,0 +1,84 @@
+#clothes
+les vêtements|одежда|J'ai besoin de nouveaux vêtements.|Мне нужна новая одежда.
+la chemise|рубашка|Il porte une chemise blanche.|На нём белая рубашка.
+le pantalon|брюки|Ce pantalon est trop long.|Эти брюки слишком длинные.
+la robe|платье|Quelle jolie robe !|Какое красивое платье!
+la jupe|юбка|Elle porte une jupe noire.|На ней чёрная юбка.
+la veste|куртка, пиджак|Prends ta veste, il fait froid.|Возьми куртку, холодно.
+le manteau|пальто|Mon manteau est chaud.|Моё пальто тёплое.
+les chaussures|обувь|J'ai acheté des chaussures.|Я купил обувь.
+le chapeau|шляпа|Un chapeau contre le soleil.|Шляпа от солнца.
+le sac|сумка|Mon sac est lourd.|Моя сумка тяжёлая.
+porter|носить|Elle porte des lunettes.|Она носит очки.
+la taille|размер|Quelle est votre taille ?|Какой у вас размер?
+essayer|примерять; пытаться|Je peux essayer ?|Можно примерить?
+#city
+la ville|город|Paris est une belle ville.|Париж — красивый город.
+la rue|улица|J'habite dans cette rue.|Я живу на этой улице.
+la place|площадь; место|On se voit sur la place.|Увидимся на площади.
+le magasin|магазин|Le magasin ferme à vingt heures.|Магазин закрывается в восемь вечера.
+la boulangerie|булочная|Je vais à la boulangerie.|Я иду в булочную.
+la pharmacie|аптека|Où est la pharmacie ?|Где аптека?
+la banque|банк|La banque est fermée.|Банк закрыт.
+la gare|вокзал|Le taxi va à la gare.|Такси едет на вокзал.
+l'église (f)|церковь|Une vieille église.|Старая церковь.
+le pont|мост|Traversez le pont.|Перейдите мост.
+le parc|парк|On se promène dans le parc.|Мы гуляем в парке.
+à droite|направо|Tournez à droite.|Поверните направо.
+à gauche|налево|C'est à gauche.|Это слева.
+tout droit|прямо|Allez tout droit.|Идите прямо.
+près|рядом|C'est tout près.|Это совсем рядом.
+loin|далеко|C'est loin d'ici ?|Это далеко отсюда?
+#travel
+le voyage|путешествие|Bon voyage !|Счастливого пути!
+voyager|путешествовать|J'adore voyager.|Обожаю путешествовать.
+l'avion (m)|самолёт|L'avion part à midi.|Самолёт вылетает в полдень.
+le train|поезд|Le train est en retard.|Поезд опаздывает.
+le billet|билет|Un billet pour Nice, s'il vous plaît.|Один билет до Ниццы, пожалуйста.
+la valise|чемодан|Ma valise est prête.|Мой чемодан готов.
+l'hôtel (m)|гостиница|L'hôtel est près de la mer.|Отель у моря.
+le passeport|паспорт|Votre passeport, s'il vous plaît.|Ваш паспорт, пожалуйста.
+l'aéroport (m)|аэропорт|On va à l'aéroport.|Мы едем в аэропорт.
+la voiture|машина|Je vais en voiture.|Я еду на машине.
+le bus|автобус|Je prends le bus.|Я сажусь на автобус.
+le métro|метро|Le métro est rapide.|Метро быстрое.
+la carte|карта|Tu as une carte de la ville ?|У тебя есть карта города?
+partir|уезжать|Nous partons demain.|Мы уезжаем завтра.
+arriver|прибывать|Le train arrive à dix heures.|Поезд прибывает в десять.
+#work
+le travail|работа|Je vais au travail.|Я иду на работу.
+travailler|работать|Je travaille dans un bureau.|Я работаю в офисе.
+le bureau|офис; письменный стол|Le bureau est fermé.|Офис закрыт.
+le patron|начальник|Mon patron est sympa.|Мой начальник приятный.
+le collègue|коллега|Mes collègues sont gentils.|Мои коллеги милые.
+la réunion|собрание|La réunion commence à neuf heures.|Собрание начинается в девять.
+le métier|профессия|Quel est ton métier ?|Кем ты работаешь?
+l'entreprise (f)|компания|Il travaille dans une grande entreprise.|Он работает в большой компании.
+le salaire|зарплата|Le salaire est bon.|Зарплата хорошая.
+le projet|проект|C'est un projet important.|Это важный проект.
+#money
+l'argent (m)|деньги|Je n'ai pas d'argent.|У меня нет денег.
+l'euro (m)|евро|Ça coûte dix euros.|Это стоит десять евро.
+le prix|цена|Quel est le prix ?|Какая цена?
+coûter|стоить|Combien ça coûte ?|Сколько это стоит?
+payer|платить|Je peux payer par carte ?|Можно заплатить картой?
+cher|дорогой|C'est trop cher.|Это слишком дорого.
+la carte bancaire|банковская карта|J'ai oublié ma carte bancaire.|Я забыл банковскую карту.
+acheter|покупать|Je veux acheter du pain.|Я хочу купить хлеб.
+vendre|продавать|Il vend sa voiture.|Он продаёт свою машину.
+économiser|экономить, копить|J'économise pour les vacances.|Я коплю на отпуск.
+#study
+l'école (f)|школа|Les enfants vont à l'école.|Дети ходят в школу.
+l'université (f)|университет|Elle étudie à l'université.|Она учится в университете.
+l'étudiant (m)|студент|Je suis étudiant.|Я студент.
+le professeur|преподаватель|Le professeur explique bien.|Преподаватель хорошо объясняет.
+la leçon|урок|La leçon est finie.|Урок окончен.
+le livre|книга|Ouvrez vos livres.|Откройте книги.
+le cahier|тетрадь|Écris dans ton cahier.|Пиши в тетради.
+le stylo|ручка|Tu as un stylo ?|У тебя есть ручка?
+apprendre|учить, учиться|J'apprends le français.|Я учу французский.
+étudier|изучать|Il étudie la médecine.|Он изучает медицину.
+comprendre|понимать|Je ne comprends pas.|Я не понимаю.
+l'examen (m)|экзамен|J'ai réussi l'examen.|Я сдал экзамен.
+le mot|слово|Que veut dire ce mot ?|Что значит это слово?
+la langue|язык|Je parle trois langues.|Я говорю на трёх языках.

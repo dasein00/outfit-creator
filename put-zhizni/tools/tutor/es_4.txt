@@ -1,0 +1,213 @@
+#art
+el arte|искусство|Me interesa el arte moderno.|Меня интересует современное искусство.
+el museo|музей|El museo cierra los lunes.|Музей закрыт по понедельникам.
+el cuadro|картина|Este cuadro es de Goya.|Эта картина Гойи.
+el pintor|художник|Picasso fue un gran pintor.|Пикассо был великим художником.
+pintar|рисовать красками|Pinta paisajes.|Он рисует пейзажи.
+la exposición|выставка|Vimos una exposición de fotografía.|Мы посмотрели фотовыставку.
+el teatro|театр|Vamos al teatro esta noche.|Сегодня вечером мы идём в театр.
+el cine|кино, кинотеатр|¿Vamos al cine?|Пойдём в кино?
+el actor|актёр|Es un actor muy famoso.|Это очень известный актёр.
+la actriz|актриса|La actriz ganó un premio.|Актриса получила премию.
+el escritor|писатель|Cervantes es un escritor español.|Сервантес — испанский писатель.
+la novela|роман|Estoy leyendo una novela.|Я читаю роман.
+el poema|стихотворение|Escribió un poema para ella.|Он написал для неё стихотворение.
+la canción|песня|Es mi canción favorita.|Это моя любимая песня.
+el cantante|певец|El cantante salió al escenario.|Певец вышел на сцену.
+el concierto|концерт|Fuimos a un concierto de rock.|Мы ходили на рок-концерт.
+la guitarra|гитара|Toca la guitarra.|Он играет на гитаре.
+el piano|пианино|Aprendo a tocar el piano.|Я учусь играть на пианино.
+tocar|играть (на инструменте); трогать|¿Sabes tocar algún instrumento?|Ты умеешь играть на каком-нибудь инструменте?
+el baile|танец|El flamenco es un baile español.|Фламенко — испанский танец.
+la cultura|культура|Me encanta la cultura española.|Обожаю испанскую культуру.
+la historia|история|La historia de la ciudad es larga.|У города долгая история.
+la entrada|билет; вход|Compré dos entradas.|Я купил два билета.
+el escenario|сцена|Los músicos están en el escenario.|Музыканты на сцене.
+famoso|знаменитый|Es una plaza famosa.|Это знаменитая площадь.
+#tech
+el ordenador|компьютер|Mi ordenador es muy lento.|Мой компьютер очень медленный.
+el móvil|мобильный телефон|Se me ha olvidado el móvil.|Я забыл телефон.
+el teléfono|телефон|¿Cuál es tu número de teléfono?|Какой у тебя номер телефона?
+la pantalla|экран|La pantalla está rota.|Экран разбит.
+el teclado|клавиатура|El teclado no funciona.|Клавиатура не работает.
+internet|интернет|No hay internet en casa.|Дома нет интернета.
+la red|сеть|La red social es muy popular.|Эта соцсеть очень популярна.
+la contraseña|пароль|He olvidado mi contraseña.|Я забыл пароль.
+el correo electrónico|электронная почта|Te envío un correo electrónico.|Я отправлю тебе письмо по почте.
+la aplicación|приложение|Descarga esta aplicación.|Скачай это приложение.
+descargar|скачивать|Voy a descargar la película.|Я скачаю фильм.
+el archivo|файл|Guarda el archivo.|Сохрани файл.
+guardar|сохранять; хранить|No olvides guardar los cambios.|Не забудь сохранить изменения.
+la batería|батарея|Me queda poca batería.|У меня мало заряда.
+cargar|заряжать|Tengo que cargar el móvil.|Мне надо зарядить телефон.
+el cargador|зарядка|¿Tienes un cargador?|У тебя есть зарядка?
+la página web|сайт|Mira nuestra página web.|Посмотри наш сайт.
+buscar|искать|Lo busco en internet.|Я поищу это в интернете.
+enviar|отправлять|Envíame la foto.|Отправь мне фото.
+la máquina|машина, механизм|La máquina de café está rota.|Кофемашина сломана.
+funcionar|работать (о технике)|El ascensor no funciona.|Лифт не работает.
+encender|включать|Enciende la luz.|Включи свет.
+apagar|выключать|Apaga el ordenador.|Выключи компьютер.
+la cámara|камера, фотоаппарат|Mi cámara hace buenas fotos.|Моя камера делает хорошие фото.
+el vídeo|видео|Vi un vídeo muy gracioso.|Я посмотрел очень смешное видео.
+#verbs
+ser|быть (постоянно)|Soy de Rusia.|Я из России.
+estar|быть, находиться (временно)|Estoy en casa.|Я дома.
+tener|иметь|Tengo dos hermanos.|У меня два брата.
+haber|иметься (hay — есть)|Hay un banco cerca.|Рядом есть банк.
+hacer|делать|¿Qué haces?|Что ты делаешь?
+ir|идти, ехать|Voy al trabajo.|Я иду на работу.
+venir|приходить|¿Vienes con nosotros?|Ты идёшь с нами?
+poder|мочь|¿Puedo entrar?|Можно войти?
+saber|знать (факт); уметь|No sé nadar.|Я не умею плавать.
+conocer|знать (быть знакомым)|¿Conoces a María?|Ты знаешь Марию?
+ver|видеть; смотреть|Vemos la tele.|Мы смотрим телевизор.
+dar|давать|Dame la mano.|Дай мне руку.
+poner|класть, ставить|Pon el libro en la mesa.|Положи книгу на стол.
+salir|выходить|Salgo de casa a las ocho.|Я выхожу из дома в восемь.
+volver|возвращаться|Vuelvo enseguida.|Я сейчас вернусь.
+llegar|прибывать|El tren llega a las diez.|Поезд прибывает в десять.
+llevar|нести; носить|Llevo gafas.|Я ношу очки.
+traer|приносить|Trae el pan, por favor.|Принеси хлеб, пожалуйста.
+pensar|думать|Pienso en ti.|Я думаю о тебе.
+creer|верить; считать|Creo que tienes razón.|Думаю, ты прав.
+necesitar|нуждаться|Necesito ayuda.|Мне нужна помощь.
+deber|быть должным|Debes descansar.|Тебе нужно отдохнуть.
+empezar|начинать|La clase empieza a las nueve.|Урок начинается в девять.
+terminar|заканчивать|¿Has terminado?|Ты закончил?
+abrir|открывать|Abre la ventana.|Открой окно.
+cerrar|закрывать|Cierra la puerta.|Закрой дверь.
+comprar|покупать|Quiero comprar pan.|Я хочу купить хлеб.
+vender|продавать|Venden fruta en el mercado.|На рынке продают фрукты.
+pagar|платить|¿Puedo pagar con tarjeta?|Можно заплатить картой?
+vivir|жить|Vivo en Moscú.|Я живу в Москве.
+trabajar|работать|Trabaja en un hospital.|Она работает в больнице.
+estudiar|учиться, изучать|Estudio español.|Я изучаю испанский.
+aprender|учить, учиться|Quiero aprender a conducir.|Я хочу научиться водить.
+enseñar|учить (кого-то); показывать|Mi madre enseña inglés.|Моя мама преподаёт английский.
+escribir|писать|Escríbeme pronto.|Напиши мне поскорее.
+comer|есть|Comemos a las dos.|Мы обедаем в два.
+beber|пить|Bebe mucha agua.|Пей много воды.
+dormir|спать|Duermo ocho horas.|Я сплю восемь часов.
+despertarse|просыпаться|Me despierto a las siete.|Я просыпаюсь в семь.
+ayudar|помогать|¿Te ayudo?|Тебе помочь?
+esperar|ждать; надеяться|Te espero aquí.|Жду тебя здесь.
+buscar|искать|Busco mis llaves.|Я ищу ключи.
+encontrar|находить|No encuentro mi móvil.|Не могу найти телефон.
+olvidar|забывать|No olvides la llave.|Не забудь ключ.
+recordar|помнить|No recuerdo su nombre.|Не помню его имени.
+gustar|нравиться|Me gusta el chocolate.|Я люблю шоколад.
+usar|использовать|¿Puedo usar tu bolígrafo?|Можно взять твою ручку?
+cambiar|менять|Quiero cambiar de trabajo.|Я хочу сменить работу.
+mirar|смотреть|Mira esto.|Посмотри на это.
+oír|слышать|¿Me oyes?|Ты меня слышишь?
+andar|ходить пешком|Me gusta andar.|Я люблю ходить пешком.
+conducir|водить машину|Conduce con cuidado.|Веди осторожно.
+seguir|продолжать; следовать|Sigue recto.|Иди прямо.
+dejar|оставлять; позволять|Déjame en paz.|Оставь меня в покое.
+pedir|просить; заказывать|Voy a pedir una pizza.|Я закажу пиццу.
+intentar|пытаться|Inténtalo otra vez.|Попробуй ещё раз.
+#adj
+bueno|хороший|Es una buena idea.|Это хорошая идея.
+malo|плохой|Hace mal tiempo.|Плохая погода.
+grande|большой|Tienen una casa grande.|У них большой дом.
+pequeño|маленький|Es un pueblo pequeño.|Это маленький городок.
+nuevo|новый|Tengo un coche nuevo.|У меня новая машина.
+viejo|старый|Es un edificio viejo.|Это старое здание.
+joven|молодой|Es muy joven.|Он очень молод.
+alto|высокий|Mi hermano es alto.|Мой брат высокий.
+bajo|низкий|La mesa es baja.|Стол низкий.
+largo|длинный|Tiene el pelo largo.|У неё длинные волосы.
+corto|короткий|Fue un viaje corto.|Это была короткая поездка.
+bonito|красивый, милый|¡Qué vestido tan bonito!|Какое красивое платье!
+guapo|красивый (о человеке)|Tu novio es muy guapo.|Твой парень очень красивый.
+feo|некрасивый|No es feo, es original.|Это не уродливо, это оригинально.
+fácil|лёгкий|El examen fue fácil.|Экзамен был лёгким.
+difícil|трудный|El español no es difícil.|Испанский не сложный.
+caro|дорогой|Este hotel es caro.|Этот отель дорогой.
+barato|дешёвый|La fruta es barata aquí.|Фрукты здесь дешёвые.
+rápido|быстрый|Es un tren rápido.|Это скорый поезд.
+lento|медленный|El autobús es lento.|Автобус медленный.
+caliente|горячий|La sopa está caliente.|Суп горячий.
+frío|холодный|El café está frío.|Кофе холодный.
+lleno|полный|El restaurante está lleno.|Ресторан полон.
+vacío|пустой|La calle está vacía.|Улица пустая.
+limpio|чистый|La habitación está limpia.|Комната чистая.
+sucio|грязный|Tengo las manos sucias.|У меня грязные руки.
+fuerte|сильный|Es un hombre fuerte.|Он сильный мужчина.
+débil|слабый|Me siento débil.|Я чувствую слабость.
+importante|важный|Es una reunión importante.|Это важная встреча.
+interesante|интересный|Es un libro interesante.|Это интересная книга.
+mismo|тот же самый|Tenemos el mismo coche.|У нас одинаковые машины.
+otro|другой|Dame otro, por favor.|Дай мне другой, пожалуйста.
+mejor|лучше, лучший|Es el mejor restaurante.|Это лучший ресторан.
+peor|хуже, худший|Hoy estoy peor.|Сегодня мне хуже.
+cierto|верный, правдивый|Eso no es cierto.|Это неправда.
+listo|умный; готовый|¿Estás listo?|Ты готов?
+ocupado|занятый|Estoy ocupado ahora.|Я сейчас занят.
+libre|свободный|¿Está libre este asiento?|Это место свободно?
+rojo|красный|Llevo una camisa roja.|На мне красная рубашка.
+azul|синий|El mar es azul.|Море синее.
+verde|зелёный|Las hojas son verdes.|Листья зелёные.
+amarillo|жёлтый|El plátano es amarillo.|Банан жёлтый.
+blanco|белый|La nieve es blanca.|Снег белый.
+negro|чёрный|Tiene un gato negro.|У него чёрный кот.
+#grammar
+yo|я|Yo soy estudiante.|Я студент.
+tú|ты|Tú eres mi amigo.|Ты мой друг.
+él|он|Él es alto.|Он высокий.
+ella|она|Ella es médica.|Она врач.
+usted|вы (вежливо)|¿Usted es el director?|Вы директор?
+nosotros|мы|Nosotros somos una familia.|Мы семья.
+vosotros|вы (мн.)|¿Vosotros venís?|Вы придёте?
+ellos|они|Ellos viven aquí.|Они живут здесь.
+este|этот|Este libro es mío.|Эта книга моя.
+ese|тот|Ese coche es caro.|Та машина дорогая.
+aquí|здесь|Ven aquí.|Иди сюда.
+allí|там|Vive allí.|Он живёт там.
+y|и|Pan y leche.|Хлеб и молоко.
+o|или|¿Té o café?|Чай или кофе?
+pero|но|Es caro, pero bueno.|Дорого, но хорошо.
+porque|потому что|No vino porque estaba enfermo.|Он не пришёл, потому что болел.
+si|если|Si llueve, me quedo en casa.|Если пойдёт дождь, я останусь дома.
+cuando|когда|Cuando llego, te llamo.|Когда приеду, позвоню тебе.
+que|что; который|Creo que sí.|Думаю, да.
+¿qué?|что?|¿Qué es esto?|Что это?
+¿quién?|кто?|¿Quién es?|Кто это?
+¿dónde?|где?|¿Dónde vives?|Где ты живёшь?
+¿cuándo?|когда?|¿Cuándo empieza?|Когда начинается?
+¿por qué?|почему?|¿Por qué no vienes?|Почему ты не приходишь?
+¿cómo?|как?|¿Cómo te llamas?|Как тебя зовут?
+¿cuánto?|сколько?|¿Cuánto cuesta?|Сколько стоит?
+¿cuál?|какой? который?|¿Cuál prefieres?|Какой ты предпочитаешь?
+en|в, на|Estoy en el coche.|Я в машине.
+de|из; о; (принадлежность)|Es el coche de mi padre.|Это машина моего отца.
+a|к, в (направление)|Voy a Madrid.|Я еду в Мадрид.
+con|с|Café con leche.|Кофе с молоком.
+sin|без|Café sin azúcar.|Кофе без сахара.
+para|для; чтобы|Es para ti.|Это для тебя.
+por|за; через; из-за|Gracias por todo.|Спасибо за всё.
+sobre|на; о|El libro está sobre la mesa.|Книга на столе.
+entre|между|Entre tú y yo.|Между нами.
+muy|очень|Es muy bueno.|Это очень хорошо.
+mucho|много|Trabaja mucho.|Он много работает.
+poco|мало|Tengo poco dinero.|У меня мало денег.
+más|больше; ещё|Quiero más.|Я хочу ещё.
+menos|меньше|Come menos azúcar.|Ешь меньше сахара.
+también|тоже|Yo también.|Я тоже.
+tampoco|тоже не|Yo tampoco.|Я тоже нет.
+todo|весь; всё|Todo está bien.|Всё хорошо.
+nada|ничего|No pasa nada.|Ничего страшного.
+algo|что-то|¿Quieres algo?|Хочешь что-нибудь?
+alguien|кто-то|Alguien llama a la puerta.|Кто-то стучит в дверь.
+nadie|никто|No hay nadie.|Никого нет.
+bien|хорошо|Estoy bien, gracias.|У меня всё хорошо, спасибо.
+mal|плохо|Me siento mal.|Мне плохо.
+uno|один|Tengo un hermano.|У меня один брат.
+dos|два|Dos cafés, por favor.|Два кофе, пожалуйста.
+tres|три|Tengo tres hijos.|У меня трое детей.
+cuatro|четыре|Somos cuatro.|Нас четверо.
+cinco|пять|Son las cinco.|Пять часов.
+diez|десять|Diez minutos más.|Ещё десять минут.
+cien|сто|Cuesta cien euros.|Стоит сто евро.
+mil|тысяча|Mil gracias.|Огромное спасибо.

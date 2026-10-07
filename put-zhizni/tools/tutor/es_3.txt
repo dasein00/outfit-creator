@@ -1,0 +1,221 @@
+#time
+el tiempo|время; погода|No tengo tiempo.|У меня нет времени.
+la hora|час|¿Qué hora es?|Который час?
+el minuto|минута|Espera un minuto.|Подожди минуту.
+el segundo|секунда|Un segundo, por favor.|Одну секунду, пожалуйста.
+el día|день|¡Que tengas un buen día!|Хорошего дня!
+la semana|неделя|Nos vemos la semana que viene.|Увидимся на следующей неделе.
+el mes|месяц|Vuelvo dentro de un mes.|Я вернусь через месяц.
+el año|год|¡Feliz año nuevo!|С Новым годом!
+hoy|сегодня|Hoy es lunes.|Сегодня понедельник.
+mañana|завтра; утро|Hasta mañana.|До завтра.
+ayer|вчера|Lo vi ayer.|Я видел его вчера.
+ahora|сейчас|Ahora estoy ocupado.|Сейчас я занят.
+luego|потом|Hablamos luego.|Поговорим потом.
+pronto|скоро|Llegaré pronto.|Я скоро приеду.
+tarde|поздно|Es demasiado tarde.|Слишком поздно.
+temprano|рано|Me levanto temprano.|Я встаю рано.
+siempre|всегда|Siempre llega a tiempo.|Он всегда приходит вовремя.
+nunca|никогда|Nunca he estado en Japón.|Я никогда не был в Японии.
+a veces|иногда|A veces cocino en casa.|Иногда я готовлю дома.
+todavía|ещё, всё ещё|Todavía estoy en la oficina.|Я всё ещё в офисе.
+ya|уже|Ya he comido.|Я уже поел.
+la mañana|утро|Por la mañana bebo café.|Утром я пью кофе.
+la tarde|день, вечер (до темноты)|Te llamo por la tarde.|Я позвоню тебе днём.
+la noche|ночь, вечер|Buenas noches.|Спокойной ночи.
+el mediodía|полдень|Comemos al mediodía.|Мы обедаем в полдень.
+la medianoche|полночь|Volvió a medianoche.|Он вернулся в полночь.
+el fin de semana|выходные|¿Qué haces el fin de semana?|Что делаешь на выходных?
+el lunes|понедельник|El lunes empiezo a trabajar.|В понедельник я начинаю работать.
+el martes|вторник|La reunión es el martes.|Встреча во вторник.
+el miércoles|среда|El miércoles voy al gimnasio.|В среду я иду в спортзал.
+el jueves|четверг|Nos vemos el jueves.|Увидимся в четверг.
+el viernes|пятница|¡Por fin es viernes!|Наконец-то пятница!
+el sábado|суббота|El sábado dormimos mucho.|В субботу мы долго спим.
+el domingo|воскресенье|El domingo comemos con mis padres.|В воскресенье мы обедаем с родителями.
+enero|январь|En enero hace frío.|В январе холодно.
+febrero|февраль|Febrero es el mes más corto.|Февраль — самый короткий месяц.
+marzo|март|La primavera empieza en marzo.|Весна начинается в марте.
+abril|апрель|En abril llueve mucho.|В апреле много дождей.
+mayo|май|Nació en mayo.|Он родился в мае.
+junio|июнь|Las clases terminan en junio.|Занятия заканчиваются в июне.
+julio|июль|En julio vamos a la playa.|В июле мы едем на пляж.
+agosto|август|Agosto es muy caluroso.|Август очень жаркий.
+septiembre|сентябрь|El curso empieza en septiembre.|Учебный год начинается в сентябре.
+octubre|октябрь|En octubre caen las hojas.|В октябре падают листья.
+noviembre|ноябрь|Noviembre es gris.|Ноябрь серый.
+diciembre|декабрь|En diciembre celebramos la Navidad.|В декабре мы празднуем Рождество.
+la primavera|весна|Me encanta la primavera.|Я обожаю весну.
+el verano|лето|En verano hace calor.|Летом жарко.
+el otoño|осень|El otoño es bonito aquí.|Осень здесь красивая.
+el invierno|зима|El invierno fue largo.|Зима была долгой.
+el siglo|век|Vivimos en el siglo veintiuno.|Мы живём в двадцать первом веке.
+la fecha|дата|¿Cuál es la fecha de hoy?|Какое сегодня число?
+el cumpleaños|день рождения|¡Feliz cumpleaños!|С днём рождения!
+el reloj|часы|Mi reloj va atrasado.|Мои часы отстают.
+el calendario|календарь|Míralo en el calendario.|Посмотри в календаре.
+#nature
+la naturaleza|природа|Me gusta pasear por la naturaleza.|Я люблю гулять на природе.
+el sol|солнце|Hoy hace sol.|Сегодня солнечно.
+la luna|луна|La luna está llena.|Сегодня полнолуние.
+la estrella|звезда|Mira las estrellas.|Посмотри на звёзды.
+el cielo|небо|El cielo está despejado.|Небо ясное.
+la nube|облако|Hay muchas nubes.|Много облаков.
+la lluvia|дождь|Me gusta el sonido de la lluvia.|Мне нравится звук дождя.
+llover|идти (о дожде)|Está lloviendo.|Идёт дождь.
+la nieve|снег|Los niños juegan en la nieve.|Дети играют в снегу.
+nevar|идти (о снеге)|En enero nieva mucho.|В январе часто идёт снег.
+el viento|ветер|Hace mucho viento.|Очень ветрено.
+la tormenta|гроза, буря|Se acerca una tormenta.|Приближается гроза.
+el calor|жара|No soporto el calor.|Я не переношу жару.
+el frío|холод|Hace frío fuera.|На улице холодно.
+la temperatura|температура|La temperatura ha bajado.|Температура упала.
+el aire|воздух|Necesito aire fresco.|Мне нужен свежий воздух.
+el agua|вода|El agua está fría.|Вода холодная.
+el fuego|огонь|No juegues con fuego.|Не играй с огнём.
+la tierra|земля|La tierra está mojada.|Земля мокрая.
+el mar|море|Vivimos cerca del mar.|Мы живём у моря.
+el océano|океан|Cruzaron el océano.|Они пересекли океан.
+el río|река|El río es muy ancho.|Река очень широкая.
+el lago|озеро|Nadamos en el lago.|Мы плавали в озере.
+la montaña|гора|Subimos a la montaña.|Мы поднялись на гору.
+el bosque|лес|Nos perdimos en el bosque.|Мы заблудились в лесу.
+el árbol|дерево|Hay un árbol viejo en el jardín.|В саду старое дерево.
+la flor|цветок|Te he traído flores.|Я принёс тебе цветы.
+la hierba|трава|La hierba está verde.|Трава зелёная.
+la hoja|лист|Las hojas caen en otoño.|Осенью падают листья.
+la playa|пляж|Pasamos el día en la playa.|Мы провели день на пляже.
+la isla|остров|Es una isla pequeña.|Это маленький остров.
+el desierto|пустыня|El desierto es muy seco.|Пустыня очень сухая.
+la piedra|камень|Tiró una piedra al agua.|Он бросил камень в воду.
+la arena|песок|La arena está caliente.|Песок горячий.
+el campo|поле; деревня|Mis abuelos viven en el campo.|Мои бабушка и дедушка живут в деревне.
+el paisaje|пейзаж|¡Qué paisaje tan bonito!|Какой красивый пейзаж!
+el clima|климат|El clima aquí es suave.|Климат здесь мягкий.
+el planeta|планета|Debemos cuidar el planeta.|Мы должны беречь планету.
+el mundo|мир|Quiero viajar por el mundo.|Я хочу путешествовать по миру.
+#animals
+el animal|животное|¿Tienes algún animal?|У тебя есть животное?
+el perro|собака|Mi perro se llama Max.|Мою собаку зовут Макс.
+el gato|кот, кошка|El gato duerme en el sofá.|Кот спит на диване.
+el pájaro|птица|Un pájaro canta en la ventana.|Птица поёт у окна.
+el pez|рыба (живая)|Tengo dos peces rojos.|У меня две золотые рыбки.
+el caballo|лошадь|Sabe montar a caballo.|Он умеет ездить верхом.
+la vaca|корова|La vaca da leche.|Корова даёт молоко.
+el cerdo|свинья|El cerdo come de todo.|Свинья ест всё подряд.
+la oveja|овца|Hay ovejas en el campo.|В поле пасутся овцы.
+la gallina|курица|La gallina pone huevos.|Курица несёт яйца.
+el ratón|мышь|El gato persigue al ratón.|Кот гонится за мышью.
+el conejo|кролик|El conejo come zanahorias.|Кролик ест морковь.
+el oso|медведь|Vimos un oso en el bosque.|Мы видели медведя в лесу.
+el lobo|волк|El lobo aúlla de noche.|Волк воет по ночам.
+el zorro|лиса|El zorro es muy listo.|Лиса очень хитрая.
+el león|лев|El león es el rey de la selva.|Лев — царь зверей.
+el tigre|тигр|El tigre es peligroso.|Тигр опасен.
+el elefante|слон|El elefante tiene buena memoria.|У слона хорошая память.
+el mono|обезьяна|El mono come plátanos.|Обезьяна ест бананы.
+la serpiente|змея|No toques la serpiente.|Не трогай змею.
+la mariposa|бабочка|Una mariposa se posó en la flor.|Бабочка села на цветок.
+la abeja|пчела|Las abejas hacen miel.|Пчёлы делают мёд.
+el mosquito|комар|Me ha picado un mosquito.|Меня укусил комар.
+la araña|паук|Hay una araña en la pared.|На стене паук.
+la ballena|кит|La ballena es enorme.|Кит огромный.
+el delfín|дельфин|Los delfines son inteligentes.|Дельфины умные.
+la mascota|домашний питомец|¿Tienes mascota?|У тебя есть питомец?
+#feelings
+feliz|счастливый|Estoy muy feliz hoy.|Я сегодня очень счастлив.
+triste|грустный|¿Por qué estás triste?|Почему ты грустишь?
+contento|довольный|Estoy contento con el resultado.|Я доволен результатом.
+enfadado|сердитый|Mi jefe está enfadado.|Мой начальник сердится.
+cansado|усталый|Estoy muy cansado.|Я очень устал.
+nervioso|нервный, взволнованный|Estoy nervioso antes del examen.|Я нервничаю перед экзаменом.
+tranquilo|спокойный|Tranquilo, todo va bien.|Спокойно, всё хорошо.
+preocupado|обеспокоенный|Estoy preocupado por ti.|Я беспокоюсь за тебя.
+aburrido|скучающий; скучный|Estoy aburrido.|Мне скучно.
+sorprendido|удивлённый|Me quedé sorprendido.|Я был удивлён.
+asustado|испуганный|El niño está asustado.|Ребёнок напуган.
+orgulloso|гордый|Estoy orgulloso de ti.|Я горжусь тобой.
+celoso|ревнивый|Es muy celoso.|Он очень ревнивый.
+el amor|любовь|El amor lo cambia todo.|Любовь меняет всё.
+querer|хотеть; любить|Te quiero.|Я тебя люблю.
+amar|любить|Ama a su familia.|Он любит свою семью.
+odiar|ненавидеть|Odio levantarme temprano.|Ненавижу рано вставать.
+el miedo|страх|Tengo miedo a la oscuridad.|Я боюсь темноты.
+la alegría|радость|Lloró de alegría.|Она плакала от радости.
+la tristeza|грусть|Sentí una gran tristeza.|Я почувствовал сильную грусть.
+la esperanza|надежда|Nunca pierdas la esperanza.|Никогда не теряй надежду.
+sentir|чувствовать|Me siento mejor.|Я чувствую себя лучше.
+llorar|плакать|No llores, por favor.|Не плачь, пожалуйста.
+reír|смеяться|Nos reímos mucho.|Мы много смеялись.
+sonreír|улыбаться|Sonríe más a menudo.|Улыбайся почаще.
+la sonrisa|улыбка|Tiene una sonrisa bonita.|У неё красивая улыбка.
+el humor|настроение; юмор|Hoy estoy de buen humor.|Сегодня у меня хорошее настроение.
+la vergüenza|стыд, смущение|Me da vergüenza hablar en público.|Мне стыдно выступать перед людьми.
+echar de menos|скучать по|Te echo de menos.|Я по тебе скучаю.
+#talk
+hola|привет|¡Hola! ¿Qué tal?|Привет! Как дела?
+adiós|до свидания|Adiós, hasta pronto.|До свидания, до скорого.
+buenos días|доброе утро, добрый день|Buenos días, señora.|Доброе утро, сеньора.
+buenas tardes|добрый день|Buenas tardes a todos.|Всем добрый день.
+gracias|спасибо|Muchas gracias por tu ayuda.|Большое спасибо за помощь.
+de nada|пожалуйста (в ответ)|—Gracias. —De nada.|— Спасибо. — Не за что.
+por favor|пожалуйста (просьба)|Un café, por favor.|Кофе, пожалуйста.
+perdón|извините|Perdón, ¿dónde está el baño?|Извините, где туалет?
+lo siento|мне жаль, простите|Lo siento mucho.|Мне очень жаль.
+sí|да|Sí, claro.|Да, конечно.
+no|нет; не|No, gracias.|Нет, спасибо.
+vale|ладно, хорошо|Vale, nos vemos a las ocho.|Ладно, увидимся в восемь.
+claro|конечно|¡Claro que sí!|Конечно!
+bienvenido|добро пожаловать|¡Bienvenido a casa!|Добро пожаловать домой!
+¿qué tal?|как дела?|¿Qué tal el viaje?|Как поездка?
+encantado|очень приятно|Encantado de conocerte.|Очень приятно познакомиться.
+decir|сказать|¿Qué has dicho?|Что ты сказал?
+hablar|говорить|¿Hablas español?|Ты говоришь по-испански?
+preguntar|спрашивать|¿Puedo preguntarte algo?|Можно тебя кое-что спросить?
+responder|отвечать|No ha respondido a mi mensaje.|Он не ответил на моё сообщение.
+contar|рассказывать; считать|Cuéntame qué pasó.|Расскажи мне, что случилось.
+explicar|объяснять|¿Me lo puedes explicar?|Можешь мне это объяснить?
+entender|понимать|No entiendo la pregunta.|Я не понимаю вопрос.
+repetir|повторять|¿Puede repetirlo, por favor?|Повторите, пожалуйста.
+la pregunta|вопрос|Tengo una pregunta.|У меня есть вопрос.
+la respuesta|ответ|Sé la respuesta.|Я знаю ответ.
+la palabra|слово|¿Qué significa esta palabra?|Что значит это слово?
+la frase|фраза, предложение|Lee la frase en voz alta.|Прочитай фразу вслух.
+el idioma|язык (речь)|Hablo tres idiomas.|Я говорю на трёх языках.
+la conversación|разговор|Fue una conversación interesante.|Это был интересный разговор.
+la opinión|мнение|¿Cuál es tu opinión?|Каково твоё мнение?
+estar de acuerdo|соглашаться|Estoy de acuerdo contigo.|Я с тобой согласен.
+llamar|звонить; звать|Te llamo mañana.|Я позвоню тебе завтра.
+el mensaje|сообщение|Te mandé un mensaje.|Я отправил тебе сообщение.
+#hobby
+el pasatiempo|хобби|¿Cuál es tu pasatiempo favorito?|Какое у тебя любимое хобби?
+el deporte|спорт|Hago deporte tres veces por semana.|Я занимаюсь спортом три раза в неделю.
+el fútbol|футбол|Juegan al fútbol los domingos.|Они играют в футбол по воскресеньям.
+nadar|плавать|Me encanta nadar en el mar.|Обожаю плавать в море.
+correr|бегать|Corro cada mañana.|Я бегаю каждое утро.
+bailar|танцевать|¿Quieres bailar?|Хочешь потанцевать?
+cantar|петь|Canta muy bien.|Она очень хорошо поёт.
+jugar|играть|Los niños juegan en el parque.|Дети играют в парке.
+el juego|игра|Es un juego divertido.|Это весёлая игра.
+leer|читать|Me gusta leer antes de dormir.|Я люблю читать перед сном.
+el libro|книга|Estoy leyendo un libro interesante.|Я читаю интересную книгу.
+la película|фильм|Vamos a ver una película.|Давай посмотрим фильм.
+la música|музыка|¿Qué música escuchas?|Какую музыку ты слушаешь?
+escuchar|слушать|Escucho la radio en el coche.|Я слушаю радио в машине.
+dibujar|рисовать|Mi hija dibuja muy bien.|Моя дочь очень хорошо рисует.
+la foto|фото|Hice muchas fotos en el viaje.|Я сделал много фото в поездке.
+viajar|путешествовать|Nos gusta viajar.|Мы любим путешествовать.
+cocinar|готовить|Mi padre cocina muy bien.|Мой отец очень хорошо готовит.
+pasear|гулять|Paseamos por el parque.|Мы гуляем по парку.
+el paseo|прогулка|Vamos a dar un paseo.|Пойдём прогуляемся.
+la bicicleta|велосипед|Voy al trabajo en bicicleta.|Я езжу на работу на велосипеде.
+el gimnasio|спортзал|Voy al gimnasio después del trabajo.|Я хожу в спортзал после работы.
+el equipo|команда|Nuestro equipo ganó.|Наша команда выиграла.
+ganar|выигрывать; зарабатывать|¿Quién ganó el partido?|Кто выиграл матч?
+perder|проигрывать; терять|Perdimos dos a uno.|Мы проиграли два-один.
+el partido|матч; партия|El partido empieza a las nueve.|Матч начинается в девять.
+la fiesta|праздник, вечеринка|Hay una fiesta el sábado.|В субботу вечеринка.
+divertirse|веселиться|Nos divertimos mucho.|Мы отлично повеселились.
+descansar|отдыхать|Necesito descansar un poco.|Мне нужно немного отдохнуть.
+las vacaciones|отпуск, каникулы|Me voy de vacaciones en agosto.|Я ухожу в отпуск в августе.
+el tiempo libre|свободное время|¿Qué haces en tu tiempo libre?|Чем ты занимаешься в свободное время?

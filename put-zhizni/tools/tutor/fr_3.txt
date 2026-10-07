@@ -1,0 +1,115 @@
+#time
+le temps|время; погода|Je n'ai pas le temps.|У меня нет времени.
+l'heure (f)|час|Quelle heure est-il ?|Который час?
+la minute|минута|Attends une minute.|Подожди минуту.
+le jour|день|En été, le jour est long.|Летом день длинный.
+la semaine|неделя|À la semaine prochaine.|До следующей недели.
+le mois|месяц|Je reviens dans un mois.|Я вернусь через месяц.
+l'an (m)|год|Bonne année ! Il a vingt ans.|С Новым годом! Ему двадцать лет.
+aujourd'hui|сегодня|Aujourd'hui, c'est lundi.|Сегодня понедельник.
+demain|завтра|À demain !|До завтра!
+hier|вчера|Je l'ai vu hier.|Я видел его вчера.
+maintenant|сейчас|Je suis occupé maintenant.|Сейчас я занят.
+toujours|всегда; всё ещё|Il est toujours en retard.|Он всегда опаздывает.
+jamais|никогда|Je ne fume jamais.|Я никогда не курю.
+souvent|часто|Je vais souvent au cinéma.|Я часто хожу в кино.
+déjà|уже|J'ai déjà mangé.|Я уже поел.
+le matin|утро|Le matin, je bois du café.|Утром я пью кофе.
+le soir|вечер|Je t'appelle ce soir.|Я позвоню тебе вечером.
+la nuit|ночь|Il a plu toute la nuit.|Дождь шёл всю ночь.
+le week-end|выходные|Bon week-end !|Хороших выходных!
+lundi|понедельник|Lundi, je travaille.|В понедельник я работаю.
+vendredi|пятница|Enfin vendredi !|Наконец пятница!
+dimanche|воскресенье|Dimanche, on se repose.|В воскресенье мы отдыхаем.
+l'été (m)|лето|En été, il fait chaud.|Летом жарко.
+l'hiver (m)|зима|L'hiver est froid.|Зима холодная.
+le printemps|весна|J'adore le printemps.|Обожаю весну.
+l'automne (m)|осень|L'automne est beau ici.|Осень здесь красивая.
+l'anniversaire (m)|день рождения|Joyeux anniversaire !|С днём рождения!
+#nature
+la nature|природа|J'aime la nature.|Я люблю природу.
+le soleil|солнце|Il fait du soleil.|Солнечно.
+la lune|луна|La lune est pleine.|Полнолуние.
+le ciel|небо|Le ciel est bleu.|Небо голубое.
+la pluie|дождь|J'aime le bruit de la pluie.|Мне нравится шум дождя.
+pleuvoir|идти (о дожде)|Il pleut.|Идёт дождь.
+la neige|снег|La neige tombe.|Падает снег.
+le vent|ветер|Il y a du vent.|Ветрено.
+la mer|море|On habite près de la mer.|Мы живём у моря.
+la rivière|река|La rivière est calme.|Река спокойная.
+la montagne|гора|On va à la montagne.|Мы едем в горы.
+la forêt|лес|Une promenade en forêt.|Прогулка по лесу.
+l'arbre (m)|дерево|Un grand arbre.|Большое дерево.
+la fleur|цветок|Des fleurs pour toi.|Цветы для тебя.
+la plage|пляж|On passe la journée à la plage.|Мы проводим день на пляже.
+la campagne|деревня, сельская местность|Mes grands-parents vivent à la campagne.|Мои бабушка с дедушкой живут в деревне.
+chaud|тёплый, жаркий|Il fait chaud.|Жарко.
+froid|холодный|Il fait froid.|Холодно.
+#animals
+l'animal (m)|животное|Tu as un animal ?|У тебя есть животное?
+le chien|собака|Mon chien s'appelle Max.|Мою собаку зовут Макс.
+le chat|кот|Le chat dort.|Кот спит.
+l'oiseau (m)|птица|Un oiseau chante.|Птица поёт.
+le cheval|лошадь|Il monte à cheval.|Он ездит верхом.
+la vache|корова|La vache donne du lait.|Корова даёт молоко.
+le lapin|кролик|Le lapin mange une carotte.|Кролик ест морковку.
+la souris|мышь|Le chat chasse la souris.|Кот охотится на мышь.
+l'ours (m)|медведь|Un ours dans la forêt.|Медведь в лесу.
+le loup|волк|Le loup hurle.|Волк воет.
+le renard|лиса|Le renard est rusé.|Лиса хитрая.
+le lion|лев|Le lion est fort.|Лев сильный.
+le papillon|бабочка|Un papillon sur une fleur.|Бабочка на цветке.
+#feelings
+heureux|счастливый|Je suis très heureux.|Я очень счастлив.
+triste|грустный|Pourquoi tu es triste ?|Почему ты грустишь?
+fatigué|усталый|Je suis fatigué.|Я устал.
+content|довольный|Je suis content de te voir.|Рад тебя видеть.
+fâché|сердитый|Il est fâché contre moi.|Он сердится на меня.
+inquiet|обеспокоенный|Ne sois pas inquiet.|Не беспокойся.
+l'amour (m)|любовь|L'amour est aveugle.|Любовь слепа.
+aimer|любить; нравиться|Je t'aime.|Я тебя люблю.
+la peur|страх|J'ai peur du noir.|Я боюсь темноты.
+la joie|радость|Elle pleure de joie.|Она плачет от радости.
+pleurer|плакать|Ne pleure pas.|Не плачь.
+rire|смеяться|On a beaucoup ri.|Мы много смеялись.
+sourire|улыбаться|Souris !|Улыбнись!
+manquer|не хватать; скучать|Tu me manques.|Я по тебе скучаю.
+#hobby
+le sport|спорт|Je fais du sport.|Я занимаюсь спортом.
+le football|футбол|Ils jouent au football.|Они играют в футбол.
+nager|плавать|J'aime nager.|Я люблю плавать.
+courir|бегать|Je cours le matin.|Я бегаю по утрам.
+danser|танцевать|Tu veux danser ?|Хочешь потанцевать?
+chanter|петь|Elle chante bien.|Она хорошо поёт.
+jouer|играть|Les enfants jouent dehors.|Дети играют на улице.
+lire|читать|J'aime lire.|Я люблю читать.
+le film|фильм|On regarde un film ?|Посмотрим фильм?
+la musique|музыка|J'écoute de la musique.|Я слушаю музыку.
+écouter|слушать|Écoute-moi.|Послушай меня.
+la photo|фото|Je prends des photos.|Я фотографирую.
+cuisiner|готовить|Mon père cuisine bien.|Мой отец хорошо готовит.
+se promener|гулять|On se promène au parc.|Мы гуляем в парке.
+le vélo|велосипед|Je vais au travail à vélo.|Я езжу на работу на велосипеде.
+les vacances|отпуск, каникулы|Bonnes vacances !|Хорошего отпуска!
+la fête|праздник, вечеринка|Il y a une fête samedi.|В субботу вечеринка.
+#art
+l'art (m)|искусство|J'aime l'art moderne.|Я люблю современное искусство.
+le musée|музей|Le Louvre est un grand musée.|Лувр — большой музей.
+le tableau|картина|Un tableau de Monet.|Картина Моне.
+le théâtre|театр|On va au théâtre.|Мы идём в театр.
+le cinéma|кино|On va au cinéma ce soir ?|Пойдём сегодня в кино?
+la chanson|песня|C'est ma chanson préférée.|Это моя любимая песня.
+le roman|роман|Je lis un roman.|Я читаю роман.
+l'écrivain (m)|писатель|Victor Hugo est un grand écrivain.|Виктор Гюго — великий писатель.
+le concert|концерт|Le concert commence à vingt heures.|Концерт начинается в восемь вечера.
+#tech
+l'ordinateur (m)|компьютер|Mon ordinateur est lent.|Мой компьютер медленный.
+le portable|мобильный телефон|J'ai oublié mon portable.|Я забыл телефон.
+le téléphone|телефон|Quel est ton numéro de téléphone ?|Какой у тебя номер телефона?
+l'écran (m)|экран|L'écran est cassé.|Экран разбит.
+le mot de passe|пароль|J'ai oublié mon mot de passe.|Я забыл пароль.
+le courriel|электронное письмо|Je t'envoie un courriel.|Я пришлю тебе письмо.
+l'application (f)|приложение|Télécharge cette application.|Скачай это приложение.
+télécharger|скачивать|Je télécharge le fichier.|Я скачиваю файл.
+envoyer|отправлять|Envoie-moi la photo.|Отправь мне фото.
+chercher|искать|Je cherche mes clés.|Я ищу ключи.

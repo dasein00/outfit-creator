@@ -1,0 +1,106 @@
+#basics
+bonjour|здравствуйте, добрый день|Bonjour, madame !|Здравствуйте, мадам!
+salut|привет; пока|Salut, ça va ?|Привет, как дела?
+au revoir|до свидания|Au revoir et à demain.|До свидания, до завтра.
+merci|спасибо|Merci beaucoup !|Большое спасибо!
+s'il vous plaît|пожалуйста (просьба)|Un café, s'il vous plaît.|Кофе, пожалуйста.
+de rien|не за что|— Merci. — De rien.|— Спасибо. — Не за что.
+pardon|простите|Pardon, où est la gare ?|Простите, где вокзал?
+excusez-moi|извините|Excusez-moi, je suis en retard.|Извините, я опоздал.
+oui|да|Oui, bien sûr.|Да, конечно.
+non|нет|Non, merci.|Нет, спасибо.
+bonsoir|добрый вечер|Bonsoir à tous.|Всем добрый вечер.
+bonne nuit|спокойной ночи|Bonne nuit, mon chéri.|Спокойной ночи, милый.
+le nom|имя, фамилия|Quel est votre nom ?|Как ваша фамилия?
+s'appeler|зваться|Je m'appelle Anna.|Меня зовут Анна.
+enchanté|очень приятно|Enchanté de faire votre connaissance.|Очень приятно познакомиться.
+bienvenue|добро пожаловать|Bienvenue en France !|Добро пожаловать во Францию!
+l'aide (f)|помощь|J'ai besoin d'aide.|Мне нужна помощь.
+d'accord|согласен, ладно|D'accord, à huit heures.|Ладно, в восемь.
+ça va|всё в порядке; как дела?|Ça va bien, merci.|Всё хорошо, спасибо.
+à bientôt|до скорого|À bientôt, j'espère !|Надеюсь, до скорого!
+#people
+la personne|человек|C'est une personne gentille.|Это добрый человек.
+l'homme (m)|мужчина; человек|Cet homme est mon voisin.|Этот мужчина — мой сосед.
+la femme|женщина; жена|Ma femme est médecin.|Моя жена — врач.
+l'enfant (m/f)|ребёнок|L'enfant dort.|Ребёнок спит.
+le garçon|мальчик|Le garçon joue au foot.|Мальчик играет в футбол.
+la fille|девочка; дочь|Ma fille a cinq ans.|Моей дочери пять лет.
+la famille|семья|Ma famille est grande.|У меня большая семья.
+la mère|мать|Ma mère cuisine très bien.|Моя мама очень хорошо готовит.
+le père|отец|Mon père travaille beaucoup.|Мой отец много работает.
+le frère|брат|J'ai un frère.|У меня есть брат.
+la sœur|сестра|Ma sœur habite à Paris.|Моя сестра живёт в Париже.
+le fils|сын|Leur fils est étudiant.|Их сын студент.
+les parents|родители|Mes parents sont à la retraite.|Мои родители на пенсии.
+le mari|муж|Son mari est français.|Её муж француз.
+l'ami (m)|друг|C'est mon meilleur ami.|Это мой лучший друг.
+l'amie (f)|подруга|Je sors avec une amie.|Я иду гулять с подругой.
+le voisin|сосед|Notre voisin est très sympa.|Наш сосед очень приятный.
+les gens|люди|Les gens sont gentils ici.|Здесь люди добрые.
+le bébé|малыш|Le bébé pleure.|Малыш плачет.
+les grands-parents|бабушка и дедушка|Je rends visite à mes grands-parents.|Я навещаю бабушку и дедушку.
+#body
+le corps|тело|Le sport est bon pour le corps.|Спорт полезен для тела.
+la tête|голова|J'ai mal à la tête.|У меня болит голова.
+les yeux|глаза|Elle a les yeux bleus.|У неё голубые глаза.
+le nez|нос|J'ai le nez bouché.|У меня заложен нос.
+la bouche|рот|Ouvre la bouche.|Открой рот.
+la main|рука (кисть)|Lave-toi les mains.|Помой руки.
+le bras|рука|Il s'est cassé le bras.|Он сломал руку.
+la jambe|нога|J'ai mal à la jambe.|У меня болит нога.
+le pied|ступня|Je vais à pied.|Я иду пешком.
+le dos|спина|J'ai mal au dos.|У меня болит спина.
+le cœur|сердце|Elle a bon cœur.|У неё доброе сердце.
+les cheveux|волосы|Il a les cheveux courts.|У него короткие волосы.
+la dent|зуб|J'ai mal aux dents.|У меня болят зубы.
+l'oreille (f)|ухо|J'ai mal à l'oreille.|У меня болит ухо.
+le ventre|живот|J'ai mal au ventre.|У меня болит живот.
+la santé|здоровье|La santé avant tout.|Здоровье прежде всего.
+malade|больной|Je suis malade aujourd'hui.|Я сегодня болен.
+le médecin|врач|Il faut aller chez le médecin.|Нужно сходить к врачу.
+le médicament|лекарство|Prenez ce médicament.|Примите это лекарство.
+#food
+la nourriture|еда|La nourriture est excellente ici.|Еда здесь отличная.
+le pain|хлеб|J'achète du pain frais.|Я покупаю свежий хлеб.
+l'eau (f)|вода|Un verre d'eau, s'il vous plaît.|Стакан воды, пожалуйста.
+le café|кофе; кафе|Je bois un café le matin.|Утром я пью кофе.
+le thé|чай|Tu veux du thé ?|Хочешь чаю?
+le lait|молоко|Un café au lait.|Кофе с молоком.
+le fromage|сыр|La France a beaucoup de fromages.|Во Франции много сыров.
+la viande|мясо|Je ne mange pas de viande.|Я не ем мясо.
+le poisson|рыба|Le poisson est frais.|Рыба свежая.
+le poulet|курица|Poulet rôti avec des frites.|Жареная курица с картошкой фри.
+l'œuf (m)|яйцо|Deux œufs, s'il vous plaît.|Два яйца, пожалуйста.
+la pomme|яблоко|Une pomme par jour.|Одно яблоко в день.
+le fruit|фрукт|J'aime les fruits.|Я люблю фрукты.
+le légume|овощ|Mange tes légumes !|Ешь овощи!
+la pomme de terre|картофель|Une purée de pommes de terre.|Картофельное пюре.
+le sucre|сахар|Sans sucre, merci.|Без сахара, спасибо.
+le sel|соль|Passe-moi le sel.|Передай мне соль.
+le vin|вино|Un verre de vin rouge.|Бокал красного вина.
+le petit-déjeuner|завтрак|Le petit-déjeuner est à huit heures.|Завтрак в восемь.
+le déjeuner|обед|On déjeune ensemble ?|Пообедаем вместе?
+le dîner|ужин|Le dîner est prêt.|Ужин готов.
+manger|есть|On mange à quelle heure ?|Во сколько едим?
+boire|пить|Il faut boire de l'eau.|Нужно пить воду.
+l'addition (f)|счёт (в ресторане)|L'addition, s'il vous plaît.|Счёт, пожалуйста.
+le restaurant|ресторан|Allons au restaurant ce soir.|Пойдём сегодня вечером в ресторан.
+#home
+la maison|дом|Ma maison est petite.|Мой дом маленький.
+l'appartement (m)|квартира|J'habite dans un appartement.|Я живу в квартире.
+la chambre|спальня; комната|Ma chambre est au premier étage.|Моя спальня на втором этаже.
+la cuisine|кухня|Je suis dans la cuisine.|Я на кухне.
+la salle de bains|ванная|La salle de bains est à droite.|Ванная справа.
+la porte|дверь|Ferme la porte.|Закрой дверь.
+la fenêtre|окно|Ouvre la fenêtre.|Открой окно.
+la table|стол|Mets la table.|Накрой на стол.
+la chaise|стул|Prends une chaise.|Возьми стул.
+le lit|кровать|Je vais au lit.|Я иду спать.
+le canapé|диван|Le chat dort sur le canapé.|Кот спит на диване.
+la clé|ключ|J'ai perdu mes clés.|Я потерял ключи.
+la lumière|свет|Allume la lumière.|Включи свет.
+le jardin|сад|Les enfants jouent dans le jardin.|Дети играют в саду.
+l'étage (m)|этаж|J'habite au troisième étage.|Я живу на четвёртом этаже.
+le loyer|арендная плата|Le loyer est cher.|Аренда дорогая.
+habiter|жить|J'habite à Lyon.|Я живу в Лионе.

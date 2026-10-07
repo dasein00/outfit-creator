@@ -1,0 +1,93 @@
+#verbs
+être|быть|Je suis russe.|Я русский.
+avoir|иметь|J'ai deux frères.|У меня два брата.
+faire|делать|Qu'est-ce que tu fais ?|Что ты делаешь?
+aller|идти, ехать|Je vais au travail.|Я иду на работу.
+venir|приходить|Tu viens avec nous ?|Ты идёшь с нами?
+pouvoir|мочь|Je peux entrer ?|Можно войти?
+vouloir|хотеть|Je veux un café.|Я хочу кофе.
+devoir|быть должным|Je dois partir.|Мне нужно уходить.
+savoir|знать; уметь|Je ne sais pas nager.|Я не умею плавать.
+connaître|знать (быть знакомым)|Tu connais Marie ?|Ты знаешь Мари?
+voir|видеть|Je vois la mer.|Я вижу море.
+dire|сказать|Qu'est-ce que tu as dit ?|Что ты сказал?
+parler|говорить|Vous parlez anglais ?|Вы говорите по-английски?
+prendre|брать|Je prends le bus.|Я сажусь на автобус.
+donner|давать|Donne-moi la main.|Дай мне руку.
+mettre|класть; надевать|Mets ton manteau.|Надень пальто.
+trouver|находить|Je ne trouve pas mon portable.|Не могу найти телефон.
+penser|думать|Je pense à toi.|Я думаю о тебе.
+croire|верить; полагать|Je crois que tu as raison.|Думаю, ты прав.
+attendre|ждать|Je t'attends ici.|Жду тебя здесь.
+ouvrir|открывать|Ouvre la porte.|Открой дверь.
+fermer|закрывать|Ferme la fenêtre.|Закрой окно.
+commencer|начинать|Le film commence.|Фильм начинается.
+finir|заканчивать|J'ai fini.|Я закончил.
+dormir|спать|Je dors huit heures.|Я сплю восемь часов.
+vivre|жить|Je vis à Moscou.|Я живу в Москве.
+écrire|писать|Écris-moi vite.|Напиши мне поскорее.
+aider|помогать|Je peux vous aider ?|Могу я вам помочь?
+oublier|забывать|N'oublie pas la clé.|Не забудь ключ.
+rester|оставаться|Je reste à la maison.|Я остаюсь дома.
+#adj
+bon|хороший; вкусный|C'est une bonne idée.|Это хорошая идея.
+mauvais|плохой|Il fait mauvais.|Плохая погода.
+grand|большой; высокий|Une grande maison.|Большой дом.
+petit|маленький|Un petit village.|Маленькая деревня.
+nouveau|новый|J'ai une nouvelle voiture.|У меня новая машина.
+vieux|старый|Un vieux pont.|Старый мост.
+jeune|молодой|Il est très jeune.|Он очень молод.
+beau|красивый|Il fait beau.|Хорошая погода.
+joli|милый, симпатичный|Une jolie robe.|Симпатичное платье.
+facile|лёгкий|C'est facile.|Это легко.
+difficile|трудный|Le français n'est pas difficile.|Французский не сложный.
+rapide|быстрый|Un train rapide.|Скорый поезд.
+important|важный|C'est important.|Это важно.
+libre|свободный|Cette place est libre ?|Это место свободно?
+rouge|красный|Une robe rouge.|Красное платье.
+bleu|синий|Le ciel est bleu.|Небо синее.
+vert|зелёный|Les feuilles sont vertes.|Листья зелёные.
+blanc|белый|La neige est blanche.|Снег белый.
+noir|чёрный|Un chat noir.|Чёрный кот.
+#grammar
+je|я|Je suis étudiant.|Я студент.
+tu|ты|Tu es mon ami.|Ты мой друг.
+il|он|Il est grand.|Он высокий.
+elle|она|Elle est médecin.|Она врач.
+nous|мы|Nous sommes une famille.|Мы семья.
+vous|вы|Vous êtes français ?|Вы француз?
+ils|они|Ils habitent ici.|Они живут здесь.
+ce|этот, это|Ce livre est à moi.|Эта книга моя.
+ici|здесь|Viens ici.|Иди сюда.
+là|там|Il est là.|Он там.
+et|и|Du pain et du lait.|Хлеб и молоко.
+ou|или|Thé ou café ?|Чай или кофе?
+mais|но|C'est cher, mais bon.|Дорого, но хорошо.
+parce que|потому что|Je reste parce qu'il pleut.|Я остаюсь, потому что идёт дождь.
+si|если|Si tu veux.|Если хочешь.
+quand|когда|Quand tu arrives, appelle-moi.|Когда приедешь, позвони мне.
+qui|кто|Qui est-ce ?|Кто это?
+quoi|что|Tu fais quoi ?|Ты что делаешь?
+où|где; куда|Où habites-tu ?|Где ты живёшь?
+pourquoi|почему|Pourquoi tu ris ?|Почему ты смеёшься?
+comment|как|Comment tu t'appelles ?|Как тебя зовут?
+combien|сколько|Combien ça coûte ?|Сколько это стоит?
+dans|в|Il est dans la cuisine.|Он на кухне.
+avec|с|Café avec du lait.|Кофе с молоком.
+sans|без|Sans sucre.|Без сахара.
+pour|для|C'est pour toi.|Это для тебя.
+sur|на|Le livre est sur la table.|Книга на столе.
+très|очень|C'est très bon.|Это очень вкусно.
+beaucoup|много|Merci beaucoup.|Большое спасибо.
+peu|мало|J'ai peu de temps.|У меня мало времени.
+aussi|тоже|Moi aussi.|Я тоже.
+tout|всё; весь|Tout va bien.|Всё хорошо.
+rien|ничего|Je ne vois rien.|Я ничего не вижу.
+bien|хорошо|Je vais bien.|У меня всё хорошо.
+un|один|J'ai un frère.|У меня один брат.
+deux|два|Deux cafés, s'il vous plaît.|Два кофе, пожалуйста.
+trois|три|Trois enfants.|Трое детей.
+cinq|пять|Il est cinq heures.|Пять часов.
+dix|десять|Dix minutes.|Десять минут.
+cent|сто|Cent euros.|Сто евро.
+mille|тысяча|Mille mercis.|Огромное спасибо.

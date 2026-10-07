@@ -1,0 +1,181 @@
+#basics
+hola|привет|¡Hola! ¿Qué tal?|Привет! Как дела?
+adiós|до свидания|Adiós, hasta mañana.|До свидания, до завтра.
+por favor|пожалуйста (просьба)|Un café, por favor.|Кофе, пожалуйста.
+gracias|спасибо|Muchas gracias por tu ayuda.|Большое спасибо за помощь.
+de nada|не за что|—Gracias. —De nada.|— Спасибо. — Не за что.
+perdón|извините|Perdón, ¿dónde está el baño?|Извините, где туалет?
+lo siento|мне жаль, простите|Lo siento mucho.|Мне очень жаль.
+sí|да|Sí, claro.|Да, конечно.
+no|нет|No, gracias.|Нет, спасибо.
+buenos días|доброе утро, добрый день|Buenos días, señora.|Доброе утро, сеньора.
+buenas noches|добрый вечер, спокойной ночи|Buenas noches a todos.|Всем доброй ночи.
+el nombre|имя|¿Cuál es tu nombre?|Как тебя зовут?
+llamarse|зваться|Me llamo Ana.|Меня зовут Анна.
+encantado|очень приятно|Encantado de conocerte.|Очень приятно познакомиться.
+bienvenido|добро пожаловать|¡Bienvenido a España!|Добро пожаловать в Испанию!
+la ayuda|помощь|Necesito ayuda.|Мне нужна помощь.
+ayudar|помогать|¿Me puedes ayudar?|Можешь мне помочь?
+la pregunta|вопрос|Tengo una pregunta.|У меня есть вопрос.
+la respuesta|ответ|No sé la respuesta.|Я не знаю ответа.
+entender|понимать|No entiendo.|Я не понимаю.
+repetir|повторять|¿Puede repetir, por favor?|Можете повторить, пожалуйста?
+despacio|медленно|Hable más despacio, por favor.|Говорите медленнее, пожалуйста.
+la palabra|слово|¿Qué significa esta palabra?|Что значит это слово?
+el idioma|язык|Hablo tres idiomas.|Я говорю на трёх языках.
+hablar|говорить|¿Hablas español?|Ты говоришь по-испански?
+saber|знать|No lo sé.|Я не знаю.
+bien|хорошо|Estoy bien, gracias.|У меня всё хорошо, спасибо.
+vale|ладно, хорошо|Vale, nos vemos a las seis.|Ладно, увидимся в шесть.
+claro|конечно|¡Claro que sí!|Конечно!
+felicidades|поздравляю|¡Felicidades por tu cumpleaños!|Поздравляю с днём рождения!
+#people
+la persona|человек|Es una persona muy amable.|Это очень милый человек.
+la gente|люди|Hay mucha gente aquí.|Здесь много людей.
+el hombre|мужчина|El hombre lee el periódico.|Мужчина читает газету.
+la mujer|женщина; жена|Esa mujer es mi tía.|Та женщина — моя тётя.
+el niño|ребёнок, мальчик|El niño está durmiendo.|Ребёнок спит.
+la niña|девочка|La niña canta muy bien.|Девочка очень хорошо поёт.
+el bebé|малыш|El bebé está llorando.|Малыш плачет.
+la familia|семья|Mi familia es grande.|У меня большая семья.
+la madre|мать|Mi madre es médica.|Моя мама врач.
+el padre|отец|Mi padre trabaja en un banco.|Мой папа работает в банке.
+los padres|родители|Mis padres viven en Madrid.|Мои родители живут в Мадриде.
+el hijo|сын|Su hijo tiene cinco años.|Его сыну пять лет.
+la hija|дочь|Tiene dos hijas.|У неё две дочери.
+el hermano|брат|Mi hermano es mayor que yo.|Мой брат старше меня.
+la hermana|сестра|Mi hermana estudia música.|Моя сестра учится музыке.
+el marido|муж|Su marido es piloto.|Её муж — пилот.
+la esposa|жена|Su esposa es profesora.|Его жена — учительница.
+el abuelo|дедушка|Mi abuelo era marinero.|Мой дедушка был моряком.
+la abuela|бабушка|Mi abuela hace tartas.|Моя бабушка печёт пироги.
+el tío|дядя|Mi tío vive en Argentina.|Мой дядя живёт в Аргентине.
+la tía|тётя|Mi tía tiene un gato.|У моей тёти есть кот.
+el primo|двоюродный брат|Mi primo viene a vernos.|К нам приезжает мой двоюродный брат.
+el amigo|друг|Es mi mejor amigo.|Он мой лучший друг.
+el vecino|сосед|Nuestro vecino es muy simpático.|Наш сосед очень приятный.
+el novio|парень, жених|Su novio es italiano.|Её парень — итальянец.
+la novia|девушка, невеста|Mi novia se llama Lucía.|Мою девушку зовут Лусия.
+la boda|свадьба|La boda es en junio.|Свадьба в июне.
+casarse|жениться, выходить замуж|Se casaron el año pasado.|Они поженились в прошлом году.
+el amor|любовь|El amor lo puede todo.|Любовь всё может.
+querer|любить; хотеть|Te quiero.|Я тебя люблю.
+la edad|возраст|¿Qué edad tienes?|Сколько тебе лет?
+joven|молодой|Es joven y muy lista.|Она молодая и очень умная.
+viejo|старый|Mi perro es viejo.|Моя собака старая.
+el cumpleaños|день рождения|¡Feliz cumpleaños!|С днём рождения!
+nacer|родиться|Nací en mayo.|Я родился в мае.
+#body
+el cuerpo|тело|El deporte es bueno para el cuerpo.|Спорт полезен для тела.
+la cabeza|голова|Me duele la cabeza.|У меня болит голова.
+la cara|лицо|Tiene una cara bonita.|У неё красивое лицо.
+el ojo|глаз|Cierra los ojos.|Закрой глаза.
+la oreja|ухо|Me duele la oreja.|У меня болит ухо.
+la nariz|нос|Tengo la nariz fría.|У меня холодный нос.
+la boca|рот|Abra la boca, por favor.|Откройте рот, пожалуйста.
+el diente|зуб|Me duele un diente.|У меня болит зуб.
+el pelo|волосы|Tiene el pelo largo.|У неё длинные волосы.
+la mano|рука (кисть)|Levanta la mano.|Подними руку.
+el brazo|рука (от плеча)|Se rompió el brazo.|Он сломал руку.
+el dedo|палец|Me corté el dedo.|Я порезал палец.
+la pierna|нога|Me duele la pierna.|У меня болит нога.
+el pie|ступня|Tengo los pies cansados.|У меня устали ноги.
+la espalda|спина|Tengo dolor de espalda.|У меня болит спина.
+el corazón|сердце|El corazón es un músculo fuerte.|Сердце — сильная мышца.
+la sangre|кровь|Hoy donó sangre.|Сегодня он сдал кровь.
+la piel|кожа|El sol daña la piel.|Солнце вредит коже.
+la salud|здоровье|La salud es lo más importante.|Здоровье важнее всего.
+sano|здоровый|Come comida sana.|Ешь здоровую пищу.
+enfermo|больной|Estoy enfermo.|Я болен.
+el dolor|боль|El dolor es muy fuerte.|Боль очень сильная.
+doler|болеть|¿Te duele?|Тебе больно?
+el médico|врач|Debes ir al médico.|Тебе нужно сходить к врачу.
+el hospital|больница|Está en el hospital.|Он в больнице.
+la medicina|лекарство|Toma esta medicina dos veces al día.|Принимай это лекарство дважды в день.
+la pastilla|таблетка|Toma una pastilla después de comer.|Прими таблетку после еды.
+la fiebre|температура, жар|El niño tiene fiebre.|У ребёнка температура.
+el resfriado|простуда|Tengo un resfriado.|Я простужен.
+la tos|кашель|Tiene mucha tos.|У него сильный кашель.
+cansado|уставший|Estoy muy cansado hoy.|Я сегодня очень устал.
+dormir|спать|Necesito dormir más.|Мне нужно больше спать.
+descansar|отдыхать|Tienes que descansar.|Тебе нужно отдохнуть.
+la farmacia|аптека|La farmacia abre a las nueve.|Аптека открывается в девять.
+el estómago|живот, желудок|Me duele el estómago.|У меня болит живот.
+#food
+la comida|еда; обед|La comida está deliciosa.|Еда очень вкусная.
+el agua|вода|¿Me da un vaso de agua?|Дайте мне стакан воды.
+el pan|хлеб|Necesitamos pan y leche.|Нам нужны хлеб и молоко.
+la leche|молоко|Bebo leche cada mañana.|Я пью молоко каждое утро.
+el café|кофе|Un café con leche, por favor.|Кофе с молоком, пожалуйста.
+el té|чай|¿Quieres un té?|Хочешь чаю?
+el zumo|сок|Un zumo de naranja, por favor.|Апельсиновый сок, пожалуйста.
+el desayuno|завтрак|El desayuno está listo.|Завтрак готов.
+la cena|ужин|La cena es a las nueve.|Ужин в девять.
+comer|есть; обедать|Vamos a comer.|Пойдём поедим.
+beber|пить|Bebe más agua.|Пей больше воды.
+la carne|мясо|No como carne.|Я не ем мясо.
+el pollo|курица|Cenamos pollo.|На ужин у нас курица.
+el pescado|рыба (еда)|El pescado es muy sano.|Рыба очень полезна.
+el huevo|яйцо|Desayuné dos huevos.|Я съел на завтрак два яйца.
+el queso|сыр|Este queso es de Francia.|Этот сыр из Франции.
+el arroz|рис|La paella lleva arroz.|В паэлью кладут рис.
+la sopa|суп|La sopa está caliente.|Суп горячий.
+la ensalada|салат|Una ensalada verde, por favor.|Зелёный салат, пожалуйста.
+la verdura|овощи|Come más verdura.|Ешь больше овощей.
+la fruta|фрукты|La fruta es muy sana.|Фрукты очень полезны.
+la manzana|яблоко|Me como una manzana.|Я съем яблоко.
+la naranja|апельсин|Esta naranja es muy dulce.|Этот апельсин очень сладкий.
+la patata|картофель|Me gustan las patatas fritas.|Я люблю картошку фри.
+el tomate|помидор|Añade tomate a la ensalada.|Добавь помидоры в салат.
+el azúcar|сахар|Sin azúcar, por favor.|Без сахара, пожалуйста.
+la sal|соль|Pásame la sal.|Передай мне соль.
+dulce|сладкий|El pastel es muy dulce.|Пирожное очень сладкое.
+el vino|вино|Una copa de vino tinto.|Бокал красного вина.
+la cerveza|пиво|Una cerveza, por favor.|Пиво, пожалуйста.
+tener hambre|быть голодным|Tengo hambre.|Я голоден.
+tener sed|хотеть пить|Tengo sed.|Я хочу пить.
+rico|вкусный; богатый|¡Qué rico está!|Как вкусно!
+cocinar|готовить|Me gusta cocinar.|Я люблю готовить.
+el restaurante|ресторан|Vamos a un restaurante.|Пойдём в ресторан.
+la carta|меню; письмо|¿Me trae la carta?|Принесите меню, пожалуйста.
+la cuenta|счёт|La cuenta, por favor.|Счёт, пожалуйста.
+el plato|тарелка; блюдо|Es un plato típico.|Это типичное блюдо.
+la taza|чашка|Una taza de té.|Чашка чая.
+el vaso|стакан|Un vaso de agua, por favor.|Стакан воды, пожалуйста.
+el tenedor|вилка|Necesito un tenedor.|Мне нужна вилка.
+el cuchillo|нож|Cuidado con el cuchillo.|Осторожно с ножом.
+la cuchara|ложка|Dame una cuchara.|Дай мне ложку.
+#home
+la casa|дом|Vivimos en una casa grande.|Мы живём в большом доме.
+el piso|квартира; этаж|Alquilamos un piso.|Мы снимаем квартиру.
+la habitación|комната|Mi habitación es pequeña.|Моя комната маленькая.
+la cocina|кухня|Mamá está en la cocina.|Мама на кухне.
+el dormitorio|спальня|El dormitorio está arriba.|Спальня наверху.
+el baño|ванная, туалет|¿Dónde está el baño?|Где туалет?
+el salón|гостиная|Vemos la tele en el salón.|Мы смотрим телевизор в гостиной.
+la puerta|дверь|Cierra la puerta.|Закрой дверь.
+la ventana|окно|Abre la ventana.|Открой окно.
+la pared|стена|Hay un cuadro en la pared.|На стене картина.
+la escalera|лестница|Sube por la escalera.|Поднимись по лестнице.
+la mesa|стол|Las llaves están en la mesa.|Ключи на столе.
+la silla|стул|Siéntate en la silla.|Садись на стул.
+la cama|кровать|Me voy a la cama.|Я иду спать.
+el sofá|диван|El gato duerme en el sofá.|Кот спит на диване.
+la lámpara|лампа|Enciende la lámpara.|Включи лампу.
+el espejo|зеркало|Se miró en el espejo.|Она посмотрела в зеркало.
+la llave|ключ|Perdí las llaves.|Я потерял ключи.
+el jardín|сад|Cultivamos tomates en el jardín.|Мы выращиваем помидоры в саду.
+limpio|чистый|La cocina está limpia.|Кухня чистая.
+sucio|грязный|Los platos están sucios.|Тарелки грязные.
+limpiar|убирать|Limpio mi cuarto los sábados.|Я убираю комнату по субботам.
+lavar|мыть, стирать|Lávate las manos.|Помой руки.
+la nevera|холодильник|La leche está en la nevera.|Молоко в холодильнике.
+el horno|духовка|El pastel está en el horno.|Пирог в духовке.
+la ducha|душ|Me doy una ducha cada mañana.|Я принимаю душ каждое утро.
+la toalla|полотенце|¿Me das una toalla limpia?|Дашь мне чистое полотенце?
+el alquiler|аренда|El alquiler es muy caro.|Аренда очень дорогая.
+mudarse|переезжать|Nos mudamos a Barcelona.|Мы переехали в Барселону.
+la luz|свет|Apaga la luz.|Выключи свет.
+los muebles|мебель|Necesitamos muebles nuevos.|Нам нужна новая мебель.
+la basura|мусор|Saca la basura.|Вынеси мусор.
+arreglar|чинить|Arregló el grifo.|Он починил кран.

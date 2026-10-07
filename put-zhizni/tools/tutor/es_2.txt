@@ -1,0 +1,184 @@
+#clothes
+la ropa|одежда|Necesito ropa nueva.|Мне нужна новая одежда.
+la camisa|рубашка|Lleva una camisa blanca.|На нём белая рубашка.
+la camiseta|футболка|Compré una camiseta azul.|Я купил синюю футболку.
+el vestido|платье|Ese vestido te queda muy bien.|Это платье тебе очень идёт.
+la falda|юбка|La falda es muy corta.|Юбка очень короткая.
+los pantalones|брюки|Estos pantalones son largos.|Эти брюки длинные.
+los vaqueros|джинсы|Siempre llevo vaqueros.|Я всегда ношу джинсы.
+la chaqueta|куртка, пиджак|Ponte la chaqueta, hace frío.|Надень куртку, холодно.
+el abrigo|пальто|Tiene un abrigo de invierno.|У неё есть зимнее пальто.
+el jersey|свитер|Este jersey es muy suave.|Этот свитер очень мягкий.
+los zapatos|туфли, обувь|Mis zapatos están mojados.|У меня промокли туфли.
+las botas|сапоги|Necesito botas de invierno.|Мне нужны зимние сапоги.
+los calcetines|носки|No encuentro mis calcetines.|Не могу найти носки.
+el sombrero|шляпа|Llevaba un sombrero negro.|На нём была чёрная шляпа.
+la bufanda|шарф|Ponte la bufanda.|Надень шарф.
+el bolso|сумка|Mi bolso pesa mucho.|Моя сумка очень тяжёлая.
+la talla|размер|¿Qué talla usas?|Какой у тебя размер?
+llevar|носить; нести|Ella lleva gafas.|Она носит очки.
+probarse|примерять|¿Puedo probármelo?|Можно примерить?
+la tienda|магазин|La tienda abre a las diez.|Магазин открывается в десять.
+comprar|покупать|Quiero comprar un regalo.|Я хочу купить подарок.
+vender|продавать|Venden pan fresco.|Они продают свежий хлеб.
+el precio|цена|¿Cuál es el precio?|Какая цена?
+barato|дешёвый|Este hotel es barato.|Этот отель дешёвый.
+caro|дорогой|Ese reloj es muy caro.|Те часы очень дорогие.
+las rebajas|распродажа|Hay rebajas en enero.|В январе распродажи.
+el descuento|скидка|¿Hay descuento para estudiantes?|Есть скидка для студентов?
+pagar|платить|¿Puedo pagar con tarjeta?|Можно заплатить картой?
+el efectivo|наличные|No tengo efectivo.|У меня нет наличных.
+el recibo|чек|Guarde el recibo.|Сохраните чек.
+la moda|мода|Trabaja en el mundo de la moda.|Она работает в мире моды.
+el bolsillo|карман|El móvil está en mi bolsillo.|Телефон у меня в кармане.
+el anillo|кольцо|Le regaló un anillo.|Он подарил ей кольцо.
+el reloj|часы|Mi reloj va atrasado.|Мои часы отстают.
+las gafas|очки|Necesito gafas para leer.|Мне нужны очки для чтения.
+el paraguas|зонт|Lleva el paraguas.|Возьми зонт.
+#city
+la ciudad|город|Madrid es una ciudad grande.|Мадрид — большой город.
+el pueblo|деревня, посёлок|Crecí en un pueblo pequeño.|Я вырос в маленьком посёлке.
+la calle|улица|Vivimos en una calle tranquila.|Мы живём на тихой улице.
+la carretera|дорога, шоссе|La carretera está cerrada.|Дорога закрыта.
+la plaza|площадь|Nos vemos en la plaza mayor.|Встретимся на главной площади.
+el parque|парк|Vamos a pasear por el parque.|Пойдём погуляем по парку.
+el puente|мост|El puente es muy antiguo.|Мост очень старый.
+el edificio|здание|Ese edificio es un museo.|То здание — музей.
+el centro|центр|El hotel está en el centro.|Отель в центре.
+la esquina|угол|El banco está en la esquina.|Банк на углу.
+el mapa|карта|¿Tienes un mapa?|У тебя есть карта?
+la dirección|адрес; направление|¿Cuál es tu dirección?|Какой у тебя адрес?
+el banco|банк; скамейка|El banco cierra a las dos.|Банк закрывается в два.
+correos|почта|¿Dónde está correos?|Где почта?
+la iglesia|церковь|La iglesia es preciosa.|Церковь прекрасна.
+el museo|музей|El museo es gratis los domingos.|По воскресеньям музей бесплатный.
+la biblioteca|библиотека|Estudio en la biblioteca.|Я занимаюсь в библиотеке.
+el mercado|рынок|Compramos fruta en el mercado.|Мы покупаем фрукты на рынке.
+la policía|полиция|¡Llama a la policía!|Вызови полицию!
+el coche|машина|Mi coche es rojo.|У меня красная машина.
+el autobús|автобус|Voy al trabajo en autobús.|Я езжу на работу на автобусе.
+el tren|поезд|El tren sale a las ocho.|Поезд отправляется в восемь.
+el metro|метро|El metro es rápido.|Метро — это быстро.
+la bicicleta|велосипед|Voy en bicicleta al colegio.|Я езжу в школу на велосипеде.
+la estación|станция, вокзал; время года|¿Dónde está la estación de tren?|Где железнодорожный вокзал?
+la parada|остановка|Bájate en la próxima parada.|Выходи на следующей остановке.
+el billete|билет|Un billete, por favor.|Один билет, пожалуйста.
+el tráfico|движение, пробки|Hay mucho tráfico.|Большие пробки.
+conducir|водить машину|¿Sabes conducir?|Ты умеешь водить?
+andar|ходить пешком|Voy andando al trabajo.|Я хожу на работу пешком.
+la izquierda|лево|Gira a la izquierda.|Поверни налево.
+la derecha|право|La tienda está a la derecha.|Магазин справа.
+recto|прямо|Siga todo recto.|Идите всё время прямо.
+cerca|близко|¿Está cerca?|Это близко?
+lejos|далеко|El aeropuerto está lejos.|Аэропорт далеко.
+#travel
+viajar|путешествовать|Me encanta viajar.|Я обожаю путешествовать.
+el viaje|поездка|¿Qué tal el viaje?|Как прошла поездка?
+las vacaciones|отпуск, каникулы|Estamos de vacaciones.|Мы в отпуске.
+el turista|турист|La ciudad está llena de turistas.|Город полон туристов.
+el pasaporte|паспорт|No olvides el pasaporte.|Не забудь паспорт.
+el aeropuerto|аэропорт|Llegamos al aeropuerto.|Мы приехали в аэропорт.
+el avión|самолёт|El avión llega tarde.|Самолёт опаздывает.
+el vuelo|рейс|Mi vuelo sale a mediodía.|Мой рейс в полдень.
+el equipaje|багаж|Han perdido mi equipaje.|Мой багаж потеряли.
+la maleta|чемодан|Haz la maleta.|Собери чемодан.
+el hotel|гостиница|El hotel tiene piscina.|В гостинице есть бассейн.
+reservar|бронировать|Reservé una mesa para dos.|Я забронировал столик на двоих.
+la reserva|бронь|Tengo una reserva.|У меня бронь.
+la playa|пляж|Vamos a la playa.|Пойдём на пляж.
+el mar|море|El mar está tranquilo.|Море спокойное.
+la montaña|гора|Subimos la montaña.|Мы поднялись на гору.
+la isla|остров|Viven en una isla.|Они живут на острове.
+el extranjero|заграница; иностранец|Nunca he estado en el extranjero.|Я никогда не был за границей.
+el país|страна|¿De qué país eres?|Из какой ты страны?
+la frontera|граница|Cruzamos la frontera de noche.|Мы пересекли границу ночью.
+el guía|гид|El guía era muy simpático.|Гид был очень приятным.
+el recuerdo|сувенир; воспоминание|Compré recuerdos para mis amigos.|Я купил сувениры друзьям.
+la foto|фотография|¿Nos haces una foto?|Сфотографируешь нас?
+llegar|прибывать|Llegamos el lunes.|Мы приезжаем в понедельник.
+salir|выходить, отправляться|El autobús sale en diez minutos.|Автобус уходит через десять минут.
+volver|возвращаться|¿Cuándo vuelves?|Когда ты вернёшься?
+el retraso|задержка|Hay un retraso de dos horas.|Задержка два часа.
+la puerta de embarque|выход на посадку|Vaya a la puerta cinco.|Пройдите к выходу пять.
+la aventura|приключение|Fue una verdadera aventura.|Это было настоящее приключение.
+#work
+el trabajo|работа|Trabajo desde casa.|Я работаю из дома.
+trabajar|работать|Trabajo en una oficina.|Я работаю в офисе.
+la oficina|офис|La oficina está en el quinto piso.|Офис на пятом этаже.
+la empresa|компания|Trabaja en una gran empresa.|Он работает в крупной компании.
+el negocio|бизнес, дело|Tiene su propio negocio.|У неё свой бизнес.
+el jefe|начальник|Mi jefe es muy exigente.|Мой начальник очень требовательный.
+el compañero|коллега, товарищ|Mis compañeros son simpáticos.|Мои коллеги приятные.
+el equipo|команда|Somos un gran equipo.|Мы отличная команда.
+la reunión|совещание|La reunión empieza a las diez.|Совещание начинается в десять.
+el proyecto|проект|Terminamos el proyecto a tiempo.|Мы закончили проект вовремя.
+la tarea|задача, задание|Tengo muchas tareas hoy.|У меня сегодня много задач.
+el sueldo|зарплата|Tiene un buen sueldo.|У него хорошая зарплата.
+la experiencia|опыт|¿Tiene experiencia?|У вас есть опыт?
+la entrevista|собеседование|Mañana tengo una entrevista.|Завтра у меня собеседование.
+el contrato|договор|Firme el contrato, por favor.|Подпишите договор, пожалуйста.
+el plazo|срок|El plazo termina el viernes.|Срок истекает в пятницу.
+el cliente|клиент|Tenemos un cliente nuevo.|У нас новый клиент.
+el correo|почта, письмо|Te mando un correo.|Я пришлю тебе письмо.
+el informe|отчёт|Estoy escribiendo un informe.|Я пишу отчёт.
+el objetivo|цель|Nuestro objetivo es crecer.|Наша цель — расти.
+el éxito|успех|El éxito requiere tiempo.|Успех требует времени.
+contratar|нанимать|Contrataron a dos personas.|Они наняли двух человек.
+despedir|увольнять; прощаться|Lo despidieron la semana pasada.|Его уволили на прошлой неделе.
+jubilarse|выходить на пенсию|Mi padre se jubiló el año pasado.|Мой отец вышел на пенсию в прошлом году.
+ocupado|занятой|Estoy ocupado ahora.|Я сейчас занят.
+el abogado|юрист, адвокат|Necesitamos un buen abogado.|Нам нужен хороший адвокат.
+el ingeniero|инженер|Es ingeniero.|Он инженер.
+el profesor|учитель, преподаватель|Mi madre es profesora.|Моя мама — учительница.
+la fábrica|завод, фабрика|Trabaja en una fábrica.|Он работает на заводе.
+#money
+el dinero|деньги|El tiempo es dinero.|Время — деньги.
+el euro|евро|Cuesta diez euros.|Это стоит десять евро.
+costar|стоить|¿Cuánto cuesta?|Сколько стоит?
+gastar|тратить|Gasto demasiado dinero.|Я трачу слишком много денег.
+ahorrar|копить, экономить|Estoy ahorrando para un coche.|Я коплю на машину.
+ganar|зарабатывать; выигрывать|Gana mucho dinero.|Она зарабатывает много денег.
+prestar|давать в долг|¿Me prestas diez euros?|Одолжишь мне десять евро?
+la deuda|долг|Tiene muchas deudas.|У него много долгов.
+el préstamo|кредит, заём|Pedimos un préstamo.|Мы взяли кредит.
+la cuenta|счёт (банковский)|Abrí una cuenta en el banco.|Я открыл счёт в банке.
+la tarjeta|карта|Perdí mi tarjeta de crédito.|Я потерял кредитную карту.
+la moneda|монета; валюта|Tengo algunas monedas.|У меня есть немного монет.
+el cambio|сдача; обмен|Quédese con el cambio.|Сдачи не нужно.
+el impuesto|налог|Los impuestos son altos.|Налоги высокие.
+rico|богатый|Se hizo rico.|Он разбогател.
+pobre|бедный|Eran pobres pero felices.|Они были бедны, но счастливы.
+invertir|инвестировать|Invierte en bolsa.|Он вкладывает деньги в акции.
+la cartera|кошелёк|Mi cartera está vacía.|Мой кошелёк пуст.
+la pensión|пенсия|Vive de su pensión.|Она живёт на пенсию.
+#study
+la escuela|школа|Los niños están en la escuela.|Дети в школе.
+el colegio|школа|Voy al colegio en autobús.|Я езжу в школу на автобусе.
+la universidad|университет|Estudia en la universidad.|Она учится в университете.
+el estudiante|студент|Es un buen estudiante.|Он хороший студент.
+la clase|урок, класс|La clase empieza a las nueve.|Урок начинается в девять.
+aprender|учить, учиться|Quiero aprender ruso.|Я хочу выучить русский.
+estudiar|учиться, заниматься|Estudio cada tarde.|Я занимаюсь каждый вечер.
+enseñar|преподавать, учить|Enseña matemáticas.|Она преподаёт математику.
+los deberes|домашнее задание|¿Has hecho los deberes?|Ты сделал домашнее задание?
+el examen|экзамен|¡Aprobé el examen!|Я сдал экзамен!
+la nota|оценка; заметка|Sacó una buena nota.|Она получила хорошую оценку.
+el libro|книга|Estoy leyendo un buen libro.|Я читаю хорошую книгу.
+el cuaderno|тетрадь|Escríbelo en el cuaderno.|Запиши это в тетрадь.
+el bolígrafo|ручка|¿Me dejas un bolígrafo?|Дашь мне ручку?
+la página|страница|Abrid el libro en la página diez.|Откройте книгу на десятой странице.
+leer|читать|Leo todas las noches.|Я читаю каждый вечер.
+escribir|писать|Escribe tu nombre aquí.|Напиши здесь своё имя.
+el error|ошибка|Todos cometemos errores.|Все совершают ошибки.
+el ejemplo|пример|Dame un ejemplo.|Приведи пример.
+la historia|история|Me encanta la historia.|Я обожаю историю.
+las matemáticas|математика|Las matemáticas son difíciles.|Математика трудная.
+la ciencia|наука|Le interesa la ciencia.|Она интересуется наукой.
+el curso|курс|Hago un curso de inglés.|Я прохожу курс английского.
+el diccionario|словарь|Búscalo en el diccionario.|Посмотри в словаре.
+recordar|помнить|Recuerdo tu nombre.|Я помню твоё имя.
+olvidar|забывать|No olvides las llaves.|Не забудь ключи.
+explicar|объяснять|¿Me puedes explicar esta regla?|Можешь объяснить мне это правило?
+listo|умный; готовый|Es muy lista.|Она очень умная.
+difícil|трудный|Este ejercicio es difícil.|Это упражнение трудное.
+fácil|лёгкий|El examen fue fácil.|Экзамен был лёгким.

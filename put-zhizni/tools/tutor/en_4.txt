@@ -1,0 +1,222 @@
+#art
+art|искусство|She studies modern art.|Она изучает современное искусство.
+music|музыка|I listen to music every day.|Я слушаю музыку каждый день.
+song|песня|This is my favorite song.|Это моя любимая песня.
+film|фильм|Let's watch a film.|Давай посмотрим фильм.
+movie|фильм|The movie was boring.|Фильм был скучным.
+cinema|кинотеатр|We went to the cinema.|Мы ходили в кино.
+theater|театр|We have tickets to the theater.|У нас билеты в театр.
+actor|актёр|He is a famous actor.|Он знаменитый актёр.
+singer|певец|She is a talented singer.|Она талантливая певица.
+writer|писатель|Tolstoy is a great writer.|Толстой — великий писатель.
+artist|художник|The artist painted a portrait.|Художник написал портрет.
+picture|картина; фото|What a beautiful picture!|Какая красивая картина!
+story|история, рассказ|Tell me a story.|Расскажи мне историю.
+novel|роман|I'm reading a novel by Dickens.|Я читаю роман Диккенса.
+poem|стихотворение|He wrote a poem for her.|Он написал ей стихотворение.
+concert|концерт|The concert was amazing.|Концерт был потрясающим.
+show|шоу; показывать|The show starts at eight.|Шоу начинается в восемь.
+TV|телевизор|Turn off the TV.|Выключи телевизор.
+radio|радио|I listen to the radio in the car.|Я слушаю радио в машине.
+newspaper|газета|My father reads the newspaper.|Мой отец читает газету.
+magazine|журнал|I bought a fashion magazine.|Я купила журнал о моде.
+character|персонаж; характер|The main character is a detective.|Главный герой — сыщик.
+famous|знаменитый|She is a famous singer.|Она знаменитая певица.
+exhibition|выставка|Have you seen the new exhibition?|Ты видел новую выставку?
+ticket|билет|I have two tickets for the concert.|У меня два билета на концерт.
+audience|зрители|The audience applauded.|Зрители аплодировали.
+series|сериал|I'm watching a new series.|Я смотрю новый сериал.
+#tech
+computer|компьютер|My computer is slow.|Мой компьютер тормозит.
+phone|телефон|My phone is dead.|У меня сел телефон.
+smartphone|смартфон|I got a new smartphone.|У меня новый смартфон.
+internet|интернет|The internet is down.|Интернет не работает.
+website|сайт|Visit our website.|Посетите наш сайт.
+app|приложение|Download the app.|Скачай приложение.
+password|пароль|I forgot my password.|Я забыл пароль.
+screen|экран|The screen is broken.|Экран разбит.
+keyboard|клавиатура|The keyboard is wireless.|Клавиатура беспроводная.
+file|файл|Save the file.|Сохрани файл.
+download|скачивать|Download the file.|Скачай файл.
+upload|загружать (в сеть)|Upload the photo.|Загрузи фото.
+online|онлайн|I bought it online.|Я купил это онлайн.
+search|поиск; искать|Search for it online.|Поищи это в интернете.
+click|щёлкнуть, нажать|Click on the link.|Нажми на ссылку.
+link|ссылка|Send me the link.|Пришли мне ссылку.
+battery|батарея|The battery is low.|Батарея садится.
+charge|заряжать|I need to charge my phone.|Мне нужно зарядить телефон.
+data|данные|The data is secure.|Данные защищены.
+update|обновление; обновлять|Update your software.|Обнови программу.
+technology|технология|Technology changes fast.|Технологии меняются быстро.
+machine|машина, механизм|The machine is broken.|Аппарат сломался.
+robot|робот|Robots can build cars.|Роботы умеют собирать машины.
+network|сеть|Connect to the network.|Подключись к сети.
+account|аккаунт|Create an account.|Создай аккаунт.
+#verbs
+be|быть|I want to be a doctor.|Я хочу быть врачом.
+have|иметь|I have two brothers.|У меня два брата.
+do|делать|What are you doing?|Что ты делаешь?
+go|идти, ехать|Let's go home.|Пойдём домой.
+come|приходить|Come here, please.|Подойди сюда, пожалуйста.
+get|получать; становиться|I got a letter.|Я получил письмо.
+make|делать, создавать|She makes great coffee.|Она варит отличный кофе.
+take|брать|Take an umbrella.|Возьми зонт.
+give|давать|Give me your hand.|Дай мне руку.
+see|видеть|I can see the sea.|Я вижу море.
+look|смотреть; выглядеть|Look at this!|Посмотри на это!
+watch|смотреть (наблюдать)|We watched a movie.|Мы посмотрели фильм.
+hear|слышать|Did you hear that?|Ты это слышал?
+want|хотеть|I want some tea.|Я хочу чаю.
+need|нуждаться|I need your help.|Мне нужна твоя помощь.
+like|нравиться|I like this song.|Мне нравится эта песня.
+can|мочь, уметь|I can swim.|Я умею плавать.
+must|должен|You must stop.|Ты должен остановиться.
+find|находить|I can't find my keys.|Не могу найти ключи.
+use|использовать|Can I use your phone?|Можно воспользоваться твоим телефоном?
+try|пытаться, пробовать|Try again.|Попробуй ещё раз.
+put|класть, ставить|Put it on the table.|Положи это на стол.
+keep|хранить, продолжать|Keep calm.|Сохраняй спокойствие.
+let|позволять|Let me help you.|Позволь тебе помочь.
+begin|начинать|Let's begin.|Давайте начнём.
+start|начинать|The film starts at nine.|Фильм начинается в девять.
+finish|заканчивать|I finished my work.|Я закончил работу.
+stop|останавливать(ся)|Stop the car!|Останови машину!
+open|открывать; открытый|Open the door.|Открой дверь.
+close|закрывать|Close your eyes.|Закрой глаза.
+bring|приносить|Bring me a glass of water.|Принеси мне стакан воды.
+send|отправлять|Send me a message.|Пришли мне сообщение.
+show|показывать|Show me the photo.|Покажи мне фото.
+wait|ждать|Wait for me.|Подожди меня.
+live|жить|I live in Moscow.|Я живу в Москве.
+die|умирать|Plants die without water.|Растения гибнут без воды.
+sit|сидеть|Sit down, please.|Садитесь, пожалуйста.
+stand|стоять|Stand up!|Встань!
+fall|падать|Be careful, don't fall.|Осторожно, не упади.
+grow|расти; выращивать|Children grow fast.|Дети быстро растут.
+change|менять(ся)|Things change.|Всё меняется.
+become|становиться|She became a doctor.|Она стала врачом.
+choose|выбирать|Choose one.|Выбери одно.
+decide|решать|I decided to stay.|Я решил остаться.
+build|строить|They are building a bridge.|Они строят мост.
+break|ломать|Don't break it!|Не сломай!
+carry|нести|Can you carry this bag?|Можешь понести эту сумку?
+catch|ловить|Catch the ball!|Лови мяч!
+climb|взбираться|Let's climb that hill.|Давай заберёмся на тот холм.
+cut|резать|Cut the bread.|Нарежь хлеб.
+drink|пить|Drink more water.|Пей больше воды.
+eat|есть|Let's eat.|Давай поедим.
+fly|летать|Birds fly south in winter.|Зимой птицы летят на юг.
+forgive|прощать|Please forgive me.|Пожалуйста, прости меня.
+happen|случаться|What happened?|Что случилось?
+hold|держать|Hold my hand.|Держи меня за руку.
+join|присоединяться|Join us!|Присоединяйся к нам!
+kill|убивать|Smoking kills.|Курение убивает.
+lead|вести, руководить|She leads the team.|Она руководит командой.
+pass|проходить; передавать|Pass the salt, please.|Передай соль, пожалуйста.
+pull|тянуть|Pull the door.|Потяни дверь на себя.
+push|толкать|Push the button.|Нажми кнопку.
+reach|достигать|We reached the top.|Мы достигли вершины.
+sell|продавать|They sell flowers.|Они продают цветы.
+throw|бросать|Throw the ball.|Брось мяч.
+turn|поворачивать|Turn right.|Поверни направо.
+visit|посещать|Visit us soon.|Приезжай к нам скоро.
+worry|беспокоиться|Don't worry.|Не волнуйся.
+#adj
+good|хороший|It's a good idea.|Это хорошая идея.
+bad|плохой|The weather is bad.|Погода плохая.
+big|большой|They live in a big house.|Они живут в большом доме.
+small|маленький|I have a small car.|У меня маленькая машина.
+long|длинный, долгий|It was a long day.|Это был долгий день.
+short|короткий|The film is short.|Фильм короткий.
+tall|высокий (о человеке)|He is very tall.|Он очень высокий.
+high|высокий|The mountain is high.|Гора высокая.
+low|низкий|The price is low.|Цена низкая.
+new|новый|I have a new phone.|У меня новый телефон.
+beautiful|красивый|What a beautiful day!|Какой прекрасный день!
+ugly|уродливый|That building is ugly.|То здание уродливое.
+fast|быстрый|He is a fast runner.|Он быстро бегает.
+slow|медленный|The internet is slow.|Интернет медленный.
+strong|сильный|He is very strong.|Он очень сильный.
+weak|слабый|I feel weak.|Я чувствую слабость.
+heavy|тяжёлый|This box is heavy.|Эта коробка тяжёлая.
+light|лёгкий; светлый|The bag is light.|Сумка лёгкая.
+full|полный|The glass is full.|Стакан полон.
+empty|пустой|The fridge is empty.|Холодильник пуст.
+important|важный|This is very important.|Это очень важно.
+interesting|интересный|What an interesting book!|Какая интересная книга!
+boring|скучный|The lecture was boring.|Лекция была скучной.
+easy|лёгкий, простой|It's easy to do.|Это легко сделать.
+hard|трудный; твёрдый|The exam was hard.|Экзамен был трудным.
+right|правильный|You're right.|Ты прав.
+wrong|неправильный|That's the wrong answer.|Это неправильный ответ.
+true|верный, правдивый|Is it true?|Это правда?
+same|тот же самый|We have the same phone.|У нас одинаковые телефоны.
+different|разный, другой|We are very different.|Мы очень разные.
+ready|готовый|Are you ready?|Ты готов?
+free|свободный; бесплатный|Entry is free.|Вход бесплатный.
+safe|безопасный|Is it safe here?|Здесь безопасно?
+dangerous|опасный|This road is dangerous.|Эта дорога опасна.
+quiet|тихий|It's quiet here.|Здесь тихо.
+loud|громкий|The music is too loud.|Музыка слишком громкая.
+possible|возможный|Is it possible?|Это возможно?
+real|настоящий|Is that a real diamond?|Это настоящий бриллиант?
+main|главный|This is the main street.|Это главная улица.
+whole|целый|I ate the whole cake.|Я съел весь торт.
+red|красный|She has a red car.|У неё красная машина.
+blue|синий, голубой|The sky is blue.|Небо голубое.
+green|зелёный|The grass is green.|Трава зелёная.
+yellow|жёлтый|I like yellow flowers.|Мне нравятся жёлтые цветы.
+black|чёрный|He wears a black coat.|Он носит чёрное пальто.
+white|белый|Snow is white.|Снег белый.
+#grammar
+I|я|I am a student.|Я студент.
+you|ты, вы|You are my friend.|Ты мой друг.
+he|он|He is tall.|Он высокий.
+she|она|She is a doctor.|Она врач.
+it|оно, это|It is raining.|Идёт дождь.
+we|мы|We are a family.|Мы семья.
+they|они|They live here.|Они живут здесь.
+this|этот, это|This is my house.|Это мой дом.
+that|тот, то; что|That is a good idea.|Это хорошая идея.
+what|что, какой|What is this?|Что это?
+who|кто|Who is that?|Кто это?
+where|где, куда|Where are you?|Где ты?
+when|когда|When is the meeting?|Когда встреча?
+why|почему|Why are you late?|Почему ты опоздал?
+how|как|How are you?|Как дела?
+which|который|Which one do you want?|Какой ты хочешь?
+and|и|You and me.|Ты и я.
+but|но|I'm tired but happy.|Я устал, но счастлив.
+or|или|Tea or coffee?|Чай или кофе?
+because|потому что|I stayed home because I was sick.|Я остался дома, потому что заболел.
+if|если|If it rains, we'll stay home.|Если пойдёт дождь, мы останемся дома.
+with|с|Come with me.|Пойдём со мной.
+without|без|Coffee without sugar.|Кофе без сахара.
+for|для; в течение|This gift is for you.|Этот подарок для тебя.
+from|из, от|I'm from Russia.|Я из России.
+to|к, в|I'm going to school.|Я иду в школу.
+in|в|The keys are in my bag.|Ключи у меня в сумке.
+on|на|The book is on the table.|Книга на столе.
+under|под|The cat is under the bed.|Кошка под кроватью.
+between|между|Sit between us.|Сядь между нами.
+very|очень|It's very cold.|Очень холодно.
+too|слишком; тоже|It's too expensive.|Это слишком дорого.
+also|также|I also like jazz.|Мне также нравится джаз.
+only|только|I have only five minutes.|У меня всего пять минут.
+all|все, всё|All my friends came.|Пришли все мои друзья.
+some|несколько, немного|I need some help.|Мне нужна помощь.
+many|много (исчисл.)|I have many friends.|У меня много друзей.
+much|много (неисчисл.)|I don't have much time.|У меня мало времени.
+every|каждый|I run every day.|Я бегаю каждый день.
+one|один|I have one sister.|У меня одна сестра.
+two|два|Two coffees, please.|Два кофе, пожалуйста.
+three|три|I have three cats.|У меня три кошки.
+ten|десять|It costs ten euros.|Это стоит десять евро.
+hundred|сто|There were a hundred people.|Там было сто человек.
+thousand|тысяча|It costs a thousand dollars.|Это стоит тысячу долларов.
+first|первый|This is my first time here.|Я здесь впервые.
+last|последний|This is the last bus.|Это последний автобус.
+next|следующий|See you next week.|Увидимся на следующей неделе.
+half|половина|Half an hour.|Полчаса.
+here|здесь|Come here.|Иди сюда.
+there|там|Put it there.|Положи это туда.

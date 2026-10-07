@@ -56,7 +56,7 @@
         waterGoal: 2000, stepsGoal: 8000, sleepMin: 7, sleepMax: 9, kcal: 1800, prot: 110, fat: 65, carb: 190, fiber: 30, workoutsWeek: 3,
         city: "", lat: null, lon: null,
         theme: "system", accent: "lavender",
-        cards: ["dash", "weight", "tasks5", "culture", "facts", "main", "state", "habits", "schedule", "water", "sleep", "steps", "weather", "food", "workout", "learn", "tarot", "money", "reminders", "esoteric", "evening"],
+        cards: ["dash", "weight", "tasks5", "culture", "word", "facts", "main", "state", "habits", "schedule", "water", "sleep", "steps", "weather", "food", "workout", "learn", "tarot", "money", "reminders", "esoteric", "evening"],
         hidden: [],
         notif: { general: true, habits: true, payments: true, workouts: true, reading: true, piano: true, study: true, events: true },
         stepsSensor: false, pin: "", bio: false, points: false,
@@ -150,6 +150,7 @@
     if (db.profile.cards.includes("tasks") && !db.profile.hidden.includes("tasks") && !db.profile.__t5) { db.profile.hidden.push("tasks"); db.profile.__t5 = 1; }
     ["weight", "tasks5", "facts", "esoteric"].forEach((c) => { if (!db.profile.cards.includes(c)) db.profile.cards.splice(2, 0, c); });
     if (!db.profile.cards.includes("culture")) { const i = db.profile.cards.indexOf("tasks5"); db.profile.cards.splice(i >= 0 ? i + 1 : 2, 0, "culture"); }
+    if (!db.profile.cards.includes("word")) { const i = db.profile.cards.indexOf("culture"); db.profile.cards.splice(i >= 0 ? i + 1 : 2, 0, "word"); }
     def.profile.cards.forEach((c) => { if (!db.profile.cards.includes(c)) db.profile.cards.push(c); });
     db.v = 1;
     return db;

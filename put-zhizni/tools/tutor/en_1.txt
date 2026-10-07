@@ -1,0 +1,213 @@
+#basics
+hello|привет, здравствуйте|Hello, how are you?|Привет, как дела?
+goodbye|до свидания|Goodbye, see you tomorrow.|До свидания, увидимся завтра.
+please|пожалуйста (просьба)|Please close the door.|Пожалуйста, закрой дверь.
+thank you|спасибо|Thank you for your help.|Спасибо за помощь.
+sorry|извините, простите|Sorry, I'm late.|Извините, я опоздал.
+yes|да|Yes, I agree.|Да, я согласен.
+no|нет|No, thank you.|Нет, спасибо.
+welcome|добро пожаловать|Welcome to our home.|Добро пожаловать к нам домой.
+excuse me|извините (обращение)|Excuse me, where is the station?|Извините, где вокзал?
+name|имя|What is your name?|Как тебя зовут?
+mister|господин, мистер|Mister Brown is our teacher.|Мистер Браун — наш учитель.
+okay|хорошо, ладно|Okay, let's go.|Хорошо, пойдём.
+good morning|доброе утро|Good morning, everyone!|Доброе утро всем!
+good night|спокойной ночи|Good night, sleep well.|Спокойной ночи, спи крепко.
+nice|приятный, милый|Nice to meet you.|Приятно познакомиться.
+meet|встречать, знакомиться|Let's meet at six.|Давай встретимся в шесть.
+help|помощь; помогать|Can you help me?|Можешь мне помочь?
+question|вопрос|I have a question.|У меня есть вопрос.
+answer|ответ; отвечать|Please answer the phone.|Пожалуйста, ответь на звонок.
+understand|понимать|I don't understand.|Я не понимаю.
+repeat|повторять|Could you repeat that?|Не могли бы вы повторить?
+slowly|медленно|Please speak slowly.|Пожалуйста, говорите медленно.
+mean|означать; иметь в виду|What does this word mean?|Что значит это слово?
+word|слово|I learned a new word.|Я выучил новое слово.
+language|язык|English is a global language.|Английский — мировой язык.
+speak|говорить (на языке)|Do you speak English?|Вы говорите по-английски?
+know|знать|I know the answer.|Я знаю ответ.
+fine|хорошо, в порядке|I'm fine, thanks.|У меня всё хорошо, спасибо.
+congratulations|поздравляю|Congratulations on your new job!|Поздравляю с новой работой!
+cheers|за здоровье; спасибо (разг.)|Cheers, everyone!|Ваше здоровье!
+#people
+person|человек|She is a kind person.|Она добрый человек.
+people|люди|Many people live here.|Здесь живёт много людей.
+man|мужчина|The man is reading a newspaper.|Мужчина читает газету.
+woman|женщина|That woman is my aunt.|Та женщина — моя тётя.
+child|ребёнок|The child is sleeping.|Ребёнок спит.
+children|дети|The children are playing outside.|Дети играют на улице.
+boy|мальчик|The boy has a red ball.|У мальчика красный мяч.
+girl|девочка, девушка|The girl sings beautifully.|Девочка прекрасно поёт.
+baby|малыш, младенец|The baby is crying.|Малыш плачет.
+family|семья|My family is big.|У меня большая семья.
+mother|мать|My mother is a doctor.|Моя мама — врач.
+father|отец|My father works at a bank.|Мой папа работает в банке.
+parents|родители|My parents live in Moscow.|Мои родители живут в Москве.
+son|сын|Their son is five.|Их сыну пять лет.
+daughter|дочь|She has two daughters.|У неё две дочери.
+brother|брат|My brother is older than me.|Мой брат старше меня.
+sister|сестра|My sister likes music.|Моя сестра любит музыку.
+husband|муж|Her husband is a pilot.|Её муж — пилот.
+wife|жена|His wife is a teacher.|Его жена — учительница.
+grandmother|бабушка|My grandmother bakes pies.|Моя бабушка печёт пироги.
+grandfather|дедушка|My grandfather was a sailor.|Мой дедушка был моряком.
+uncle|дядя|My uncle lives in Canada.|Мой дядя живёт в Канаде.
+aunt|тётя|My aunt has a cat.|У моей тёти есть кошка.
+cousin|двоюродный брат, сестра|My cousin is visiting us.|К нам приехал мой двоюродный брат.
+friend|друг|He is my best friend.|Он мой лучший друг.
+neighbor|сосед|Our neighbor is very friendly.|Наш сосед очень дружелюбный.
+guest|гость|We have guests tonight.|Сегодня вечером у нас гости.
+couple|пара|They are a happy couple.|Они счастливая пара.
+wedding|свадьба|The wedding is in June.|Свадьба в июне.
+marry|жениться, выйти замуж|They married last year.|Они поженились в прошлом году.
+love|любовь; любить|I love my family.|Я люблю свою семью.
+age|возраст|What is your age?|Сколько тебе лет?
+young|молодой|She is young and smart.|Она молодая и умная.
+old|старый, пожилой|My dog is old.|Моя собака старая.
+born|рождённый|I was born in May.|Я родился в мае.
+birthday|день рождения|Happy birthday!|С днём рождения!
+adult|взрослый|Adults pay full price.|Взрослые платят полную цену.
+teenager|подросток|He is a typical teenager.|Он типичный подросток.
+twin|близнец|They are twins.|Они близнецы.
+relative|родственник|All my relatives came.|Пришли все мои родственники.
+#body
+body|тело|Exercise is good for the body.|Упражнения полезны для тела.
+head|голова|My head hurts.|У меня болит голова.
+face|лицо|She has a beautiful face.|У неё красивое лицо.
+eye|глаз|Close your eyes.|Закрой глаза.
+ear|ухо|I have an ear infection.|У меня воспаление уха.
+nose|нос|My nose is cold.|У меня холодный нос.
+mouth|рот|Open your mouth, please.|Откройте рот, пожалуйста.
+tooth|зуб|I need to see a dentist about my tooth.|Мне нужно к стоматологу из-за зуба.
+hair|волосы|She has long hair.|У неё длинные волосы.
+hand|рука (кисть)|Raise your hand.|Подними руку.
+arm|рука (от плеча)|He broke his arm.|Он сломал руку.
+finger|палец|I cut my finger.|Я порезал палец.
+leg|нога|My leg is tired.|У меня устала нога.
+foot|ступня|My foot hurts.|У меня болит ступня.
+back|спина|I have back pain.|У меня болит спина.
+heart|сердце|The heart is a strong muscle.|Сердце — сильная мышца.
+blood|кровь|He gave blood today.|Сегодня он сдал кровь.
+skin|кожа|Sun can damage your skin.|Солнце может повредить кожу.
+health|здоровье|Health is wealth.|Здоровье — это богатство.
+healthy|здоровый|Eat healthy food.|Ешь здоровую пищу.
+sick|больной|I feel sick.|Мне плохо.
+ill|больной|She is ill with the flu.|Она болеет гриппом.
+pain|боль|The pain is getting worse.|Боль усиливается.
+hurt|болеть; ранить|Does it hurt?|Больно?
+doctor|врач|You should see a doctor.|Тебе стоит сходить к врачу.
+nurse|медсестра|The nurse checked my blood pressure.|Медсестра измерила мне давление.
+hospital|больница|He is in the hospital.|Он в больнице.
+medicine|лекарство|Take this medicine twice a day.|Принимай это лекарство два раза в день.
+pill|таблетка|Take one pill after meals.|Принимай одну таблетку после еды.
+fever|температура, жар|The child has a fever.|У ребёнка температура.
+cold|простуда; холодный|I caught a cold.|Я простудился.
+cough|кашель; кашлять|He has a bad cough.|У него сильный кашель.
+headache|головная боль|I have a headache.|У меня болит голова.
+tired|уставший|I'm very tired today.|Я сегодня очень устал.
+sleep|сон; спать|I need more sleep.|Мне нужно больше спать.
+rest|отдых; отдыхать|You need some rest.|Тебе нужно отдохнуть.
+breathe|дышать|Breathe deeply.|Дыши глубоко.
+weight|вес|I want to lose weight.|Я хочу похудеть.
+appointment|запись (к врачу)|I have a doctor's appointment.|У меня запись к врачу.
+dentist|стоматолог|I go to the dentist twice a year.|Я хожу к стоматологу два раза в год.
+pharmacy|аптека|The pharmacy is open until ten.|Аптека работает до десяти.
+injury|травма|It was a minor injury.|Это была лёгкая травма.
+stomach|живот, желудок|My stomach hurts.|У меня болит живот.
+neck|шея|My neck is stiff.|У меня затекла шея.
+shoulder|плечо|He hurt his shoulder.|Он повредил плечо.
+knee|колено|My knee is swollen.|У меня опухло колено.
+#food
+food|еда|The food is delicious.|Еда очень вкусная.
+water|вода|Can I have some water?|Можно мне воды?
+bread|хлеб|We need bread and milk.|Нам нужны хлеб и молоко.
+milk|молоко|I drink milk every morning.|Я пью молоко каждое утро.
+coffee|кофе|I'd like a cup of coffee.|Я бы хотел чашку кофе.
+tea|чай|Would you like some tea?|Хочешь чаю?
+juice|сок|Orange juice, please.|Апельсиновый сок, пожалуйста.
+breakfast|завтрак|Breakfast is ready.|Завтрак готов.
+lunch|обед|Let's have lunch together.|Давай пообедаем вместе.
+dinner|ужин|Dinner is at seven.|Ужин в семь.
+meal|приём пищи, блюдо|Enjoy your meal!|Приятного аппетита!
+meat|мясо|I don't eat meat.|Я не ем мясо.
+chicken|курица|We had chicken for dinner.|На ужин у нас была курица.
+fish|рыба|Fish is good for health.|Рыба полезна для здоровья.
+egg|яйцо|I had two eggs for breakfast.|На завтрак я съел два яйца.
+cheese|сыр|This cheese is from France.|Этот сыр из Франции.
+butter|сливочное масло|Pass the butter, please.|Передай масло, пожалуйста.
+rice|рис|Rice is popular in Asia.|Рис популярен в Азии.
+pasta|макароны, паста|The kids love pasta.|Дети обожают пасту.
+soup|суп|The soup is hot.|Суп горячий.
+salad|салат|I'll have a green salad.|Мне зелёный салат.
+vegetable|овощ|Eat more vegetables.|Ешь больше овощей.
+fruit|фрукт|Fruit is a healthy snack.|Фрукты — полезный перекус.
+apple|яблоко|An apple a day keeps the doctor away.|Яблоко в день — и доктор не нужен.
+banana|банан|Bananas are rich in potassium.|Бананы богаты калием.
+orange|апельсин; оранжевый|She is peeling an orange.|Она чистит апельсин.
+potato|картофель|I like baked potatoes.|Я люблю печёную картошку.
+tomato|помидор|Add some tomatoes to the salad.|Добавь в салат помидоры.
+sugar|сахар|No sugar, please.|Без сахара, пожалуйста.
+salt|соль|Add a pinch of salt.|Добавь щепотку соли.
+sweet|сладкий|This cake is too sweet.|Этот торт слишком сладкий.
+cake|торт, пирожное|She baked a chocolate cake.|Она испекла шоколадный торт.
+chocolate|шоколад|I love dark chocolate.|Я люблю тёмный шоколад.
+wine|вино|A glass of red wine, please.|Бокал красного вина, пожалуйста.
+beer|пиво|He ordered a beer.|Он заказал пиво.
+hungry|голодный|I'm hungry.|Я голоден.
+thirsty|испытывающий жажду|I'm thirsty.|Я хочу пить.
+delicious|очень вкусный|This pie is delicious.|Этот пирог очень вкусный.
+cook|готовить; повар|I like to cook.|Я люблю готовить.
+restaurant|ресторан|Let's go to a restaurant.|Пойдём в ресторан.
+menu|меню|Can I see the menu?|Можно посмотреть меню?
+order|заказ; заказывать|Are you ready to order?|Вы готовы сделать заказ?
+bill|счёт (в ресторане)|Could we have the bill, please?|Принесите, пожалуйста, счёт.
+taste|вкус; пробовать|Taste this soup.|Попробуй этот суп.
+recipe|рецепт|This is my grandmother's recipe.|Это рецепт моей бабушки.
+plate|тарелка|Put the plate on the table.|Поставь тарелку на стол.
+cup|чашка|A cup of tea, please.|Чашку чая, пожалуйста.
+glass|стакан; стекло|A glass of water, please.|Стакан воды, пожалуйста.
+fork|вилка|I need a fork.|Мне нужна вилка.
+knife|нож|Be careful with the knife.|Осторожно с ножом.
+spoon|ложка|Stir it with a spoon.|Размешай ложкой.
+snack|перекус|Let's have a quick snack.|Давай быстро перекусим.
+#home
+home|дом (родной)|I'm going home.|Я иду домой.
+house|дом (здание)|They bought a new house.|Они купили новый дом.
+apartment|квартира|We rent an apartment.|Мы снимаем квартиру.
+room|комната|My room is small.|Моя комната маленькая.
+kitchen|кухня|Mom is in the kitchen.|Мама на кухне.
+bedroom|спальня|The bedroom is upstairs.|Спальня наверху.
+bathroom|ванная|Where is the bathroom?|Где ванная?
+living room|гостиная|We watch TV in the living room.|Мы смотрим телевизор в гостиной.
+door|дверь|Close the door, please.|Закрой дверь, пожалуйста.
+window|окно|Open the window.|Открой окно.
+floor|пол; этаж|We live on the third floor.|Мы живём на третьем этаже.
+wall|стена|There is a picture on the wall.|На стене висит картина.
+roof|крыша|The roof needs repair.|Крышу нужно отремонтировать.
+stairs|лестница|Take the stairs.|Поднимись по лестнице.
+table|стол|The keys are on the table.|Ключи на столе.
+chair|стул|Please take a chair.|Присаживайтесь.
+bed|кровать|I go to bed at eleven.|Я ложусь спать в одиннадцать.
+sofa|диван|The cat sleeps on the sofa.|Кошка спит на диване.
+lamp|лампа|Turn on the lamp.|Включи лампу.
+mirror|зеркало|She looked in the mirror.|Она посмотрела в зеркало.
+key|ключ|I lost my keys.|Я потерял ключи.
+garden|сад|We grow tomatoes in the garden.|Мы выращиваем помидоры в саду.
+clean|чистый; убирать|I clean my room every Saturday.|Я убираю комнату каждую субботу.
+dirty|грязный|The dishes are dirty.|Посуда грязная.
+wash|мыть, стирать|Wash your hands.|Помой руки.
+dishes|посуда|Whose turn is it to do the dishes?|Чья очередь мыть посуду?
+fridge|холодильник|The milk is in the fridge.|Молоко в холодильнике.
+oven|духовка|The cake is in the oven.|Торт в духовке.
+shower|душ|I take a shower every morning.|Я принимаю душ каждое утро.
+towel|полотенце|Can I have a clean towel?|Можно чистое полотенце?
+soap|мыло|Wash with soap.|Мой с мылом.
+rent|аренда; снимать|The rent is too high.|Аренда слишком дорогая.
+move|переезжать; двигать|We moved to a new city.|Мы переехали в новый город.
+neighbor|сосед|My neighbor has a dog.|У моего соседа есть собака.
+light|свет; лёгкий|Turn off the light.|Выключи свет.
+heating|отопление|The heating doesn't work.|Отопление не работает.
+furniture|мебель|We need new furniture.|Нам нужна новая мебель.
+box|коробка|Put the books in the box.|Положи книги в коробку.
+trash|мусор|Take out the trash.|Вынеси мусор.
+repair|ремонт; чинить|He repaired the tap.|Он починил кран.

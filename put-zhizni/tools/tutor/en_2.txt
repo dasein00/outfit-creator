@@ -1,0 +1,225 @@
+#clothes
+clothes|одежда|I need new clothes.|Мне нужна новая одежда.
+shirt|рубашка|He is wearing a white shirt.|На нём белая рубашка.
+T-shirt|футболка|I bought a blue T-shirt.|Я купил синюю футболку.
+dress|платье|She looks great in that dress.|Она прекрасно выглядит в этом платье.
+skirt|юбка|The skirt is too short.|Юбка слишком короткая.
+trousers|брюки|These trousers are too long.|Эти брюки слишком длинные.
+jeans|джинсы|I always wear jeans.|Я всегда ношу джинсы.
+jacket|куртка, пиджак|Take your jacket, it's cold.|Возьми куртку, холодно.
+coat|пальто|She has a warm winter coat.|У неё тёплое зимнее пальто.
+sweater|свитер|This sweater is very soft.|Этот свитер очень мягкий.
+shoes|туфли, обувь|My shoes are wet.|У меня промокли ботинки.
+boots|ботинки, сапоги|I need winter boots.|Мне нужны зимние сапоги.
+socks|носки|I can't find my socks.|Не могу найти носки.
+hat|шляпа, шапка|Don't forget your hat.|Не забудь шапку.
+scarf|шарф|It's windy, wear a scarf.|Ветрено, надень шарф.
+gloves|перчатки|Where are my gloves?|Где мои перчатки?
+bag|сумка|My bag is heavy.|Моя сумка тяжёлая.
+belt|ремень|This belt is leather.|Этот ремень кожаный.
+size|размер|What size do you wear?|Какой у вас размер?
+wear|носить (одежду)|She wears glasses.|Она носит очки.
+try on|примерять|Can I try this on?|Можно это примерить?
+fit|подходить по размеру|These shoes fit perfectly.|Эти туфли идеально подходят.
+shop|магазин; делать покупки|The shop opens at nine.|Магазин открывается в девять.
+store|магазин|Is there a store nearby?|Здесь рядом есть магазин?
+buy|покупать|I want to buy a gift.|Я хочу купить подарок.
+sell|продавать|They sell fresh bread.|Они продают свежий хлеб.
+price|цена|What's the price?|Какая цена?
+cheap|дешёвый|This hotel is cheap.|Этот отель дешёвый.
+expensive|дорогой|That watch is expensive.|Те часы дорогие.
+sale|распродажа|Everything is on sale.|На всё скидки.
+discount|скидка|Is there a student discount?|Есть студенческая скидка?
+pay|платить|Can I pay by card?|Можно заплатить картой?
+cash|наличные|I don't have any cash.|У меня нет наличных.
+receipt|чек|Keep the receipt.|Сохраните чек.
+customer|покупатель, клиент|The customer is always right.|Клиент всегда прав.
+fashion|мода|She works in fashion.|Она работает в сфере моды.
+style|стиль|I like your style.|Мне нравится твой стиль.
+pocket|карман|My phone is in my pocket.|Телефон у меня в кармане.
+ring|кольцо|He gave her a ring.|Он подарил ей кольцо.
+watch|наручные часы; смотреть|My watch is slow.|Мои часы отстают.
+glasses|очки|I need glasses to read.|Мне нужны очки для чтения.
+umbrella|зонт|Take an umbrella.|Возьми зонт.
+#city
+city|город|Moscow is a big city.|Москва — большой город.
+town|городок|I grew up in a small town.|Я вырос в маленьком городке.
+village|деревня|My grandparents live in a village.|Мои бабушка и дедушка живут в деревне.
+street|улица|We live on a quiet street.|Мы живём на тихой улице.
+road|дорога|The road is closed.|Дорога закрыта.
+square|площадь|Meet me in the main square.|Встретимся на главной площади.
+park|парк|Let's walk in the park.|Давай погуляем в парке.
+bridge|мост|The bridge is very old.|Мост очень старый.
+building|здание|That building is a museum.|То здание — музей.
+center|центр|The hotel is in the city center.|Отель в центре города.
+corner|угол|The bank is on the corner.|Банк на углу.
+map|карта|Do you have a map?|У вас есть карта?
+address|адрес|What is your address?|Какой у тебя адрес?
+bank|банк|The bank closes at five.|Банк закрывается в пять.
+post office|почта|Where is the post office?|Где почта?
+church|церковь|The church is very beautiful.|Церковь очень красивая.
+museum|музей|The museum is free on Sundays.|По воскресеньям музей бесплатный.
+library|библиотека|I study at the library.|Я занимаюсь в библиотеке.
+market|рынок|We buy vegetables at the market.|Мы покупаем овощи на рынке.
+police|полиция|Call the police!|Вызовите полицию!
+car|машина|My car is red.|У меня красная машина.
+bus|автобус|I take the bus to work.|Я езжу на работу на автобусе.
+train|поезд|The train leaves at eight.|Поезд отправляется в восемь.
+taxi|такси|Let's take a taxi.|Давай возьмём такси.
+subway|метро|The subway is fast.|Метро — это быстро.
+bike|велосипед|I ride my bike to school.|Я езжу в школу на велосипеде.
+station|станция, вокзал|Where is the train station?|Где железнодорожный вокзал?
+stop|остановка; останавливаться|Get off at the next stop.|Выходи на следующей остановке.
+ticket|билет|One ticket, please.|Один билет, пожалуйста.
+traffic|движение, пробки|There is a lot of traffic.|Большие пробки.
+drive|водить машину|Can you drive?|Ты умеешь водить?
+walk|идти пешком; прогулка|I walk to work.|Я хожу на работу пешком.
+left|левый; налево|Turn left at the corner.|На углу поверните налево.
+right|правый; направо|The shop is on the right.|Магазин справа.
+straight|прямо|Go straight ahead.|Идите прямо.
+near|рядом|Is it near here?|Это рядом?
+far|далеко|Is the airport far?|Аэропорт далеко?
+crossing|перекрёсток, переход|Cross at the crossing.|Переходи по переходу.
+parking|парковка|Parking is free here.|Здесь бесплатная парковка.
+#travel
+travel|путешествовать; путешествие|I love to travel.|Я люблю путешествовать.
+trip|поездка|How was your trip?|Как прошла поездка?
+journey|путешествие|It was a long journey.|Это было долгое путешествие.
+holiday|отпуск, праздник|We are on holiday.|Мы в отпуске.
+vacation|отпуск, каникулы|Where are you going on vacation?|Куда ты едешь в отпуск?
+tourist|турист|The city is full of tourists.|Город полон туристов.
+passport|паспорт|Don't forget your passport.|Не забудь паспорт.
+visa|виза|Do I need a visa?|Мне нужна виза?
+airport|аэропорт|We arrived at the airport.|Мы прибыли в аэропорт.
+plane|самолёт|The plane is late.|Самолёт задерживается.
+flight|рейс, полёт|My flight is at noon.|Мой рейс в полдень.
+luggage|багаж|My luggage is lost.|Мой багаж потерялся.
+suitcase|чемодан|Pack your suitcase.|Собери чемодан.
+hotel|гостиница|The hotel has a pool.|В гостинице есть бассейн.
+room|номер, комната|I booked a double room.|Я забронировал двухместный номер.
+book|бронировать; книга|I booked a table for two.|Я забронировал столик на двоих.
+reservation|бронирование|I have a reservation.|У меня бронь.
+beach|пляж|Let's go to the beach.|Пойдём на пляж.
+sea|море|The sea is warm today.|Сегодня море тёплое.
+mountain|гора|We climbed the mountain.|Мы поднялись на гору.
+island|остров|They live on an island.|Они живут на острове.
+abroad|за границей|I've never been abroad.|Я никогда не был за границей.
+country|страна|Which country are you from?|Из какой ты страны?
+foreign|иностранный|She speaks three foreign languages.|Она говорит на трёх иностранных языках.
+border|граница|We crossed the border at night.|Мы пересекли границу ночью.
+guide|гид; путеводитель|Our guide was very funny.|Наш гид был очень смешной.
+sightseeing|осмотр достопримечательностей|We went sightseeing in Rome.|Мы осматривали достопримечательности Рима.
+souvenir|сувенир|I bought souvenirs for my friends.|Я купил сувениры друзьям.
+camera|фотоаппарат|Take a picture with my camera.|Сфотографируй моим фотоаппаратом.
+photo|фотография|Can you take a photo of us?|Можете нас сфотографировать?
+arrive|прибывать|We arrive on Monday.|Мы прибываем в понедельник.
+leave|уезжать, уходить|The bus leaves in ten minutes.|Автобус уходит через десять минут.
+return|возвращаться|When do you return?|Когда ты вернёшься?
+delay|задержка|There is a delay of two hours.|Задержка два часа.
+gate|выход на посадку|Go to gate five.|Пройдите к выходу пять.
+departure|отправление, вылет|Departure is at noon.|Вылет в полдень.
+tent|палатка|We slept in a tent.|Мы спали в палатке.
+adventure|приключение|It was a real adventure.|Это было настоящее приключение.
+#work
+work|работа; работать|I work from home.|Я работаю из дома.
+job|работа, должность|She found a new job.|Она нашла новую работу.
+office|офис|The office is on the fifth floor.|Офис на пятом этаже.
+company|компания|He works for a big company.|Он работает в крупной компании.
+business|бизнес, дело|She runs her own business.|У неё свой бизнес.
+boss|начальник|My boss is very strict.|Мой начальник очень строгий.
+colleague|коллега|My colleagues are friendly.|Мои коллеги дружелюбные.
+team|команда|We are a great team.|Мы отличная команда.
+manager|менеджер, руководитель|Can I speak to the manager?|Могу я поговорить с руководителем?
+employee|сотрудник|The company has 200 employees.|В компании 200 сотрудников.
+meeting|встреча, совещание|The meeting starts at ten.|Совещание начинается в десять.
+project|проект|We finished the project on time.|Мы закончили проект вовремя.
+task|задача|I have many tasks today.|У меня сегодня много задач.
+salary|зарплата|He has a good salary.|У него хорошая зарплата.
+career|карьера|She has a successful career.|У неё успешная карьера.
+experience|опыт|Do you have any experience?|У вас есть опыт?
+skill|навык|Communication is a key skill.|Общение — ключевой навык.
+interview|собеседование, интервью|I have a job interview tomorrow.|Завтра у меня собеседование.
+contract|договор|Please sign the contract.|Пожалуйста, подпишите договор.
+deadline|срок|The deadline is Friday.|Срок — пятница.
+client|клиент|We have a new client.|У нас новый клиент.
+email|электронное письмо|I'll send you an email.|Я пришлю тебе письмо.
+report|отчёт; сообщать|I'm writing a report.|Я пишу отчёт.
+plan|план; планировать|What's the plan?|Какой план?
+goal|цель|Our goal is to grow.|Наша цель — расти.
+success|успех|Success takes time.|Успех требует времени.
+fail|терпеть неудачу|Don't be afraid to fail.|Не бойся ошибаться.
+hire|нанимать|They hired two new people.|Они наняли двух новых сотрудников.
+fire|увольнять; огонь|He was fired last week.|Его уволили на прошлой неделе.
+retire|уходить на пенсию|My father retired last year.|Мой отец вышел на пенсию в прошлом году.
+busy|занятой|I'm busy right now.|Я сейчас занят.
+lawyer|юрист|We need a good lawyer.|Нам нужен хороший юрист.
+engineer|инженер|He is an engineer.|Он инженер.
+teacher|учитель|My mother is a teacher.|Моя мама — учительница.
+driver|водитель|The driver was very polite.|Водитель был очень вежливым.
+worker|рабочий|The workers are on strike.|Рабочие бастуют.
+factory|завод, фабрика|He works at a car factory.|Он работает на автозаводе.
+shift|смена|I work the night shift.|Я работаю в ночную смену.
+#money
+money|деньги|Time is money.|Время — деньги.
+dollar|доллар|It costs ten dollars.|Это стоит десять долларов.
+cost|стоить; стоимость|How much does it cost?|Сколько это стоит?
+spend|тратить|I spend too much money.|Я трачу слишком много денег.
+save|копить; спасать|I'm saving for a car.|Я коплю на машину.
+earn|зарабатывать|She earns a lot.|Она много зарабатывает.
+borrow|брать в долг|Can I borrow some money?|Можно занять немного денег?
+lend|давать в долг|I can lend you a hundred.|Могу одолжить тебе сотню.
+debt|долг|He is in debt.|Он в долгах.
+loan|кредит, заём|We took a loan for the house.|Мы взяли кредит на дом.
+account|счёт (в банке)|I opened a bank account.|Я открыл банковский счёт.
+card|карта|I lost my credit card.|Я потерял кредитную карту.
+coin|монета|I have some coins.|У меня есть немного мелочи.
+change|сдача; менять|Keep the change.|Сдачи не надо.
+budget|бюджет|We're on a tight budget.|У нас ограниченный бюджет.
+tax|налог|Taxes are high here.|Здесь высокие налоги.
+rich|богатый|He became rich.|Он разбогател.
+poor|бедный|They were poor but happy.|Они были бедны, но счастливы.
+afford|позволить себе|I can't afford it.|Я не могу себе этого позволить.
+invest|инвестировать|He invests in stocks.|Он вкладывает деньги в акции.
+profit|прибыль|The company made a profit.|Компания получила прибыль.
+price|цена|Prices are going up.|Цены растут.
+bill|счёт (к оплате)|I paid the electricity bill.|Я оплатил счёт за электричество.
+wallet|кошелёк|My wallet is empty.|Мой кошелёк пуст.
+pension|пенсия|She lives on her pension.|Она живёт на пенсию.
+income|доход|What is your monthly income?|Какой у тебя ежемесячный доход?
+#study
+school|школа|The kids are at school.|Дети в школе.
+university|университет|She studies at university.|Она учится в университете.
+student|студент, ученик|He is a good student.|Он хороший ученик.
+class|урок, класс|The class starts at nine.|Урок начинается в девять.
+lesson|урок|Today's lesson is about history.|Сегодняшний урок — по истории.
+learn|учить, узнавать|I want to learn Spanish.|Я хочу выучить испанский.
+study|учиться, изучать|I study every evening.|Я занимаюсь каждый вечер.
+teach|преподавать|She teaches math.|Она преподаёт математику.
+homework|домашнее задание|Did you do your homework?|Ты сделал домашнее задание?
+exam|экзамен|I passed the exam!|Я сдал экзамен!
+test|тест, контрольная|We have a test tomorrow.|Завтра у нас контрольная.
+grade|оценка|She got a good grade.|Она получила хорошую оценку.
+book|книга|I'm reading a good book.|Я читаю хорошую книгу.
+notebook|тетрадь|Write it in your notebook.|Запиши это в тетрадь.
+pen|ручка|Can I borrow your pen?|Можно взять твою ручку?
+pencil|карандаш|Draw it with a pencil.|Нарисуй это карандашом.
+page|страница|Open your books to page ten.|Откройте книги на десятой странице.
+read|читать|I read every night.|Я читаю каждый вечер.
+write|писать|Write your name here.|Напишите здесь своё имя.
+mistake|ошибка|Everyone makes mistakes.|Все ошибаются.
+example|пример|Give me an example.|Приведи пример.
+history|история (наука)|I love history.|Я люблю историю.
+math|математика|Math is my favorite subject.|Математика — мой любимый предмет.
+science|наука|She is interested in science.|Она интересуется наукой.
+knowledge|знание|Knowledge is power.|Знание — сила.
+research|исследование|He does medical research.|Он занимается медицинскими исследованиями.
+degree|степень (учёная)|She has a degree in law.|У неё юридическое образование.
+course|курс|I'm taking an English course.|Я прохожу курс английского.
+dictionary|словарь|Look it up in the dictionary.|Посмотри в словаре.
+practice|практика; практиковаться|Practice makes perfect.|Повторение — мать учения.
+remember|помнить|I remember your name.|Я помню твоё имя.
+forget|забывать|Don't forget your keys.|Не забудь ключи.
+explain|объяснять|Can you explain this rule?|Можешь объяснить это правило?
+smart|умный|She is very smart.|Она очень умная.
+difficult|трудный|This exercise is difficult.|Это упражнение трудное.
+easy|лёгкий|The test was easy.|Тест был лёгким.

@@ -490,6 +490,7 @@
         ["ketu", "{{i:leaf}}", "Модуль Кету", Object.keys(A.db().ketu.lessons).length + "/" + L().KETU.lessons.length + " уроков"],
         ["bazi", "{{i:orbit}}", "Обучатель по Бацзы", Object.keys(A.db().bazi.lessons).length + "/" + L().BAZI.lessons.length + " уроков"],
         ["piano/songs", "{{i:guitar}}", "Рок-песни на пианино", Object.keys(P.songs || {}).length + "/" + window.SONGS.list.length + " выучено"],
+        ["tutor", "{{i:speech}}", "Репетитор: английский, испанский, французский", (() => { const t = A.db().tutor; const n = t ? Object.values(t.srs || {}).reduce((s, o) => s + Object.keys(o).length, 0) : 0; return n ? n + " слов в повторениях" : "словари офлайн, слова дня, переводчик"; })()],
         ["english", "{{i:languages}}", "Английский язык", Object.keys(A.db().english.lessons).length + "/" + window.LANG.EN.lessons.length + " уроков"],
         ["latin", "{{i:landmark}}", "Латынь", Object.keys(A.db().latin.lessons).length + "/" + window.LANG.LA.lessons.length + " уроков"],
         ["book", "{{i:book}}", "Книга PRIME ERA", Object.keys(A.db().bookDone).length + "/13 блоков"]

@@ -1,0 +1,211 @@
+#time
+time|время; раз|What time is it?|Который час?
+hour|час|The film lasts two hours.|Фильм идёт два часа.
+minute|минута|Wait a minute.|Подожди минутку.
+second|секунда; второй|Just a second.|Одну секунду.
+day|день|Have a nice day!|Хорошего дня!
+week|неделя|See you next week.|Увидимся на следующей неделе.
+month|месяц|I'll be back in a month.|Я вернусь через месяц.
+year|год|Happy New Year!|С Новым годом!
+today|сегодня|Today is Monday.|Сегодня понедельник.
+tomorrow|завтра|See you tomorrow.|До завтра.
+yesterday|вчера|I saw him yesterday.|Я видел его вчера.
+morning|утро|I run in the morning.|Я бегаю по утрам.
+afternoon|день (после полудня)|Let's meet in the afternoon.|Давай встретимся днём.
+evening|вечер|What are you doing this evening?|Что ты делаешь сегодня вечером?
+night|ночь|I work at night.|Я работаю ночью.
+now|сейчас|I'm busy now.|Я сейчас занят.
+later|позже|Call me later.|Позвони мне позже.
+soon|скоро|See you soon.|До скорого.
+early|рано|I get up early.|Я встаю рано.
+late|поздно; опоздавший|Sorry I'm late.|Извини, что опоздал.
+always|всегда|She is always happy.|Она всегда весёлая.
+never|никогда|I never eat meat.|Я никогда не ем мясо.
+often|часто|We often go to the cinema.|Мы часто ходим в кино.
+sometimes|иногда|Sometimes I work late.|Иногда я работаю допоздна.
+usually|обычно|I usually walk to work.|Обычно я хожу на работу пешком.
+already|уже|I've already eaten.|Я уже поел.
+still|всё ещё|It's still raining.|Всё ещё идёт дождь.
+yet|ещё (в отрицании); уже (в вопросе)|Has he arrived yet?|Он уже приехал?
+before|до, перед; раньше|Wash your hands before dinner.|Помой руки перед ужином.
+after|после|Call me after work.|Позвони мне после работы.
+Monday|понедельник|I start work on Monday.|Я начинаю работу в понедельник.
+Friday|пятница|Thank God it's Friday!|Слава богу, пятница!
+weekend|выходные|What are you doing at the weekend?|Что ты делаешь на выходных?
+calendar|календарь|Mark it on the calendar.|Отметь это в календаре.
+date|дата; свидание|What's the date today?|Какое сегодня число?
+season|время года, сезон|Autumn is my favorite season.|Осень — моё любимое время года.
+spring|весна|Flowers bloom in spring.|Весной цветут цветы.
+summer|лето|We go to the sea every summer.|Каждое лето мы ездим на море.
+autumn|осень|Leaves fall in autumn.|Осенью опадают листья.
+winter|зима|Winter is cold here.|Зима здесь холодная.
+century|век|We live in the 21st century.|Мы живём в двадцать первом веке.
+future|будущее|Nobody knows the future.|Никто не знает будущего.
+past|прошлое|Forget the past.|Забудь прошлое.
+moment|момент|Wait a moment, please.|Подождите минутку, пожалуйста.
+#nature
+nature|природа|I love being in nature.|Я люблю бывать на природе.
+weather|погода|What's the weather like?|Какая погода?
+sun|солнце|The sun is shining.|Светит солнце.
+rain|дождь; идти (о дожде)|It's raining again.|Опять идёт дождь.
+snow|снег|There is a lot of snow.|Много снега.
+wind|ветер|The wind is strong today.|Сегодня сильный ветер.
+cloud|облако|There isn't a cloud in the sky.|На небе ни облачка.
+storm|буря, гроза|A storm is coming.|Надвигается гроза.
+hot|жаркий, горячий|It's very hot today.|Сегодня очень жарко.
+warm|тёплый|The water is warm.|Вода тёплая.
+cool|прохладный; классный|It's cool in the evening.|Вечером прохладно.
+cold|холодный|It's cold outside.|На улице холодно.
+sky|небо|The sky is blue.|Небо голубое.
+star|звезда|Look at the stars.|Посмотри на звёзды.
+moon|луна|The moon is full tonight.|Сегодня полнолуние.
+earth|земля, Земля|The Earth goes around the Sun.|Земля вращается вокруг Солнца.
+tree|дерево|There is an old oak tree in the yard.|Во дворе растёт старый дуб.
+flower|цветок|She gave me flowers.|Она подарила мне цветы.
+grass|трава|Don't walk on the grass.|Не ходите по траве.
+forest|лес|We went for a walk in the forest.|Мы гуляли в лесу.
+river|река|The river is very wide.|Река очень широкая.
+lake|озеро|We swam in the lake.|Мы купались в озере.
+ocean|океан|The Pacific Ocean is huge.|Тихий океан огромен.
+field|поле|Cows are in the field.|Коровы в поле.
+stone|камень|He threw a stone into the water.|Он бросил камень в воду.
+fire|огонь, пожар|We sat by the fire.|Мы сидели у костра.
+air|воздух|The air is fresh here.|Здесь свежий воздух.
+ice|лёд|The lake is covered with ice.|Озеро покрыто льдом.
+fog|туман|There is thick fog.|Густой туман.
+temperature|температура|The temperature is falling.|Температура падает.
+climate|климат|The climate is changing.|Климат меняется.
+environment|окружающая среда|We must protect the environment.|Мы должны защищать окружающую среду.
+plant|растение; сажать|Water the plants.|Полей растения.
+leaf|лист|The leaves are turning yellow.|Листья желтеют.
+#animals
+animal|животное|What's your favorite animal?|Какое твоё любимое животное?
+dog|собака|My dog loves walks.|Моя собака любит гулять.
+cat|кошка|The cat is sleeping.|Кошка спит.
+bird|птица|Birds are singing.|Поют птицы.
+horse|лошадь|She rides a horse.|Она катается на лошади.
+cow|корова|The cow gives milk.|Корова даёт молоко.
+pig|свинья|Pigs are smart animals.|Свиньи умные животные.
+sheep|овца|There are sheep on the hill.|На холме пасутся овцы.
+chicken|курица|Chickens lay eggs.|Куры несут яйца.
+mouse|мышь|The cat caught a mouse.|Кошка поймала мышь.
+rabbit|кролик|The rabbit eats carrots.|Кролик ест морковку.
+bear|медведь|Bears live in the forest.|Медведи живут в лесу.
+wolf|волк|The wolf howled at the moon.|Волк выл на луну.
+fox|лиса|The fox is very clever.|Лиса очень хитрая.
+lion|лев|The lion is the king of animals.|Лев — царь зверей.
+tiger|тигр|Tigers are endangered.|Тигры под угрозой исчезновения.
+elephant|слон|Elephants never forget.|Слоны никогда не забывают.
+monkey|обезьяна|The monkey climbed the tree.|Обезьяна залезла на дерево.
+snake|змея|I'm afraid of snakes.|Я боюсь змей.
+fish|рыба|We caught three fish.|Мы поймали три рыбы.
+insect|насекомое|Bees are useful insects.|Пчёлы — полезные насекомые.
+bee|пчела|A bee stung me.|Меня ужалила пчела.
+butterfly|бабочка|A butterfly landed on the flower.|Бабочка села на цветок.
+pet|домашний питомец|Do you have a pet?|У тебя есть питомец?
+feed|кормить|Don't forget to feed the cat.|Не забудь покормить кошку.
+zoo|зоопарк|We took the kids to the zoo.|Мы сводили детей в зоопарк.
+wild|дикий|Wild animals live in the forest.|Дикие животные живут в лесу.
+tail|хвост|The dog wagged its tail.|Собака виляла хвостом.
+duck|утка|Ducks are swimming in the pond.|В пруду плавают утки.
+#feelings
+happy|счастливый|I'm so happy for you!|Я так рад за тебя!
+sad|грустный|Why are you sad?|Почему ты грустишь?
+angry|злой, сердитый|Don't be angry with me.|Не сердись на меня.
+afraid|испуганный|I'm afraid of the dark.|Я боюсь темноты.
+scared|напуганный|The child was scared.|Ребёнок испугался.
+worried|обеспокоенный|I'm worried about you.|Я беспокоюсь о тебе.
+calm|спокойный|Stay calm.|Сохраняй спокойствие.
+excited|взволнованный (радостно)|I'm excited about the trip.|Я в предвкушении поездки.
+bored|скучающий|I'm bored.|Мне скучно.
+surprised|удивлённый|I was surprised to see him.|Я удивился, увидев его.
+proud|гордый|I'm proud of you.|Я горжусь тобой.
+lonely|одинокий|She feels lonely.|Ей одиноко.
+nervous|нервный|I'm nervous before exams.|Я нервничаю перед экзаменами.
+feel|чувствовать|How do you feel?|Как ты себя чувствуешь?
+feeling|чувство|I have a good feeling about this.|У меня хорошее предчувствие.
+fear|страх|He has a fear of heights.|Он боится высоты.
+hope|надежда; надеяться|I hope you're right.|Надеюсь, ты прав.
+dream|мечта; мечтать|Follow your dream.|Следуй за мечтой.
+kind|добрый; вид, тип|She is kind to everyone.|Она добра ко всем.
+friendly|дружелюбный|The people here are friendly.|Здесь дружелюбные люди.
+honest|честный|Be honest with me.|Будь со мной честен.
+brave|смелый|He was very brave.|Он был очень смелым.
+shy|застенчивый|She is a little shy.|Она немного застенчива.
+lazy|ленивый|Don't be lazy!|Не ленись!
+funny|смешной|That's a funny story.|Это смешная история.
+polite|вежливый|Always be polite.|Всегда будь вежлив.
+rude|грубый|That was rude.|Это было грубо.
+patient|терпеливый; пациент|Be patient.|Наберись терпения.
+smile|улыбка; улыбаться|She has a lovely smile.|У неё прекрасная улыбка.
+laugh|смеяться|We laughed a lot.|Мы много смеялись.
+cry|плакать|Don't cry.|Не плачь.
+miss|скучать; пропускать|I miss you.|Я скучаю по тебе.
+trust|доверие; доверять|I trust you.|Я тебе доверяю.
+care|забота; заботиться|I care about you.|Ты мне небезразличен.
+mood|настроение|I'm in a good mood.|У меня хорошее настроение.
+stress|стресс|Work causes a lot of stress.|Работа вызывает много стресса.
+relax|расслабляться|Just relax.|Просто расслабься.
+#talk
+say|сказать|What did you say?|Что ты сказал?
+tell|рассказать, сказать (кому-то)|Tell me the truth.|Скажи мне правду.
+talk|разговаривать|We need to talk.|Нам нужно поговорить.
+ask|спрашивать, просить|Can I ask you something?|Можно тебя кое о чём спросить?
+call|звонить; называть|I'll call you tonight.|Я позвоню тебе вечером.
+listen|слушать|Listen to me.|Послушай меня.
+agree|соглашаться|I agree with you.|Я с тобой согласен.
+disagree|не соглашаться|I disagree.|Я не согласен.
+think|думать|What do you think?|Что ты думаешь?
+believe|верить|I believe you.|Я тебе верю.
+opinion|мнение|In my opinion, he's right.|По-моему, он прав.
+idea|идея|That's a great idea!|Отличная идея!
+advice|совет|Can you give me some advice?|Можешь дать совет?
+suggest|предлагать|I suggest we leave now.|Предлагаю уйти сейчас.
+promise|обещание; обещать|I promise.|Обещаю.
+explain|объяснять|Let me explain.|Позволь мне объяснить.
+discuss|обсуждать|Let's discuss it later.|Давай обсудим это позже.
+argue|спорить|They argue a lot.|Они много спорят.
+joke|шутка; шутить|It was just a joke.|Это была просто шутка.
+truth|правда|Tell the truth.|Говори правду.
+lie|ложь; лгать|Don't lie to me.|Не лги мне.
+secret|секрет|Can you keep a secret?|Умеешь хранить секреты?
+message|сообщение|Leave a message.|Оставьте сообщение.
+news|новости|I have good news.|У меня хорошие новости.
+conversation|разговор|We had a long conversation.|У нас был долгий разговор.
+voice|голос|She has a beautiful voice.|У неё красивый голос.
+sure|уверенный|Are you sure?|Ты уверен?
+maybe|может быть|Maybe tomorrow.|Может быть, завтра.
+of course|конечно|Of course I'll help.|Конечно, я помогу.
+really|действительно, правда|Really? I didn't know.|Правда? Я не знал.
+#hobby
+hobby|хобби|What are your hobbies?|Какие у тебя хобби?
+sport|спорт|Football is a popular sport.|Футбол — популярный вид спорта.
+game|игра|Let's play a game.|Давай сыграем в игру.
+play|играть|The kids play in the yard.|Дети играют во дворе.
+football|футбол|He plays football on Sundays.|По воскресеньям он играет в футбол.
+tennis|теннис|Do you play tennis?|Ты играешь в теннис?
+swim|плавать|I swim twice a week.|Я плаваю два раза в неделю.
+run|бегать|I run every morning.|Я бегаю каждое утро.
+dance|танец; танцевать|Let's dance!|Давай потанцуем!
+sing|петь|She sings in a choir.|Она поёт в хоре.
+draw|рисовать (карандашом)|My son loves to draw.|Мой сын любит рисовать.
+paint|рисовать красками|She paints landscapes.|Она пишет пейзажи.
+read|читать|I love reading novels.|Я люблю читать романы.
+gym|спортзал|I go to the gym after work.|После работы я хожу в спортзал.
+team|команда|Which team do you support?|За какую команду ты болеешь?
+win|выигрывать|We won the match!|Мы выиграли матч!
+lose|проигрывать; терять|They lost the game.|Они проиграли игру.
+match|матч|The match starts at eight.|Матч начинается в восемь.
+ball|мяч|Throw me the ball.|Брось мне мяч.
+fishing|рыбалка|My dad loves fishing.|Мой папа любит рыбалку.
+camping|кемпинг, поход|We go camping every summer.|Каждое лето мы ходим в поход.
+chess|шахматы|Do you play chess?|Ты играешь в шахматы?
+collect|коллекционировать|He collects stamps.|Он коллекционирует марки.
+guitar|гитара|I'm learning to play the guitar.|Я учусь играть на гитаре.
+piano|пианино|She plays the piano.|Она играет на пианино.
+free time|свободное время|What do you do in your free time?|Чем ты занимаешься в свободное время?
+fun|веселье; весёлый|We had a lot of fun.|Нам было очень весело.
+favorite|любимый|What's your favorite movie?|Какой твой любимый фильм?
+practice|тренироваться|I practice every day.|Я тренируюсь каждый день.
+training|тренировка|Training starts at six.|Тренировка начинается в шесть.
+coach|тренер|Our coach is strict.|Наш тренер строгий.
