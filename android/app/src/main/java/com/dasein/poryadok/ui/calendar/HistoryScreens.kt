@@ -43,7 +43,6 @@ import com.dasein.poryadok.system.HistoryRepo
 import com.dasein.poryadok.ui.Routes
 import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.Tile
-import com.dasein.poryadok.ui.media.UrlImage
 import com.dasein.poryadok.ui.theme.LocalExtra
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -103,7 +102,6 @@ fun EventCard(e: HistoryDay.Event, startOpen: Boolean) {
                 )
                 Text(if (e.source == "DASEIN") e.title else e.text, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 21.sp, modifier = Modifier.padding(top = 6.dp))
             }
-            if (e.image.isNotBlank()) Box(Modifier.padding(start = 10.dp)) { UrlImage(e.image, 64.dp) }
         }
         val body = if (e.source == "DASEIN") e.text else ""
         if (body.isNotBlank()) Text(body, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 6.dp))
@@ -144,7 +142,6 @@ fun HomeHistoryCard(nav: NavHostController) {
                 Text(e.yearLabel, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 Text(if (e.source == "DASEIN") e.title else e.text, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, lineHeight = 20.sp, maxLines = 4, overflow = TextOverflow.Ellipsis)
             }
-            if (e.image.isNotBlank()) Box(Modifier.padding(start = 10.dp)) { UrlImage(e.image, 70.dp) }
         }
         val ctxText = listOf(if (e.source == "DASEIN") e.text else "", e.context).filter { it.isNotBlank() }.joinToString(" ")
         if (ctxText.isNotBlank()) Text(ctxText, fontSize = 13.sp, lineHeight = 18.sp, color = extra.dim, maxLines = 5, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))

@@ -249,6 +249,9 @@ internal fun upcomingEntries(
         .map { d to it }
 }
 
+private var lastCustom: List<com.dasein.poryadok.data.CustomDay> = emptyList()
+private var lastMarks: List<com.dasein.poryadok.data.HolidayMark> = emptyList()
+
 private data class BannerLine(val entry: DayEntry, val label: String, val mine: Boolean)
 
 /**
@@ -259,8 +262,10 @@ private data class BannerLine(val entry: DayEntry, val label: String, val mine: 
 fun HolidayBanner(nav: NavHostController) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
-    val custom by observe(emptyList()) { Graph.days.customDays() }
-    val marks by observe(emptyList()) { Graph.days.marks() }
+    // Последние значения из базы — чтобы при возврате плашки на экран она сразу была той же высоты, без прыжка.
+    val custom by observe(lastCustom) { Graph.days.customDays() }
+    val marks by observe(lastMarks) { Graph.days.marks() }
+    lastCustom = custom; lastMarks = marks
     val today = Dates.today()
     val data = remember(today, custom, marks) {
         val hidden = hiddenCats(ctx)

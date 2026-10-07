@@ -101,7 +101,7 @@ fun HomePressureCard(nav: NavHostController, size: Int) {
         }
         return
     }
-    val rs = d.readings.filter { it.personId == p.id }.sortedBy { it.time }
+    val rs = remember(d.readings, p.id) { d.readings.filter { it.personId == p.id }.sortedBy { it.time } }
     val last = rs.lastOrNull()
     val t = Pressure.target(p)
     val v = last?.let { Pressure.verdict(p, it.sys, it.dia, it.pulse, it.symptoms, it.irregular) }
@@ -131,7 +131,7 @@ fun HomePressureCard(nav: NavHostController, size: Int) {
             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp),
         )
         v?.let { Text(it.headline, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(it.level.color), modifier = Modifier.padding(top = 2.dp)) }
-        val assess = com.dasein.poryadok.logic.PressureInsight.assess(p, rs, System.currentTimeMillis())
+        val assess = remember(rs, p) { com.dasein.poryadok.logic.PressureInsight.assess(p, rs, System.currentTimeMillis()) }
         Row(Modifier.padding(top = 6.dp).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Color(assess.status.color).copy(alpha = .12f)).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(10.dp).clip(CircleShape).background(Color(assess.status.color)))
             Column(Modifier.padding(start = 8.dp)) {
@@ -141,7 +141,7 @@ fun HomePressureCard(nav: NavHostController, size: Int) {
         }
         val today = java.time.LocalDate.now()
         Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
-            com.dasein.poryadok.logic.PressureInsight.days(rs, p, today.minusDays(6), today).forEach { c ->
+            remember(rs, p, today) { com.dasein.poryadok.logic.PressureInsight.days(rs, p, today.minusDays(6), today) }.forEach { c ->
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(c.date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale("ru")), fontSize = 9.sp, color = extra.dim)
                     Box(Modifier.size(14.dp).clip(CircleShape).background(if (c.avg != null) Color(c.color) else extra.line.copy(alpha = .4f)))
@@ -149,11 +149,11 @@ fun HomePressureCard(nav: NavHostController, size: Int) {
             }
         }
         val now = System.currentTimeMillis()
-        val s = Pressure.stats(rs, t, now)
+        val s = remember(rs, t) { Pressure.stats(rs, t, now) }
         // Средние по дням за 14 дней — по ним видно тренд лучше, чем по отдельным замерам.
-        val byDay = rs.filter { it.time > now - 14 * 86_400_000L }.groupBy { Pressure.day(it) }.toSortedMap()
-        val daySys = byDay.values.map { l -> l.map { it.sys }.average().toFloat() }
-        val dayDia = byDay.values.map { l -> l.map { it.dia }.average().toFloat() }
+        val byDay = remember(rs) { rs.filter { it.time > now - 14 * 86_400_000L }.groupBy { Pressure.day(it) }.toSortedMap() }
+        val daySys = remember(byDay) { byDay.values.map { l -> l.map { it.sys }.average().toFloat() } }
+        val dayDia = remember(byDay) { byDay.values.map { l -> l.map { it.dia }.average().toFloat() } }
         Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             MiniStat("7 дней", s.last7?.let { "${it.sys}/${it.dia}" } ?: "—", Modifier.weight(1f))
             MiniStat("30 дней", s.last30?.let { "${it.sys}/${it.dia}" } ?: "—", Modifier.weight(1f))

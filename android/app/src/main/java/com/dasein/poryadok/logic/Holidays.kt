@@ -71,7 +71,17 @@ object HolidayRules {
     private fun md(s: String): Pair<Int, Int> = s.split('-').let { it[0].toInt() to it[1].toInt() }
 
     /** Дата праздника в заданном году или null, если правило не распознано. */
-    fun dateIn(rule: String, year: Int): LocalDate? = runCatching {
+    /** Даты по правилу и году запоминаются: плашка «Праздники» на главном пересчитывает сотни правил на полтора месяца вперёд. */
+    private val memo = java.util.concurrent.ConcurrentHashMap<String, Any>()
+    private val NONE = Any()
+
+    fun dateIn(rule: String, year: Int): LocalDate? {
+        val k = "$year|$rule"
+        val v = memo[k] ?: (compute(rule, year) ?: NONE).also { if (memo.size < 20_000) memo[k] = it }
+        return v as? LocalDate
+    }
+
+    private fun compute(rule: String, year: Int): LocalDate? = runCatching {
         val parts = rule.split(':')
         when (parts[0]) {
             "fixed" -> md(parts[1]).let { (m, d) -> if (m == 2 && d == 29 && !java.time.Year.isLeap(year.toLong())) null else LocalDate.of(year, m, d) }

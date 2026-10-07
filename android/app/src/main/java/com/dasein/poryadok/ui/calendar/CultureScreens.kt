@@ -45,7 +45,6 @@ import com.dasein.poryadok.ui.Routes
 import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.Pill
 import com.dasein.poryadok.ui.common.Tile
-import com.dasein.poryadok.ui.media.UrlImage
 import com.dasein.poryadok.ui.theme.LocalExtra
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -132,7 +131,6 @@ fun CultureCard(i: CultureDay.Item) {
                 Text(kindLabel(i, now), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
                 Text(i.text, fontSize = 14.sp, lineHeight = 19.sp, modifier = Modifier.padding(top = 4.dp), maxLines = if (open) 20 else 3, overflow = TextOverflow.Ellipsis)
             }
-            if (i.image.isNotBlank()) Box(Modifier.padding(start = 10.dp)) { UrlImage(i.image, 64.dp) }
         }
         if (open && i.context.isNotBlank()) Text(i.context, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 8.dp))
         if (open && i.url.isNotBlank()) TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(i.url))) } }) { Text("Читать в Википедии") }
@@ -174,7 +172,6 @@ fun HomeCultureCard(nav: NavHostController) {
                 Text(kindLabel(i, today.year), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
                 Text(i.text, fontSize = 13.sp, lineHeight = 18.sp, color = extra.dim, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
             }
-            if (i.image.isNotBlank()) Box(Modifier.padding(start = 10.dp)) { UrlImage(i.image, 70.dp) }
         }
         Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedButton(onClick = { idx++ }) { Text("Ещё") }
