@@ -68,8 +68,10 @@ class SmsReceiver : BroadcastReceiver() {
         val from = msgs.firstOrNull()?.originatingAddress ?: return
         if (from != "900" && from != "+7900") return
         val body = msgs.joinToString("") { it.messageBody ?: "" }
-        if (!Regex("(покупка|оплата|списан|зачислен|перевод|выдача)", RegexOption.IGNORE_CASE).containsMatchIn(body)) return
-        Notifications.show(ctx, body.hashCode(), "Новая операция по карте", body.take(120) + "\nОткройте приложение — операция добавится в финансы.", "money/ops")
+        if (!Regex("(покупк|оплат|списан|зачислен|перевод|перев[её]л|выдач|поступ|возврат|зарплат|пополн)", RegexOption.IGNORE_CASE).containsMatchIn(body)) return
+        val ts = msgs.firstOrNull()?.timestampMillis ?: System.currentTimeMillis()
+        BankListener.append(ctx, "smsr" + (body.trim().hashCode().toLong() and 0xffffffffL) + "_" + (ts / 600_000), ts, "sms", "900", body)
+        Notifications.show(ctx, body.hashCode(), "Новая операция по карте", body.take(120) + "\nОперация попадёт в финансы при открытии приложения.", "money/ops")
     }
 }
 

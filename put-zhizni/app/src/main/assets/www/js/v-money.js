@@ -89,12 +89,13 @@
         h += '<div class="card"><h3>Расходы по месяцам</h3>' + A.charts.bars(months.map((m) => ({ x: m.x, v: m.o })), { color: "#E3899A", fmt: money }) + "</div>";
         h += '<div class="card tint"><p class="small">Деньги — средство свободы. Раз в месяц фиксируй доход, обязательные расходы, накопления и свободные деньги. Резерв — это «фонд свободы».</p></div>';
       } else if (tab === "ops") {
+        if (A.native && A.native.bankAccess && !A.native.bankAccess()) h += '<div class="card tint"><div class="row"><span class="grow small">{{i:landmark}} Операции Сбербанка могут попадать сюда сами — из уведомлений СберБанк Онлайн и SMS 900.</span><button class="btn sm primary" data-a="bankSetup">Настроить</button></div></div>';
         const qq = (r.params.q || "").toLowerCase();
         const src = qq ? A.col("tx").filter((t) => [t.cat, t.sub, t.note].join(" ").toLowerCase().includes(qq)) : tx;
         h += '<input id="txq" data-c="txq" placeholder="{{i:search}} Поиск по категории или заметке (по всей истории)" value="' + esc(r.params.q || "") + '" style="margin-bottom:10px">' + (qq ? '<div class="small muted" style="margin-bottom:8px">Найдено: ' + src.length + " · сумма расходов " + money(sum(src.filter((t) => t.kind === "out").map((t) => t.amt))) + "</div>" : "");
         const list = src.slice().sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0));
         let last = "";
-        h += '<div class="card"><div class="list">' + (list.length ? list.map((t) => { let s = ""; if (t.date !== last) { last = t.date; s += '<div class="small muted" style="margin-top:8px">' + fmtDate(t.date, { dow: true }) + "</div>"; } const acc = A.byId("accounts", t.acc); return s + '<div class="item" data-a="tx" data-id="' + t.id + '"><span class="dot" style="background:' + A.catColor(t.cat) + '"></span><div class="tx"><b>' + esc(t.kind === "move" ? "Перевод" : t.cat) + (t.src === "sms" ? " {{i:mail}}" : t.src === "import" ? " {{i:download}}" : "") + "</b><small>" + esc([t.sub, t.note, acc && acc.name].filter(Boolean).join(" · ")) + '</small></div><b class="num" style="color:' + (t.kind === "in" ? "var(--good)" : t.kind === "move" ? "var(--ink2)" : "var(--ink)") + '">' + (t.kind === "in" ? "+" : t.kind === "out" ? "−" : "") + money(t.amt) + "</b></div>"; }).join("") : A.empty("Операций за месяц нет")) + "</div></div>";
+        h += '<div class="card"><div class="list">' + (list.length ? list.map((t) => { let s = ""; if (t.date !== last) { last = t.date; s += '<div class="small muted" style="margin-top:8px">' + fmtDate(t.date, { dow: true }) + "</div>"; } const acc = A.byId("accounts", t.acc); return s + '<div class="item" data-a="tx" data-id="' + t.id + '"><span class="dot" style="background:' + A.catColor(t.cat) + '"></span><div class="tx"><b>' + esc(t.kind === "move" ? "Перевод" : t.cat) + (t.src === "sms" ? " {{i:mail}}" : t.src === "push" ? " {{i:bell}}" : t.src === "import" ? " {{i:download}}" : "") + "</b><small>" + esc([t.sub, t.note, acc && acc.name].filter(Boolean).join(" · ")) + '</small></div><b class="num" style="color:' + (t.kind === "in" ? "var(--good)" : t.kind === "move" ? "var(--ink2)" : "var(--ink)") + '">' + (t.kind === "in" ? "+" : t.kind === "out" ? "−" : "") + money(t.amt) + "</b></div>"; }).join("") : A.empty("Операций за месяц нет")) + "</div></div>";
         h += '<button class="fab" data-a="newTx" aria-label="Добавить операцию">+</button>';
       } else if (tab === "budget") {
         h += '<div class="card"><h3>Месячные лимиты</h3><p class="small muted">План / факт / остаток / процент использования.</p><table class="tbl"><tr><th>Категория</th><th class="r">Лимит</th><th class="r">Факт</th><th class="r">Остаток</th></tr>' +
@@ -128,7 +129,7 @@
       } else if (tab === "import") {
         const L = A.col("importLog").slice().reverse();
         h += '<div class="card"><h3>{{i:notebook}} Импорт из тетради или файла</h3><p class="small">Вставьте строки из тетради или загрузите CSV/JSON. Формат строки свободный: сумма, дата и категория в любом порядке, например<br><code>12.09 350 еда Пятёрочка</code> · <code>+50000 зарплата 05.09</code> · <code>такси 420</code>.</p><textarea id="impT" rows="6" placeholder="Каждая операция — с новой строки"></textarea><div class="btns"><button class="btn primary" data-a="impParse">Разобрать</button><button class="btn" data-a="impFile">Загрузить CSV / JSON</button><button class="btn" data-a="impPhoto">{{i:camera}} Фото страницы</button></div><p class="small muted">Фото страницы сохраняется рядом с полем ввода, чтобы удобно переносить записи. Автоматическое распознавание рукописного текста без интернета в приложении недоступно.</p><div id="impPh"></div></div>';
-        h += '<div class="card"><h3>{{i:mail}} Автоимпорт из SMS Сбербанка (900)</h3>' + (A.native ? '<label class="switch"><input type="checkbox" data-c="smsOn"' + (A.db().profile.smsImport ? " checked" : "") + '><span></span>Автоматически добавлять операции из новых SMS</label><button class="btn sm" data-a="smsScan">Проверить SMS за 30 дней</button><p class="small muted">Приложение читает только SMS от номера 900 на телефоне и ничего никуда не отправляет. Счёт определяется по последним 4 цифрам карты (укажите их в счёте).</p>' : '<p class="small muted">Доступно в Android-приложении.</p>') + "</div>";
+        h += A.bankCard();
         h += '<div class="card"><h3>История импорта</h3>' + (L.length ? L.map((x) => '<div class="item"><div class="tx"><b>' + esc(x.source) + " · " + x.count + " опер.</b><small>" + new Date(x.at).toLocaleString("ru-RU") + " · " + (x.undone ? "отменён" : "сумма " + money(x.total || 0)) + "</small></div>" + (x.undone ? "" : '<button class="btn sm ghost" data-a="impUndo" data-id="' + x.id + '">Отменить</button>') + "</div>").join("") : A.empty("Импорта ещё не было")) + "</div>";
       } else if (tab === "plan") {
         const P = (A.db().finplan[mk] = A.db().finplan[mk] || {});
@@ -162,6 +163,10 @@
         async impPhoto() { const url = await A.pickPhoto(3 / 4, 1200); if (!url) return; el.querySelector("#impPh").innerHTML = '<img src="' + url + '" style="width:100%;border-radius:10px;margin-top:8px" alt="Фото страницы">'; },
         impUndo(b) { const x = A.byId("importLog", b.dataset.id); A.confirm("Удалить " + x.count + " импортированных операций?", () => { A.db().tx = A.col("tx").filter((t) => !(x.txIds || []).includes(t.id)); x.undone = true; A.save(); A.refresh(); }, "Отменить импорт", true); },
         smsOn(b) { A.db().profile.smsImport = b.checked; A.save(); if (b.checked) A.smsImport(false); },
+        bankAccess() { A.native.openBankAccess(); A.toast("Найдите «Путь жизни» и разрешите доступ"); },
+        appSettings() { A.native.openAppSettings(); },
+        bankSetup() { A.go("money/import"); },
+        bankNow() { A.bankSync(true); if (A.db().profile.smsImport || (A.native.smsAllowed && A.native.smsAllowed())) A.smsImport(false); },
         smsScan() { A.smsImport(true); },
         fp(b) { const P = A.db().finplan[mk()]; P[b.dataset.k] = b.type === "number" ? (b.value === "" ? null : A.num(b.value)) : b.value; A.save(); if (b.type === "number") A.refresh(); }
       });
@@ -219,22 +224,94 @@
   };
 
   /* ---------- SMS Сбербанка ---------- */
-  A.parseSberSms = (body, ts) => {
-    const b = body.replace(/ /g, " ");
-    const am = /(\d[\d ]*(?:[.,]\d{1,2})?)\s?(?:р|₽|руб)/i.exec(b); if (!am) return null;
-    const amt = A.num(am[1].replace(/ /g, ""), 0); if (!amt) return null;
+  // Разбор SMS 900 и уведомлений СберБанк Онлайн: покупки, зарплата, переводы людям и от людей, наличные, возвраты, кешбэк.
+  const ensureCat = (kind, name) => {
+    const db = A.db(); if (!db.cats) return name;
+    const list = kind === "in" ? db.cats.in : db.cats.out;
+    if (!list.some((c) => c.name === name)) { list.push({ name, color: A.PAL[list.length % A.PAL.length] }); A.save(); }
+    return name;
+  };
+  const AMT = /(\d{1,3}(?:[ ]\d{3})+(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s?(?:₽|руб(?:\.|лей|ля|ль)?|р\.?|RUB)(?![а-яёa-z])/gi;
+  A.parseSber = (raw, ts) => {
+    const b = String(raw || "").replace(/[    ]/g, " ").replace(/\s+/g, " ").trim();
     const low = b.toLowerCase();
-    if (/баланс:?\s*$/.test(b.slice(0, am.index).toLowerCase())) return null;
-    if (/код|пароль|никому не сообщайте|подтвержд/.test(low) && !/покупка|оплата|списан|зачислен/.test(low)) return null;
-    const kind = /зачислен|поступлен|пополнен|возврат|перевод от|\+\s?\d/.test(low) ? "in" : /покупка|оплата|списан|выдача|перевод|платёж|платеж|оплатил/.test(low) ? "out" : null;
-    if (!kind) return null;
-    const card = /(?:\*|мир-|visa|ecmc|mir|счёт|счет|карта)\s?(\d{4})/i.exec(b);
-    const dm = /(\d{2})\.(\d{2})(?:\.(\d{2,4}))?/.exec(b);
-    const d = ts ? A.iso(new Date(+ts)) : dm ? new Date().getFullYear() + "-" + dm[2] + "-" + dm[1] : today();
-    let merchant = b.slice(am.index + am[0].length).split(/баланс/i)[0].replace(/[.,]\s*$/, "").trim();
-    if (!merchant) merchant = b.slice(0, am.index).replace(/^[^\s]+\s+\d{1,2}:\d{2}\s*/, "").trim();
-    const acc = card ? A.col("accounts").find((a) => a.card4 === card[1]) : null;
-    return { date: d, amt, kind, cat: guessCat(merchant + " " + b, kind), note: merchant.slice(0, 60), acc: acc ? acc.id : "", sub: "Сбербанк" };
+    if (/код|пароль|никому не сообщайте|вход в сбербанк|отказ|недостаточно средств|не выполнен/.test(low)) return null;
+    // первая сумма, перед которой не стоит «баланс» / «доступно»
+    let am = null; AMT.lastIndex = 0; let m;
+    while ((m = AMT.exec(b))) { const before = low.slice(Math.max(0, m.index - 14), m.index); if (/(баланс|доступно|остаток|лимит)[:\s]*$/.test(before)) continue; am = m; break; }
+    if (!am) return null;
+    const amt = A.num(am[1].replace(/ /g, ""), 0); if (!amt) return null;
+    const after = b.slice(am.index + am[0].length).split(/баланс|доступно|остаток/i)[0].replace(/(?:карт[аы]?|card|mir|мир|visa|ecmc)[\s-]*\*?\d{4}/gi, "").replace(/^[\s.,:;–-]+|[\s.,:;–-]+$/g, "").trim();
+    const card = /(?:\*|мир|mir|visa|ecmc|maestro|mastercard|сч[её]т|карт[аы]?|platinum)[\s-]*\*?(\d{4})(?!\d)/i.exec(b);
+    const accObj = card ? A.col("accounts").find((a) => a.card4 === card[1]) : null;
+    const d = ts ? A.iso(new Date(+ts)) : today();
+    const base = { date: d, amt, sub: "Сбербанк", acc: accObj ? accObj.id : "" };
+    const who = (s) => (s || "").replace(/^(на имя|получател[ья]:?|клиенту|для|от)\s+/i, "").replace(/\s*(через сбп|по номеру телефона).*$/i, "").slice(0, 60).trim();
+    if (/между (своими|вашими) сч|на (свой|ваш) (вклад|сч[её]т)|перевод (себе|на копилку)|в копилку/.test(low)) return Object.assign(base, { kind: "move", cat: "Перевод", note: after.slice(0, 60) });
+    if (/зарплат|аванс|заработн|оплата труда/.test(low)) return Object.assign(base, { kind: "in", cat: ensureCat("in", "Зарплата"), note: after.slice(0, 60) || "Зарплата" });
+    if (/кешб[эе]к|кэшб[эе]к/.test(low)) return Object.assign(base, { kind: "in", cat: ensureCat("in", "Проценты / кешбэк"), note: "Кешбэк" });
+    if (/капитализац|выплата процент|проценты по вклад/.test(low)) return Object.assign(base, { kind: "in", cat: ensureCat("in", "Проценты / кешбэк"), note: "Проценты" });
+    if (/возврат|отмена покупки/.test(low)) return Object.assign(base, { kind: "in", cat: ensureCat("in", "Возвраты"), note: after.slice(0, 60) });
+    const fromM = /(?:перевод от|поступил перевод от|зачислен перевод от|от)\s+([А-ЯЁA-Z][^\d,.;]{1,40}?[А-ЯЁA-Z]\.?)(?=[\s.,;]|$)/.exec(b) || /^([А-ЯЁ][а-яё]+(?:\s[А-ЯЁ][а-яё]+)?\s[А-ЯЁ]\.)\s+(?:перев[её]л|отправил)/.exec(b);
+    if (/перевод от|перев[её]л\(?а?\)? вам|отправил\(?а?\)? вам|поступил перевод|зачислен перевод|входящий перевод/.test(low))
+      return Object.assign(base, { kind: "in", cat: ensureCat("in", "Переводы от людей"), note: fromM ? who(fromM[1]) : "Перевод" });
+    if (/зачислен|поступлен|пополнен|\+\s?\d/.test(low)) return Object.assign(base, { kind: "in", cat: ensureCat("in", "Другое"), note: after.slice(0, 60) });
+    if (/выдача|сняти[ея] налич|банкомат|\batm\b/.test(low)) return Object.assign(base, { kind: "out", cat: ensureCat("out", "Наличные"), note: "Снятие наличных" });
+    if (/перевод|перев[её]л|отправлен/.test(low) && !/оплат/.test(low)) {
+      const toM = /(?:на имя|получател[ья]:?|клиенту|для)\s+([^\d,.;]{2,40})/i.exec(b);
+      return Object.assign(base, { kind: "out", cat: ensureCat("out", "Переводы людям"), note: who(toM ? toM[1] : after) || "Перевод" });
+    }
+    if (/покупк|оплат|списан|плат[её]ж|автоплат|подписк/.test(low)) {
+      const merchant = after || b.slice(0, am.index).replace(/^\S+\s+\d{1,2}:\d{2}\s*/, "").trim();
+      return Object.assign(base, { kind: "out", cat: guessCat(merchant + " " + b, "out"), note: merchant.slice(0, 60) });
+    }
+    return null;
+  };
+  A.bankCard = () => {
+    if (!A.native) return '<div class="card"><h3>{{i:landmark}} Синхронизация со Сбербанком</h3><p class="small muted">Доступно в Android-приложении.</p></div>';
+    const N = A.native, p = A.db().profile;
+    const push = N.bankAccess ? N.bankAccess() : false, sms = N.smsAllowed ? N.smsAllowed() : false;
+    const ok = (v) => '<b style="color:' + (v ? "var(--good)" : "var(--bad)") + '">' + (v ? "включено" : "выключено") + "</b>";
+    return '<div class="card"><h3>{{i:landmark}} Синхронизация со Сбербанком</h3>' +
+      '<p class="small">Покупки, зарплата, переводы людям и от людей, снятие наличных, возвраты и кешбэк записываются в финансы автоматически — из уведомлений приложения СберБанк Онлайн и из SMS от 900. Приложение ничего не отправляет в интернет.</p>' +
+      '<div class="item"><div class="tx"><b>Уведомления СберБанк Онлайн</b><small>основной способ: работает и без SMS-оповещений</small></div>' + ok(push) + "</div>" +
+      '<div class="item"><div class="tx"><b>SMS от 900</b><small>история за 30 дней и новые SMS</small></div>' + ok(sms) + "</div>" +
+      '<div class="btns" style="margin-top:8px">' + (push ? "" : '<button class="btn sm primary" data-a="bankAccess">Включить доступ к уведомлениям</button>') + '<button class="btn sm" data-a="bankNow">Синхронизировать сейчас</button><button class="btn sm" data-a="smsScan">SMS за 30 дней</button></div>' +
+      '<label class="switch" style="margin-top:8px"><input type="checkbox" data-c="smsOn"' + (p.smsImport ? " checked" : "") + '><span></span>Читать SMS 900 при каждом открытии</label>' +
+      (p.bankLast ? '<p class="small muted">Последняя синхронизация: ' + new Date(p.bankLast).toLocaleString("ru-RU") + "</p>" : "") +
+      (!push || !sms ? '<details class="small" style="margin-top:8px"><summary><b>Не получается включить?</b></summary><ol style="padding-left:18px;margin:6px 0">' +
+        "<li>Android 13 и новее блокирует доступ к уведомлениям и SMS у приложений, установленных не из магазина: переключатель серый или пишет «Ограниченная настройка».</li>" +
+        '<li>Нажмите «Настройки приложения» ниже → меню ⋮ в правом верхнем углу → <b>«Разрешить ограниченные настройки»</b> и подтвердите.</li>' +
+        "<li>Вернитесь и снова нажмите «Включить доступ к уведомлениям» → «Путь жизни» → разрешить. Для SMS — «Разрешения» → «SMS» → разрешить.</li>" +
+        "<li>В приложении СберБанк Онлайн должны быть включены push-уведомления об операциях (Профиль → Настройки → Уведомления).</li>" +
+        '<li>Номер карты: укажите последние 4 цифры в счёте — операции попадут на нужный счёт.</li></ol><button class="btn sm" data-a="appSettings">Настройки приложения</button></details>' : "") + "</div>";
+  };
+  A.parseSberSms = (body, ts) => { const x = A.parseSber(body, ts); return x && x.kind !== "move" ? x : null; };
+
+  // Очередь операций из уведомлений Сбербанка и SMS 900 (Android): разбор, защита от дублей, запись.
+  A.bankSync = (manual) => {
+    if (!A.native || !A.native.bankQueue) return 0;
+    let list = []; try { list = JSON.parse(A.native.bankQueue() || "[]"); } catch (e) { list = []; }
+    const tx = A.col("tx"), known = new Set(tx.map((t) => t.pushId).filter(Boolean)), done = [], added = [];
+    list.forEach((q) => {
+      done.push(q.id);
+      if (known.has(q.id)) return;
+      const x = A.parseSber((q.src === "push" ? q.title + " " : "") + q.text, q.ts); if (!x) return;
+      // одна операция часто приходит и пушем, и SMS: совпадают дата, сумма и направление
+      if (tx.some((t) => t.date === x.date && Math.abs(t.amt - x.amt) < 0.01 && t.kind === x.kind && (t.src === "push" || t.src === "sms") && Math.abs((t.ts || 0) - q.ts) < 15 * 60000)) return;
+      if (x.kind === "move") return;
+      const acc = x.acc || (A.col("accounts")[0] || {}).id || "";
+      added.push(A.upsert("tx", Object.assign({}, x, { acc, src: q.src === "push" ? "push" : "sms", pushId: q.id, ts: q.ts })));
+    });
+    if (done.length) A.native.bankAck(JSON.stringify(done));
+    const p = A.db().profile; p.bankLast = new Date().toISOString();
+    if (added.length) {
+      A.upsert("importLog", { at: new Date().toISOString(), source: "Сбербанк (уведомления и SMS)", count: added.length, txIds: added.map((t) => t.id), total: sum(added.filter((t) => t.kind === "out").map((t) => t.amt)) });
+      A.toast("Из Сбербанка добавлено операций: " + added.length);
+      A.refresh();
+    } else if (manual) A.toast(list.length ? "Новых операций нет — всё уже в финансах" : "Очередь пуста: новые операции появятся после уведомлений банка");
+    A.save();
+    return added.length;
   };
   A.smsImport = async (manual) => {
     if (!A.native || !A.native.smsList) return;

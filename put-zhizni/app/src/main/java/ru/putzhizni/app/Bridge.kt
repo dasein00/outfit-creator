@@ -270,6 +270,20 @@ class Bridge(private val act: MainActivity) {
         callback("sms", r)
     }
 
+    // ---------- Операции Сбербанка из уведомлений ----------
+
+    @JavascriptInterface fun bankAccess(): Boolean = BankListener.enabled(act)
+    @JavascriptInterface fun smsAllowed(): Boolean =
+        act.checkSelfPermission(android.Manifest.permission.READ_SMS) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    @JavascriptInterface fun bankQueue(): String = try { BankListener.read(act) } catch (e: Exception) { "[]" }
+    @JavascriptInterface fun bankAck(ids: String) { try { BankListener.ack(act, ids) } catch (_: Exception) {} }
+    @JavascriptInterface fun openBankAccess() = act.runOnUiThread {
+        try { act.startActivity(Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) } catch (_: Exception) {}
+    }
+    @JavascriptInterface fun openAppSettings() = act.runOnUiThread {
+        try { act.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + act.packageName))) } catch (_: Exception) {}
+    }
+
     // ---------- Сон по использованию телефона ----------
 
     @JavascriptInterface fun usageAllowed(): Boolean = SleepDetector.allowed(act)

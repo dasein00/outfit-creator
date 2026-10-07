@@ -50,6 +50,7 @@
     A.syncSteps(false);
     if (A.db().profile.hc) A.syncHealth(false);
     if (A.native && A.db().profile.smsImport) A.smsImport(false);
+    if (A.native && A.bankSync) A.bankSync(false);
     if (A.native && A.db().profile.sleepAuto) {
       const day = A.day(A.today());
       if (!day.sleep && new Date().getHours() >= 5 && A.native.usageAllowed()) { const r = A.native.detectSleep(A.today()); if (r) { try { const o = JSON.parse(r); day.sleep = { bed: o.bed, wake: o.wake, auto: true }; A.save(); } catch (e) {} } }
