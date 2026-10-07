@@ -78,11 +78,13 @@ fun FridgeSheet(
         "Из холодильника", onDismiss,
         onReset = if (cur.isEmpty && !onlyHave) null else ({ main = emptySet(); have = emptySet(); missing = emptySet(); onlyHave = false }),
         applyLabel = if (cur.isEmpty) "Показать все блюда" else "Показать блюда: $count",
+        swipeToClose = false,
         onApply = { onApply(cur) },
     ) {
         Text(
             "Выберите, что отмечаете, и нажимайте на продукты. Основной — блюдо обязательно с ним. " +
-                "Есть — что лежит дома. Нет — блюда с этим продуктом не покажутся.",
+                "Есть — что лежит дома: покажутся все блюда, где есть хотя бы один из этих продуктов, сначала те, для которых всё есть. " +
+                "Нет — блюда, где есть хотя бы один такой продукт, не покажутся. Закрыть — крестиком.",
             fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
         )
         Gap(10.dp)

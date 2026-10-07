@@ -27,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -160,13 +161,27 @@ fun FilterSheet(
     onDismiss: () -> Unit,
     onReset: (() -> Unit)? = null,
     applyLabel: String = "Применить",
+    /** false — лист не закрывается жестом вниз и касанием мимо, только крестиком или кнопкой. */
+    swipeToClose: Boolean = true,
     onApply: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state, containerColor = MaterialTheme.colorScheme.surface) {
+    val state = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { swipeToClose || it != androidx.compose.material3.SheetValue.Hidden },
+    )
+    ModalBottomSheet(
+        onDismissRequest = { if (swipeToClose) onDismiss() },
+        sheetState = state,
+        sheetGesturesEnabled = swipeToClose,
+        containerColor = MaterialTheme.colorScheme.surface,
+    ) {
         SheetHeader(title, onDismiss, onReset)
-        Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) { content() }
+        // Содержимое прокручивается, а кнопка «Показать» всегда видна внизу, сколько бы ни выбрали.
+        Column(
+            Modifier.weight(1f, fill = false).verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
+        ) { content() }
         SheetApply(applyLabel, onApply)
     }
 }
