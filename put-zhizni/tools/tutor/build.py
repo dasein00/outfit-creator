@@ -55,6 +55,22 @@ def ru_for(g,n=3,pos=None):
         b.add(bare);res.append(stress(acc))
         if len(res)>=n: break
     return res
+def pivot(glosses,pos,n=2):
+    """Русские варианты для списка английских значений: выше те, что подходят к нескольким значениям сразу."""
+    sc={};first={}
+    gs=[]
+    for g in glosses:
+        for part in re.split(r'[;,/]',re.sub(r'\([^)]*\)','',g)):
+            part=re.sub(r'^(to|a|an|the) ','',part.strip().lower()).strip(' .!?')
+            if part and part not in gs: gs.append(part)
+    gs=gs[:5]
+    for gi,g in enumerate(gs):
+        for ci,r_ in enumerate(ru_for(g,3,pos)):
+            k=r_.replace('\u0301','')
+            sc[k]=sc.get(k,0)+(1.0 if gi==0 else 0.8)/(1+ci*0.6)
+            first.setdefault(k,(gi,ci,r_))
+    best=sorted(sc,key=lambda k:(-sc[k],first[k][0],first[k][1]))
+    return [first[k][2] for k in best[:n]]
 # ---------- CMU -> IPA ----------
 A={'AA':'ɑ','AE':'æ','AH':'ʌ','AO':'ɔ','AW':'aʊ','AY':'aɪ','B':'b','CH':'tʃ','D':'d','DH':'ð','EH':'e','ER':'ɜr','EY':'eɪ','F':'f','G':'ɡ','HH':'h','IH':'ɪ','IY':'iː','JH':'dʒ','K':'k','L':'l','M':'m','N':'n','NG':'ŋ','OW':'oʊ','OY':'ɔɪ','P':'p','R':'r','S':'s','SH':'ʃ','T':'t','TH':'θ','UH':'ʊ','UW':'uː','V':'v','W':'w','Y':'j','Z':'z','ZH':'ʒ'}
 cmu={}
@@ -94,7 +110,7 @@ def esc(o): return json.dumps(o,ensure_ascii=False,separators=(',',':'))
 def write(lang,var,words):
     open(f'{OUT}/content-tutor-{lang}.js','w',encoding='utf-8').write(
       f'/* Словарь репетитора ({lang}). Поля: [слово, перевод, пример, перевод примера, тема, уровень 1-5, транскрипция, ранг частоты]. '
-      'Базовые темы составлены вручную; расширенная часть — OpenRussian (CC-BY-SA), Wiktionary через doozan/spanish_data (CC-BY-SA), примеры Tatoeba (CC-BY 2.0 FR), частоты hermitdave/FrequencyWords (MIT), CMUdict (BSD). */\n'
+      'Базовые темы составлены вручную; расширенная часть — OpenRussian (CC-BY-SA), Wiktionary через doozan/spanish_data (CC-BY-SA), FreeDict fra-eng (GPL-2.0+), примеры Tatoeba (CC-BY 2.0 FR), частоты hermitdave/FrequencyWords (MIT), CMUdict (BSD). */\n'
       f'window.{var}={esc({"topics":TOP,"w":words})};\n')
     print(lang,len(words))
 # ---------- EN ----------
@@ -144,11 +160,10 @@ for w,ru,ex,exr,t in core('es'):
 for w,rk in sorted(fr_es.items(),key=lambda x:x[1]):
     if rk>15000: break
     if w in have or not gl.get(w) or not re.match(r"^[a-záéíóúñü]+$",w): continue
-    g=gl[w]; first=re.split(r'[;,]',re.sub(r'\([^)]*\)','',g))[0].strip().lower()
-    first=re.sub(r'^(to|a|an|the) ','',first).strip(' .')
+    g=gl[w]
     P={'v':'v','n':'n','adj':'adj','adv':'x'}.get(pos_es.get(w))
     if not P: continue
-    ru=ru_for(first,2,P)
+    ru=pivot([g],P)
     if not ru: continue
     g=re.sub(r'\s*\([^)]*\)','',g).strip()
     head=w
@@ -159,8 +174,29 @@ for w,rk in sorted(fr_es.items(),key=lambda x:x[1]):
     words.append([head,', '.join(ru)+' · en: '+g[:60],e[0],('EN: '+e[1]) if e[1] else '',None,level(rk),'',rk]); have.add(w)
 write('es','TUTOR_ES',words)
 # ---------- FR ----------
-fr_fr=freqrank('fr_50k.txt'); words=[]
+import xml.etree.ElementTree as ET
+fr_fr=freqrank('fr_50k.txt'); words=[]; have=set()
+NS='{http://www.tei-c.org/ns/1.0}'
+fe={}
+for e in ET.parse(D+'fra-eng.tei').getroot().iter(NS+'entry'):
+    o=e.find(f'{NS}form/{NS}orth'); 
+    if o is None or not o.text: continue
+    w=o.text.strip(); pr=e.find(f'{NS}form/{NS}pron'); pos=e.find(f'{NS}gramGrp/{NS}pos'); gn=e.find(f'{NS}gramGrp/{NS}gen')
+    tr=[q.text.strip() for q in e.iter(NS+'quote') if q.text]
+    if w in fe or not tr: continue
+    fe[w]=dict(ipa=pr.text.strip() if pr is not None and pr.text else '',pos=pos.text if pos is not None else '',gen=gn.text if gn is not None else '',tr=tr)
 for w,ru,ex,exr,t in core('fr'):
-    h=headword(w,'fr').split()[0] if headword(w,'fr') else ''; rk=fr_fr.get(h)
-    words.append([w,ru,ex,exr,t,min(level(rk),3),'',rk if rk is not None else 99999])
+    hw=headword(w,'fr'); h=hw.split()[0] if hw else ''; rk=fr_fr.get(h)
+    words.append([w,ru,ex,exr,t,min(level(rk),3),(fe.get(hw) or fe.get(h) or {}).get('ipa',''),rk if rk is not None else 99999]); have.add(hw); have.add(h)
+for w,rk in sorted(fr_fr.items(),key=lambda x:x[1]):
+    if rk>25000: break
+    if w in have or w not in fe or not re.match(r"^[a-zàâçéèêëîïôûùüÿœæ'-]+$",w) or len(w)<2: continue
+    E=fe[w]; P={'n':'n','v':'v','vt':'v','vi':'v','adj':'adj','adv':'x'}.get(E['pos'])
+    if not P: continue
+    ru=pivot(E['tr'][:4],P)
+    if not ru: continue
+    head=w
+    if P=='n' and E['gen'] in ('fem','masc'):
+        head=("l'" if re.match(r"^[aeiouyhàâéèêîôû]",w) else 'la ' if E['gen']=='fem' else 'le ')+w
+    words.append([head,', '.join(ru[:3])+' · en: '+', '.join(E['tr'][:3])[:60],'','',None,level(rk),E['ipa'],rk]); have.add(w)
 write('fr','TUTOR_FR',words)

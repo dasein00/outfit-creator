@@ -14,7 +14,7 @@
         ["recipes/shop", "{{i:shopping-cart}}", "Список покупок"], ["workouts", "{{i:dumbbell}}", "Тренировки"], ["health/balance", "{{i:radar}}", "Баланс жизни"],
         ["money", "{{i:wallet}}", "Финансы"], ["learn", "{{i:graduation-cap}}", "Обучение"], ["tutor", "{{i:speech}}", "Репетитор"], ["hobbies", "{{i:palette}}", "Хобби"],
         ["culture", "{{i:library}}", "Книги / фильмы / сериалы"], ["culturecal", "{{i:clapperboard}}", "Календарь культуры"], ["reader", "{{i:book-open}}", "Читалка"], ["piano", "{{i:piano}}", "Пианино"], ["tarot", "{{i:wand-sparkles}}", "Таро"],
-        ["ketu", "{{i:leaf}}", "Кету"], ["bazi", "{{i:orbit}}", "Бацзы"], ["english", "{{i:languages}}", "Английский"],
+        ["ketu", "{{i:leaf}}", "Кету"], ["bazi", "{{i:orbit}}", "Бацзы"], ["english", "{{i:languages}}", "Английский"], ["spanish", "{{i:languages}}", "Испанский"], ["french", "{{i:languages}}", "Французский"],
         ["latin", "{{i:landmark}}", "Латынь"], ["piano/songs", "{{i:guitar}}", "Песни на пианино"], ["stats", "{{i:chart-column}}", "Статистика"],
         ["book", "{{i:book}}", "Книга PRIME ERA"], ["ideas", "{{i:lightbulb}}", "Идеи"], ["settings", "{{i:settings}}", "Настройки"]
       ];

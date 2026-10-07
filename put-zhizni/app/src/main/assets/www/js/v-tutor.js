@@ -224,7 +224,7 @@
         tile("tr", "languages", "Переводчик", "слова, фразы, предложения") +
         tile("dict", "book-a", "Словарь", D.w.length.toLocaleString("ru-RU") + " слов офлайн") +
         tile("my", "bookmark", "Мои слова", myWords(l).length + " сохранено") +
-        (l === "en" ? '<button class="tw-tile" data-a="go2" data-v="english"><span class="tw-ti">{{i:graduation-cap}}</span><b>Грамматика</b><small>уроки A1–A2</small></button>' : "") +
+        '<button class="tw-tile" data-a="go2" data-v="' + { en: "english", es: "spanish", fr: "french" }[l] + '"><span class="tw-ti">{{i:graduation-cap}}</span><b>Грамматика с нуля</b><small>' + ({ en: window.LANG.EN, es: window.LANG.ES, fr: window.LANG.FR }[l] || { lessons: [] }).lessons.length + " уроков A1–A2</small></button>" +
         "</div>";
       h += '<div class="card"><h3>{{i:target}} Темы</h3><div class="tw-topics">' + Object.keys(D.topics).map((k) => {
         const tot = D.w.filter((x) => x[4] === k).length; if (!tot) return "";

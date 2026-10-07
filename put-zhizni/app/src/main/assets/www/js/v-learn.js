@@ -475,6 +475,8 @@
   const langDeck = (C, pre) => () => { const out = []; Object.entries(C.vocab).forEach(([g, words]) => words.forEach((w, i) => out.push({ id: pre + g.slice(0, 3) + i, front: w[0], back: w[1] }))); return out; };
   const langRef = (C) => () => Object.entries(C.vocab).map(([g, words]) => '<div class="card"><h3>' + esc(g) + '</h3><table class="tbl">' + words.map((w) => "<tr><td><b>" + esc(w[0]) + '</b></td><td class="muted">' + esc(w[1]) + "</td></tr>").join("") + "</table></div>").join("");
   A.view("english", studyModule("english", "Английский язык", window.LANG.EN, langDeck(window.LANG.EN, "en"), langRef(window.LANG.EN)));
+  A.view("spanish", studyModule("spanish", "Испанский язык", window.LANG.ES, langDeck(window.LANG.ES, "es"), langRef(window.LANG.ES)));
+  A.view("french", studyModule("french", "Французский язык", window.LANG.FR, langDeck(window.LANG.FR, "fr"), langRef(window.LANG.FR)));
   A.view("latin", studyModule("latin", "Латынь", window.LANG.LA, langDeck(window.LANG.LA, "la"), langRef(window.LANG.LA)));
 
   /* ---------- центр обучения ---------- */
@@ -492,6 +494,8 @@
         ["piano/songs", "{{i:guitar}}", "Рок-песни на пианино", Object.keys(P.songs || {}).length + "/" + window.SONGS.list.length + " выучено"],
         ["tutor", "{{i:speech}}", "Репетитор: английский, испанский, французский", (() => { const t = A.db().tutor; const n = t ? Object.values(t.srs || {}).reduce((s, o) => s + Object.keys(o).length, 0) : 0; return n ? n + " слов в повторениях" : "словари офлайн, слова дня, переводчик"; })()],
         ["english", "{{i:languages}}", "Английский язык", Object.keys(A.db().english.lessons).length + "/" + window.LANG.EN.lessons.length + " уроков"],
+        ["spanish", "{{i:languages}}", "Испанский язык", Object.keys(A.db().spanish.lessons).length + "/" + window.LANG.ES.lessons.length + " уроков"],
+        ["french", "{{i:languages}}", "Французский язык", Object.keys(A.db().french.lessons).length + "/" + window.LANG.FR.lessons.length + " уроков"],
         ["latin", "{{i:landmark}}", "Латынь", Object.keys(A.db().latin.lessons).length + "/" + window.LANG.LA.lessons.length + " уроков"],
         ["book", "{{i:book}}", "Книга PRIME ERA", Object.keys(A.db().bookDone).length + "/13 блоков"]
       ];

@@ -127,7 +127,7 @@
       hval: {}, measures: [], photos: [], wheel: [], remLog: [],
       recipes: [], favs: {}, menu: {}, menuPresets: [], menuRecur: [], shopping: [], cookLog: [],
       cats: { out: A.EXP_CATS.map((n, i) => ({ name: n, color: A.PAL[i % A.PAL.length] })), in: A.INC_CATS.map((n, i) => ({ name: n, color: A.PAL[(i + 5) % A.PAL.length] })) },
-      importLog: [], english: { box: {}, quiz: [], notes: "", lessons: {} }, latin: { box: {}, quiz: [], notes: "", lessons: {} }
+      importLog: [], english: { box: {}, quiz: [], notes: "", lessons: {} }, latin: { box: {}, quiz: [], notes: "", lessons: {} }, spanish: { box: {}, quiz: [], notes: "", lessons: {} }, french: { box: {}, quiz: [], notes: "", lessons: {} }
     };
   };
 

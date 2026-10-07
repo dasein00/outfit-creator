@@ -6,4 +6,5 @@
 - OpenRussian `nouns.csv`, `verbs.csv`, `adjectives.csv`, `others.csv` (CC-BY-SA) — переводы;
 - hermitdave/FrequencyWords `en_50k.txt`, `es_50k.txt`, `fr_50k.txt` (MIT) — частотность;
 - `cmudict.dict` (BSD) — транскрипция;
+- FreeDict `fra-eng.tei` (GPL-2.0+) — французский: значения, транскрипция, род;
 - doozan/spanish_data `es-en.data`, `es_frequency.csv`, `sentences.tsv` (CC-BY-SA / Tatoeba CC-BY 2.0 FR) — испанский и примеры.
