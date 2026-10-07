@@ -125,3 +125,8 @@ if adb shell pidof $PKG > /dev/null; then echo "APP ALIVE" > shots/status.txt; e
 cat shots/status.txt
 echo "---- crash buffer ----"
 cat shots/crash.txt
+# Вылет приложения — ошибка автотеста (с первой строкой исключения в аннотации).
+if grep -q "FATAL EXCEPTION" shots/crash.txt; then
+  echo "::error title=App crash::$(grep -m1 -A4 'FATAL EXCEPTION' shots/crash.txt | sed 's/.*AndroidRuntime: //' | tr '\n' ' ')"
+  exit 1
+fi

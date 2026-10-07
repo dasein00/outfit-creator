@@ -89,6 +89,12 @@ class MainActivity : FragmentActivity() {
             Intent.ACTION_VIEW, Intent.ACTION_SEND -> {
                 val uri = intent.data ?: if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
                 else @Suppress("DEPRECATION") intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+                // Картинка (скриншот из Fitdays и других приложений весов) — в «Вес», файлы таблиц — в тетрадь финансов.
+                val type = intent.type ?: uri?.let { contentResolver.getType(it) }.orEmpty()
+                if (uri != null && type.startsWith("image/")) {
+                    com.dasein.poryadok.system.ScaleOcr.pending.value = uri
+                    return Routes.health(1)
+                }
                 uri?.let { NotebookInbox.pending.value = it; Routes.FIN_NOTEBOOK }
             }
             else -> null

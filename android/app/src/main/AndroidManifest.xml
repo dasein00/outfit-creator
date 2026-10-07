@@ -53,6 +53,12 @@
             <intent-filter>
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
             </intent-filter>
+            <!-- Скриншот из приложения весов (Fitdays и др.): «Поделиться» → DASEIN — показатели распознаются в «Вес». -->
+            <intent-filter android:label="Взвешивание в DASEIN">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
             <!-- Файлы тетради финансов можно открыть в приложении напрямую. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

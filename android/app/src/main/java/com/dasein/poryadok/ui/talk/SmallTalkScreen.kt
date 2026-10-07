@@ -138,6 +138,8 @@ private fun toggleFavorite(id: Int) = io {
     Graph.prefs.update { it.copy(talkFavorites = SmallTalk.encodeIds(SmallTalk.toggle(SmallTalk.decodeIds(it.talkFavorites), id))) }
 }
 
+private var lastTalkSettings: com.dasein.poryadok.data.Settings? = null
+
 /**
  * Плашка «Интересный факт» на главной: ← и → листают факты выбранных в Small Talks сфер,
  * нажатие на сам факт открывает раздел Small Talks.
@@ -147,8 +149,10 @@ fun TalkFactCard(onOpen: () -> Unit) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     val data = remember { TalkRepo.load(ctx) }
-    val settings by observe(null) { Graph.prefs.settings }
+    // Последние настройки — чтобы при прокрутке назад плашка сразу была на месте, без «прыжка».
+    val settings by observe(lastTalkSettings) { Graph.prefs.settings }
     val s = settings ?: return
+    lastTalkSettings = s
     val spheres = SmallTalk.decodeSet(s.talkSpheres)
     val facts = remember(data, s.talkSpheres) { SmallTalk.filter(data.facts, spheres) }
     if (facts.isEmpty()) return

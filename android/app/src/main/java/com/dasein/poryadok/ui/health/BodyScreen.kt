@@ -175,6 +175,32 @@ fun BodyTab(nav: NavHostController, profile: BodyProfile, weights: List<WeightEn
     val readings = remember(metricsDb, weights) { mergeReadings(metricsDb, weights) }
     val last = readings.lastOrNull()
 
+    // Скриншот из Fitdays (или другого приложения весов): распознаём показатели и открываем форму для проверки.
+    var reading by remember { mutableStateOf(false) }
+    fun fromScreenshot(uri: android.net.Uri) {
+        reading = true
+        scope.launch {
+            val lines = com.dasein.poryadok.system.ScaleOcr.lines(ctx, uri)
+            val r = com.dasein.poryadok.logic.ScaleScreenParse.parse(lines)
+            reading = false
+            if (r.weight == null && r.found == 0) {
+                Toast.makeText(ctx, "Не удалось распознать показатели. Нужен скриншот экрана с результатами взвешивания.", Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            Toast.makeText(ctx, "Распознано показателей: ${r.found}. Проверьте и сохраните.", Toast.LENGTH_LONG).show()
+            val now = System.currentTimeMillis()
+            edit = BodyMetric(
+                at = now, day = Dates.today(), weight = r.weight ?: last?.weight ?: profile.startWeight,
+                fatPct = r.fatPct, musclePct = r.musclePct, muscleKg = r.muscleKg, waterPct = r.waterPct, proteinPct = r.proteinPct,
+                boneKg = r.boneKg, visceral = r.visceral, bmr = r.bmr, metabolicAge = r.metabolicAge, subcutaneousPct = r.subcutaneousPct,
+                leanKg = r.leanKg, source = "Fitdays",
+            )
+        }
+    }
+    val shot = rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()) { uri -> uri?.let(::fromScreenshot) }
+    val pendingShot = com.dasein.poryadok.system.ScaleOcr.pending.value
+    LaunchedEffect(pendingShot) { pendingShot?.let { com.dasein.poryadok.system.ScaleOcr.pending.value = null; fromScreenshot(it) } }
+
     fun sync() {
         syncing = true
         scope.launch {
@@ -197,6 +223,15 @@ fun BodyTab(nav: NavHostController, profile: BodyProfile, weights: List<WeightEn
         HGap(8.dp)
         OutlinedButton(onClick = { nav.navigate(Routes.BODY_COMPARE) }, enabled = readings.size >= 2, modifier = Modifier.weight(1f)) { Text("Сравнить") }
     }
+    Gap(8.dp)
+    OutlinedButton(
+        onClick = { shot.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+        enabled = !reading, modifier = Modifier.fillMaxWidth(),
+    ) { Text(if (reading) "Распознаю скриншот…" else "📷 Из Fitdays — по скриншоту") }
+    Text(
+        "В Fitdays откройте результат взвешивания и сделайте скриншот (или «Поделиться» → DASEIN). Цифры распознаются на телефоне — проверьте и сохраните.",
+        fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
+    )
     Gap(8.dp)
     Tile(onClick = { nav.navigate(Routes.BODY_SCIENCE) }) {
         Row(verticalAlignment = Alignment.CenterVertically) {
