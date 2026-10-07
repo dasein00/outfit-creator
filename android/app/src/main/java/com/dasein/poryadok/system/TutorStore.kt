@@ -15,6 +15,10 @@ object TutorStore {
     @Serializable
     data class MyWord(val en: String, val ru: String, val ex: String = "", val exRu: String = "")
 
+    /** Перевод из «Переводчика»: что ввели, что получилось, направление. */
+    @Serializable
+    data class Translation(val src: String, val dst: String, val enToRu: Boolean, val at: Long = 0)
+
     @Serializable
     data class State(
         val settings: Tutor.Settings = Tutor.Settings(),
@@ -26,6 +30,10 @@ object TutorStore {
         /** Очки по дням: день → очки. */
         val xpByDay: Map<Long, Int> = emptyMap(),
         val onboarded: Boolean = false,
+        /** Последние переводы (новые сверху). */
+        val translations: List<Translation> = emptyList(),
+        /** Прогресс по идиомам и устойчивым фразам: фраза → коробка Лейтнера. */
+        val phraseProgress: Map<String, Tutor.Progress> = emptyMap(),
     )
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -73,6 +81,20 @@ object TutorStore {
     }
 
     suspend fun goalDone(ctx: Context, today: Long) = update(ctx) { s -> if (today in s.goalDays) s else s.copy(goalDays = s.goalDays + today) }
+
+    suspend fun addTranslation(ctx: Context, t: Translation) = update(ctx) { s ->
+        s.copy(translations = (listOf(t) + s.translations.filter { it.src.trim() != t.src.trim() }).take(50))
+    }
+
+    suspend fun clearTranslations(ctx: Context) = update(ctx) { it.copy(translations = emptyList()) }
+
+    suspend fun answerPhrase(ctx: Context, key: String, correct: Boolean, today: Long) = update(ctx) { s ->
+        val gain = if (correct) 10 else 2
+        s.copy(
+            phraseProgress = s.phraseProgress + (key to Tutor.answer(s.phraseProgress[key], correct, today)),
+            xp = s.xp + gain, xpByDay = s.xpByDay + (today to ((s.xpByDay[today] ?: 0) + gain)),
+        )
+    }
 
     suspend fun reset(ctx: Context, w: Tutor.Word) = update(ctx) { s -> s.copy(progress = s.progress - w.id) }
 }

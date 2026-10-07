@@ -343,6 +343,10 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable(com.dasein.poryadok.ui.tutor.TutorRoutes.WORDS) { com.dasein.poryadok.ui.tutor.TutorWordsScreen(nav) }
             composable(com.dasein.poryadok.ui.tutor.TutorRoutes.DICT) { com.dasein.poryadok.ui.tutor.TutorDictScreen(nav) }
             composable(
+                "${com.dasein.poryadok.ui.tutor.TutorRoutes.TRANSLATE}?tab={tab}",
+                arguments = listOf(navArgument("tab") { type = NavType.IntType; defaultValue = 0 }),
+            ) { com.dasein.poryadok.ui.tutor.TranslatorScreen(nav, it.int("tab")) }
+            composable(
                 "tutorSession?mode={mode}&topic={topic}",
                 arguments = listOf(navArgument("mode") { type = NavType.StringType; defaultValue = "learn" }, navArgument("topic") { type = NavType.StringType; defaultValue = "" }),
             ) { com.dasein.poryadok.ui.tutor.TutorSessionScreen(nav, it.arguments?.getString("mode") ?: "learn", it.arguments?.getString("topic") ?: "") }

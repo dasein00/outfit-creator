@@ -112,7 +112,7 @@ fun TutorDictScreen(nav: NavHostController) {
 }
 
 @Composable
-private fun DictCard(e: EnDict.Entry, sp: Speaker, startOpen: Boolean, added: Boolean, onAdd: () -> Unit) {
+internal fun DictCard(e: EnDict.Entry, sp: Speaker, startOpen: Boolean, added: Boolean, onAdd: () -> Unit) {
     val extra = LocalExtra.current
     var open by remember(e.en) { mutableStateOf(startOpen) }
     Tile(onClick = { open = !open }) {

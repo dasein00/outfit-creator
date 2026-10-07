@@ -88,6 +88,8 @@ dependencies {
     implementation("androidx.media3:media3-transformer:1.5.1")
     implementation("androidx.media3:media3-effect:1.5.1")
     implementation("androidx.media3:media3-common:1.5.1")
+    // Переводчик фраз и предложений без интернета (модель EN↔RU скачивается один раз).
+    implementation("com.google.mlkit:translate:17.0.3")
 
     implementation("androidx.glance:glance-appwidget:1.1.1")
     implementation("androidx.glance:glance-material3:1.1.1")

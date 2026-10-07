@@ -80,6 +80,8 @@ object TutorRoutes {
     const val HOME = "tutor"
     const val WORDS = "tutorWords"
     const val DICT = "tutorDict"
+    const val TRANSLATE = "tutorTranslate"
+    fun translate(tab: Int = 0) = "$TRANSLATE?tab=$tab"
     fun session(mode: String, topic: String = "") = "tutorSession?mode=$mode&topic=$topic"
 }
 
@@ -154,6 +156,7 @@ fun TutorHomeScreen(nav: NavHostController) {
     val streak = Tutor.streak(s.goalDays.toSet(), today)
     var settings by remember { mutableStateOf(!s.onboarded) }
     Screen("Репетитор", onBack = { nav.popBackStack() }, actions = {
+        IconAction("tutor/04", "Переводчик") { nav.navigate(TutorRoutes.translate(0)) }
         IconAction("tutor/01", "Большой словарь") { nav.navigate(TutorRoutes.DICT) }
         IconAction("tutor/05", "Мои слова") { nav.navigate(TutorRoutes.WORDS) }
         IconAction("ui:sliders", "Настройки") { settings = true }
@@ -165,6 +168,19 @@ fun TutorHomeScreen(nav: NavHostController) {
                 StatTile("tutor/08", "${s.xp}", "очков", Modifier.weight(1f))
             }
             Gap(10.dp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Tile(Modifier.weight(1f), onClick = { nav.navigate(TutorRoutes.translate(0)) }, padding = 12.dp) {
+                    Glyph("tutor/04", 26.dp, badge = false)
+                    Text("Переводчик", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                    Text("слова с подсказками, фразы и предложения", fontSize = 11.sp, color = extra.dim, lineHeight = 14.sp)
+                }
+                Tile(Modifier.weight(1f), onClick = { nav.navigate(TutorRoutes.translate(1)) }, padding = 12.dp) {
+                    Glyph("tutor/17", 26.dp, badge = false)
+                    Text("Идиомы и фразы", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                    Text("устойчивые выражения с примерами", fontSize = 11.sp, color = extra.dim, lineHeight = 14.sp)
+                }
+            }
+            Gap(8.dp)
             Tile {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     ProgressRing(startedToday / s.settings.perDay.coerceAtLeast(1).toFloat(), extra.ok, size = 56.dp, stroke = 6.dp) { Glyph("tutor/00", 26.dp, badge = false) }

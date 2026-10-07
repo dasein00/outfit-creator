@@ -24,14 +24,18 @@ object HistoryRepo {
     /** Сначала то, что есть без сети; [online] — дополнить из Википедии (кэш на месяц). */
     suspend fun day(ctx: Context, d: LocalDate, online: Boolean = true): List<HistoryDay.Event> = withContext(Dispatchers.IO) {
         val own = builtIn(ctx)[md(d)].orEmpty()
+        HistoryDay.merge(own, wikiText(ctx, d, online)?.let { HistoryDay.parseWiki(it) }.orEmpty())
+    }
+
+    /** Ответ Википедии «В этот день» за дату (события, рождения): из кэша или из сети. Нужен и «Истории», и «Культуре». */
+    suspend fun wikiText(ctx: Context, d: LocalDate, online: Boolean): String? = withContext(Dispatchers.IO) {
         val f = cacheFile(ctx, d)
         val fresh = f.exists() && System.currentTimeMillis() - f.lastModified() < 30L * 86_400_000
-        val text = when {
+        when {
             fresh -> runCatching { f.readText() }.getOrNull()
             online -> runCatching { fetch(d) }.getOrNull()?.also { runCatching { f.writeText(it) } } ?: runCatching { f.readText() }.getOrNull()
             else -> runCatching { f.readText() }.getOrNull()
         }
-        HistoryDay.merge(own, text?.let { HistoryDay.parseWiki(it) }.orEmpty())
     }
 
     /** Есть ли что-то без сети: если на этот день встроенных событий нет — ближайшие встроенные. */
@@ -53,5 +57,21 @@ object HistoryRepo {
             if (c.responseCode !in 200..299) error("HTTP ${c.responseCode}")
             return c.inputStream.use { it.readBytes().decodeToString() }
         } finally { c.disconnect() }
+    }
+}
+
+/** «В этот день в культуре»: встроенная подборка + рождения и культурные события из Википедии (тот же кэш, что у «Истории»). */
+object CultureRepo {
+    private var builtIn: Map<String, List<com.dasein.poryadok.logic.CultureDay.Item>>? = null
+
+    fun builtIn(ctx: Context): Map<String, List<com.dasein.poryadok.logic.CultureDay.Item>> = builtIn ?: runCatching {
+        com.dasein.poryadok.logic.CultureDay.parseBuiltIn(ctx.assets.open("culture/culture.json").bufferedReader().use { it.readText() })
+    }.getOrDefault(emptyMap()).also { builtIn = it }
+
+    suspend fun day(ctx: Context, d: LocalDate, online: Boolean = true): List<com.dasein.poryadok.logic.CultureDay.Item> = withContext(Dispatchers.IO) {
+        com.dasein.poryadok.logic.CultureDay.merge(
+            builtIn(ctx)[HistoryRepo.md(d)].orEmpty(),
+            HistoryRepo.wikiText(ctx, d, online)?.let { com.dasein.poryadok.logic.CultureDay.parseWiki(it) }.orEmpty(),
+        )
     }
 }

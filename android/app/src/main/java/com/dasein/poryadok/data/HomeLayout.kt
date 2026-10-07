@@ -25,6 +25,7 @@ object HomeLayout {
         Block("holiday", "Праздники", "ui:gift", "Ближайший праздник"),
         Block("tutor", "Слово дня (английский)", "tutor/00", "Слово, перевод, пример с переводом и озвучка"),
         Block("history", "В этот день в истории", "cal/23", "Событие дня с подробным контекстом"),
+        Block("culture", "В этот день в культуре", "habit/01", "Дни рождения звёзд, премьеры фильмов, альбомы — Россия, США и мир"),
         Block("rings", "Задачи, привычки, вода", "ui:check", "Три кольца прогресса дня"),
         Block("metrics", "Показатели дня", "analytics/00", "Сон, питание, тренировки, траты"),
         Block("health", "Здоровье: главное", "pressure/01", "Давление, пульс, сон, шаги, вода, вес — с инфографикой", SIZES3),
@@ -41,7 +42,7 @@ object HomeLayout {
     )
 
     val DEFAULT = listOf(
-        "activity", "weight", "greeting", "weather", "holiday", "tutor", "history", "rings", "metrics", "health", "pressure",
+        "activity", "weight", "greeting", "weather", "holiday", "tutor", "history", "culture", "rings", "metrics", "health", "pressure",
         "tasks", "habits", "calendar", "wellbeing", "menu", "money", "goals", "talk", "quote",
     ).map { Entry(it, CATALOG.first { b -> b.id == it }.defaultSize) }
 
@@ -65,7 +66,7 @@ object HomeLayout {
 
     /** Текущая раскладка; экраны перерисовываются при изменении. */
     /** Новые плашки, которые появились после того, как раскладку уже настроили, — вставляются после «Праздников» один раз. */
-    private val ADDED = listOf(2 to listOf("tutor", "history"))
+    private val ADDED = listOf(2 to listOf("tutor", "history"), 3 to listOf("culture"))
     private const val VERSION_KEY = "home_layout_v"
 
     fun migrate(saved: List<Entry>, version: Int): List<Entry> {
@@ -73,7 +74,9 @@ object HomeLayout {
         ADDED.filter { it.first > version }.forEach { (_, ids) ->
             val missing = ids.filter { id -> l.none { it.id == id } }.map { Entry(it, block(it)?.defaultSize ?: 1) }
             if (missing.isEmpty()) return@forEach
-            val at = l.indexOfFirst { it.id == "holiday" }.let { if (it >= 0) it + 1 else l.indexOfFirst { e -> e.id == "weather" }.let { w -> if (w >= 0) w + 1 else 0 } }
+            // Новые плашки — после «Истории» (для «Культуры»), иначе после «Праздников», иначе после «Погоды».
+            fun after(id: String) = l.indexOfFirst { it.id == id }.takeIf { it >= 0 }?.plus(1)
+            val at = (if ("culture" in ids) after("history") else null) ?: after("holiday") ?: after("weather") ?: 0
             l = l.take(at) + missing + l.drop(at)
         }
         return l

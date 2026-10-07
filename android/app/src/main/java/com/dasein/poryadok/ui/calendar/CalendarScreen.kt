@@ -121,16 +121,20 @@ fun CalendarScreen(nav: NavHostController, initialTab: Int, onBack: (() -> Unit)
         },
     ) { pad ->
         Column(Modifier.padding(pad)) {
-            TabRow(selectedTabIndex = when (tab) { 2 -> 1; 3 -> 2; 1 -> 3; else -> 0 }, containerColor = MaterialTheme.colorScheme.background) {
+            androidx.compose.material3.ScrollableTabRow(
+                selectedTabIndex = when (tab) { 2 -> 1; 3 -> 2; 4 -> 3; 1 -> 4; else -> 0 }, containerColor = MaterialTheme.colorScheme.background, edgePadding = 8.dp,
+            ) {
                 Tab(tab == 0, onClick = { tab = 0 }, text = { Text("Месяц", fontSize = 13.sp, maxLines = 1) })
                 Tab(tab == 2, onClick = { tab = 2 }, text = { Text("Праздники", fontSize = 13.sp, maxLines = 1) })
                 Tab(tab == 3, onClick = { tab = 3 }, text = { Text("История", fontSize = 13.sp, maxLines = 1) })
+                Tab(tab == 4, onClick = { tab = 4 }, text = { Text("Культура", fontSize = 13.sp, maxLines = 1) })
                 Tab(tab == 1, onClick = { tab = 1 }, text = { Text("Напоминалки", fontSize = 13.sp, maxLines = 1, softWrap = false) })
             }
             when (tab) {
                 0 -> MonthView(nav, selected, onSelect = { selected = it }, onReminder = { editReminder = it })
                 2 -> HolidaysTab(nav, selected, onSelect = { selected = it })
                 3 -> HistoryTab(selected)
+                4 -> CultureTab(selected)
                 else -> RemindersList(onEdit = { editReminder = it })
             }
         }
