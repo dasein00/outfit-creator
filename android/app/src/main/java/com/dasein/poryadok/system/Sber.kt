@@ -122,7 +122,7 @@ object Sber {
      * Сообщение уже записано, но старая версия разобрала его неверно (не та сумма из-за узких пробелов в «56 555,43 ₽»,
      * доход как расход, зарплата в «Другое»). Исправляет только записи, созданные из Сбера и не правленные вручную.
      */
-    private suspend fun fix(id: Long, op: BankSms.Op, type: TxnType) {
+    private suspend fun fix(id: Long, op: BankSms.Op, type: Int) {
         val dao = Graph.dao
         val t = dao.txnById(id) ?: return
         if (!t.note.startsWith("Сбер")) return
