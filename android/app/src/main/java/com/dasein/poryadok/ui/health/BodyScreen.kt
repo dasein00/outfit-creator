@@ -188,9 +188,14 @@ fun BodyTab(nav: NavHostController, profile: BodyProfile, weights: List<WeightEn
                 return@launch
             }
             Toast.makeText(ctx, "Распознано показателей: ${r.found}. Проверьте и сохраните.", Toast.LENGTH_LONG).show()
-            val now = System.currentTimeMillis()
+            val at = r.at ?: System.currentTimeMillis()
+            val day = java.time.Instant.ofEpochMilli(at).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toEpochDay()
+            if (r.heartRate != null || r.idealWeight != null) Toast.makeText(
+                ctx, listOfNotNull(r.heartRate?.let { "пульс ${it.toInt()}" }, r.idealWeight?.let { "идеальный вес ${it.toString().replace('.', ',')} кг" }).joinToString(", "),
+                Toast.LENGTH_SHORT,
+            ).show()
             edit = BodyMetric(
-                at = now, day = Dates.today(), weight = r.weight ?: last?.weight ?: profile.startWeight,
+                at = at, day = day, weight = r.weight ?: last?.weight ?: profile.startWeight,
                 fatPct = r.fatPct, musclePct = r.musclePct, muscleKg = r.muscleKg, waterPct = r.waterPct, proteinPct = r.proteinPct,
                 boneKg = r.boneKg, visceral = r.visceral, bmr = r.bmr, metabolicAge = r.metabolicAge, subcutaneousPct = r.subcutaneousPct,
                 leanKg = r.leanKg, source = "Fitdays",

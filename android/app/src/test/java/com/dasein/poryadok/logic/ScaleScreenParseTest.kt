@@ -47,4 +47,45 @@ class ScaleScreenParseTest {
         assertEquals(1600.0, r.bmr!!, 0.01)
         assertNull(r.visceral)
     }
+
+    /** Отчёт Fitdays со скриншота пользователя: кириллица распознана мусором, числа и единицы — как есть. */
+    private val fitdays = listOf(
+        "Бeня", "06:31 08/10/2026", "Aaнные 6anahca", "L 43.8 % 56.2 % R", "NHAMKaTOP 3HaYeHMe CTaHAapT",
+        "Bec 80.8kg CnNWKOM BbICOKO", "BMI 27.3 BbICOKO", "Tenechbi XNP 26.3% BbICOKO", "Macca XNPa 21.3kg BbICOKO",
+        "Macca Tena 6e3 XNPa 59.5kg", "YacToTa cepAeYHbIX 90bpm HopManbHbIN", "CepAeYHbIN NHAeKC 3.3L/min/m² HopManbHbIN",
+        "MbIweYHaR Macca 56.6kg OYeHb", "NpoueHT MbIwu 70.1% OYeHb", "CKeneTHbIe MbIwubI 37.4% CTaHAapT",
+        "KocTHaR Macca 3.0kg HN3KO", "Macca 6enka 14.1kg OYeHb", "6enok 17.4% OYeHb", "Bec BOAbI 42.5kg CTaHAapT",
+        "BoAa 52.6% CTaHAapT", "NOAKOXHbIN XNP 18.8% CnNWKOM", "BNcuepanbHbIN XNP 13.0 CnNWKOM", "6a3OBbIN pacxoA 1705kcal",
+        "Bo3pacT Tena 42 CnNWKOM", "NAeanbHbIN Bec Tena 65.1kg", "Fitdays",
+    )
+
+    @Test fun fitdaysReport() {
+        val r = ScaleScreenParse.parse(fitdays)
+        assertEquals(80.8, r.weight!!, 0.01)
+        assertEquals(27.3, r.bmi!!, 0.01)
+        assertEquals(26.3, r.fatPct!!, 0.01)
+        assertEquals(59.5, r.leanKg!!, 0.01)
+        assertEquals(90.0, r.heartRate!!, 0.01)
+        assertEquals(56.6, r.muscleKg!!, 0.01)
+        assertEquals(37.4, r.musclePct!!, 0.01)
+        assertEquals(3.0, r.boneKg!!, 0.01)
+        assertEquals(17.4, r.proteinPct!!, 0.01)
+        assertEquals(52.6, r.waterPct!!, 0.01)
+        assertEquals(18.8, r.subcutaneousPct!!, 0.01)
+        assertEquals(13.0, r.visceral!!, 0.01)
+        assertEquals(1705.0, r.bmr!!, 0.01)
+        assertEquals(42.0, r.metabolicAge!!, 0.01)
+        assertEquals(65.1, r.idealWeight!!, 0.01)
+        val t = java.time.Instant.ofEpochMilli(r.at!!).atZone(java.time.ZoneId.systemDefault()).toLocalDateTime()
+        assertEquals(java.time.LocalDateTime.of(2026, 10, 8, 6, 31), t)
+    }
+
+    @Test fun fitdaysWithoutUnits() {
+        // Мелкие единицы (kg, %) могут не распознаться — порядок и проверка «жир + без жира = вес» всё равно находят вес.
+        val noUnits = fitdays.map { it.replace("kg", "").replace("%", "").replace("kcal", "").replace("bpm", "") }
+        val r = ScaleScreenParse.parse(noUnits)
+        assertEquals(80.8, r.weight!!, 0.01)
+        assertEquals(26.3, r.fatPct!!, 0.01)
+        assertEquals(1705.0, r.bmr!!, 0.01)
+    }
 }
