@@ -75,17 +75,18 @@ object Sber {
         val op = BankSms.parse(text) ?: return false
         val key = "$KIND:${channel.prefix}:$sourceKey"
         val x = Graph.extra
-        if (x.importRecord(key) != null) return false
         val dao = Graph.dao
+        val income = op.kind == BankSms.Kind.INCOME
+        val type = if (income) TxnType.INCOME else TxnType.EXPENSE
+        x.importRecord(key)?.let { r -> fix(r.targetId, op, type); return false }
         val tKey = textKey(sameText)
         x.importRecord(tKey)?.let { r ->
             if (abs(r.at - at) <= SAME_OP_MS) {
+                fix(r.targetId, op, type)
                 x.putImportRecord(ImportRecord(key, KIND, r.targetId, at))
                 return false
             }
         }
-        val income = op.kind == BankSms.Kind.INCOME
-        val type = if (income) TxnType.INCOME else TxnType.EXPENSE
         val acc = accountId()
         val records = x.importRecordsOf(KIND)
         val channels = records.groupBy({ it.targetId }, { channelOf(it.key) })
@@ -100,16 +101,49 @@ object Sber {
             x.putImportRecord(ImportRecord(tKey, KIND, twin.id, at))
             return false
         }
-        val cats = dao.categoriesNow().filter { it.income == income }
-        val cat = cats.firstOrNull { it.name == op.category } ?: cats.firstOrNull { it.name == "Другое" }
         val id = dao.upsertTxn(
-            Txn(type = type, amount = op.amount, accountId = acc, categoryId = cat?.id, day = Dates.dayOf(at), note = noteOf(op), createdAt = at)
+            Txn(type = type, amount = op.amount, accountId = acc, categoryId = categoryOf(op), day = Dates.dayOf(at), note = noteOf(op), createdAt = at)
         )
         x.putImportRecord(ImportRecord(key, KIND, id, at))
         x.putImportRecord(ImportRecord(tKey, KIND, id, at))
         Graph.prefs.update { it.copy(sberImported = it.sberImported + 1, sberLastAt = maxOf(it.sberLastAt, at)) }
         true
     }
+
+    /** Категория по имени: «Зарплата» найдёт и «Зарплата/ежедневный доход». Иначе — «Другое». */
+    private suspend fun categoryOf(op: BankSms.Op): Long? {
+        val cats = Graph.dao.categoriesNow().filter { it.income == (op.kind == BankSms.Kind.INCOME) }
+        val name = op.category
+        return (name?.let { n -> cats.firstOrNull { it.name.equals(n, true) } ?: cats.firstOrNull { it.name.startsWith(n, true) } ?: cats.firstOrNull { n.lowercase() in it.name.lowercase() } }
+            ?: cats.firstOrNull { it.name == "Другое" })?.id
+    }
+
+    /**
+     * Сообщение уже записано, но старая версия разобрала его неверно (не та сумма из-за узких пробелов в «56 555,43 ₽»,
+     * доход как расход, зарплата в «Другое»). Исправляет только записи, созданные из Сбера и не правленные вручную.
+     */
+    private suspend fun fix(id: Long, op: BankSms.Op, type: TxnType) {
+        val dao = Graph.dao
+        val t = dao.txnById(id) ?: return
+        if (!t.note.startsWith("Сбер")) return
+        val wrongAmount = abs(t.amount - op.amount) >= 0.005
+        val wrongType = t.type != type && (t.type == TxnType.INCOME || t.type == TxnType.EXPENSE)
+        val cats = dao.categoriesNow()
+        val curCat = cats.firstOrNull { it.id == t.categoryId }
+        val wrongCat = op.category != null && (curCat == null || curCat.name == "Другое" || curCat.income != (type == TxnType.INCOME))
+        if (!wrongAmount && !wrongType && !wrongCat) return
+        dao.upsertTxn(
+            t.copy(
+                amount = op.amount, type = type,
+                categoryId = if (wrongCat || wrongType) categoryOf(op) else t.categoryId,
+                note = if (op.merchant.isNotBlank() && label(t.note).isEmpty()) noteOf(op) else t.note,
+            )
+        )
+        fixed++
+    }
+
+    /** Сколько записей исправил последний импорт. */
+    @Volatile var fixed = 0
 
     private fun noteOf(op: BankSms.Op) = "Сбер: " + listOf(op.merchant, op.card).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "Сбер" }
 
@@ -167,7 +201,8 @@ object Sber {
     /** Разовый импорт уже полученных SMS от 900 (нужно разрешение на чтение SMS). */
     suspend fun importSms(ctx: Context, days: Int = 90): Pair<Int, Int> {
         if (!smsAllowed(ctx)) return 0 to 0
-        val since = System.currentTimeMillis() - days * 86_400_000L
+        fixed = 0
+        val since = if (days <= 0) 0L else System.currentTimeMillis() - days * 86_400_000L
         var seen = 0
         var added = 0
         val rows = mutableListOf<Triple<String, String, Long>>()
@@ -197,17 +232,24 @@ class SberNotificationListener : NotificationListenerService() {
         if (!BankSms.isSberSource(sbn.packageName, title)) return
         if (sbn.notification.flags and Notification.FLAG_GROUP_SUMMARY != 0) return
         val text = (extras.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: extras.getCharSequence(Notification.EXTRA_TEXT))?.toString().orEmpty()
-        if (text.isBlank()) return
+        // Свёрнутые уведомления (InboxStyle) держат по операции в строке: «Зарплата +995,72 ₽», «Зарплата +4 784 ₽».
+        val lines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)?.map { it.toString() }?.filter { it.isNotBlank() }.orEmpty()
+        val parts = if (lines.size > 1) lines else listOf(text)
+        if (parts.all { it.isBlank() }) return
         Graph.init(applicationContext)
         Graph.scope.launch {
             runCatching {
                 if (!Graph.prefs.now().sberOn) return@launch
                 // SMS от 900 в уведомлении SMS-приложения и та же SMS из базы — одно сообщение: сверяем их по тексту.
                 val fromSms = "sber" !in sbn.packageName.lowercase()
-                Sber.record(
-                    "$title $text".trim(), sbn.postTime, Sber.notificationKey(text, sbn.postTime),
-                    if (fromSms) Sber.Channel.SMS_NOTIFICATION else Sber.Channel.PUSH, sameText = text,
-                )
+                parts.forEach { part ->
+                    // Заголовок — часто плательщик («ФИЛИАЛ ФБУЗ …»); если сумма только в нём, берём его отдельно.
+                    val full = "$title $part".trim()
+                    Sber.record(
+                        full, sbn.postTime, Sber.notificationKey(part, sbn.postTime),
+                        if (fromSms) Sber.Channel.SMS_NOTIFICATION else Sber.Channel.PUSH, sameText = part,
+                    )
+                }
             }.onFailure { Log.w("Sber", "notification", it) }
         }
     }

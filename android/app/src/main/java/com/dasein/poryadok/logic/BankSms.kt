@@ -10,16 +10,33 @@ object BankSms {
     data class Op(val kind: Kind, val amount: Double, val merchant: String, val card: String, val category: String?, val text: String)
 
     private val AMOUNT = Regex("""(\d{1,3}(?:[  ]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s?(?:руб|р(?![а-яА-ЯёЁa-zA-Z])|₽|RUB|RUR)""", RegexOption.IGNORE_CASE)
-    private val BALANCE = Regex("""(баланс|доступно|остаток)[:\s]""", RegexOption.IGNORE_CASE)
+    /**
+     * Где начинается остаток после операции: «Баланс: 5 230р» в SMS 900 или «МИР Золотая: 139 003,82 ₽» в пуше
+     * СберБанк Онлайн. Суммы после него — не операция.
+     */
+    private val BALANCE = Regex(
+        """(баланс|доступно|остаток)[:\s]|(?<![\p{L}])(?:мир|mir|visa|виза|mastercard|ecmc|maestro|сберкарта|платёжный счёт|платежный счет|счёт|счет|карта)(?![\p{L}\d-])[^:\d\n]{0,30}:\s?[+−–-]?\d""",
+        RegexOption.IGNORE_CASE,
+    )
     private val CARD = Regex("""\b((?:MIR|VISA|ECMC|MC|СЧЁТ|СЧЕТ|КАРТА)[-\s*]?\d{4})\b""", RegexOption.IGNORE_CASE)
     private val TIME = Regex("""\b\d{1,2}:\d{2}\b""")
 
-    private val SKIP = listOf("код", "пароль", "никому не сообщайте", "отказ", "недостаточно", "отклонен", "не выполнен", "не прошла", "подтвердите", "одобрен кредит", "предлагаем")
+    /** Одноразовые коды и прочее, что не операция. «Код» — только отдельным словом: «ЗАВОД КОДЕКС» — операция. */
+    private val SKIP_WORD = Regex("""(?<![\p{L}])(?:код|кодом|коды)(?![\p{L}])""", RegexOption.IGNORE_CASE)
+    private val SKIP = listOf("пароль", "никому не сообщайте", "отказ", "недостаточно", "отклонен", "не выполнен", "не прошла", "подтвердите", "одобрен кредит", "предлагаем")
     private val INCOME = listOf(
-        "зачислен", "зачисление", "поступлен", "поступил", "пополнение", "возврат", "кэшбэк", "кешбэк", "cashback", "зарплат", "аванс",
+        "зачислен", "зачисление", "начислен", "начисление", "поступлен", "поступил", "поступление", "пополнение", "возврат", "кэшбэк", "кешбэк", "cashback",
+        "зарплат", "заработн", "аванс", "оплата труда", "отпускн", "входящий",
         "вам перевели", "получен перевод", "входящий перевод", "перевёл вам", "перевел вам", "перевела вам", "перевёл(а) вам", "перевел(а) вам",
         "отправил вам", "отправила вам", "отправил(а) вам",
     )
+    /** Начисления, которые слабее явной покупки или списания: «Выплата пособия» — доход, «Списание … выплата по кредиту» — нет. */
+    private val INCOME_WEAK = listOf(
+        "больничн", "пенси", "стипенди", "пособи", "выплат", "премия", "премии", "компенсац", "дивиденд", "капитализац",
+        "проценты по вклад", "проценты на остаток", "алимент",
+    )
+    private val EXPENSE_STRONG = listOf("покупка", "списан", "оплата", "снятие", "выдача", "комиссия", "погашени")
+
     /** «Перевод от …», «Перевод из Т-Банка …», «Перевод 1 000р от Екатерина Щ.» — входящие; «на запрос от» — наоборот, оплата по запросу. */
     private val TRANSFER_FROM = Regex("""перевод(?:\s+\S+){0,6}?\s+(?:от|из)(?![а-яё])""")
     /** Знак прямо перед суммой: «+1 000 ₽» — доход, «−350 ₽» — расход. */
@@ -46,10 +63,18 @@ object BankSms {
         return "sber" in p || t == "900" || t == "сбербанк" || t == "sberbank" || t == "сбер" || t.startsWith("сбербанк")
     }
 
+    /** Пробелы, которыми банки разделяют разряды: обычный, неразрывный, узкий неразрывный (СберБанк Онлайн), тонкий. */
+    private val SPACES = Regex("""[\s\u00A0\u2007\u2008\u2009\u200A\u202F\u205F\u3000]+""")
+    private val INVISIBLE = Regex("""[\u200B\u200C\u200D\u2060\uFEFF]""")
+
+    fun normalize(text: String) = text.replace(INVISIBLE, "").replace(SPACES, " ").trim()
+
+    private val SALARY = listOf("зарплат", "заработн", "аванс", "оплата труда", "отпускн", "оклад", "преми")
+
     fun parse(text: String): Op? {
-        val t = text.replace('\n', ' ').replace(Regex("\\s+"), " ").trim()
+        val t = normalize(text)
         val low = t.lowercase()
-        if (t.isEmpty() || SKIP.any { it in low }) return null
+        if (t.isEmpty() || SKIP.any { it in low } || SKIP_WORD.containsMatchIn(low)) return null
         val balanceAt = BALANCE.find(t)?.range?.first ?: Int.MAX_VALUE
         val match = AMOUNT.findAll(t).firstOrNull { it.range.first < balanceAt } ?: return null
         val sign = SIGNED.findAll(t).firstOrNull { it.range.last == match.range.first }?.groupValues?.get(1)
@@ -58,24 +83,34 @@ object BankSms {
             sign == "+" -> Kind.INCOME
             sign != null -> Kind.EXPENSE
             INCOME.any { it in low } -> Kind.INCOME
+            INCOME_WEAK.any { it in low } && EXPENSE_STRONG.none { it in low } -> Kind.INCOME
             !request && TRANSFER_FROM.containsMatchIn(low.substring(0, minOf(balanceAt, low.length))) -> Kind.INCOME
             EXPENSE.any { it in low } -> Kind.EXPENSE
             else -> return null
         }
-        val amount = match.groupValues[1].replace(" ", "").replace(" ", "").replace(',', '.').toDoubleOrNull() ?: return null
+        val amount = match.groupValues[1].replace(" ", "").replace(',', '.').toDoubleOrNull() ?: return null
         if (amount <= 0) return null
         val card = CARD.find(t)?.value?.uppercase().orEmpty()
-        val merchant = t.substring(match.range.last + 1, minOf(balanceAt, t.length))
-            .replace(TIME, "").trim().trim('.', ',', ';', ':', '-', '—', '–', '•').trim()
+        val after = clean(t.substring(match.range.last + 1, minOf(balanceAt, t.length)))
+        // Пуш СберБанк Онлайн: «ФИЛИАЛ ФБУЗ … Зарплата +4 784 ₽» — плательщик стоит перед суммой.
+        val merchant = after.ifEmpty { clean(LABELS.replace(CARD.replace(t.substring(0, match.range.first), ""), " ")) }
             .let { if (it.length > 60) it.take(60) else it }
         val category = if (kind == Kind.INCOME) {
-            if ("зарплат" in low || "аванс" in low) "Зарплата" else if ("кэшбэк" in low || "кешбэк" in low || "cashback" in low) "Кэшбэк" else null
+            if (SALARY.any { it in low }) "Зарплата" else if ("кэшбэк" in low || "кешбэк" in low || "cashback" in low) "Кэшбэк" else null
         } else {
             val m = (merchant + " " + low).lowercase()
             MERCHANT_CATEGORIES.firstOrNull { (_, words) -> words.any { it in m } }?.first
         }
         return Op(kind, amount, merchant, card, category, t)
     }
+
+    /** Слова-ярлыки операции, которые не являются именем плательщика или магазина. */
+    private val LABELS = Regex(
+        """(?<![\p{L}])(?:входящий перевод|перевод|зачисление|зачислено|поступление|зарплата|заработная плата|аванс|покупка|оплата|списание|возврат|кэшбэк|пополнение|сбербанк|сбер|900)(?![\p{L}])""",
+        RegexOption.IGNORE_CASE,
+    )
+
+    private fun clean(s: String) = s.replace(TIME, "").replace(SPACES, " ").trim { it.isWhitespace() || it in ".,;:-—–•+−" }
 
     /**
      * Исправляет тип уже записанной операции по её подписи: раньше «Перевод 1 000р от Екатерина Щ.» считался расходом.

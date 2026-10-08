@@ -124,6 +124,8 @@ interface LifeDao {
     fun txns(): Flow<List<Txn>>
     @Query("SELECT * FROM txns")
     suspend fun txnsNow(): List<Txn>
+    @Query("SELECT * FROM txns WHERE id = :id")
+    suspend fun txnById(id: Long): Txn?
     @Upsert suspend fun upsertTxn(t: Txn): Long
     @Delete suspend fun deleteTxn(t: Txn)
     @Query("DELETE FROM txns WHERE accountId = :accountId OR toAccountId = :accountId")

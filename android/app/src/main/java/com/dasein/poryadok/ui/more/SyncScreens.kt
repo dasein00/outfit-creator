@@ -282,17 +282,21 @@ fun SberScreen(nav: NavHostController, settings: AppSettings) {
             }
             SectionTitle("2. История из SMS 900")
             Tile {
-                Text("Разово загрузить операции из уже полученных SMS за последние 90 дней. Повторный запуск дублей не создаёт.", fontSize = 13.sp)
+                Text("Загрузить операции из уже полученных SMS от 900. Повторный запуск дублей не создаёт, а неверно распознанные раньше суммы и зарплаты исправит.", fontSize = 13.sp)
                 Gap(6.dp)
                 if (!sms) OutlinedButton(onClick = { smsLauncher.launch(Manifest.permission.READ_SMS) }, Modifier.fillMaxWidth()) { Text("Разрешить чтение SMS") }
-                else Button(onClick = {
-                    importing = true
-                    scope.launch {
-                        val (seen, added) = Sber.importSms(ctx)
-                        importing = false
-                        Toast.makeText(ctx, "SMS от Сбера: $seen, новых операций: $added", Toast.LENGTH_LONG).show()
+                else {
+                    fun run(days: Int) {
+                        importing = true
+                        scope.launch {
+                            val (seen, added) = Sber.importSms(ctx, days)
+                            importing = false
+                            Toast.makeText(ctx, "SMS от Сбера: $seen, новых операций: $added, исправлено: ${Sber.fixed}", Toast.LENGTH_LONG).show()
+                        }
                     }
-                }, enabled = !importing, modifier = Modifier.fillMaxWidth()) { Text(if (importing) "Загружаю…" else "Загрузить из SMS") }
+                    Button(onClick = { run(90) }, enabled = !importing, modifier = Modifier.fillMaxWidth()) { Text(if (importing) "Загружаю…" else "Загрузить за 90 дней") }
+                    OutlinedButton(onClick = { run(0) }, enabled = !importing, modifier = Modifier.fillMaxWidth()) { Text("Перечитать все SMS 900 (за всё время)") }
+                }
             }
             SectionTitle("Последние операции «Сбер»")
             Text("Всего записано: ${settings.sberImported}. Последняя: ${ago(settings.sberLastAt)}", fontSize = 12.sp, color = extra.dim)
