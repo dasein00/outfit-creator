@@ -42,7 +42,9 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         Graph.init(this)
-        deepLink.value = intent?.let { routeOf(it) }
+        // При повороте экрана активность пересоздаётся с тем же intent — присланный файл (скриншот весов,
+        // таблица финансов) обрабатываем только при первом запуске, иначе он открывается снова и снова.
+        if (savedInstanceState == null) deepLink.value = intent?.let { routeOf(it) }
         if (savedInstanceState == null && intent?.getBooleanExtra(EXTRA_DEMO, false) == true) Graph.scope.launch { DemoData.fill() }
         if (Build.VERSION.SDK_INT >= 33) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         // Виджет перерисовывается при каждом запуске — после обновления сразу виден новый вид (погода вместо графика веса).
