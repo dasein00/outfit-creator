@@ -71,6 +71,11 @@ class MainActivity : FragmentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Новости на месяц вперёд: есть сеть — догружаем сразу; нет — WorkManager догрузит, когда она появится.
+        Graph.scope.launch {
+            runCatching { com.dasein.poryadok.system.Offline.onAppStart(applicationContext) }
+            runCatching { com.dasein.poryadok.system.Offline.sync(applicationContext) }
+        }
         // Health Connect отдаёт данные только приложению на экране — подтягиваем шаги при каждом открытии.
         Graph.scope.launch {
             runCatching { Steps.sync(applicationContext) }

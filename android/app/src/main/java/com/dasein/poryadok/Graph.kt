@@ -74,6 +74,8 @@ object Graph {
             runCatching { Steps.ensureScheduled(app) }.onFailure { Log.e("DASEIN", "steps", it) }
             runCatching { SleepTracker.ensureScheduled(app) }.onFailure { Log.e("DASEIN", "sleep", it) }
             runCatching { com.dasein.poryadok.system.Weather.schedule(app) }.onFailure { Log.e("DASEIN", "weather", it) }
+            // Новости истории и культуры на месяц вперёд — чтобы было что почитать без интернета.
+            runCatching { com.dasein.poryadok.system.Offline.onAppStart(app) }.onFailure { Log.e("DASEIN", "offline", it) }
             Repo.processRecurring()
             Alarms.rescheduleAll(app)
             Widgets.refresh(app)

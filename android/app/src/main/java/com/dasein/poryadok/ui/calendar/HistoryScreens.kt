@@ -59,7 +59,11 @@ fun HistoryTab(selectedDay: Long) {
     var day by rememberSaveable(selectedDay) { mutableLongStateOf(selectedDay) }
     val date = LocalDate.ofEpochDay(day)
     var events by remember(day) { mutableStateOf<List<HistoryDay.Event>?>(null) }
-    LaunchedEffect(day) { events = HistoryRepo.day(ctx, date) }
+    LaunchedEffect(day) {
+        // Сначала сохранённое на телефоне — без ожидания сети, потом, если есть сеть, свежее.
+        events = HistoryRepo.day(ctx, date, online = false)
+        events = HistoryRepo.day(ctx, date, online = true).takeIf { it.size >= events.orEmpty().size } ?: events
+    }
     Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
             Text("‹", fontSize = 26.sp, modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { day -= 1 }.padding(horizontal = 14.dp))
@@ -85,7 +89,8 @@ fun HistoryTab(selectedDay: Long) {
                 list.forEachIndexed { i, e -> EventCard(e, startOpen = i == 0, date = date) }
             }
         }
-        Text("Источники: подборка DASEIN и раздел «В этот день» русской Википедии.", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(vertical = 16.dp))
+        Text("Источники: подборка DASEIN и раздел «В этот день» русской Википедии.", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 16.dp))
+        com.dasein.poryadok.ui.common.OfflineStatusLine(Modifier.padding(top = 4.dp, bottom = 16.dp))
     }
 }
 

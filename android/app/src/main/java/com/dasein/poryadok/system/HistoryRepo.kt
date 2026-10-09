@@ -19,7 +19,49 @@ object HistoryRepo {
         HistoryDay.parseBuiltIn(ctx.assets.open("history/events.json").bufferedReader().use { it.readText() })
     }.getOrDefault(emptyMap()).also { builtIn = it }
 
-    private fun cacheFile(ctx: Context, d: LocalDate) = File(File(ctx.cacheDir, "history").apply { mkdirs() }, "${md(d)}.json")
+    /**
+     * Хранилище «Википедии на день» — в files, а не в cache: кэш Android чистит сам при нехватке места,
+     * а здесь загруженное на месяц вперёд должно лежать, пока нет интернета. Сжато gzip (в 5–8 раз меньше).
+     */
+    private fun storeFile(ctx: Context, d: LocalDate) = File(File(ctx.filesDir, "offline/history").apply { mkdirs() }, "${md(d)}.json.gz")
+    private fun oldCacheFile(ctx: Context, d: LocalDate) = File(File(ctx.cacheDir, "history"), "${md(d)}.json")
+
+    /** Сколько считать загруженное свежим. События «В этот день» почти не меняются — обновляем раз в 2 месяца. */
+    private const val FRESH_MS = 60L * 86_400_000
+
+    private fun read(ctx: Context, d: LocalDate): String? {
+        val f = storeFile(ctx, d)
+        if (f.exists()) runCatching { return java.util.zip.GZIPInputStream(f.inputStream()).use { it.readBytes().decodeToString() } }
+        // Старая версия хранила в cache: переносим, чтобы не пропало.
+        val old = oldCacheFile(ctx, d)
+        if (!old.exists()) return null
+        return runCatching { old.readText() }.getOrNull()?.also { write(ctx, d, it, old.lastModified()); old.delete() }
+    }
+
+    private fun write(ctx: Context, d: LocalDate, text: String, at: Long = System.currentTimeMillis()) {
+        val f = storeFile(ctx, d)
+        val tmp = File(f.path + ".tmp")
+        runCatching {
+            java.util.zip.GZIPOutputStream(tmp.outputStream()).use { it.write(text.encodeToByteArray()) }
+            if (!tmp.renameTo(f)) { f.delete(); tmp.renameTo(f) }
+            f.setLastModified(at)
+        }.onFailure { tmp.delete() }
+    }
+
+    /** Загружено ли на день и не устарело ли. */
+    fun isStored(ctx: Context, d: LocalDate, fresh: Boolean = true): Boolean {
+        val f = storeFile(ctx, d)
+        if (!f.exists()) return oldCacheFile(ctx, d).exists() && !fresh
+        return !fresh || System.currentTimeMillis() - f.lastModified() < FRESH_MS
+    }
+
+    /** Загрузить день из сети и сохранить. true — получилось. */
+    suspend fun download(ctx: Context, d: LocalDate): Boolean = withContext(Dispatchers.IO) {
+        val text = runCatching { fetch(d) }.getOrNull() ?: return@withContext false
+        if (text.length < 200) return@withContext false
+        write(ctx, d, text)
+        true
+    }
 
     /** Сначала то, что есть без сети; [online] — дополнить из Википедии (кэш на месяц). */
     private val memo = java.util.concurrent.ConcurrentHashMap<LocalDate, List<HistoryDay.Event>>()
@@ -36,13 +78,11 @@ object HistoryRepo {
 
     /** Ответ Википедии «В этот день» за дату (события, рождения): из кэша или из сети. Нужен и «Истории», и «Культуре». */
     suspend fun wikiText(ctx: Context, d: LocalDate, online: Boolean): String? = withContext(Dispatchers.IO) {
-        val f = cacheFile(ctx, d)
-        val fresh = f.exists() && System.currentTimeMillis() - f.lastModified() < 30L * 86_400_000
-        when {
-            fresh -> runCatching { f.readText() }.getOrNull()
-            online -> runCatching { fetch(d) }.getOrNull()?.also { runCatching { f.writeText(it) } } ?: runCatching { f.readText() }.getOrNull()
-            else -> runCatching { f.readText() }.getOrNull()
+        if (online && !isStored(ctx, d) && Offline.hasNetwork(ctx)) {
+            runCatching { fetch(d) }.getOrNull()?.takeIf { it.length >= 200 }?.let { write(ctx, d, it); return@withContext it }
         }
+        // Без сети или сеть не ответила — то, что сохранено раньше, даже если давно.
+        read(ctx, d)
     }
 
     /** Есть ли что-то без сети: если на этот день встроенных событий нет — ближайшие встроенные. */

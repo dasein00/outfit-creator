@@ -105,7 +105,8 @@ fun CultureTab(selectedDay: Long) {
                 shown.forEach { CultureCard(it, date) }
             }
         }
-        Text("Источники: подборка DASEIN и раздел «В этот день» русской Википедии.", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(vertical = 16.dp))
+        Text("Источники: подборка DASEIN и раздел «В этот день» русской Википедии.", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 16.dp))
+        com.dasein.poryadok.ui.common.OfflineStatusLine(Modifier.padding(top = 4.dp, bottom = 16.dp))
     }
 }
 
