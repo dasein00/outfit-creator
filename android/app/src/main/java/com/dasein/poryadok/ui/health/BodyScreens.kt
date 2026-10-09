@@ -297,7 +297,7 @@ internal fun ModelFigure(fill: Float, modifier: Modifier) {
     )
 }
 
-/** Подробности взвешивания (экран «Детали»): вкладки «Показатели тела» и «Анализ отчёта». */
+/** Подробности взвешивания (экран «Детали»): вкладки «Показатели тела» и «Аналитика». */
 @Composable
 fun BodyDetailScreen(nav: NavHostController, at: Long) {
     val data = rememberBodyData()
@@ -320,7 +320,7 @@ fun BodyDetailScreen(nav: NavHostController, at: Long) {
         val r = m.reading()
         val p = data.person
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            Segments(listOf(0 to "Показатели тела", 1 to "Анализ отчёта"), tab, { tab = it })
+            Segments(listOf(0 to "Показатели тела", 1 to "Аналитика"), tab, { tab = it })
             Gap(10.dp)
             if (tab == 0) {
                 val ws = BodyComp.weightScale(data.profile.heightCm)
@@ -358,6 +358,8 @@ fun BodyDetailScreen(nav: NavHostController, at: Long) {
                     Hint("body_manual", "Весы OKOK показывают все эти показатели в своём приложении, но Google Fit передаёт только вес, жир, кости, безжировую массу, обмен и воду. Остальное можно вписать кнопкой «Изменить» вверху.")
                 }
             } else {
+                BodyCharts(data.readings, data.profile.heightCm)
+                Gap(8.dp)
                 BodyComposition(r, p)
                 BodyTypeGrid(r, p)
                 AdviceCard(r, p)

@@ -26,6 +26,7 @@ object ScaleScreenParse {
         val at: Long? = null,
         val heartRate: Double? = null,
         val idealWeight: Double? = null,
+        val cardiacIndex: Double? = null,
     ) {
         val found get() = listOf(weight, fatPct, musclePct, muscleKg, waterPct, proteinPct, boneKg, visceral, bmr, metabolicAge, subcutaneousPct).count { it != null }
     }
@@ -160,7 +161,7 @@ object ScaleScreenParse {
             weight = f["weight"] ?: generic.weight, bmi = f["bmi"] ?: generic.bmi, fatPct = f["fat"] ?: generic.fatPct,
             musclePct = f["musclePct"], muscleKg = f["muscleKg"], waterPct = f["water"], proteinPct = f["protein"],
             boneKg = f["bone"], visceral = f["visceral"], bmr = f["bmr"], metabolicAge = f["age"], subcutaneousPct = f["subcut"],
-            leanKg = f["lean"], at = timeOf(lines), heartRate = f["hr"], idealWeight = f["ideal"],
+            leanKg = f["lean"], at = timeOf(lines), heartRate = f["hr"], idealWeight = f["ideal"], cardiacIndex = f["cardiac"],
         )
     }
 

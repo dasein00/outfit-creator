@@ -45,6 +45,7 @@ object Body {
         pkg == "com.google.android.apps.fitness" -> "Google Fit"
         pkg == "com.google.android.apps.healthdata" || pkg == "com.android.healthconnect.controller" -> "Health Connect"
         pkg.contains("okok", true) || pkg.contains("chipsea", true) -> "OKOK"
+        pkg.contains("fitdays", true) -> "Fitdays"
         pkg.contains("samsung", true) -> "Samsung Health"
         pkg.contains("xiaomi", true) || pkg.contains("mi.health", true) -> "Mi Fitness"
         pkg.contains("huawei", true) -> "Huawei Health"
@@ -129,6 +130,7 @@ object Body {
             list.filter { abs(time(it).epochSecond - at.epochSecond) <= 300 }.minByOrNull { abs(time(it).epochSecond - at.epochSecond) }
         val waters = read(BodyWaterMassRecord::class)
         var added = 0
+        val known = Graph.extra.bodyMetricsNow().toMutableList()
         weights.forEach { w ->
             val ext = "hc:" + w.metadata.id
             val at = w.time.toEpochMilli()
@@ -148,15 +150,26 @@ object Body {
                 if (filled != existing) Graph.extra.upsertBodyMetric(filled)
                 return@forEach
             }
-            save(
-                BodyMetric(
+            // То же взвешивание уже внесено со скриншота Fitdays или вручную (±10 минут, тот же вес) — дополняем его, без дубля.
+            val twin = known.filter { it.extId == null && abs(it.at - at) <= 10 * 60_000 && abs(it.weight - kg) < 0.3 }.minByOrNull { abs(it.at - at) }
+            if (twin != null) {
+                val filled = twin.copy(
+                    extId = ext, fatPct = twin.fatPct ?: fat, boneKg = twin.boneKg ?: bone, leanKg = twin.leanKg ?: lean,
+                    bmr = twin.bmr ?: bmr, waterPct = twin.waterPct ?: water,
+                )
+                Graph.extra.upsertBodyMetric(filled)
+                known[known.indexOf(twin)] = filled
+                return@forEach
+            }
+            val fresh = BodyMetric(
                     at = at, day = Dates.dayOf(at), weight = kg,
                     fatPct = fat, boneKg = bone, leanKg = lean, bmr = bmr, waterPct = water,
                     muscleKg = lean?.let { l -> bone?.let { l - it } },
                     source = "Health Connect · " + appName(w.metadata.dataOrigin.packageName),
                     extId = ext,
                 )
-            )
+            known += fresh
+            save(fresh)
             added++
         }
         if (added > 0) Graph.prefs.update { it.copy(bodyHc = true) }

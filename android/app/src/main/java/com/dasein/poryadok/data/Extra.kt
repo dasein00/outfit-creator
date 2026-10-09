@@ -271,6 +271,9 @@ data class BodyMetric(
     val waistCm: Double? = null,
     val hipCm: Double? = null,
     val neckCm: Double? = null,
+    /** Пульс и сердечный индекс (л/мин/м²) — их показывают весы с ЧСС (Kitfort KT-4057, Fitdays). */
+    val heartRate: Double? = null,
+    val cardiacIndex: Double? = null,
 )
 
 /** Сон, определённый по использованию телефона. day — утро. Исправления пользователя учат алгоритм. */
@@ -567,7 +570,7 @@ interface ExtraDao {
         MediaList::class, MediaListItem::class, Page::class, PageBlock::class, Exercise::class, WorkoutPlan::class,
         PlanExercise::class, WorkoutSession::class, SetLog::class, CustomDay::class, HolidayMark::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = false,
 )
 abstract class ExtraDb : RoomDatabase() {
@@ -715,9 +718,17 @@ abstract class ExtraDb : RoomDatabase() {
             }
         }
 
+        /** v10: пульс и сердечный индекс во взвешивании. */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `body_metrics` ADD COLUMN `heartRate` REAL")
+                db.execSQL("ALTER TABLE `body_metrics` ADD COLUMN `cardiacIndex` REAL")
+            }
+        }
+
         fun create(context: Context): ExtraDb =
             Room.databaseBuilder(context, ExtraDb::class.java, "dasein_extra.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9).build()
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10).build()
     }
 }
 

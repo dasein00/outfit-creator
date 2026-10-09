@@ -32,6 +32,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -176,35 +177,10 @@ fun BodyTab(nav: NavHostController, profile: BodyProfile, weights: List<WeightEn
     val last = readings.lastOrNull()
 
     // Скриншот из Fitdays (или другого приложения весов): распознаём показатели и открываем форму для проверки.
-    var reading by remember { mutableStateOf(false) }
-    fun fromScreenshot(uri: android.net.Uri) {
-        reading = true
-        scope.launch {
-            val lines = com.dasein.poryadok.system.ScaleOcr.lines(ctx, uri)
-            val r = com.dasein.poryadok.logic.ScaleScreenParse.parse(lines)
-            reading = false
-            if (r.weight == null && r.found == 0) {
-                Toast.makeText(ctx, "Не удалось распознать показатели. Нужен скриншот экрана с результатами взвешивания.", Toast.LENGTH_LONG).show()
-                return@launch
-            }
-            Toast.makeText(ctx, "Распознано показателей: ${r.found}. Проверьте и сохраните.", Toast.LENGTH_LONG).show()
-            val at = r.at ?: System.currentTimeMillis()
-            val day = java.time.Instant.ofEpochMilli(at).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toEpochDay()
-            if (r.heartRate != null || r.idealWeight != null) Toast.makeText(
-                ctx, listOfNotNull(r.heartRate?.let { "пульс ${it.toInt()}" }, r.idealWeight?.let { "идеальный вес ${it.toString().replace('.', ',')} кг" }).joinToString(", "),
-                Toast.LENGTH_SHORT,
-            ).show()
-            edit = BodyMetric(
-                at = at, day = day, weight = r.weight ?: last?.weight ?: profile.startWeight,
-                fatPct = r.fatPct, musclePct = r.musclePct, muscleKg = r.muscleKg, waterPct = r.waterPct, proteinPct = r.proteinPct,
-                boneKg = r.boneKg, visceral = r.visceral, bmr = r.bmr, metabolicAge = r.metabolicAge, subcutaneousPct = r.subcutaneousPct,
-                leanKg = r.leanKg, source = "Fitdays",
-            )
-        }
+    val reading by com.dasein.poryadok.system.ScaleOcr.busy
+    val shot = rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()) { uri ->
+        uri?.let { com.dasein.poryadok.system.ScaleOcr.process(ctx, it) }
     }
-    val shot = rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()) { uri -> uri?.let(::fromScreenshot) }
-    val pendingShot = com.dasein.poryadok.system.ScaleOcr.pending.value
-    LaunchedEffect(pendingShot) { pendingShot?.let { com.dasein.poryadok.system.ScaleOcr.pending.value = null; fromScreenshot(it) } }
 
     fun sync() {
         syncing = true
@@ -277,6 +253,7 @@ fun BodyTab(nav: NavHostController, profile: BodyProfile, weights: List<WeightEn
     }
     if (ruler) WeightRulerDialog(last?.weight ?: profile.startWeight, { ruler = false }) { m -> ruler = false; edit = m }
     edit?.let { BodyDialog(it) { edit = null } }
+    com.dasein.poryadok.system.ScaleOcr.draft.value?.let { d -> key(d) { BodyDialog(d) { com.dasein.poryadok.system.ScaleOcr.draft.value = null } } }
 }
 
 @Composable
@@ -476,7 +453,7 @@ internal fun BodyDialog(m0: BodyMetric, onDismiss: () -> Unit) {
             mapOf(
                 "fat" to s(m0.fatPct), "musclePct" to s(m0.musclePct), "muscleKg" to s(m0.muscleKg), "water" to s(m0.waterPct),
                 "protein" to s(m0.proteinPct), "bone" to s(m0.boneKg), "visceral" to s(m0.visceral), "bmr" to s(m0.bmr),
-                "age" to s(m0.metabolicAge), "subcut" to s(m0.subcutaneousPct),
+                "age" to s(m0.metabolicAge), "subcut" to s(m0.subcutaneousPct), "hr" to s(m0.heartRate), "cardiac" to s(m0.cardiacIndex),
                 "height" to s(m0.heightCm), "waist" to s(m0.waistCm), "hip" to s(m0.hipCm), "neck" to s(m0.neckCm),
             )
         )
@@ -508,6 +485,8 @@ internal fun BodyDialog(m0: BodyMetric, onDismiss: () -> Unit) {
                 MetricField(f, "bmr", "Базовый обмен", "ккал")
                 MetricField(f, "age", "Метаболический возраст", "лет")
                 MetricField(f, "subcut", "Подкожный жир", "%")
+                MetricField(f, "hr", "Пульс", "уд/мин")
+                MetricField(f, "cardiac", "Сердечный индекс", "л/мин/м²")
             }
         },
         confirmButton = {
@@ -517,7 +496,7 @@ internal fun BodyDialog(m0: BodyMetric, onDismiss: () -> Unit) {
                 val out = m.copy(
                     weight = w, fatPct = v["fat"], musclePct = v["musclePct"], muscleKg = v["muscleKg"], waterPct = v["water"],
                     proteinPct = v["protein"], boneKg = v["bone"], visceral = v["visceral"], bmr = v["bmr"], metabolicAge = v["age"],
-                    subcutaneousPct = v["subcut"], source = if (m.source.isBlank() || m.source == LEGACY || m.source.startsWith("вручную")) "вручную" else m.source,
+                    subcutaneousPct = v["subcut"], heartRate = v["hr"], cardiacIndex = v["cardiac"], source = if (m.source.isBlank() || m.source == LEGACY || m.source.startsWith("вручную")) "вручную" else m.source,
                 )
                 io { Body.save(out) }
                 onDismiss()

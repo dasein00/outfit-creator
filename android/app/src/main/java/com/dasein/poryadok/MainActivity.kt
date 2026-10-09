@@ -99,7 +99,7 @@ class MainActivity : FragmentActivity() {
                 // Картинка (скриншот из Fitdays и других приложений весов) — в «Вес», файлы таблиц — в тетрадь финансов.
                 val type = intent.type ?: uri?.let { contentResolver.getType(it) }.orEmpty()
                 if (uri != null && type.startsWith("image/")) {
-                    com.dasein.poryadok.system.ScaleOcr.pending.value = uri
+                    com.dasein.poryadok.system.ScaleOcr.process(this, uri)
                     return Routes.health(1)
                 }
                 uri?.let { NotebookInbox.pending.value = it; Routes.FIN_NOTEBOOK }
