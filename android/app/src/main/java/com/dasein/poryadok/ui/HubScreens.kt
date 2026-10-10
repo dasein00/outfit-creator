@@ -123,17 +123,17 @@ fun HealthHubScreen(nav: NavHostController) {
     val diary by com.dasein.poryadok.system.PressureStore.flow(pctx).collectAsState()
     val bp = diary?.let { d -> d.readings.filter { it.personId == (d.people.firstOrNull { p -> p.id == d.current } ?: d.people.firstOrNull())?.id }.maxByOrNull { it.time } }
     val tiles = listOf(
-        HealthTile("pressure/00", "Давление", bp?.let { "${it.sys}/${it.dia}" } ?: "—", bp?.let { com.dasein.poryadok.logic.Pressure.category(it.sys, it.dia).short.lowercase() } ?: "дневник для семьи", null, com.dasein.poryadok.ui.health.PressureRoutes.HOME),
-        HealthTile("food/02", "Питание", "$eaten ккал", "из ${plan.targetKcal}", eaten / plan.targetKcal.coerceAtLeast(1).toFloat(), Routes.health(0)),
-        HealthTile("sleep/00", "Сон", lastSleep?.let { "${sleepMinutes(it) / 60} ч ${sleepMinutes(it) % 60} м" } ?: "—",
+        HealthTile("d08/00", "Давление", bp?.let { "${it.sys}/${it.dia}" } ?: "—", bp?.let { com.dasein.poryadok.logic.Pressure.category(it.sys, it.dia).short.lowercase() } ?: "дневник для семьи", null, com.dasein.poryadok.ui.health.PressureRoutes.HOME),
+        HealthTile("d08/08", "Питание", "$eaten ккал", "из ${plan.targetKcal}", eaten / plan.targetKcal.coerceAtLeast(1).toFloat(), Routes.health(0)),
+        HealthTile("d08/06", "Сон", lastSleep?.let { "${sleepMinutes(it) / 60} ч ${sleepMinutes(it) % 60} м" } ?: "—",
             lastSleep?.let { "${Dates.time(it.bedMin)} → ${Dates.time(it.wakeMin)}" } ?: "нет записи", lastSleep?.let { sleepMinutes(it) / (profile?.sleepGoalMin ?: 480).toFloat() }, Routes.wellbeing(1)),
-        HealthTile("sport/11", "Вес", weight?.let { "%.1f кг".format(it.kg).replace('.', ',') } ?: "—", weight?.let { Dates.label(it.day) } ?: "нет взвешиваний", null, Routes.health(1)),
-        HealthTile("sport/19", "Шаги", "$steps", "из $stepsGoal", steps / stepsGoal.coerceAtLeast(1).toFloat(), Routes.STEPS),
-        HealthTile("sport/00", "Тренировки", "${workouts.count { it.day >= weekStart }}", "на этой неделе", null, Routes.training(0)),
-        HealthTile("ui:drop", "Вода", "${log?.waterMl ?: 0} мл", "из $waterGoal", (log?.waterMl ?: 0) / waterGoal.toFloat(), Routes.wellbeing(2)),
-        HealthTile("train/27", "Замеры", "см", "талия, бёдра…", null, Routes.health(2)),
-        HealthTile("ui:smile", "Настроение", "дневник", "и инсайты", null, Routes.wellbeing(0)),
-        HealthTile("fest/23", "Фото прогресса", "до/после", "анфас, профиль", null, Routes.health(5)),
+        HealthTile("d08/02", "Вес", weight?.let { "%.1f кг".format(it.kg).replace('.', ',') } ?: "—", weight?.let { Dates.label(it.day) } ?: "нет взвешиваний", null, Routes.health(1)),
+        HealthTile("d08/04", "Шаги", "$steps", "из $stepsGoal", steps / stepsGoal.coerceAtLeast(1).toFloat(), Routes.STEPS),
+        HealthTile("d08/09", "Тренировки", "${workouts.count { it.day >= weekStart }}", "на этой неделе", null, Routes.training(0)),
+        HealthTile("d08/05", "Вода", "${log?.waterMl ?: 0} мл", "из $waterGoal", (log?.waterMl ?: 0) / waterGoal.toFloat(), Routes.wellbeing(2)),
+        HealthTile("d08/03", "Замеры", "см", "талия, бёдра…", null, Routes.health(2)),
+        HealthTile("d08/07", "Настроение", "дневник", "и инсайты", null, Routes.wellbeing(0)),
+        HealthTile("d08/10", "Фото прогресса", "до/после", "анфас, профиль", null, Routes.health(5)),
     )
     var editing by remember { mutableStateOf<HealthTile?>(null) }
     editing?.let { t -> com.dasein.poryadok.ui.common.SectionEditDialog(t.route, t.title, t.icon) { editing = null } }

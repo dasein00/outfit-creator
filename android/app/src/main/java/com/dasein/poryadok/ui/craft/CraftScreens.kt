@@ -145,6 +145,9 @@ fun CraftHomeScreen(nav: NavHostController) {
             Button(onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                 Text("Схема из фото")
             }
+            Button(onClick = { nav.navigate(Routes.CRAFT_PBN) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                Text("🖍 Картины по номерам — раскраска для карандашей")
+            }
             OutlinedButton(onClick = { nav.navigate(Routes.CRAFT_MINE) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
                 Text("📷 Мои стразы по фото (${CraftStore.mine(ctx).size} цветов)")
             }

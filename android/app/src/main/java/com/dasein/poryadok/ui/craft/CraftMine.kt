@@ -271,9 +271,17 @@ fun CraftMineScreen(nav: NavHostController) {
     )
 }
 
-/** Правка цвета: оттенок, насыщенность, яркость, HEX или номер DMC, название. */
+/** Правка цвета страз. */
 @Composable
-private fun StoneDialog(st: MyStone, onDismiss: () -> Unit, onSave: (MyStone) -> Unit) {
+private fun StoneDialog(st: MyStone, onDismiss: () -> Unit, onSave: (MyStone) -> Unit) =
+    ColorPickDialog(if (st.n == 0) "Новый цвет" else "Мой №${st.n}", st.rgb, st.name, st.n != 0, onDismiss) { rgb, name ->
+        onSave(st.copy(rgb = rgb, name = name, auto = st.auto && rgb == st.rgb))
+    }
+
+/** Выбор цвета: оттенок, насыщенность, яркость, HEX или номер DMC, название. [showOld] — показать прежний цвет рядом. */
+@Composable
+internal fun ColorPickDialog(title: String, rgb0: Int, name0: String, showOld: Boolean, onDismiss: () -> Unit, onSave: (Int, String) -> Unit) {
+    val st = remember(rgb0, name0) { MyStone(if (showOld) 1 else 0, rgb0, name0) }
     val extra = LocalExtra.current
     val hsv0 = remember(st) { FloatArray(3).also { android.graphics.Color.colorToHSV(st.rgb or (0xFF shl 24), it) } }
     var hue by remember(st) { mutableFloatStateOf(hsv0[0]) }
@@ -291,7 +299,7 @@ private fun StoneDialog(st: MyStone, onDismiss: () -> Unit, onSave: (MyStone) ->
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (st.n == 0) "Новый цвет" else "Мой №${st.n}") },
+        title = { Text(title) },
         text = {
             Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState())) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -327,7 +335,7 @@ private fun StoneDialog(st: MyStone, onDismiss: () -> Unit, onSave: (MyStone) ->
                 TextInput(name, { name = it }, "Название (по желанию)")
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(st.copy(rgb = rgb, name = name.trim(), auto = st.auto && rgb == st.rgb)) }) { Text("Сохранить") } },
+        confirmButton = { TextButton(onClick = { onSave(rgb, name.trim()) }) { Text("Сохранить") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
     )
 }

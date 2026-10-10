@@ -41,20 +41,20 @@ internal object NavTabs {
     private const val KEY = "nav_tabs"
 
     val DEFAULT = listOf(
-        Tab(Routes.TODAY, "Главное", "ui:home"),
-        Tab(Routes.RECIPES, "Рецепты", "food/00"),
-        Tab(Routes.HEALTH_HUB, "Здоровье", "train/11"),
-        Tab(Routes.PLAN, "График", "cal/00"),
-        Tab(Routes.TOPS_HUB, "Топы", "sport/27"),
-        Tab(Routes.MORE, "Ещё", "cal/40"),
+        Tab(Routes.TODAY, "Главное", "d01/00"),
+        Tab(Routes.RECIPES, "Рецепты", "d12/00"),
+        Tab(Routes.HEALTH_HUB, "Здоровье", "d01/02"),
+        Tab(Routes.PLAN, "График", "d01/01"),
+        Tab(Routes.TOPS_HUB, "Топы", "d17/03"),
+        Tab(Routes.MORE, "Ещё", "d01/04"),
     )
 
     /** Все разделы, которые можно поставить в нижнюю панель. */
     val CHOICES: List<Tab> = (
         DEFAULT.drop(1).dropLast(1) + listOf(
-            Tab(Routes.calendar(0), "Календарь", "cal/23"),
-            Tab(Routes.calendar(2), "Праздники", "fest/03"),
-            Tab(Routes.calendar(3), "История", "cal/23"),
+            Tab(Routes.calendar(0), "Календарь", "d05/00"),
+            Tab(Routes.calendar(2), "Праздники", "d05/03"),
+            Tab(Routes.calendar(3), "История", "d01/10"),
         ) + HUB.map { Tab(it.route, it.title, it.icon) }
         ).distinctBy { it.route }
 

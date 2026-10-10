@@ -102,6 +102,9 @@ object Routes {
     const val CRAFT = "craft"
     const val CRAFT_STASH = "craftStash"
     const val CRAFT_MINE = "craftMine"
+    const val CRAFT_PBN = "craftPbn"
+    const val CRAFT_PENCILS = "craftPencils"
+    fun pbn(id: Long) = "craftPbn/$id"
     const val SEARCH = "search"
     const val RECIPES = "recipes"
     const val MENU_CREATE = "menuCreate"
@@ -162,12 +165,12 @@ internal data class Tab(val route: String, val label: String, val icon: String) 
 }
 
 private val tabs = listOf(
-    Tab(Routes.TODAY, "Главное", "ui:home"),
-    Tab(Routes.RECIPES, "Рецепты", "food/00"),
-    Tab(Routes.HEALTH_HUB, "Здоровье", "train/11"),
-    Tab(Routes.PLAN, "График", "cal/00"),
-    Tab(Routes.TOPS_HUB, "Топы", "sport/27"),
-    Tab(Routes.MORE, "Ещё", "cal/40"),
+    Tab(Routes.TODAY, "Главное", "d01/00"),
+    Tab(Routes.RECIPES, "Рецепты", "d12/00"),
+    Tab(Routes.HEALTH_HUB, "Здоровье", "d01/02"),
+    Tab(Routes.PLAN, "График", "d01/01"),
+    Tab(Routes.TOPS_HUB, "Топы", "d17/03"),
+    Tab(Routes.MORE, "Ещё", "d01/04"),
 )
 
 private fun NavBackStackEntry.long(name: String): Long = arguments?.getLong(name) ?: -1L
@@ -341,6 +344,11 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             }
             composable(Routes.CRAFT_STASH) { com.dasein.poryadok.ui.craft.CraftStashScreen(nav) }
             composable(Routes.CRAFT_MINE) { com.dasein.poryadok.ui.craft.CraftMineScreen(nav) }
+            composable(Routes.CRAFT_PBN) { com.dasein.poryadok.ui.craft.PbnHomeScreen(nav) }
+            composable(Routes.CRAFT_PENCILS) { com.dasein.poryadok.ui.craft.PencilsScreen(nav) }
+            composable("craftPbn/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
+                com.dasein.poryadok.ui.craft.PbnScreen(nav, it.long("id"))
+            }
             composable(com.dasein.poryadok.ui.tutor.TutorRoutes.HOME) { com.dasein.poryadok.ui.tutor.TutorHomeScreen(nav) }
             composable(com.dasein.poryadok.ui.tutor.TutorRoutes.WORDS) { com.dasein.poryadok.ui.tutor.TutorWordsScreen(nav) }
             composable(com.dasein.poryadok.ui.more.LIKES_ROUTE) { com.dasein.poryadok.ui.more.LikesScreen(nav) }
