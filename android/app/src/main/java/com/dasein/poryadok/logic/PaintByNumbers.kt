@@ -62,9 +62,12 @@ object PaintByNumbers {
             for (i in sample.indices) { val s = sums[assign[i]]; s[0] += sample[i][0]; s[1] += sample[i][1]; s[2] += sample[i][2]; s[3]++ }
             sums.forEachIndexed { j, s -> if (s[3] > 0) centers[j] = doubleArrayOf(s[0] / s[3], s[1] / s[3], s[2] / s[3]) }
         }
+        // Центры одного оттенка (шум фото, плавный переход) склеиваем — иначе схема пестрит соседними карандашами.
+        val merged = ArrayList<DoubleArray>()
+        centers.forEach { c -> if (merged.none { sqrt(d2(it, c)) < 10 }) merged += c }
         val pl = pencils.map { CraftPattern.lab(it.rgb) }
         val chosen = LinkedHashSet<Int>()
-        centers.forEach { c ->
+        merged.forEach { c ->
             val best = pencils.indices.filter { it !in chosen }.minByOrNull { d2(c, pl[it]) }
             if (best != null) chosen += best
         }
@@ -82,6 +85,14 @@ object PaintByNumbers {
             var best = 0; var bd = Double.MAX_VALUE
             for (j in pl.indices) { val d = d2(l, pl[j]); if (d < bd) { bd = d; best = j } }
             best
+        }
+        // Цвета, которых меньше 0,4% картинки, отдаём ближайшему другому цвету.
+        val share = IntArray(colors0.size).also { c -> cells.forEach { c[it]++ } }
+        val rare = colors0.indices.filter { share[it] in 1 until cells.size / 250 }.toSet()
+        if (rare.isNotEmpty() && rare.size < colors0.indices.count { share[it] > 0 }) {
+            val keep = colors0.indices.filter { share[it] > 0 && it !in rare }
+            val to = IntArray(colors0.size) { j -> if (j in rare) keep.minBy { d2(pl[j], pl[it]) } else j }
+            cells = IntArray(cells.size) { to[cells[it]] }
         }
         repeat(det.smooth) { cells = majority(cells, w, h, colors0.size) }
         cells = mergeSmall(cells, w, h, det.minArea)
