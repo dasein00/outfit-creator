@@ -301,7 +301,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable("holiday/{id}", arguments = listOf(navArgument("id") { type = NavType.StringType })) {
                 com.dasein.poryadok.ui.calendar.HolidayScreen(nav, it.arguments?.getString("id") ?: "")
             }
-            composable(Routes.BODY_SCIENCE) { com.dasein.poryadok.ui.health.BodyScienceScreen(nav) }
+            composable(Routes.BODY_SCIENCE) { com.dasein.poryadok.ui.health.BodyDetailScreen(nav, 0L, initialTab = 1) }
             composable(Routes.WIDGET_EDITOR) { com.dasein.poryadok.ui.more.WidgetEditorScreen(nav) }
             composable(Routes.WEATHER) { com.dasein.poryadok.ui.weather.WeatherScreen(nav) }
             composable(Routes.SMALL_TALK) { com.dasein.poryadok.ui.talk.SmallTalkScreen(nav) }

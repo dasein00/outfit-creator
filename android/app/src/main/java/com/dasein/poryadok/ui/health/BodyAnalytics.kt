@@ -77,7 +77,7 @@ internal fun BodyCharts(readings: List<BodyMetric>, heightCm: Double) {
         2 -> sorted.filter { it.day > today - 30 }.groupBy { it.day }.map { (d, l) -> d to l.last() }
         else -> sorted.filter { it.day > today - 365 }.groupBy { Dates.weekStart(it.day) }.map { (w, l) -> w to l.last() }
     }
-    SectionTitle("Графики показателей")
+    SectionTitle("Графики показателей", Modifier.padding(top = 8.dp))
     Segments(listOf(0 to "Последние", 1 to "Неделя", 2 to "Месяц", 3 to "Год"), period, { period = it })
     val color = MaterialTheme.colorScheme.primary
     var any = false
@@ -89,16 +89,12 @@ internal fun BodyCharts(readings: List<BodyMetric>, heightCm: Double) {
         val history = sorted.mapNotNull { c.value(it) }
         val last = history.last()
         val delta = if (history.size >= 2) last - history[history.size - 2] else null
-        Tile(Modifier.padding(top = 8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(c.title + if (c.unit.isNotEmpty()) " (${c.unit})" else "", Modifier.weight(1f), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                Text(fmt(last, c.digits), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                if (delta != null && abs(delta) >= 0.05) Text(
-                    "  " + fmt(abs(delta), c.digits) + if (delta > 0) " ▲" else " ▼",
-                    fontSize = 11.sp, color = color,
-                )
-            }
-            AreaChart(pts, c.digits, color, extra.dim, extra.line, Modifier.padding(top = 6.dp))
+        val deltaText = if (delta != null && abs(delta) >= 0.05) "  " + (if (delta > 0) "▲ " else "▼ ") + fmt(abs(delta), c.digits) else ""
+        com.dasein.poryadok.ui.common.FoldTile(
+            "chart_${c.title}", c.title + if (c.unit.isNotEmpty()) " (${c.unit})" else "",
+            Modifier.padding(top = 8.dp), summary = fmt(last, c.digits) + deltaText,
+        ) {
+            AreaChart(pts, c.digits, color, extra.dim, extra.line, Modifier.padding(top = 2.dp))
         }
     }
     if (!any) Text("Пока нет взвешиваний за этот период.", color = extra.dim, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))

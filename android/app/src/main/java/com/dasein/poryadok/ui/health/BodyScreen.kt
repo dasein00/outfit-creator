@@ -214,13 +214,13 @@ fun BodyTab(nav: NavHostController, profile: BodyProfile, weights: List<WeightEn
         fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
     )
     Gap(8.dp)
-    Tile(onClick = { nav.navigate(Routes.BODY_SCIENCE) }) {
+    Tile(onClick = { nav.navigate(Routes.BODY_SCIENCE) }) { // открывает «Детали» → «Аналитика»
         Row(verticalAlignment = Alignment.CenterVertically) {
             Glyph("ui:v_chart", 26.dp)
             HGap(10.dp)
             Column(Modifier.weight(1f)) {
-                Text("Научный анализ по росту и весу", fontWeight = FontWeight.SemiBold)
-                Text("ИМТ по ВОЗ, талия/рост, процент жира, базовый обмен, белок и вода — с источниками", fontSize = 12.sp, color = extra.dim)
+                Text("Аналитика тела", fontWeight = FontWeight.SemiBold)
+                Text("Моя модель, тип телосложения, научный анализ (ИМТ по ВОЗ, талия/рост, жир, обмен) и графики всех показателей", fontSize = 12.sp, color = extra.dim)
             }
         }
     }
@@ -261,8 +261,7 @@ internal fun BodyComposition(r: BodyReading, p: Person) {
     val extra = LocalExtra.current
     val c = BodyComp.composition(r)
     val m = BodyComp.metrics(r, p).associateBy { it.key }
-    SectionTitle("Анализ состава тела")
-    Tile {
+    com.dasein.poryadok.ui.common.FoldTile("body_model", "Моя модель · состав тела", summary = fmt(r.weight) + " кг") {
         Text("Вес = Вода + Жир + Белок + Кость", fontSize = 12.sp, color = extra.dim)
         Gap(8.dp)
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -291,46 +290,6 @@ internal fun BodyComposition(r: BodyReading, p: Person) {
             "body_water", "Воду и белок весы OKOK показывают в своём приложении — впишите их в «Изменить», и анализ станет полным. Фигура — ваша модель из гардероба, заливка показывает долю воды.",
             Modifier.padding(top = 8.dp),
         )
-    }
-}
-
-@Composable
-internal fun BodyTypeGrid(r: BodyReading, p: Person) {
-    val extra = LocalExtra.current
-    val cell = BodyComp.bodyType(r.weight, r.fatPct, p)
-    SectionTitle("Анализ типа телосложения")
-    Tile {
-        if (cell == null) {
-            Text("Нужен процент жира — с весов или вручную.", color = extra.dim, fontSize = 13.sp)
-            return@Tile
-        }
-        Row {
-            Column(Modifier.width(26.dp).padding(top = 4.dp), verticalArrangement = Arrangement.SpaceBetween) {
-                Text("ИМТ", fontSize = 10.sp, color = extra.dim)
-            }
-            Column(Modifier.weight(1f)) {
-                BodyComp.BODY_TYPES.forEachIndexed { row, names ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(bottom = 4.dp)) {
-                        names.forEachIndexed { col, name ->
-                            val on = cell == row to col
-                            Box(
-                                Modifier.weight(1f).height(56.dp).clip(RoundedCornerShape(10.dp))
-                                    .background(if (on) toneColor(if (row == 1 && col == 1) Tone.GREEN else Tone.RED).copy(alpha = .22f) else extra.card)
-                                    .border(if (on) 2.dp else 1.dp, if (on) toneColor(if (row == 1 && col == 1) Tone.GREEN else Tone.RED) else extra.line, RoundedCornerShape(10.dp))
-                                    .padding(4.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(name, fontSize = 11.sp, textAlign = TextAlign.Center, lineHeight = 13.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal)
-                            }
-                        }
-                    }
-                }
-                Text("Жир →", fontSize = 10.sp, color = extra.dim, modifier = Modifier.align(Alignment.End))
-            }
-        }
-        Text(BodyComp.BODY_TYPES[cell.first][cell.second], style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
-        Text(BodyComp.typeAbout(cell.first, cell.second), fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
-        Hint("body_type_grid", "Строки — ИМТ (выше нормы, норма, ниже), столбцы — процент жира (мало, норма, много).", Modifier.padding(top = 8.dp), title = "Как читать таблицу")
     }
 }
 

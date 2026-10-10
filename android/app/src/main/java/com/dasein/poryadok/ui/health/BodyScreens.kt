@@ -299,10 +299,10 @@ internal fun ModelFigure(fill: Float, modifier: Modifier) {
 
 /** Подробности взвешивания (экран «Детали»): вкладки «Показатели тела» и «Аналитика». */
 @Composable
-fun BodyDetailScreen(nav: NavHostController, at: Long) {
+fun BodyDetailScreen(nav: NavHostController, at: Long, initialTab: Int = 0) {
     val data = rememberBodyData()
     val extra = LocalExtra.current
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    var tab by rememberSaveable { mutableIntStateOf(initialTab) }
     var edit by remember { mutableStateOf<BodyMetric?>(null) }
     var openAll by rememberUiFlag("body_open_all", false)
     val m = data.readings.firstOrNull { it.at == at } ?: data.readings.lastOrNull()
@@ -358,10 +358,14 @@ fun BodyDetailScreen(nav: NavHostController, at: Long) {
                     Hint("body_manual", "Весы OKOK показывают все эти показатели в своём приложении, но Google Fit передаёт только вес, жир, кости, безжировую массу, обмен и воду. Остальное можно вписать кнопкой «Изменить» вверху.")
                 }
             } else {
+                // Сначала моя модель и телосложение, затем научный анализ, затем графики и рекомендации.
+                BodyComposition(r, p)
+                Gap(8.dp)
+                BodyTypeMap(r, p, data.readings.filter { it.at <= m.at })
+                Gap(8.dp)
+                BodyScienceSection(nav, m)
                 BodyCharts(data.readings, data.profile.heightCm)
                 Gap(8.dp)
-                BodyComposition(r, p)
-                BodyTypeGrid(r, p)
                 AdviceCard(r, p)
             }
             Gap(24.dp)
@@ -374,8 +378,7 @@ fun BodyDetailScreen(nav: NavHostController, at: Long) {
 private fun AdviceCard(r: BodyReading, p: Person) {
     val extra = LocalExtra.current
     val a = BodyComp.advice(r, p)
-    SectionTitle("Рекомендации по контролю веса")
-    Tile {
+    com.dasein.poryadok.ui.common.FoldTile("body_advice", "Рекомендации по контролю веса", summary = signed(a.weightDelta) + " кг") {
         @Composable
         fun Line(glyph: String, title: String, delta: Double?, unit: String) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 6.dp)) {
@@ -592,11 +595,13 @@ fun BodyCompareScreen(nav: NavHostController) {
     val data = rememberBodyData()
     val extra = LocalExtra.current
     val list = data.readings
-    var aAt by rememberSaveable { mutableStateOf(0L) }
-    var bAt by rememberSaveable { mutableStateOf(0L) }
+    // Замер выбирается по времени, id и весу: время у двух замеров может совпасть.
+    fun keyOf(m: BodyMetric) = "${m.at}|${m.id}|${m.weight}"
+    var aAt by rememberSaveable { mutableStateOf("") }
+    var bAt by rememberSaveable { mutableStateOf("") }
     var picking by remember { mutableIntStateOf(0) }
-    val b = list.firstOrNull { it.at == bAt } ?: list.lastOrNull()
-    val a = list.firstOrNull { it.at == aAt } ?: list.lastOrNull { b != null && it.at < b.at }
+    val b = list.firstOrNull { keyOf(it) == bAt } ?: list.lastOrNull()
+    val a = list.firstOrNull { keyOf(it) == aAt } ?: list.lastOrNull { b != null && it.at < b.at } ?: list.getOrNull(list.size - 2)
     Screen("Сравнение замеров", onBack = { nav.popBackStack() }) { pad ->
         if (a == null || b == null) {
             Box(Modifier.padding(pad).fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
@@ -655,11 +660,12 @@ fun BodyCompareScreen(nav: NavHostController) {
         title = { Text(if (picking == 1) "Замер «до»" else "Замер «после»") },
         text = {
             LazyColumn {
-                items(list.reversed(), key = { it.at }) { m ->
+                // Ключ — не время: два замера (весы и Health Connect) могут прийти в одну минуту, и одинаковый ключ ронял список.
+                items(list.reversed()) { m ->
                     Text(
                         TIME.format(Date(m.at)) + " · " + fmt(m.weight) + " кг" + (m.fatPct?.let { " · жир ${fmt(it)}%" } ?: ""),
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable {
-                            if (picking == 1) aAt = m.at else bAt = m.at
+                            if (picking == 1) aAt = keyOf(m) else bAt = keyOf(m)
                             picking = 0
                         }.padding(vertical = 10.dp),
                     )

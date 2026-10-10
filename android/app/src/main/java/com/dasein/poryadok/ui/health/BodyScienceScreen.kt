@@ -1,5 +1,6 @@
 package com.dasein.poryadok.ui.health
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.layout.Row
@@ -47,69 +48,62 @@ import kotlinx.coroutines.flow.first
 
 private fun s(v: Double?) = v?.let { if (it == Math.floor(it)) it.toLong().toString() else "%.1f".format(it).replace('.', ',') } ?: ""
 
+/** Научный анализ теперь внутри «Детали» → «Аналитика»; старый адрес открывает её. */
+@Composable
+fun BodyScienceScreen(nav: NavHostController) = BodyDetailScreen(nav, 0L, initialTab = 1)
+
 /**
  * Научный анализ по росту, весу, возрасту, полу и обхватам. Все формулы и пороги — из клинических руководств
- * и рецензируемых работ; у каждой карточки указан источник.
+ * и рецензируемых работ; у каждой карточки указан источник. Каждую карточку можно свернуть.
  */
 @Composable
-fun BodyScienceScreen(nav: NavHostController) {
+internal fun BodyScienceSection(nav: NavHostController, last: BodyMetric?) {
     val extra = LocalExtra.current
     // Ждём настоящие данные из базы, чтобы не показать на мгновение значения по умолчанию.
     val profile by observe<com.dasein.poryadok.data.BodyProfile?>(null) { Graph.dao.profile() }
     val measurements by observe<List<com.dasein.poryadok.data.Measurement>?>(null) { Graph.dao.measurements() }
-    val data = rememberBodyData()
-    val p = profile
-    val ms = measurements
-    Screen("Научный анализ тела", onBack = { nav.popBackStack() }) { pad ->
-        if (p == null || ms == null) {
-            Text("Загрузка…", Modifier.padding(pad).padding(16.dp), color = extra.dim)
-            return@Screen
-        }
-        val last = data.readings.lastOrNull()
-        val latest = ms.maxByOrNull { it.day }
-        val weight = last?.weight ?: p.startWeight
-        val facts = BodyFacts(
-            male = p.male, age = p.age, heightCm = p.heightCm, weightKg = weight,
-            waistCm = latest?.waist, hipCm = latest?.hips, neckCm = latest?.neck, scaleFatPct = last?.fatPct, activity = p.activity,
+    val p = profile ?: return
+    val ms = measurements ?: return
+    val latest = ms.maxByOrNull { it.day }
+    val weight = last?.weight ?: p.startWeight
+    val facts = BodyFacts(
+        male = p.male, age = p.age, heightCm = p.heightCm, weightKg = weight,
+        waistCm = latest?.waist, hipCm = latest?.hips, neckCm = latest?.neck, scaleFatPct = last?.fatPct, activity = p.activity,
+    )
+    // Показываем только то, что удалось вычислить из введённых данных.
+    val list = remember(facts) { BodyScience.analyze(facts).filter { it.value != null || it.key == "pace" } }
+    SectionTitle("Научный анализ тела")
+    com.dasein.poryadok.ui.common.FoldTile("science_input", "Исходные данные", summary = "${s(p.heightCm)} см · ${s(weight)} кг") {
+        Text(
+            listOfNotNull(
+                if (p.male) "мужчина" else "женщина", "${p.age} лет", "рост ${s(p.heightCm)} см", "вес ${s(weight)} кг",
+                latest?.waist?.let { "талия ${s(it)}" }, latest?.hips?.let { "бёдра ${s(it)}" }, latest?.neck?.let { "шея ${s(it)}" },
+                last?.fatPct?.let { "жир с весов ${s(it)}%" },
+            ).joinToString(", "),
+            fontSize = 13.sp,
         )
-        // Показываем только то, что удалось вычислить из введённых данных.
-        val list = remember(facts) { BodyScience.analyze(facts).filter { it.value != null || it.key == "pace" } }
-        Column(Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            Tile(onClick = { nav.navigate(Routes.health(2)) }) {
-                Text("Исходные данные", fontWeight = FontWeight.SemiBold)
-                Text(
-                    listOfNotNull(
-                        if (p.male) "мужчина" else "женщина", "${p.age} лет", "рост ${s(p.heightCm)} см", "вес ${s(weight)} кг",
-                        latest?.waist?.let { "талия ${s(it)}" }, latest?.hips?.let { "бёдра ${s(it)}" }, latest?.neck?.let { "шея ${s(it)}" },
-                        last?.fatPct?.let { "жир с весов ${s(it)}%" },
-                    ).joinToString(", "),
-                    fontSize = 13.sp,
-                )
-                Text("Изменить в «Замерах» →", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
-                if (latest?.waist == null) Text(
-                    "Добавьте в «Замерах» талию (а также бёдра и шею) — появятся индексы талия/рост, талия/бёдра и точнее станет процент жира.",
-                    fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
-                )
-            }
-            SectionTitle("Показатели")
-            list.forEach { EvidenceCard(it.copy(needs = null)); Gap(8.dp) }
-            Text(
-                "Расчёты носят справочный характер и не заменяют консультацию врача.",
-                fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(vertical = 16.dp),
-            )
-            HowTo("body_science")
-        }
+        Text(
+            "Изменить в «Замерах» →", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(top = 4.dp).clickable { nav.navigate(Routes.health(2)) },
+        )
+        if (latest?.waist == null) Text(
+            "Добавьте в «Замерах» талию (а также бёдра и шею) — появятся индексы талия/рост, талия/бёдра и точнее станет процент жира.",
+            fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
+        )
     }
+    list.forEach { Gap(8.dp); EvidenceCard(it.copy(needs = null)) }
+    Text(
+        "Расчёты носят справочный характер и не заменяют консультацию врача.",
+        fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(vertical = 10.dp),
+    )
 }
 
 @Composable
 private fun EvidenceCard(e: Evidence) {
     val extra = LocalExtra.current
-    Tile {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(e.title, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-            e.label?.let { StatusChip(it, e.tone) }
-        }
+    val summary = listOfNotNull(e.value?.let { fmt(it, e.decimals) + if (e.unit.isNotBlank()) " " + e.unit else "" }, e.label).joinToString(" · ").ifBlank { null }
+    com.dasein.poryadok.ui.common.FoldTile("science_card_${e.key}", e.title, summary = summary, summaryColor = e.tone?.let { toneColor(it) }) {
+        e.label?.let { StatusChip(it, e.tone) }
         if (e.value != null) {
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(fmt(e.value, e.decimals), fontSize = 30.sp, fontWeight = FontWeight.Bold, color = toneColor(e.tone).takeIf { e.tone != null } ?: MaterialTheme.colorScheme.onSurface)

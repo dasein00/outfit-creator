@@ -108,3 +108,33 @@ fun Hint(key: String, text: String, modifier: Modifier = Modifier, title: String
     val extra = LocalExtra.current
     InfoBox(key, title, modifier) { Text(text, fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp) }
 }
+
+/**
+ * Карточка показателя, которую можно свернуть. Свёрнутая остаётся свёрнутой (и после перезапуска),
+ * пока её не развернут; в свёрнутом виде видна строка-итог [summary].
+ */
+@Composable
+fun FoldTile(
+    key: String,
+    title: String,
+    modifier: Modifier = Modifier,
+    summary: String? = null,
+    summaryColor: androidx.compose.ui.graphics.Color? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val extra = LocalExtra.current
+    var open by rememberUiFlag("fold_$key", true)
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(extra.card)) {
+        Row(
+            Modifier.fillMaxWidth().clickable { open = !open }.padding(start = 14.dp, end = 10.dp, top = 12.dp, bottom = if (open) 4.dp else 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(title, Modifier.weight(1f), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+            if (summary != null) Text(summary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = summaryColor ?: MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(start = 8.dp))
+            Icon(if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore, if (open) "Свернуть" else "Развернуть", tint = extra.dim)
+        }
+        AnimatedVisibility(open) {
+            Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, bottom = 14.dp), content = content)
+        }
+    }
+}
