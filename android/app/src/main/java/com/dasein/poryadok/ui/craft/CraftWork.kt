@@ -243,7 +243,7 @@ fun CraftWorkScreen(nav: NavHostController, id: Long) {
             }
             selected?.let { s ->
                 Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("DMC ${pat.colors[s].code} · ${pat.colors[s].name}: ${doneBy[s]} из ${counts[s]}", Modifier.weight(1f), fontSize = 12.sp)
+                    Text("${pat.colors[s].label} · ${pat.colors[s].name}: ${doneBy[s]} из ${counts[s]}", Modifier.weight(1f), fontSize = 12.sp)
                     TextButton(onClick = { pat.cells.forEachIndexed { i, c -> if (c == s) d[i] = true }; version++ }) { Text("Весь цвет ✓", fontSize = 12.sp) }
                     TextButton(onClick = { pat.cells.forEachIndexed { i, c -> if (c == s) d[i] = false }; version++ }) { Text("Снять", fontSize = 12.sp) }
                 }

@@ -101,6 +101,7 @@ object Routes {
     const val BACKUP = "backup"
     const val CRAFT = "craft"
     const val CRAFT_STASH = "craftStash"
+    const val CRAFT_MINE = "craftMine"
     const val SEARCH = "search"
     const val RECIPES = "recipes"
     const val MENU_CREATE = "menuCreate"
@@ -339,6 +340,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
                 com.dasein.poryadok.ui.craft.CraftWorkScreen(nav, it.long("id"))
             }
             composable(Routes.CRAFT_STASH) { com.dasein.poryadok.ui.craft.CraftStashScreen(nav) }
+            composable(Routes.CRAFT_MINE) { com.dasein.poryadok.ui.craft.CraftMineScreen(nav) }
             composable(com.dasein.poryadok.ui.tutor.TutorRoutes.HOME) { com.dasein.poryadok.ui.tutor.TutorHomeScreen(nav) }
             composable(com.dasein.poryadok.ui.tutor.TutorRoutes.WORDS) { com.dasein.poryadok.ui.tutor.TutorWordsScreen(nav) }
             composable(com.dasein.poryadok.ui.more.LIKES_ROUTE) { com.dasein.poryadok.ui.more.LikesScreen(nav) }

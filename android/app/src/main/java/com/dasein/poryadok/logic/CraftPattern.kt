@@ -16,8 +16,16 @@ object CraftPattern {
         DIAMOND("Алмазная мозаика", "стразов"), CROSS("Вышивка крестом", "крестиков"), BEADS("Бисер", "бусин"),
     }
 
-    /** Цвет палитры: номер DMC (по нему продаются нитки и стразы), название, RGB. */
-    data class Thread(val code: String, val name: String, val rgb: Int)
+    /** Цвет палитры: номер DMC (по нему продаются нитки и стразы), название, RGB. Свои стразы — код «М1», «М2»… */
+    data class Thread(val code: String, val name: String, val rgb: Int) {
+        /** Свой цвет из «Мои стразы» (определён по фото или добавлен вручную), а не номер каталога. */
+        val custom get() = code.startsWith(MINE)
+        /** Подпись цвета: «DMC 321» или «Мой №3». */
+        val label get() = if (custom) "Мой №" + code.removePrefix(MINE) else "DMC $code"
+    }
+
+    /** Приставка кода своих страз. */
+    const val MINE = "М"
 
     data class Pattern(
         val width: Int,
@@ -98,8 +106,12 @@ object CraftPattern {
         allowed: Set<Int>? = null,
         /** Клетки, которые остаются пустыми (фон). */
         skip: BooleanArray? = null,
+        /** Свои стразы («Мои стразы»): схема только из них вместо каталога DMC. */
+        custom: List<Thread>? = null,
     ): Pattern {
-        val pool = (allowed?.takeIf { it.size >= 2 } ?: DMC.indices.toSet())
+        val cand: List<Thread> = custom?.takeIf { it.size >= 2 } ?: DMC
+        val candLab = if (cand === DMC) dmcLab else cand.map { lab(it.rgb) }
+        val pool = if (cand !== DMC) cand.indices.toSet() else (allowed?.takeIf { it.size >= 2 } ?: DMC.indices.toSet())
         val all = Array(px.size) { lab(px[it]) }
         val labs = if (skip == null) all else all.filterIndexed { i, _ -> !skip[i] }.toTypedArray().ifEmpty { all }
         val k = maxColors.coerceIn(2, 80)
@@ -129,15 +141,16 @@ object CraftPattern {
             for (i in labs.indices) { val s = sums[assign[i]]; s[0] += labs[i][0]; s[1] += labs[i][1]; s[2] += labs[i][2]; s[3]++ }
             sums.forEachIndexed { j, s -> if (s[3] > 0) centers[j] = doubleArrayOf(s[0] / s[3], s[1] / s[3], s[2] / s[3]) }
         }
-        // Центры → ближайшие нитки DMC без повторов.
+        // Центры → ближайшие нитки DMC без повторов. Своих страз не больше лимита — тогда берём их все.
         val chosen = LinkedHashSet<Int>()
-        centers.forEach { c ->
+        if (cand !== DMC && cand.size <= k) chosen += cand.indices
+        else centers.forEach { c ->
             var best = -1; var bd = Double.MAX_VALUE
-            dmcLab.forEachIndexed { i, d -> if (i in pool && i !in chosen) { val dd = d2(c, d); if (dd < bd) { bd = dd; best = i } } }
+            candLab.forEachIndexed { i, d -> if (i in pool && i !in chosen) { val dd = d2(c, d); if (dd < bd) { bd = dd; best = i } } }
             if (best >= 0) chosen += best
         }
         val pal = chosen.toList()
-        val palLab = pal.map { dmcLab[it] }
+        val palLab = pal.map { candLab[it] }
         val cells = IntArray(px.size)
         if (!dither) {
             for (i in all.indices) cells[i] = if (skip?.get(i) == true) -1 else nearestIn(all[i], palLab)
@@ -157,7 +170,7 @@ object CraftPattern {
             }
         }
         // Убираем цвета, которые в итоге не встретились, и сортируем по частоте.
-        return compact(Pattern(w, h, cells, pal.map { DMC[it] }))
+        return compact(Pattern(w, h, cells, pal.map { cand[it] }))
     }
 
     /** Убирает неиспользуемые цвета, склеивает повторы одного номера DMC и сортирует по частоте (символы 1, 2, 3… — самым частым). */
@@ -173,9 +186,9 @@ object CraftPattern {
     }
 
     /** Замены цветов пользователем: номер DMC → другой номер (можно слить два цвета в один или взять соседний оттенок). */
-    fun replace(p: Pattern, map: Map<String, String>): Pattern {
+    fun replace(p: Pattern, map: Map<String, String>, mine: List<Thread> = emptyList()): Pattern {
         if (map.isEmpty()) return p
-        val byCode = DMC.associateBy { it.code }
+        val byCode = DMC.associateBy { it.code } + mine.associateBy { it.code }
         return compact(p.copy(colors = p.colors.map { t -> map[t.code]?.let { byCode[it] } ?: t }))
     }
 
@@ -213,8 +226,9 @@ object CraftPattern {
     }
 
     /** Ближайшие оттенки каталога к цвету — варианты замены. */
-    fun alternatives(t: Thread, n: Int = 8): List<Thread> {
+    fun alternatives(t: Thread, n: Int = 8, mine: List<Thread>? = null): List<Thread> {
         val l = lab(t.rgb)
+        if (mine != null) return mine.filter { it.code != t.code }.sortedBy { d2(l, lab(it.rgb)) }.take(n)
         return DMC.indices.filter { DMC[it].code != t.code }.sortedBy { d2(l, dmcLab[it]) }.take(n).map { DMC[it] }
     }
 

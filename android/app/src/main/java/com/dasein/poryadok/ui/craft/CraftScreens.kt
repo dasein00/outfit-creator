@@ -145,8 +145,11 @@ fun CraftHomeScreen(nav: NavHostController) {
             Button(onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                 Text("Схема из фото")
             }
+            OutlinedButton(onClick = { nav.navigate(Routes.CRAFT_MINE) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                Text("📷 Мои стразы по фото (${CraftStore.mine(ctx).size} цветов)")
+            }
             OutlinedButton(onClick = { nav.navigate(Routes.CRAFT_STASH) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                Text("Мои запасы (${CraftStore.stash(ctx).size} цветов)")
+                Text("Мои запасы DMC (${CraftStore.stash(ctx).size} цветов)")
             }
             if (busy) Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Text("  Готовлю фото…")
@@ -200,7 +203,9 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
     var printDialog by remember { mutableStateOf(false) }
     var stashDialog by remember { mutableStateOf(false) }
     // Настройки, влияющие на расчёт схемы.
-    val key = listOf(p0.kind, p0.width, p0.colors, p0.dither, p0.cleanup, p0.brightness, p0.contrast, p0.saturation, p0.removeBg, p0.onlyStash, p0.replace, photoVersion)
+    val mineVer = CraftStore.mineVersion.intValue
+    val mineThreads = remember(mineVer) { CraftStore.mine(ctx).map { it.thread() } }
+    val key = listOf(p0.kind, p0.width, p0.colors, p0.dither, p0.cleanup, p0.brightness, p0.contrast, p0.saturation, p0.removeBg, p0.onlyStash, p0.onlyMine, p0.replace, photoVersion, if (p0.onlyMine) mineVer else 0)
     LaunchedEffect(key, p0.round) {
         busy = true
         val pat = CraftStore.pattern(ctx, p0)
@@ -214,8 +219,8 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
     /** Изменение, которое пересчитает схему: если уже есть отметки выложенных клеток — сначала спросить. */
     fun update(f: (CraftProject) -> CraftProject) {
         val n = f(p0)
-        val changesPattern = listOf(n.kind, n.width, n.colors, n.dither, n.cleanup, n.brightness, n.contrast, n.saturation, n.removeBg, n.onlyStash, n.replace) !=
-            listOf(p0.kind, p0.width, p0.colors, p0.dither, p0.cleanup, p0.brightness, p0.contrast, p0.saturation, p0.removeBg, p0.onlyStash, p0.replace)
+        val changesPattern = listOf(n.kind, n.width, n.colors, n.dither, n.cleanup, n.brightness, n.contrast, n.saturation, n.removeBg, n.onlyStash, n.onlyMine, n.replace) !=
+            listOf(p0.kind, p0.width, p0.colors, p0.dither, p0.cleanup, p0.brightness, p0.contrast, p0.saturation, p0.removeBg, p0.onlyStash, p0.onlyMine, p0.replace)
         if (changesPattern && CraftStore.hasProgress(ctx, p0)) pending = n else save(n)
     }
     val original = remember(id, photoVersion) { runCatching { BitmapFactory.decodeFile(CraftStore.photo(ctx, id).absolutePath) }.getOrNull() }
@@ -404,8 +409,18 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
             Toggle("Не заполнять фон", "Однотонный фон у краёв остаётся пустым — как в вышивке без фона", p0.removeBg) { on -> update { it.copy(removeBg = on) } }
             val stashSize = CraftStore.stash(ctx).size
             Toggle("Только из моих запасов", if (stashSize < 2) "Сначала отметьте цвета в «Мои запасы»" else "Подбирать из $stashSize цветов, которые у вас уже есть", p0.onlyStash) { on ->
-                if (on && stashSize < 2) nav.navigate(Routes.CRAFT_STASH) else update { it.copy(onlyStash = on) }
+                if (on && stashSize < 2) nav.navigate(Routes.CRAFT_STASH) else update { it.copy(onlyStash = on, onlyMine = if (on) false else it.onlyMine) }
             }
+            Toggle(
+                "Только из моих страз (по фото)",
+                if (mineThreads.size < 2) "Сфотографируйте свои стразы на белой бумаге в «Мои стразы» — цвета определятся сами"
+                else "Картина из ${mineThreads.size} ваших цветов — как они выглядят на фото",
+                p0.onlyMine,
+            ) { on ->
+                if (on && mineThreads.size < 2) nav.navigate(Routes.CRAFT_MINE)
+                else update { it.copy(onlyMine = on, onlyStash = if (on) false else it.onlyStash, replace = emptyMap()) }
+            }
+            if (p0.onlyMine) TextButton(onClick = { nav.navigate(Routes.CRAFT_MINE) }) { Text("Изменить мои стразы (${mineThreads.size})") }
             var name by remember(p0.id) { mutableStateOf(p0.name) }
             Gap(6.dp)
             TextInput(name, { name = it; save(p0.copy(name = it.ifBlank { p0.name })) }, "Название")
@@ -431,7 +446,7 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
                         Text("${i + 1}", Modifier.width(26.dp), fontSize = 12.sp, color = extra.dim)
                         ColorChip(t, i)
                         Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                            Text("DMC ${t.code} · ${t.name}", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                            Text("${t.label} · ${t.name}", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                             Text(
                                 "${counts[i]} ${kind.unit} · ${CraftStore.fmt(n.amount)} ${n.unit}" + if (t.code in stash) " · есть в запасах" else "",
                                 fontSize = 12.sp, color = if (t.code in stash) extra.ok else extra.dim,
@@ -460,7 +475,7 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
                         share(
                             "Купить для «${p0.name}» (${kind.title}):\n" + toBuy.joinToString("\n") { i ->
                                 val n = CraftPattern.need(kind, counts[i], p0.count)
-                                "DMC ${pat.colors[i].code} — ${pat.colors[i].name}: ${CraftStore.fmt(n.amount)} ${n.unit}"
+                                "${pat.colors[i].label} — ${pat.colors[i].name}: ${CraftStore.fmt(n.amount)} ${n.unit}"
                             },
                         )
                     },
@@ -498,22 +513,22 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
             val t = pat.colors[i]
             AlertDialog(
                 onDismissRequest = { colorEdit = null },
-                title = { Row(verticalAlignment = Alignment.CenterVertically) { ColorChip(t, i); Text("  DMC ${t.code}") } },
+                title = { Row(verticalAlignment = Alignment.CenterVertically) { ColorChip(t, i); Text("  ${t.label}") } },
                 text = {
                     Column(Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState())) {
                         Text(t.name, color = extra.dim)
                         Text("Заменить на соседний оттенок:", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
-                        CraftPattern.alternatives(t).forEach { a ->
+                        CraftPattern.alternatives(t, mine = if (p0.onlyMine) mineThreads.takeIf { it.size >= 2 } else null).forEach { a ->
                             Row(Modifier.fillMaxWidth().clickable { update { it.copy(replace = it.replace + (t.code to a.code)) }; colorEdit = null }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Box(Modifier.size(24.dp).clip(RoundedCornerShape(5.dp)).background(Color(a.rgb or (0xFF shl 24))))
-                                Text("  DMC ${a.code} · ${a.name}", fontSize = 14.sp)
+                                Text("  ${a.label} · ${a.name}", fontSize = 14.sp)
                             }
                         }
                         Text("Слить с цветом схемы:", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
                         pat.colors.forEachIndexed { j, o ->
                             if (j != i) Row(Modifier.fillMaxWidth().clickable { update { it.copy(replace = it.replace + (t.code to o.code)) }; colorEdit = null }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                 ColorChip(o, j, 24)
-                                Text("  DMC ${o.code} · ${o.name}", fontSize = 14.sp)
+                                Text("  ${o.label} · ${o.name}", fontSize = 14.sp)
                             }
                         }
                     }

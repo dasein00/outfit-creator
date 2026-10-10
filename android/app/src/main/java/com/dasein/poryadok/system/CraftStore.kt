@@ -45,6 +45,8 @@ data class CraftProject(
     val round: Boolean = false,
     /** Подбирать только из цветов «Мои запасы». */
     val onlyStash: Boolean = false,
+    /** Собирать только из «Мои стразы» — цветов, определённых по фото страз или добавленных вручную. */
+    val onlyMine: Boolean = false,
     /** Замены цветов: номер DMC → номер DMC. */
     val replace: Map<String, String> = emptyMap(),
     /** Вид схемы: 0 — цветная, как в наборах (цвет клетки + символ), 1 — светлый оттенок + символ, 2 — только символы (ч/б печать). */
@@ -53,6 +55,12 @@ data class CraftProject(
     val progressSig: String = "",
 ) {
     val kindEnum get() = runCatching { CraftPattern.Kind.valueOf(kind) }.getOrDefault(CraftPattern.Kind.DIAMOND)
+}
+
+/** Свой цвет страз: определён по фото или добавлен вручную. [n] — номер (код «М{n}»), [dmc] — ближайший номер каталога для справки. */
+@Serializable
+data class MyStone(val n: Int, val rgb: Int, val name: String = "", val dmc: String = "", val auto: Boolean = false) {
+    fun thread() = CraftPattern.Thread(CraftPattern.MINE + n, name.ifBlank { "Мой цвет $n" }, rgb)
 }
 
 object CraftStore {
@@ -102,7 +110,7 @@ object CraftStore {
 
     fun resetCrop(ctx: Context, id: Long) { val o = original(ctx, id); if (o.exists()) o.copyTo(photo(ctx, id), overwrite = true) }
 
-    private fun decode(ctx: Context, uri: Uri, max: Int): Bitmap? {
+    fun decode(ctx: Context, uri: Uri, max: Int): Bitmap? {
         val cr = ctx.contentResolver
         val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         cr.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, o) }
@@ -127,6 +135,39 @@ object CraftStore {
     // ---------- Мои запасы ----------
 
     private fun sp(ctx: Context) = ctx.getSharedPreferences("ui_state", Context.MODE_PRIVATE)
+    // ---------- Мои стразы (по фото) ----------
+
+    /** Не .json: этим расширением в папке помечены работы. */
+    private fun mineFile(ctx: Context) = File(root(ctx), "my_stones.palette")
+
+    fun mine(ctx: Context): List<MyStone> = runCatching {
+        json.decodeFromString(kotlinx.serialization.builtins.ListSerializer(MyStone.serializer()), mineFile(ctx).readText())
+    }.getOrDefault(emptyList())
+
+    /** Меняется при каждом сохранении «Мои стразы» — экраны пересчитывают схему. */
+    val mineVersion = androidx.compose.runtime.mutableIntStateOf(0)
+
+    fun setMine(ctx: Context, list: List<MyStone>) {
+        mineVersion.intValue++
+        runCatching { mineFile(ctx).writeText(json.encodeToString(kotlinx.serialization.builtins.ListSerializer(MyStone.serializer()), list)) }
+    }
+
+    /** Добавить цвета; почти одинаковые (ΔE < [same]) с уже имеющимися пропускаются. Возвращает, сколько добавлено. */
+    fun addMine(ctx: Context, rgbs: List<Int>, auto: Boolean, same: Double = 4.0): Int {
+        val cur = mine(ctx).toMutableList()
+        var next = (cur.maxOfOrNull { it.n } ?: 0) + 1
+        var added = 0
+        rgbs.forEach { c ->
+            val l = CraftPattern.lab(c)
+            if (cur.any { com.dasein.poryadok.logic.StoneColors.deltaE(CraftPattern.lab(it.rgb), l) < same }) return@forEach
+            val d = CraftPattern.DMC[CraftPattern.nearestDmc(c)]
+            cur += MyStone(next++, c, d.name, d.code, auto)
+            added++
+        }
+        setMine(ctx, cur)
+        return added
+    }
+
     fun stash(ctx: Context): Set<String> = sp(ctx).getString("craft_stash", "").orEmpty().split(',').filter { it.isNotBlank() }.toSet()
     fun setStash(ctx: Context, codes: Set<String>) = sp(ctx).edit().putString("craft_stash", codes.joinToString(",")).apply()
 
@@ -147,8 +188,9 @@ object CraftStore {
         val (small, w, h) = grid(ctx, p) ?: return@withContext null
         val allowed = if (p.onlyStash) stash(ctx).let { s -> CraftPattern.DMC.indices.filter { CraftPattern.DMC[it].code in s }.toSet() } else null
         val skip = if (p.removeBg) CraftPattern.backgroundMask(small, w, h) else null
-        val pat = CraftPattern.build(small, w, h, p.colors, p.dither, allowed = allowed, skip = skip)
-        CraftPattern.replace(if (p.cleanup) CraftPattern.cleanup(pat) else pat, p.replace)
+        val mine = if (p.onlyMine) mine(ctx).map { it.thread() }.takeIf { it.size >= 2 } else null
+        val pat = CraftPattern.build(small, w, h, p.colors, p.dither, allowed = allowed, skip = skip, custom = mine)
+        CraftPattern.replace(if (p.cleanup) CraftPattern.cleanup(pat) else pat, p.replace, mine.orEmpty())
     }
 
     // ---------- Отметки выложенных клеток ----------
@@ -341,7 +383,7 @@ object CraftStore {
             val cx = ox + (i / legendRows) * colW; val cy = ly + (i % legendRows) * rowH
             drawCell(c, cx, cy - 26, 30f, i, p, pr.chartStyle, fill, sym)
             val n = CraftPattern.need(kind, counts[i], pr.count)
-            c.drawText("DMC ${t.code}  ${t.name} — ${counts[i]} ${kind.unit}, ${fmt(n.amount)} ${n.unit}", cx + 42, cy, txt)
+            c.drawText("${t.label}  ${t.name} — ${counts[i]} ${kind.unit}, ${fmt(n.amount)} ${n.unit}", cx + 42, cy, txt)
         }
         return bmp
     }
@@ -448,7 +490,7 @@ object CraftStore {
                 c.drawText("${i + 1}", m, y, txt)
                 drawCell(c, m + 18 * scale, y - 10 * scale, 12f * scale, i, p, pr.chartStyle, fill, sym)
                 val n = CraftPattern.need(kind, counts[i], pr.count)
-                c.drawText("DMC ${t.code}   ${t.name}   ${counts[i]}   ${fmt(n.amount)} ${n.unit}", m + 38 * scale, y, txt)
+                c.drawText("${t.label}   ${t.name}   ${counts[i]}   ${fmt(n.amount)} ${n.unit}", m + 38 * scale, y, txt)
                 y += rowH; i++
             }
             doc.finishPage(page)
