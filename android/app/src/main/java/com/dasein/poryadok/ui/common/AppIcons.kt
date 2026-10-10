@@ -109,17 +109,21 @@ fun AppIcon(
     @DrawableRes res: Int,
     size: Dp = 24.dp,
     modifier: Modifier = Modifier,
-    badge: Boolean = !LocalExtra.current.dark,
+    badge: Boolean = false,
     dimmed: Boolean = false,
 ) {
     val a = if (dimmed) .5f else 1f
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val tone = iconTone(onPlate = badge)
+    val img = androidx.compose.runtime.remember(res, tone) { IconTint.res(ctx, res, tone) }
+    val inner = @Composable { m: Modifier -> if (img != null) Image(img, null, m) else Image(painterResource(res), null, m) }
     if (badge) {
         Box(
             modifier.size(size * 1.45f).clip(RoundedCornerShape(size * .4f)).background(Palette.Ink2).alpha(a),
             contentAlignment = Alignment.Center,
-        ) { Image(painterResource(res), null, Modifier.size(size)) }
+        ) { inner(Modifier.size(size)) }
     } else {
-        Image(painterResource(res), null, modifier.size(size).alpha(a))
+        inner(modifier.size(size).alpha(a))
     }
 }
 
@@ -132,9 +136,7 @@ fun IconAction(glyph: String, description: String, onClick: () -> Unit) {
 /** Кнопка с иконкой набора для верхней панели. */
 @Composable
 fun IconAction(@DrawableRes res: Int, description: String, onClick: () -> Unit) {
-    IconButton(onClick = onClick) {
-        Image(painterResource(res), contentDescription = description, modifier = Modifier.size(24.dp))
-    }
+    IconButton(onClick = onClick) { AppIcon(res, 24.dp, badge = false) }
 }
 
 @Composable

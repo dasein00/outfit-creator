@@ -65,11 +65,11 @@ object Glyphs {
     val SETS = listOf(
         // Новый набор DASEIN по разделам.
         "Главное" to "d01", "Настройки и данные" to "d02", "Задачи и цели" to "d03", "Привычки" to "d04", "Календарь и праздники" to "d05",
-        "Финансы" to "d06", "Категории трат" to "d07", "Здоровье" to "d08", "Давление" to "d09", "Вес и тело" to "d10", "Рецепты" to "d12",
+        "Финансы" to "d06", "Категории трат" to "d07", "Здоровье" to "d08", "Давление" to "d09", "Вес и тело" to "d10", "Питание" to "d11", "Рецепты" to "d12",
         "Тренировки" to "d13", "Виды спорта" to "d14", "Сон и самочувствие" to "d15", "Метки дня" to "d16", "Кино и книги" to "d17",
-        "Заметки и списки" to "d18", "Гардероб" to "d19", "Английский" to "d20", "Рукоделие" to "d21", "Разговор и погода" to "d22",
+        "Заметки и списки" to "d18", "Гардероб" to "d19", "Английский" to "d20", "Рукоделие" to "d21", "Разговор и погода" to "d22", "Дополнительно" to "d23",
         // Прежние наборы.
-        "Спорт" to "sport", "Тренировки (прежние)" to "train", "Сон" to "sleep", "Питание" to "food",
+        "Спорт" to "sport", "Тренировки (прежние)" to "train", "Сон" to "sleep", "Питание (прежние)" to "food",
         "Календарь" to "cal", "Праздники" to "fest", "Кино и книги (прежние)" to "habit", "Медиа" to "books",
         "Цели" to "goals", "День" to "daily", "Жизнь" to "life", "Ночь" to "night",
         "Кино и стриминг" to "cinema", "Чтение" to "reading", "Жизнь и фитнес" to "lifefit", "Минимализм" to "minimal",
@@ -183,6 +183,10 @@ object Glyphs {
         return bmp.asImageBitmap().also { cache.put(key, it) }
     }
 
+    fun loadTinted(ctx: Context, key: String, tone: IconTone): ImageBitmap? =
+        if (tone.identity) load(ctx, key)
+        else IconTint.cached("g:$key", tone) { runCatching { ctx.assets.open(assetPath(key)).use { BitmapFactory.decodeStream(it) } }.getOrNull() }
+
     fun list(ctx: Context, folder: String): List<String> =
         runCatching { ctx.assets.list(folder)?.sorted().orEmpty() }.getOrDefault(emptyList()).map { it.removeSuffix(".webp") }
 
@@ -199,7 +203,7 @@ fun Glyph(value: String, size: Dp = 24.dp, modifier: Modifier = Modifier, badge:
     val key = Glyphs.normalize(value)
     if (key.startsWith("ui:")) {
         val res = Ic.byName(key.removePrefix("ui:"))
-        AppIcon(res, size, modifier, badge = badge ?: !LocalExtra.current.dark, dimmed = dimmed)
+        AppIcon(res, size, modifier, badge = badge ?: false, dimmed = dimmed)
         return
     }
     val ctx = LocalContext.current
@@ -211,8 +215,10 @@ fun Glyph(value: String, size: Dp = 24.dp, modifier: Modifier = Modifier, badge:
         }
         return
     }
-    val img = remember(key) { Glyphs.load(ctx, key) }
-    val useBadge = (badge ?: !LocalExtra.current.dark) && !key.startsWith("dish/")
+    // Иконки перекрашиваются под цвет оформления; в светлой теме — тёмные, без плашки. Блюда — как есть.
+    val useBadge = (badge ?: false) && !key.startsWith("dish/")
+    val tone = iconTone(onPlate = useBadge)
+    val img = remember(key, tone) { if (key.startsWith("dish/")) Glyphs.load(ctx, key) else Glyphs.loadTinted(ctx, key, tone) }
     val a = if (dimmed) .5f else 1f
     val inner = @Composable { m: Modifier ->
         if (img != null) Image(img, null, m) else Box(m)
