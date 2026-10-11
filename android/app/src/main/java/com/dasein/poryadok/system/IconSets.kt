@@ -145,6 +145,9 @@ object IconSets {
 
     fun saveFolders(ctx: Context, l: List<Folder>) { writeFolders(ctx, l); version.intValue++ }
 
+    /** Что-то в библиотеке иконок поменялось — экраны перерисуются. */
+    fun bump() { version.intValue++ }
+
     private fun update(ctx: Context, f: (List<Folder>) -> List<Folder>) = saveFolders(ctx, f(folders(ctx)))
 
     fun createFolder(ctx: Context, title: String): String {

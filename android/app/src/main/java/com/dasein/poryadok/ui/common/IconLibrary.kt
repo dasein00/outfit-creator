@@ -72,10 +72,115 @@ object IconLibrary {
         if (!dishes) Glyphs.DISH_SETS.filter { it.second in Glyphs.SHARED_DISH_SETS }.forEach { (t, s) -> add(Group("dish:$s", t)) }
     }
 
-    fun builtinKeys(ctx: Context, id: String): List<String> = when {
+    /** Иконки встроенного набора как в приложении (без вашей перестановки). */
+    fun defaultKeys(ctx: Context, id: String): List<String> = when {
         id == "ui" -> Glyphs.UI.map { "ui:$it" }
         id.startsWith("dish:") -> Glyphs.dishKeysOf(ctx, id.removePrefix("dish:"))
         else -> Glyphs.keysOf(ctx, id)
+    }
+
+    // ---------- Свой порядок встроенных наборов ----------
+
+    /**
+     * Как вы разложили встроенные наборы: порядок иконок в наборе ([keys]), порядок наборов ([order])
+     * и удалённые наборы ([hidden]). Сами картинки остаются в приложении — удалённый набор можно вернуть.
+     */
+    @kotlinx.serialization.Serializable
+    data class Layout(
+        val keys: Map<String, List<String>> = emptyMap(),
+        val order: List<String> = emptyList(),
+        val hidden: List<String> = emptyList(),
+    )
+
+    private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    private fun layoutFile(ctx: Context) = java.io.File(ctx.filesDir, "iconsets/builtin.json")
+
+    fun layout(ctx: Context): Layout = runCatching { json.decodeFromString(Layout.serializer(), layoutFile(ctx).readText()) }.getOrDefault(Layout())
+
+    private fun saveLayout(ctx: Context, l: Layout) {
+        runCatching { layoutFile(ctx).apply { parentFile?.mkdirs() }.writeText(json.encodeToString(Layout.serializer(), l)) }
+        IconSets.bump()
+    }
+
+    /** Встроенные наборы в вашем порядке, без удалённых. */
+    fun groups(ctx: Context, dishes: Boolean): List<Group> {
+        val l = layout(ctx)
+        return builtinGroups(dishes).sortedBy { g -> l.order.indexOf(g.id).let { if (it < 0) Int.MAX_VALUE else it } }.filter { it.id !in l.hidden }
+    }
+
+    fun hiddenGroups(ctx: Context): List<Group> {
+        val h = layout(ctx).hidden
+        return (builtinGroups(true) + builtinGroups(false)).distinctBy { it.id }.filter { it.id in h }
+    }
+
+    /** Иконки встроенного набора в вашем порядке. */
+    fun builtinKeys(ctx: Context, id: String): List<String> = layout(ctx).keys[id] ?: defaultKeys(ctx, id)
+
+    fun setGroupKeys(ctx: Context, id: String, keys: List<String>) {
+        val l = layout(ctx)
+        saveLayout(ctx, l.copy(keys = l.keys + (id to keys.distinct())))
+    }
+
+    fun addToGroup(ctx: Context, id: String, keys: Collection<String>) = setGroupKeys(ctx, id, builtinKeys(ctx, id) + keys)
+    fun removeFromGroup(ctx: Context, id: String, keys: Collection<String>) = setGroupKeys(ctx, id, builtinKeys(ctx, id) - keys.toSet())
+
+    /** Сдвинуть набор в списке на [delta]. */
+    fun moveGroup(ctx: Context, id: String, delta: Int) {
+        val ids = groups(ctx, false).map { it.id }
+        val i = ids.indexOf(id); val j = (i + delta).coerceIn(0, ids.lastIndex)
+        if (i < 0 || i == j) return
+        val l = layout(ctx)
+        saveLayout(ctx, l.copy(order = ids.toMutableList().apply { add(j, removeAt(i)) }))
+    }
+
+    fun hideGroup(ctx: Context, id: String) { val l = layout(ctx); saveLayout(ctx, l.copy(hidden = (l.hidden + id).distinct())) }
+    fun restoreGroups(ctx: Context) { val l = layout(ctx); saveLayout(ctx, l.copy(hidden = emptyList())) }
+
+    /** Вернуть встроенный набор как в приложении: исходный состав и порядок. */
+    fun resetGroup(ctx: Context, id: String) { val l = layout(ctx); saveLayout(ctx, l.copy(keys = l.keys - id)) }
+
+    /** В каком встроенном наборе сейчас лежит иконка (с учётом ваших перемещений). */
+    fun groupContaining(ctx: Context, key: String): String? =
+        layout(ctx).keys.entries.firstOrNull { key in it.value }?.key ?: groupOf(key)
+
+    /**
+     * Иконки, которые где-то стоят: в коде приложения, в ваших записях (категории, привычки, страницы, рецепты…),
+     * в настройках, виджетах и заменах. Такие наборы удалять нельзя.
+     */
+    suspend fun usedKeys(ctx: Context): Set<String> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val re = Regex("ui:[a-z_0-9]+|dish/[a-z0-9]+/\\d+|[a-z0-9]+/\\d\\d")
+        val out = HashSet<String>()
+        fun scan(s: String) { re.findAll(s).forEach { out += it.value } }
+        runCatching { ctx.assets.open("icons/used_in_code.txt").bufferedReader().readLines().forEach { if (it.isNotBlank()) out += it.trim() } }
+        IconSets.load(ctx)
+        IconSets.overrides.value.forEach { (k, v) -> out += k; out += v }
+        val dbs = listOfNotNull(
+            runCatching { com.dasein.poryadok.Graph.db.openHelper.readableDatabase }.getOrNull(),
+            runCatching { com.dasein.poryadok.Graph.extraDb.openHelper.readableDatabase }.getOrNull(),
+        )
+        for (db in dbs) runCatching {
+            val tables = db.query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'android_%' AND name != 'room_master_table'")
+                .use { c -> buildList { while (c.moveToNext()) add(c.getString(0)) } }
+            for (t in tables) {
+                val cols = db.query("PRAGMA table_info(`$t`)").use { c ->
+                    buildList { while (c.moveToNext()) if (c.getString(2).orEmpty().uppercase().contains("TEXT")) add(c.getString(1)) }
+                }
+                for (col in cols) runCatching {
+                    db.query("SELECT DISTINCT `$col` FROM `$t` WHERE length(`$col`) <= 300").use { c ->
+                        while (c.moveToNext()) {
+                            val v = c.getString(0) ?: continue
+                            scan(v)
+                            // Старые записи хранят эмодзи — они показываются иконкой.
+                            if (v.length <= 12) out += Glyphs.normalize(v)
+                        }
+                    }
+                }
+            }
+        }
+        listOf(java.io.File(ctx.applicationInfo.dataDir, "shared_prefs"), java.io.File(ctx.filesDir, "datastore")).forEach { d ->
+            d.listFiles().orEmpty().forEach { f -> runCatching { scan(f.readBytes().decodeToString()) } }
+        }
+        out
     }
 
     /** Встроенный набор, в котором лежит иконка. */

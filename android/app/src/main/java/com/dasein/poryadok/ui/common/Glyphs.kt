@@ -278,7 +278,7 @@ fun GlyphPickerDialog(
     var importing by remember { mutableStateOf(false) }
     var editMode by remember { mutableStateOf(false) }
     var editIcon by remember { mutableStateOf<String?>(null) }
-    val builtin = remember(dishes) { IconLibrary.builtinGroups(dishes) }
+    val builtin = remember(dishes, ver) { IconLibrary.groups(ctx, dishes) }
     // С чего открыть: со своей иконки — «Мои иконки», со встроенной — её набор.
     var level by remember {
         mutableStateOf(
@@ -289,7 +289,7 @@ fun GlyphPickerDialog(
         )
     }
     var open by remember {
-        mutableStateOf(if (selected.isBlank()) null else IconLibrary.groupOf(current)?.takeIf { g -> builtin.any { it.id == g } })
+        mutableStateOf(if (selected.isBlank()) null else IconLibrary.groupContaining(ctx, current)?.takeIf { g -> builtin.any { it.id == g } })
     }
     val folders = remember(ver) { userFolders(ctx) }
     val (mineCount, setsCount) = rememberLibraryCounts(dishes)
@@ -301,7 +301,7 @@ fun GlyphPickerDialog(
         }
     }
     val showGrid = level == IconLibrary.MINE || open != null
-    val reorderable = !editMode && !dishes && (level == IconLibrary.MINE || level == IconLibrary.SETS)
+    val reorderable = !editMode && !(dishes && level == IconLibrary.MINE)
     val pickOwn = rememberImagePickerWithCrop(1f, "icons", round = !dishes, png = !dishes, outW = if (dishes) 900 else 320) { path ->
         ownVersion++
         // Своя картинка-иконка попадает в «Мои иконки».
@@ -370,7 +370,11 @@ fun GlyphPickerDialog(
                                 else { onPick(k); onDismiss() }
                             },
                             onReorder = { l ->
-                                if (level == IconLibrary.MINE) sets.setKeys(ctx, sets.MINE, l) else open?.let { sets.setKeys(ctx, it, l) }
+                                when (level) {
+                                    IconLibrary.MINE -> sets.setKeys(ctx, sets.MINE, l)
+                                    IconLibrary.SETS -> open?.let { sets.setKeys(ctx, it, l) }
+                                    else -> open?.let { IconLibrary.setGroupKeys(ctx, it, l) }
+                                }
                             },
                         ) { k, _ ->
                             Box(

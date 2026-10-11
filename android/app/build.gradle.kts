@@ -102,3 +102,29 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
 }
+
+// Список иконок, которые стоят в коде приложения: встроенный набор нельзя удалить, если его иконка где-то используется.
+val usedIconsDir = layout.buildDirectory.dir("generated/usedIcons")
+val genUsedIcons = tasks.register("genUsedIcons") {
+    val src = fileTree("src/main/java") { include("**/*.kt") }
+    val out = usedIconsDir
+    inputs.files(src)
+    outputs.dir(out)
+    doLast {
+        val texts = src.files.map { it.readText() }
+        val ic = HashMap<String, String>()
+        texts.forEach { t -> Regex("""val (\w+) = R\.drawable\.ic_(\w+)""").findAll(t).forEach { ic[it.groupValues[1]] = it.groupValues[2] } }
+        val keys = sortedSetOf<String>()
+        val lit = Regex(""""(ui:[a-z_0-9]+|dish/[a-z0-9]+/\d+|[a-z0-9]+/\d\d)"""")
+        texts.forEach { t ->
+            lit.findAll(t).forEach { keys += it.groupValues[1] }
+            Regex("""R\.drawable\.ic_(\w+)""").findAll(t).forEach { keys += "ui:" + it.groupValues[1] }
+            Regex("""\bIc\.(\w+)""").findAll(t).forEach { m -> ic[m.groupValues[1]]?.let { keys += "ui:$it" } }
+        }
+        val d = out.get().asFile.resolve("icons")
+        d.mkdirs()
+        d.resolve("used_in_code.txt").writeText(keys.joinToString("\n"))
+    }
+}
+android.sourceSets.getByName("main").assets.srcDir(usedIconsDir)
+tasks.named("preBuild") { dependsOn(genUsedIcons) }
