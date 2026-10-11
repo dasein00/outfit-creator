@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import com.dasein.poryadok.logic.IconSheet
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
@@ -19,7 +20,17 @@ import java.io.File
  * Свои наборы иконок (нарезанные из картинки) и замены иконок: любую иконку приложения можно заменить
  * другой из базы — долгим нажатием на неё. Лежит в files/iconsets — попадает в резервную копию.
  */
+/** Цвет оформления для иконок виджета (виджет рисуется вне экрана приложения). */
+fun accentOf(ctx: Context): Int? =
+    ctx.getSharedPreferences("ui_state", Context.MODE_PRIVATE).getInt("accent_rgb", -1).takeIf { it >= 0 }
+
 object IconSets {
+    /** Запомнить цвет оформления для виджета. */
+    fun rememberAccent(ctx: Context, rgb: Int) {
+        val sp = ctx.getSharedPreferences("ui_state", Context.MODE_PRIVATE)
+        if (sp.getInt("accent_rgb", -1) != rgb) sp.edit().putInt("accent_rgb", rgb and 0xFFFFFF).apply()
+    }
+
     @Serializable
     data class IconSet(val id: String, val title: String)
 
@@ -163,6 +174,24 @@ object IconSets {
 
     fun resolve(key: String): String = overrides.value[key] ?: key
 
+    /**
+     * Картинка иконки для виджета (вне экрана приложения): с учётом замены долгим нажатием и своих наборов,
+     * в цвете выбранного оформления.
+     */
+    fun widgetBitmap(ctx: Context, key0: String, accent: Int? = null): Bitmap? {
+        load(ctx)
+        val key = resolve(com.dasein.poryadok.ui.common.Glyphs.normalize(key0))
+        val raw = runCatching {
+            when {
+                key.startsWith("ui:") -> android.graphics.BitmapFactory.decodeResource(ctx.resources, com.dasein.poryadok.ui.common.Ic.byName(key.removePrefix("ui:")))
+                key.startsWith("/") -> android.graphics.BitmapFactory.decodeFile(key)
+                else -> com.dasein.poryadok.ui.common.Glyphs.bitmap(ctx, key)
+            }
+        }.getOrNull() ?: return null
+        if (accent == null || key.startsWith("dish/") || key.startsWith("/")) return raw
+        return com.dasein.poryadok.ui.common.IconTint.apply(raw, com.dasein.poryadok.ui.common.IconTint.tone(accent, light = false))
+    }
+
     fun setOverride(ctx: Context, key: String, to: String?) {
         load(ctx)
         val m = overrides.value.toMutableMap()
@@ -170,5 +199,7 @@ object IconSets {
         overrides.value = m; cache = m
         runCatching { overridesFile(ctx).writeText(json.encodeToString(MapSerializer(String.serializer(), String.serializer()), m)) }
         version.intValue++
+        // Виджет рисуется отдельно — обновляем его иконки.
+        com.dasein.poryadok.Graph.scope.launch { runCatching { Widgets.refresh(ctx.applicationContext) } }
     }
 }

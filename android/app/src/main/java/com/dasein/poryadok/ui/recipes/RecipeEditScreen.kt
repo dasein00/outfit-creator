@@ -190,6 +190,13 @@ private fun StepBasics(d: RecipeDraft) {
     val r = d.recipe
     val pickPhoto = com.dasein.poryadok.ui.common.rememberImagePickerWithCrop(1f, "recipes") { d.recipe = d.recipe.copy(photo = it) }
     var recrop by remember { mutableStateOf(false) }
+    var fromText by remember { mutableStateOf(false) }
+    // Рецепт из подписи в Instagram: ингредиенты, порции и этапы разбираются сами.
+    Button(onClick = { fromText = true }, modifier = Modifier.fillMaxWidth()) {
+        Text(if (r.notes.isBlank()) "📋 Описание из Instagram — разобрать" else "📋 Описание блюда — разобрать заново")
+    }
+    if (fromText) RecipeTextDialog(d) { fromText = false }
+    Gap(10.dp)
     TextInput(r.name, { d.recipe = r.copy(name = it) }, "Название")
     Gap(10.dp)
     var pickIllustration by remember { mutableStateOf(false) }
@@ -532,7 +539,7 @@ private fun StepParams(d: RecipeDraft) {
 private fun StepFinish(d: RecipeDraft) {
     val r = d.recipe
     val extra = LocalExtra.current
-    TextInput(r.notes, { d.recipe = r.copy(notes = it) }, "Заметки", singleLine = false, minLines = 2)
+    TextInput(r.notes, { d.recipe = r.copy(notes = it) }, "Описание и заметки", singleLine = false, minLines = 2)
     Gap(8.dp)
     TextInput(r.tips, { d.recipe = r.copy(tips = it) }, "Советы", singleLine = false, minLines = 2)
     Gap(8.dp)

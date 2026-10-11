@@ -5,6 +5,7 @@ package com.dasein.poryadok.ui.recipes
 import com.dasein.poryadok.ui.common.Hint
 import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -97,6 +98,34 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
     var baseIdx by rememberSaveable(id) { mutableStateOf(-1) }
     var baseHave by rememberSaveable(id) { mutableStateOf("") }
     val done = remember(id) { mutableStateMapOf<Int, Boolean>() }
+    // Отмеченные ингредиенты («уже достал») и таймеры этапов: номер этапа → когда закончится.
+    val have = remember(id) { mutableStateMapOf<Int, Boolean>() }
+    val timers = remember(id) { mutableStateMapOf<Int, Long>() }
+    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(timers.size) {
+        while (timers.isNotEmpty()) {
+            now = System.currentTimeMillis()
+            timers.filterValues { it <= now }.keys.forEach { i ->
+                timers.remove(i)
+                done[i] = true
+                Toast.makeText(ctx, "Таймер этапа ${i + 1} — готово!", Toast.LENGTH_LONG).show()
+                runCatching {
+                    val v = ctx.getSystemService(android.os.Vibrator::class.java)
+                    if (android.os.Build.VERSION.SDK_INT >= 26) v?.vibrate(android.os.VibrationEffect.createWaveform(longArrayOf(0, 400, 200, 400, 200, 600), -1))
+                    android.media.RingtoneManager.getRingtone(ctx, android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION))?.play()
+                }
+            }
+            kotlinx.coroutines.delay(1000)
+        }
+    }
+    // Пока готовите (отмечены этапы или идёт таймер), экран не гаснет.
+    val view = androidx.compose.ui.platform.LocalView.current
+    val cooking = done.isNotEmpty() || timers.isNotEmpty() || have.isNotEmpty()
+    androidx.compose.runtime.DisposableEffect(cooking) {
+        view.keepScreenOn = cooking
+        onDispose { view.keepScreenOn = false }
+    }
+    val green = com.dasein.poryadok.ui.common.LikeGreen
     val swaps = remember(id) { mutableStateMapOf<Int, FoodProduct>() }
     var swapFor by remember { mutableStateOf<Int?>(null) }
     var addToMenu by remember { mutableStateOf(false) }
@@ -228,7 +257,15 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
             Tile(padding = 8.dp) {
                 scaled.forEachIndexed { i, ing ->
                     val hasSwap = Cooking.SWAPS.containsKey(baseIngr.getOrNull(i)?.name) || swaps.containsKey(i)
-                    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp, horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    val got = have[i] == true
+                    // Нажатие отмечает ингредиент зелёным — «уже на столе».
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                            .background(if (got) green.copy(alpha = .18f) else androidx.compose.ui.graphics.Color.Transparent)
+                            .clickable { have[i] = !got }.padding(vertical = 6.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(if (got) "✓ " else "", color = green, fontWeight = FontWeight.Bold)
                         Text(ing.name, Modifier.weight(1f), color = if (swaps.containsKey(i)) extra.warn else MaterialTheme.colorScheme.onSurface)
                         Text(Cooking.label(ing), color = extra.dim, fontSize = 14.sp)
                         if (hasSwap) Text(
@@ -239,22 +276,45 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                 }
             }
 
-            SectionTitle("Приготовление", action = if (done.isNotEmpty()) "Сбросить" else null) { done.clear() }
+            val doneCount = steps.indices.count { done[it] == true }
+            SectionTitle(
+                if (steps.isEmpty()) "Приготовление" else "Приготовление · $doneCount из ${steps.size}",
+                action = if (done.isNotEmpty() || have.isNotEmpty()) "Сбросить" else null,
+            ) { done.clear(); have.clear(); timers.clear() }
+            if (steps.isNotEmpty()) Text("Нажмите на этап, когда выполните его, — он загорится зелёным. Пока готовите, экран не гаснет.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(bottom = 6.dp))
             steps.forEachIndexed { i, s ->
-                Tile(Modifier.padding(bottom = 8.dp), onClick = { done[i] = !(done[i] ?: false) }) {
+                val isDone = done[i] == true
+                val mins = s.minutes.takeIf { it > 0 } ?: com.dasein.poryadok.logic.RecipeText.minutesIn(s.text)
+                Tile(Modifier.padding(bottom = 8.dp), onClick = { done[i] = !isDone }, color = if (isDone) green.copy(alpha = .22f) else extra.card) {
                     Row {
-                        CheckDot(done[i] == true, MaterialTheme.colorScheme.primary, onClick = { done[i] = !(done[i] ?: false) }, size = 24.dp)
-                        Column(Modifier.padding(start = 10.dp)) {
-                            Text("Шаг ${i + 1}", fontSize = 12.sp, color = extra.dim)
-                            Text(s.text, textDecoration = if (done[i] == true) TextDecoration.LineThrough else null, color = if (done[i] == true) extra.dim else MaterialTheme.colorScheme.onSurface)
+                        CheckDot(isDone, green, onClick = { done[i] = !isDone }, size = 24.dp)
+                        Column(Modifier.padding(start = 10.dp).weight(1f)) {
+                            Text(if (isDone) "Этап ${i + 1} · готово" else "Этап ${i + 1}", fontSize = 12.sp, color = if (isDone) green else extra.dim, fontWeight = if (isDone) FontWeight.SemiBold else FontWeight.Normal)
+                            Text(s.text, color = MaterialTheme.colorScheme.onSurface)
+                            if (mins > 0 && !isDone) {
+                                val end = timers[i]
+                                val label = if (end != null) {
+                                    val left = ((end - now) / 1000).coerceAtLeast(0)
+                                    "⏱ %d:%02d · стоп".format(left / 60, left % 60)
+                                } else "⏱ Таймер $mins мин"
+                                Text(
+                                    label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(top = 6.dp).clip(RoundedCornerShape(10.dp))
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = .12f))
+                                        .clickable { if (end != null) timers.remove(i) else { timers[i] = System.currentTimeMillis() + mins * 60_000L; now = System.currentTimeMillis() } }
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                                )
+                            }
                         }
                     }
                 }
             }
+            if (steps.isNotEmpty() && doneCount == steps.size) Text("Готово! Приятного аппетита 🍽", color = green, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
             if (steps.isEmpty()) Text("Шаги не добавлены", color = extra.dim)
             Column(Modifier.onGloballyPositioned { videoY = it.positionInParent().y.toInt() }) { RecipeVideosSection(r) }
 
-            if (r.notes.isNotBlank()) { SectionTitle("Заметки"); Text(r.notes) }
+            RecipeRating(r.id)
+            if (r.notes.isNotBlank()) { SectionTitle("Описание и заметки"); Text(r.notes) }
             if (r.tips.isNotBlank()) { SectionTitle("Советы"); Text(r.tips) }
             val swapList = baseIngr.mapNotNull { ing -> Cooking.SWAPS[ing.name]?.let { ing.name to it } }
             if (swapList.isNotEmpty() || r.swaps.isNotBlank()) {
@@ -531,4 +591,26 @@ fun CookDialog(recipeId: Long, servings: Int, mealsCsv: String, onDismiss: () ->
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
     )
+}
+
+
+/** Своя оценка рецепта: 1–5 звёзд (хранится на телефоне). */
+@Composable
+private fun RecipeRating(id: Long) {
+    val ctx = LocalContext.current
+    val sp = remember { ctx.getSharedPreferences("ui_state", android.content.Context.MODE_PRIVATE) }
+    var rate by remember(id) { mutableStateOf(sp.getInt("recipe_rate_$id", 0)) }
+    SectionTitle("Моя оценка")
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        (1..5).forEach { k ->
+            Text(
+                if (k <= rate) "★" else "☆", fontSize = 30.sp, color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable {
+                    rate = if (rate == k) 0 else k
+                    sp.edit().putInt("recipe_rate_$id", rate).apply()
+                }.padding(horizontal = 4.dp),
+            )
+        }
+        if (rate > 0) Text("  " + listOf("", "не понравилось", "так себе", "нормально", "вкусно", "шедевр")[rate], fontSize = 13.sp, color = LocalExtra.current.dim)
+    }
 }

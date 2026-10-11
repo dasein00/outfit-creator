@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import androidx.compose.ui.graphics.toArgb
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -53,6 +54,12 @@ class MainActivity : FragmentActivity() {
         setContent {
             val settings by Graph.prefs.settings.collectAsStateWithLifecycle(initialValue = null)
             val s = settings ?: return@setContent
+            androidx.compose.runtime.LaunchedEffect(s.accent) {
+                com.dasein.poryadok.ui.theme.Palette.accents.getOrNull(s.accent)?.second?.let {
+                    com.dasein.poryadok.system.IconSets.rememberAccent(applicationContext, it.toArgb())
+                    com.dasein.poryadok.system.Widgets.refresh(applicationContext)
+                }
+            }
             PoryadokTheme(theme = s.theme, accent = s.accent) {
                 val unlocked by Lock.unlocked
                 if (s.pinHash.isNotEmpty() && !unlocked) {

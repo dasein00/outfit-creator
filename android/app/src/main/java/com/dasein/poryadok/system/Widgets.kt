@@ -208,8 +208,7 @@ class TodayWidget : GlanceAppWidget() {
 object WidgetRing {
     private const val S = 480
 
-    private fun icon(ctx: Context, key: String): Bitmap? =
-        runCatching { ctx.assets.open("glyphs/$key.webp").use { BitmapFactory.decodeStream(it) } }.getOrNull()
+    private fun icon(ctx: Context, key: String): Bitmap? = IconSets.widgetBitmap(ctx, key, accentOf(ctx))
 
     private fun fit(p: Paint, text: String, maxW: Float, size: Float) {
         p.textSize = size
