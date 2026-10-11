@@ -19,10 +19,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -99,8 +102,10 @@ fun IconEditHost() {
     val key = IconEdit.target.value ?: return
     var pick by remember(key) { mutableStateOf(false) }
     var import by remember(key) { mutableStateOf(false) }
+    var editIcon by remember(key) { mutableStateOf<String?>(null) }
     val over = IconSets.overrides.value[key]
-    if (!pick && !import) AlertDialog(
+    val shown = over ?: key
+    if (!pick && !import && editIcon == null) AlertDialog(
         onDismissRequest = { IconEdit.target.value = null },
         title = { Text("Иконка") },
         text = {
@@ -115,6 +120,9 @@ fun IconEditHost() {
                     )
                 }
                 Button(onClick = { pick = true }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) { Text("Выбрать из базы иконок") }
+                if (shown.startsWith("u:")) OutlinedButton(onClick = { editIcon = shown }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                    Text("Редактировать: отразить, повернуть, наклонить")
+                }
                 OutlinedButton(onClick = { import = true }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("Добавить новый набор из картинки") }
                 if (over != null) TextButton(onClick = { IconSets.setOverride(ctx, key, null); IconEdit.target.value = null }, modifier = Modifier.fillMaxWidth()) {
                     Text("Вернуть исходную")
@@ -129,6 +137,7 @@ fun IconEditHost() {
             IconEdit.target.value = null
         }
     }
+    editIcon?.let { k -> IconEditorDialog(k) { editIcon = null } }
     if (import) IconSetImportDialog(onDismiss = { import = false }) { firstKey ->
         // Новый набор добавлен — сразу открываем выбор, чтобы поставить иконку из него.
         import = false
@@ -160,7 +169,7 @@ fun IconSetImportDialog(onDismiss: () -> Unit, onSaved: (String?) -> Unit) {
         }
     }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 24.dp), shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface) {
+        Surface(Modifier.fillMaxSize().systemBarsPadding().imePadding().padding(horizontal = 12.dp, vertical = 12.dp), shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Новый набор иконок", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
@@ -186,6 +195,18 @@ fun IconSetImportDialog(onDismiss: () -> Unit, onSaved: (String?) -> Unit) {
                             Text(if (chosen.size == icons.size) "Снять все" else "Все")
                         }
                     }
+                    TextInput(title, { title = it }, "Название набора")
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                busy = true
+                                val id = IconSets.save(ctx, title, chosen.sorted().map { icons[it] })
+                                busy = false
+                                onSaved(IconSets.keysOf(ctx, id).firstOrNull())
+                            }
+                        },
+                        enabled = !busy && chosen.isNotEmpty(), modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 6.dp),
+                    ) { Text("Добавить в базу (${chosen.size})") }
                     LazyVerticalGrid(GridCells.Adaptive(76.dp), Modifier.weight(1f)) {
                         itemsIndexed(icons) { i, b ->
                             val on = i in chosen
@@ -201,18 +222,6 @@ fun IconSetImportDialog(onDismiss: () -> Unit, onSaved: (String?) -> Unit) {
                             }
                         }
                     }
-                    TextInput(title, { title = it }, "Название набора")
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                busy = true
-                                val id = IconSets.save(ctx, title, chosen.sorted().map { icons[it] })
-                                busy = false
-                                onSaved(IconSets.keysOf(ctx, id).firstOrNull())
-                            }
-                        },
-                        enabled = !busy && chosen.isNotEmpty(), modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-                    ) { Text("Добавить в базу (${chosen.size})") }
                 } else Box(Modifier.weight(1f))
             }
         }
@@ -221,3 +230,83 @@ fun IconSetImportDialog(onDismiss: () -> Unit, onSaved: (String?) -> Unit) {
 
 /** Свои наборы: заголовок и ключи, для вкладок выбора иконки. */
 internal fun userSetTabs(ctx: android.content.Context): List<Pair<String, String>> = IconSets.sets(ctx).map { it.title to "u:${it.id}" }
+
+/** Правка своей иконки: отражение, поворот, наклон, размер; шаг назад, сохранить, вернуть как было. */
+@Composable
+fun IconEditorDialog(key: String, onDismiss: () -> Unit) {
+    val ctx = LocalContext.current
+    val extra = LocalExtra.current
+    val scope = rememberCoroutineScope()
+    val src = remember(key) { IconSets.original(ctx, key) }
+    val saved = remember(key) { IconSets.edit(ctx, key) }
+    var e by remember(key) { mutableStateOf(saved) }
+    val history = remember(key) { androidx.compose.runtime.mutableStateListOf<IconSets.Edit>() }
+    var dragStart by remember { mutableStateOf<IconSets.Edit?>(null) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    fun step(n: IconSets.Edit) { if (n != e) { history.add(e); e = n } }
+    fun drag(n: IconSets.Edit) { if (dragStart == null) dragStart = e; e = n }
+    fun dragEnd() { dragStart?.let { if (it != e) history.add(it) }; dragStart = null }
+    val preview = remember(e, src) { src?.let { IconSets.render(it, e).asImageBitmap() } }
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(Modifier.fillMaxSize().systemBarsPadding().padding(12.dp), shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface) {
+            Column(Modifier.padding(16.dp).androidxVerticalScroll()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Правка иконки", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                    TextButton(onClick = onDismiss) { Text("Закрыть") }
+                }
+                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.Center) {
+                    // Как на тёмной и на светлой теме.
+                    Box(Modifier.size(150.dp).clip(RoundedCornerShape(20.dp)).background(com.dasein.poryadok.ui.theme.Palette.Ink2), contentAlignment = Alignment.Center) {
+                        preview?.let { Image(it, null, Modifier.size(120.dp)) }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedButton(onClick = { step(e.copy(flipH = !e.flipH)) }, modifier = Modifier.weight(1f)) { Text("⇋ Отразить") }
+                    OutlinedButton(onClick = { step(e.copy(flipV = !e.flipV)) }, modifier = Modifier.weight(1f)) { Text("⇅ Перевернуть") }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
+                    OutlinedButton(onClick = { step(e.copy(angle = norm(e.angle - 90))) }, modifier = Modifier.weight(1f)) { Text("↺ 90°") }
+                    OutlinedButton(onClick = { step(e.copy(angle = norm(e.angle + 90))) }, modifier = Modifier.weight(1f)) { Text("↻ 90°") }
+                }
+                Text("Поворот: ${e.angle.toInt()}°", fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
+                androidx.compose.material3.Slider(e.angle, { drag(e.copy(angle = it)) }, valueRange = -180f..180f, onValueChangeFinished = ::dragEnd)
+                Text("Наклон по горизонтали: ${(e.skewX * 100).toInt()}", fontSize = 13.sp)
+                androidx.compose.material3.Slider(e.skewX, { drag(e.copy(skewX = it)) }, valueRange = -0.6f..0.6f, onValueChangeFinished = ::dragEnd)
+                Text("Наклон по вертикали: ${(e.skewY * 100).toInt()}", fontSize = 13.sp)
+                androidx.compose.material3.Slider(e.skewY, { drag(e.copy(skewY = it)) }, valueRange = -0.6f..0.6f, onValueChangeFinished = ::dragEnd)
+                Text("Размер: ${(e.scale * 100).toInt()}%", fontSize = 13.sp)
+                androidx.compose.material3.Slider(e.scale, { drag(e.copy(scale = it)) }, valueRange = 0.5f..1.5f, onValueChangeFinished = ::dragEnd)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedButton(onClick = { e = history.removeAt(history.lastIndex) }, enabled = history.isNotEmpty(), modifier = Modifier.weight(1f)) { Text("Шаг назад") }
+                    OutlinedButton(onClick = { step(IconSets.Edit()) }, enabled = !e.isIdentity, modifier = Modifier.weight(1f)) { Text("Как в оригинале") }
+                }
+                Button(
+                    onClick = { scope.launch { IconSets.saveEdit(ctx, key, e); onDismiss() } },
+                    enabled = e != saved, modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                ) { Text("Сохранить") }
+                if (!saved.isIdentity) TextButton(onClick = { scope.launch { IconSets.revert(ctx, key); onDismiss() } }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Вернуть как было (до всех правок)")
+                }
+                TextButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) { Text("Удалить иконку из набора", color = extra.danger) }
+                Text("Правки всегда считаются от исходной картинки — качество не теряется, вернуть можно в любой момент.", fontSize = 12.sp, color = extra.dim)
+            }
+        }
+    }
+    if (confirmDelete) AlertDialog(
+        onDismissRequest = { confirmDelete = false },
+        title = { Text("Удалить иконку?") },
+        text = { Text("Там, где она стоит, вернётся исходная иконка.") },
+        confirmButton = {
+            TextButton(onClick = {
+                IconSets.overrides.value.filterValues { it == key }.keys.forEach { IconSets.setOverride(ctx, it, null) }
+                IconSets.deleteIcon(ctx, key); confirmDelete = false; onDismiss()
+            }) { Text("Удалить", color = extra.danger) }
+        },
+        dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Отмена") } },
+    )
+}
+
+private fun norm(a: Float): Float { var x = a; while (x > 180f) x -= 360f; while (x < -180f) x += 360f; return x }
+
+@Composable
+private fun Modifier.androidxVerticalScroll(): Modifier = this.verticalScroll(androidx.compose.foundation.rememberScrollState())

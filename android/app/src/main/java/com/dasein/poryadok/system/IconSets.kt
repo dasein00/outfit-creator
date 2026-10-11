@@ -34,7 +34,7 @@ object IconSets {
     fun sets(ctx: Context): List<IconSet> = runCatching { json.decodeFromString(ListSerializer(IconSet.serializer()), index(ctx).readText()) }.getOrDefault(emptyList())
 
     fun keysOf(ctx: Context, id: String): List<String> =
-        File(root(ctx), id).listFiles().orEmpty().filter { it.extension == "webp" }.map { "u:$id/" + it.nameWithoutExtension }.sorted()
+        File(root(ctx), id).listFiles().orEmpty().filter { it.extension == "webp" && !it.name.endsWith(".orig.webp") }.map { "u:$id/" + it.nameWithoutExtension }.sorted()
 
     /** Файл иконки по ключу «u:набор/номер». */
     fun file(ctx: Context, key: String): File = File(root(ctx), key.removePrefix("u:") + ".webp")
@@ -75,6 +75,79 @@ object IconSets {
         writeIndex(ctx, sets(ctx) + IconSet(id, title.ifBlank { "Мой набор ${sets(ctx).size + 1}" }))
         version.intValue++
         id
+    }
+
+    // ---------- Правка своих иконок ----------
+
+    /** Правка иконки: отражение, поворот (градусы), наклон (−0,6…0,6), масштаб. Всегда считается от исходной картинки. */
+    @Serializable
+    data class Edit(
+        val flipH: Boolean = false, val flipV: Boolean = false, val angle: Float = 0f,
+        val skewX: Float = 0f, val skewY: Float = 0f, val scale: Float = 1f,
+    ) {
+        val isIdentity get() = this == Edit()
+    }
+
+    private fun origFile(ctx: Context, key: String) = File(file(ctx, key).path.removeSuffix(".webp") + ".orig.webp")
+    private fun editFile(ctx: Context, key: String) = File(file(ctx, key).path.removeSuffix(".webp") + ".edit.json")
+
+    fun edit(ctx: Context, key: String): Edit = runCatching { json.decodeFromString(Edit.serializer(), editFile(ctx, key).readText()) }.getOrDefault(Edit())
+
+    /** Исходная картинка (до всех правок). */
+    fun original(ctx: Context, key: String): Bitmap? {
+        val o = origFile(ctx, key)
+        return android.graphics.BitmapFactory.decodeFile((if (o.exists()) o else file(ctx, key)).absolutePath)
+    }
+
+    /** Иконка 192×192 с правкой [e]. */
+    fun render(src: Bitmap, e: Edit): Bitmap {
+        val out = Bitmap.createBitmap(192, 192, Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(out)
+        val fit = 192f / maxOf(src.width, src.height)
+        val m = android.graphics.Matrix().apply {
+            postTranslate(-src.width / 2f, -src.height / 2f)
+            postScale(fit * e.scale * (if (e.flipH) -1 else 1), fit * e.scale * (if (e.flipV) -1 else 1))
+            postSkew(e.skewX, e.skewY)
+            postRotate(e.angle)
+            postTranslate(96f, 96f)
+        }
+        c.drawBitmap(src, m, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG or android.graphics.Paint.FILTER_BITMAP_FLAG))
+        return out
+    }
+
+    /** Сохранить правку: исходник откладывается один раз, иконка перерисовывается от него. */
+    suspend fun saveEdit(ctx: Context, key: String, e: Edit) = withContext(Dispatchers.IO) {
+        val f = file(ctx, key); val o = origFile(ctx, key)
+        if (!o.exists()) f.copyTo(o)
+        val src = android.graphics.BitmapFactory.decodeFile(o.absolutePath) ?: return@withContext
+        writeWebp(f, render(src, e))
+        if (e.isIdentity) editFile(ctx, key).delete() else editFile(ctx, key).writeText(json.encodeToString(Edit.serializer(), e))
+        changed()
+    }
+
+    /** Вернуть иконку как было до правок. */
+    suspend fun revert(ctx: Context, key: String) = withContext(Dispatchers.IO) {
+        val f = file(ctx, key); val o = origFile(ctx, key)
+        if (o.exists()) { o.copyTo(f, overwrite = true); o.delete() }
+        editFile(ctx, key).delete()
+        changed()
+    }
+
+    fun deleteIcon(ctx: Context, key: String) {
+        listOf(file(ctx, key), origFile(ctx, key), editFile(ctx, key)).forEach { it.delete() }
+        changed()
+    }
+
+    private fun writeWebp(f: File, bmp: Bitmap) = f.outputStream().use {
+        @Suppress("DEPRECATION")
+        bmp.compress(if (android.os.Build.VERSION.SDK_INT >= 30) Bitmap.CompressFormat.WEBP_LOSSLESS else Bitmap.CompressFormat.WEBP, 100, it)
+    }
+
+    /** Картинки поменялись — сбрасываем кэши, иконки перерисуются. */
+    private fun changed() {
+        com.dasein.poryadok.ui.common.Glyphs.evictAll()
+        com.dasein.poryadok.ui.common.IconTint.evictAll()
+        version.intValue++
     }
 
     // ---------- Замены иконок ----------

@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalLayoutApi::class)
+@file:OptIn(ExperimentalLayoutApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 
 package com.dasein.poryadok.ui.common
 
@@ -13,6 +13,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -177,6 +179,8 @@ object Glyphs {
 
     private val cache = LruCache<String, ImageBitmap>(400)
 
+    fun evictAll() = cache.evictAll()
+
     /** Картинка по ключу: свои наборы — из files/iconsets, остальное — из assets. */
     fun bitmap(ctx: Context, key: String): android.graphics.Bitmap? = runCatching {
         if (key.startsWith("u:")) BitmapFactory.decodeFile(com.dasein.poryadok.system.IconSets.file(ctx, key).absolutePath)
@@ -218,6 +222,8 @@ fun Glyph(value: String, size: Dp = 24.dp, modifier: Modifier = Modifier, badge:
 @Composable
 internal fun GlyphRaw(key: String, editKey: String?, size: Dp = 24.dp, modifier0: Modifier = Modifier, badge: Boolean? = null, dimmed: Boolean = false) {
     val modifier = if (editKey != null && LocalIconEditable.current) modifier0.iconLongPress(editKey) else modifier0
+    // Свои иконки можно править — перерисовываем после правки.
+    val ver = if (key.startsWith("u:")) com.dasein.poryadok.system.IconSets.version.intValue else 0
     if (key.startsWith("ui:")) {
         val res = Ic.byName(key.removePrefix("ui:"))
         AppIconRaw(res, size, modifier, badge = badge ?: false, dimmed = dimmed)
@@ -235,7 +241,7 @@ internal fun GlyphRaw(key: String, editKey: String?, size: Dp = 24.dp, modifier0
     // Иконки перекрашиваются под цвет оформления; в светлой теме — тёмные, без плашки. Блюда — как есть.
     val useBadge = (badge ?: false) && !key.startsWith("dish/")
     val tone = iconTone(onPlate = useBadge)
-    val img = remember(key, tone) { if (key.startsWith("dish/")) Glyphs.load(ctx, key) else Glyphs.loadTinted(ctx, key, tone) }
+    val img = remember(key, tone, ver) { if (key.startsWith("dish/")) Glyphs.load(ctx, key) else Glyphs.loadTinted(ctx, key, tone) }
     val a = if (dimmed) .5f else 1f
     val inner = @Composable { m: Modifier ->
         if (img != null) Image(img, null, m) else Box(m)
@@ -275,6 +281,7 @@ fun GlyphPickerDialog(
     val setsVer = com.dasein.poryadok.system.IconSets.version.intValue
     val userSets = remember(setsVer) { userSetTabs(ctx) }
     var importing by remember { mutableStateOf(false) }
+    var editIcon by remember { mutableStateOf<String?>(null) }
     val tabs = buildList {
         if (own.isNotEmpty()) add("Мои картинки" to OWN_TAB)
         addAll(userSets)
@@ -316,7 +323,7 @@ fun GlyphPickerDialog(
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
     ) {
         androidx.compose.material3.Surface(
-            Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 24.dp),
+            Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 12.dp, vertical = 12.dp),
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surface,
         ) {
@@ -344,6 +351,10 @@ fun GlyphPickerDialog(
                     TextButton(onClick = { pickOwn() }, modifier = Modifier.padding(start = 8.dp)) { Text("+ Своя картинка") }
                     if (!dishes) TextButton(onClick = { importing = true }) { Text("+ Набор из картинки") }
                 }
+                if (tab.startsWith("u:")) Text(
+                    "Удерживайте иконку, чтобы отразить, повернуть или наклонить её.",
+                    fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(horizontal = 20.dp),
+                )
                 if (keys.isEmpty()) {
                     Text(
                         "В этом наборе пока нет картинок",
@@ -362,7 +373,11 @@ fun GlyphPickerDialog(
                                     if (k == current) Modifier.border(3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(14.dp))
                                     else Modifier,
                                 )
-                                .clickable { onPick(k); onDismiss() },
+                                .combinedClickable(
+                                    onClick = { onPick(k); onDismiss() },
+                                    // Свои иконки — удержание открывает правку.
+                                    onLongClick = if (k.startsWith("u:")) ({ editIcon = k }) else null,
+                                ),
                             contentAlignment = Alignment.Center,
                         ) {
                             when {
@@ -379,6 +394,7 @@ fun GlyphPickerDialog(
             }
         }
     }
+    editIcon?.let { k -> IconEditorDialog(k) { editIcon = null } }
     if (importing) IconSetImportDialog(onDismiss = { importing = false }) { first ->
         importing = false
         first?.let { tab = "u:" + it.removePrefix("u:").substringBefore('/') }

@@ -88,6 +88,8 @@ object IconTint {
 
     private val cache = LruCache<String, ImageBitmap>(600)
 
+    fun evictAll() = cache.evictAll()
+
     fun cached(id: String, t: IconTone, load: () -> Bitmap?): ImageBitmap? {
         val k = id + "#" + t.key
         cache.get(k)?.let { return it }
