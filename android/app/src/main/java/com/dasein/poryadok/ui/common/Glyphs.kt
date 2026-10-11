@@ -78,8 +78,12 @@ object Glyphs {
         "Аналитика" to "analytics", "Топы" to "tops", "Давление" to "pressure", "Репетитор" to "tutor",
     )
     val DISH_SETS = listOf(
+        // Новые иллюстрации блюд по разделам книги рецептов.
+        "Завтраки" to "nbreakfast", "Супы" to "nsoup", "Обеды" to "nlunch", "Ужины" to "ndinner",
+        "Гарниры" to "nside", "Салаты" to "nsalad", "Перекусы" to "nsnack", "Кухни мира" to "nworld",
+    ) + listOf(
         "Курица" to "chicken", "Салаты и продукты" to "salads", "Паста и вок" to "pasta", "Блюда мира" to "world",
-        "Домашнее" to "own", "Полезное" to "healthy", "Завтраки" to "breakfast", "Основные блюда" to "dishes1", "Ещё блюда" to "dishes2",
+        "Домашнее" to "own", "Полезное" to "healthy", "Завтраки (прежние)" to "breakfast", "Основные блюда" to "dishes1", "Ещё блюда" to "dishes2",
         "Русская кухня" to "russian", "Кавказская кухня" to "caucasus", "Разное" to "mixed", "Выпечка" to "bakery",
         "Десерты" to "desserts", "Фастфуд" to "fastfood",
     ) + listOf(

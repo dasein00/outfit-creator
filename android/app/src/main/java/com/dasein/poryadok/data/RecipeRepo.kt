@@ -29,7 +29,11 @@ private data class SeedRecipe(
 )
 
 @Serializable
-private data class Seed(val version: Int, val products: List<SeedProduct>, val recipes: List<SeedRecipe>)
+private data class Seed(
+    val version: Int, val products: List<SeedProduct>, val recipes: List<SeedRecipe>,
+    /** Прежние иллюстрации встроенных рецептов: ключ рецепта → старая картинка (её меняем на новую). */
+    val replaced: Map<String, String> = emptyMap(),
+)
 
 fun RecipeIngredient.toIngr() = Ingr(name, amount, unit, grams, Macros(kcal100, protein100, fat100, carbs100, fiber100), shopCategory)
 
@@ -57,8 +61,9 @@ object RecipeRepo {
         }
         // Иллюстрации для встроенных рецептов, добавленных до их появления.
         val images = seed.recipes.associate { it.key to it.image }
-        x.recipesNow().filter { it.seedKey != null && it.photo.isBlank() }.forEach { r ->
-            images[r.seedKey]?.takeIf { it.isNotBlank() }?.let { x.upsertRecipe(r.copy(photo = it)) }
+        x.recipesNow().filter { it.seedKey != null && (it.photo.isBlank() || seed.replaced[it.seedKey] == it.photo) }.forEach { r ->
+            // Пустая картинка или прежняя встроенная — ставим новую. Свои фото и выбранные вручную не трогаем.
+            images[r.seedKey]?.takeIf { it.isNotBlank() && it != r.photo }?.let { x.upsertRecipe(r.copy(photo = it)) }
         }
         val have = x.recipeSeedKeys().toSet()
         val now = System.currentTimeMillis()
