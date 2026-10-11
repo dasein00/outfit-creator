@@ -131,13 +131,18 @@ object RecipeText {
     /** Строка-мусор из Instagram: дата поста, «ещё», «меньше», «показать перевод». */
     private val JUNK = Regex("""^(\d{1,2}\s+(январ|феврал|март|апрел|ма[яй]|июн|июл|август|сентябр|октябр|ноябр|декабр)\p{L}*(\s+\d{4})?(\s*г\.?)?|меньше|ещё|еще|показать перевод|показать оригинал|перевод|нравится|ответить|подробнее|читать далее|… ?ещё|\.\.\. ?ещё)$""", RegexOption.IGNORE_CASE)
 
+    private val SPEECH = setOf("очень", "рекомендую", "советую", "если", "можно", "нужно", "лучше", "это", "он", "она", "они", "я", "мы", "вы", "то", "что", "как", "чтобы", "вообще", "который", "которая")
+
     /** Продукт без количества: «Соль (при желании разрыхлитель)», «Сыр», «Масло для жарки». */
     private fun bareIngredient(line: String, bullet: Boolean): Ingredient? {
         // Продолжение предыдущей фразы («укроп/кинзу) то вообще сказка») — не продукт.
         if (!bullet && (line.first().isLowerCase() || ')' in line.substringBefore('('))) return null
-        val name = cleanName(line.substringBefore('(').substringBefore(',').substringBefore(" — ").substringBefore(" - "))
+        val raw = line.substringBefore('(').substringBefore(',').substringBefore(" — ").substringBefore(" - ").trim()
+        val name = cleanName(raw)
         if (name.isEmpty() || !name.any { it.isLetter() }) return null
-        val words = name.split(' ').size
+        // Слова обычной речи — это пояснение, а не продукт («Из сыров очень рекомендую взять…»).
+        if (!bullet && raw.lowercase().split(' ').any { it in SPEECH }) return null
+        val words = raw.split(' ').size
         return if ((bullet && words <= 6) || (words <= 5 && line.length <= 45)) Ingredient(name, 0.0, "по вкусу") else null
     }
 
