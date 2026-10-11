@@ -171,6 +171,8 @@ fun SettingsScreen(nav: NavHostController, s: Settings) {
                 }) { Text("Настройки уведомлений") }
             }
 
+            AiSettingsSection()
+
             SectionTitle("Данные")
             Tile {
                 Hint("backup_about", "Все данные хранятся только на телефоне. Сохраните копию в файл — её можно перенести на новый телефон.", title = "Резервная копия")

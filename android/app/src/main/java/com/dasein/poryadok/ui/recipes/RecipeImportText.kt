@@ -96,6 +96,36 @@ internal suspend fun ingredientsFrom(parsed: RecipeText.Parsed, text: String = "
     }
 }
 
+private val AI_UNITS = setOf("г", "кг", "мл", "л", "шт", "ст.л.", "ч.л.", "стакан", "щепотка", "по вкусу")
+
+/** Инструкция для ИИ: вернуть рецепт строго в JSON. */
+private const val AI_RECIPE_PROMPT = """Ты помощник кулинарного приложения. Из текста рецепта (подпись из Instagram, заметка) извлеки данные и верни ТОЛЬКО JSON без пояснений:
+{"title": "название блюда", "servings": число порций или null,
+ "ingredients": [{"name": "продукт в именительном падеже, без количества", "amount": число, "unit": "г|кг|мл|л|шт|ст.л.|ч.л.|стакан|щепотка|по вкусу", "grams_per_piece": вес одной штуки в граммах для unit=шт, иначе null}],
+ "steps": [{"text": "этап приготовления одним-двумя предложениями", "minutes": минуты этапа или 0}]}
+Правила: включи ВСЕ продукты, упомянутые в тексте, даже в советах (например «можно добавить сулугуни» — продукт с unit "по вкусу").
+Если для продукта указано несколько количеств («150 г + 20 г на обвалку»), сложи их. Проценты жирности оставь в названии.
+Если этапов в тексте нет — придумай короткие логичные этапы по смыслу рецепта. Не выдумывай продукты, которых нет в тексте.
+Даты, хештеги, рекламу и «ещё/меньше» игнорируй."""
+
+/** Разбор рецепта ИИ (бесплатные модели OpenRouter). null — не получилось, тогда работает встроенный разбор. */
+internal suspend fun aiParse(ctx: Context, text: String): RecipeText.Parsed {
+    with(com.dasein.poryadok.system.Ai) {
+        val answer = ask(ctx, AI_RECIPE_PROMPT, text.take(6000))
+        val o = extractJson(answer) ?: throw com.dasein.poryadok.system.Ai.AiError("ИИ ответил не в том формате")
+        val ings = o.arr("ingredients").orEmpty().mapNotNull { it as? kotlinx.serialization.json.JsonObject }.mapNotNull { i ->
+            val name = i.str("name")?.trim()?.replaceFirstChar { it.uppercase() } ?: return@mapNotNull null
+            val unit = i.str("unit")?.trim()?.takeIf { it in AI_UNITS } ?: "по вкусу"
+            RecipeText.Ingredient(name, if (unit == "по вкусу") 0.0 else (i.num("amount") ?: 0.0), unit, i.num("grams_per_piece") ?: 0.0)
+        }
+        val steps = o.arr("steps").orEmpty().mapNotNull { it as? kotlinx.serialization.json.JsonObject }.mapNotNull { st ->
+            val t = st.str("text")?.trim()?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+            RecipeText.Step(t, (st.num("minutes") ?: 0.0).toInt().takeIf { it > 0 } ?: RecipeText.minutesIn(t))
+        }
+        return RecipeText.Parsed(o.str("title"), o.num("servings")?.toInt()?.takeIf { it in 1..40 }, ings, steps, null, RecipeText.parse(text).tags)
+    }
+}
+
 /**
  * «Описание из Instagram»: вставьте подпись к рецепту — приложение найдёт название, порции, ингредиенты
  * с граммовками и разобьёт приготовление на этапы. Всё попадает в черновик, где можно поправить.
@@ -107,6 +137,12 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
     var text by remember { mutableStateOf(d.recipe.notes) }
     val preview = remember(text) { if (text.isBlank()) null else RecipeText.parse(text) }
+    val aiOn = remember { com.dasein.poryadok.system.Ai.enabled(ctx) }
+    var aiBusy by remember { mutableStateOf(false) }
+    var aiError by remember { mutableStateOf<String?>(null) }
+    fun applyResult(p: RecipeText.Parsed, viaAi: Boolean) {
+        scope.launch { applyParsed(d, p, text, viaAi); aiBusy = false; onDismiss() }
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Описание блюда") },
@@ -118,6 +154,8 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                     cm.primaryClip?.getItemAt(0)?.coerceToText(ctx)?.toString()?.let { text = it }
                 }) { Text("Вставить из буфера обмена") }
                 TextInput(text, { text = it }, "Описание", singleLine = false, minLines = 6)
+                aiError?.let { Text(it + " Можно нажать «Разобрать» — встроенный разбор работает без интернета.", fontSize = 12.sp, color = extra.danger, modifier = Modifier.padding(top = 6.dp)) }
+                if (!aiOn) Text("Точнее разбирает бесплатный ИИ: добавьте ключ OpenRouter в «Настройки» → «ИИ-помощник».", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
                 preview?.let { p ->
                     Text(
                         listOfNotNull(
@@ -132,10 +170,26 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
             }
         },
         confirmButton = {
-            TextButton(enabled = preview != null, onClick = {
-                val p = preview ?: return@TextButton
+            Row {
+            if (aiOn) TextButton(enabled = text.isNotBlank() && !aiBusy, onClick = {
+                aiBusy = true; aiError = null
                 scope.launch {
-                    val ings = ingredientsFrom(p, text)
+                    runCatching { aiParse(ctx, text) }
+                        .onSuccess { applyResult(it, viaAi = true) }
+                        .onFailure { aiError = it.message ?: "ошибка"; aiBusy = false }
+                }
+            }) { Text(if (aiBusy) "ИИ думает…" else "✨ С ИИ") }
+            TextButton(enabled = preview != null && !aiBusy, onClick = { preview?.let { applyResult(it, viaAi = false) } }) { Text("Разобрать") }
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+    )
+}
+
+/** Применить разбор к черновику: ингредиенты с КБЖУ из базы, порции, этапы. */
+private suspend fun applyParsed(d: RecipeDraft, p: RecipeText.Parsed, text: String, viaAi: Boolean) {
+                    // ИИ сам перечисляет упомянутые продукты; встроенный разбор добирает их по базе.
+                    val ings = ingredientsFrom(p, if (viaAi) "" else text)
                     var r = d.recipe.copy(notes = text.trim())
                     if (r.name.isBlank() && p.title != null) r = r.copy(name = p.title)
                     val total = ings.sumOf { it.grams }
@@ -149,10 +203,4 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                     if (p.steps.isNotEmpty()) { d.steps.clear(); d.steps.addAll(p.steps.map { it.text }) }
                     // Сразу показать, что получилось: ингредиенты можно поправить.
                     d.step = 1
-                    onDismiss()
-                }
-            }) { Text("Разобрать") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
-    )
 }
