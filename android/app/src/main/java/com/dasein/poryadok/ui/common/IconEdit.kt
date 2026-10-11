@@ -122,7 +122,7 @@ fun IconEditHost() {
                     )
                 }
                 Button(onClick = { pick = true }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) { Text("Выбрать из базы иконок") }
-                if (shown.startsWith("u:")) OutlinedButton(onClick = { editIcon = shown }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                if (IconSets.canEdit(shown)) OutlinedButton(onClick = { editIcon = shown }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
                     Text("Редактировать: отразить, повернуть, наклонить")
                 }
                 OutlinedButton(onClick = { import = true }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("Добавить новый набор из картинки") }
@@ -247,7 +247,7 @@ private const val NEW_FOLDER = "+new"
 /** Свои наборы: заголовок и ключи, для вкладок выбора иконки. */
 internal fun userSetTabs(ctx: android.content.Context): List<Pair<String, String>> = IconSets.sets(ctx).map { it.title to "u:${it.id}" }
 
-/** Правка своей иконки: отражение, поворот, наклон, размер; шаг назад, сохранить, вернуть как было. */
+/** Правка иконки (своей или встроенной): отражение, поворот, наклон, размер; шаг назад, сохранить, вернуть как было. */
 @Composable
 fun IconEditorDialog(key: String, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
@@ -303,7 +303,8 @@ fun IconEditorDialog(key: String, onDismiss: () -> Unit) {
                 if (!saved.isIdentity) TextButton(onClick = { scope.launch { IconSets.revert(ctx, key); onDismiss() } }, modifier = Modifier.fillMaxWidth()) {
                     Text("Вернуть как было (до всех правок)")
                 }
-                TextButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) { Text("Удалить иконку из набора", color = extra.danger) }
+                if (!IconSets.isBuiltin(key)) TextButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) { Text("Удалить иконку из набора", color = extra.danger) }
+                if (IconSets.isBuiltin(key)) Text("Это встроенная иконка: правка применится везде, где она стоит в приложении.", fontSize = 12.sp, color = extra.dim)
                 Text("Правки всегда считаются от исходной картинки — качество не теряется, вернуть можно в любой момент.", fontSize = 12.sp, color = extra.dim)
             }
         }

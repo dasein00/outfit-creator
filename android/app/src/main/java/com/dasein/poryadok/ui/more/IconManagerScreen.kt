@@ -42,7 +42,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.dasein.poryadok.Graph
 import com.dasein.poryadok.system.IconSets
+import com.dasein.poryadok.ui.common.IconCell
+import com.dasein.poryadok.ui.common.IconGroupList
+import com.dasein.poryadok.ui.common.IconLibrary
+import com.dasein.poryadok.ui.common.IconLibraryTabs
+import com.dasein.poryadok.ui.common.ReorderGrid
+import com.dasein.poryadok.ui.common.rememberLibraryCounts
+import kotlinx.coroutines.launch
 import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.GlyphPickerDialog
 import com.dasein.poryadok.ui.common.GlyphRaw
@@ -59,9 +67,9 @@ import com.dasein.poryadok.ui.theme.Palette
 const val ICON_MANAGER_ROUTE = "iconManager"
 
 /**
- * «Иконки»: папки своих иконок. Всё новое (наборы из картинки, иконки из галереи) попадает в «Мои иконки»,
- * отсюда их можно разложить по папкам, переместить, скопировать, упорядочить, отредактировать или удалить.
- * Папки и порядок видны в окне выбора иконки у любого раздела и кнопки.
+ * «Иконки» в три раздела: «Мои иконки» — всё, что вы добавили; «Мои наборы» — ваши папки; «Исходный» — встроенные наборы.
+ * Нажатие выбирает иконку (можно несколько), удержание с перетаскиванием меняет её место.
+ * Кнопка «Редактировать» отражает, поворачивает и наклоняет любую иконку, и свою, и встроенную.
  */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -69,58 +77,97 @@ fun IconManagerScreen(nav: NavHostController) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     val ver = IconSets.version.intValue
-    val folders = remember(ver) { IconSets.folders(ctx) }
-    var folderId by remember { mutableStateOf(IconSets.MINE) }
-    val folder = folders.firstOrNull { it.id == folderId } ?: folders.first()
-    var selected by remember(folderId) { mutableStateOf<Set<String>>(emptySet()) }
+    var level by remember { mutableStateOf(IconLibrary.MINE) }
+    var open by remember { mutableStateOf<String?>(null) }
+    val allFolders = remember(ver) { IconSets.folders(ctx) }
+    val folders = allFolders.filter { it.id != IconSets.MINE }
+    val builtin = remember { IconLibrary.builtinGroups(false) }
+    val folder = if (level == IconLibrary.SETS) folders.firstOrNull { it.id == open } else null
+    // Папку могли удалить — возвращаемся к списку.
+    if (level == IconLibrary.SETS && open != null && folder == null) open = null
+    val keys = remember(level, open, ver) {
+        when (level) {
+            IconLibrary.MINE -> IconSets.mine(ctx)
+            IconLibrary.SETS -> folder?.keys.orEmpty()
+            else -> open?.let { IconLibrary.builtinKeys(ctx, it) }.orEmpty()
+        }
+    }
+    val showGrid = level == IconLibrary.MINE || open != null
+    val reorderable = level != IconLibrary.BUILTIN
+    var selected by remember(level, open) { mutableStateOf<Set<String>>(emptySet()) }
     var dialog by remember { mutableStateOf<String?>(null) } // new, rename, delete, move, copy, deleteIcons, import, builtin, overrides
     var editIcon by remember { mutableStateOf<String?>(null) }
     var name by remember { mutableStateOf("") }
+    val (mineCount, setsCount) = rememberLibraryCounts(false)
+    // Куда кладутся новые иконки: открытая папка или «Мои иконки».
+    val targetFolder = folder?.id ?: IconSets.MINE
     val pickOwn = rememberImagePickerWithCrop(1f, "icons", round = false, png = true, outW = 320) { path ->
-        IconSets.addKeys(ctx, folder.id, listOf(path))
+        IconSets.addKeys(ctx, targetFolder, listOf(path))
+    }
+    fun saveOrder(l: List<String>) {
+        if (level == IconLibrary.MINE) IconSets.setKeys(ctx, IconSets.MINE, l) else folder?.let { IconSets.setKeys(ctx, it.id, l) }
+    }
+    fun shift(k: String, d: Int) {
+        val i = keys.indexOf(k); val j = (i + d).coerceIn(0, keys.lastIndex)
+        if (i >= 0 && i != j) saveOrder(keys.toMutableList().apply { add(j, removeAt(i)) })
+    }
+    val title = when {
+        folder != null -> folder.title
+        level == IconLibrary.BUILTIN && open != null -> builtin.firstOrNull { it.id == open }?.title ?: "Иконки"
+        else -> "Иконки"
     }
 
     CompositionLocalProvider(LocalIconEditable provides false) {
-        Screen("Иконки", onBack = { nav.popBackStack() }) { pad ->
+        Screen(title, onBack = { if (open != null && level != IconLibrary.MINE) open = null else nav.popBackStack() }) { pad ->
             Column(Modifier.padding(pad).fillMaxSize().padding(horizontal = 16.dp)) {
-                Text(
-                    "Новые иконки попадают в «Мои иконки». Нажмите на иконку, чтобы выбрать (можно несколько), удерживайте — чтобы отредактировать свою.",
-                    fontSize = 12.sp, color = extra.dim,
-                )
-                // Папки.
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 8.dp)) {
-                    folders.forEach { f -> Pill("${f.title} · ${f.keys.size}", f.id == folder.id) { folderId = f.id } }
-                    Pill("+ Папка", false) { name = ""; dialog = "new" }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                IconLibraryTabs(level, mineCount, setsCount) { level = it; open = null }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
                     OutlinedButton(onClick = { dialog = "import" }, modifier = Modifier.weight(1f)) { Text("+ Набор", fontSize = 13.sp) }
                     OutlinedButton(onClick = { pickOwn() }, modifier = Modifier.weight(1f)) { Text("+ Из галереи", fontSize = 13.sp) }
-                    OutlinedButton(onClick = { dialog = "builtin" }, modifier = Modifier.weight(1f)) { Text("+ Встроенная", fontSize = 13.sp) }
+                    if (folder != null) OutlinedButton(onClick = { dialog = "builtin" }, modifier = Modifier.weight(1f)) { Text("+ Встроенная", fontSize = 13.sp) }
+                    else if (level == IconLibrary.SETS) OutlinedButton(onClick = { name = ""; dialog = "new" }, modifier = Modifier.weight(1f)) { Text("+ Папка", fontSize = 13.sp) }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-                    Text(folder.title, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { IconSets.moveFolder(ctx, folder.id, -1) }) { Text("←") }
-                    TextButton(onClick = { IconSets.moveFolder(ctx, folder.id, 1) }) { Text("→") }
-                    if (folder.id != IconSets.MINE) {
-                        TextButton(onClick = { name = folder.title; dialog = "rename" }) { Text("Имя") }
-                        TextButton(onClick = { dialog = "delete" }) { Text("Удалить", color = extra.danger) }
+                if (folder != null) Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f))
+                    TextButton(onClick = { IconSets.moveFolder(ctx, folder.id, -1) }) { Text("↑") }
+                    TextButton(onClick = { IconSets.moveFolder(ctx, folder.id, 1) }) { Text("↓") }
+                    TextButton(onClick = { name = folder.title; dialog = "rename" }) { Text("Имя") }
+                    TextButton(onClick = { dialog = "delete" }) { Text("Удалить", color = extra.danger) }
+                }
+                when {
+                    level == IconLibrary.SETS && open == null -> {
+                        if (folders.isEmpty()) Text("Своих наборов пока нет. Добавьте набор из картинки или создайте папку.", color = extra.dim, fontSize = 13.sp, modifier = Modifier.padding(vertical = 12.dp))
+                        IconGroupList(folders.map { it.id to it.title }, { id -> folders.firstOrNull { it.id == id }?.keys.orEmpty() }, Modifier.weight(1f).padding(top = 6.dp)) { open = it }
                     }
-                }
-                if (folder.keys.isEmpty()) Text("Папка пуста. Добавьте набор из картинки, иконку из галереи или встроенную.", color = extra.dim, fontSize = 13.sp, modifier = Modifier.padding(vertical = 12.dp))
-                LazyVerticalGrid(GridCells.Adaptive(68.dp), Modifier.weight(1f)) {
-                    items(folder.keys, key = { it }) { k ->
-                        val on = k in selected
-                        Box(
-                            Modifier.padding(4.dp).aspectRatio(1f).clip(RoundedCornerShape(14.dp)).background(extra.card)
-                                .border(if (on) 3.dp else 1.dp, if (on) MaterialTheme.colorScheme.primary else extra.line, RoundedCornerShape(14.dp))
-                                .combinedClickable(
-                                    onClick = { selected = if (on) selected - k else selected + k },
-                                    onLongClick = { if (k.startsWith("u:")) editIcon = k else selected = selected + k },
-                                ),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            GlyphRaw(k, null, 32.dp)
-                            if (on) Text("✓", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.align(Alignment.TopEnd).padding(5.dp))
+                    level == IconLibrary.BUILTIN && open == null ->
+                        IconGroupList(builtin.map { it.id to it.title }, { IconLibrary.builtinKeys(ctx, it) }, Modifier.weight(1f).padding(top = 6.dp)) { open = it }
+                    else -> {
+                        Text(
+                            if (reorderable) "Нажмите — выбрать (можно несколько). Удерживайте и тащите — поменять место."
+                            else "Нажмите — выбрать. Выбранную иконку можно отредактировать или положить в свою папку.",
+                            fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp),
+                        )
+                        if (keys.isEmpty()) Text(
+                            if (level == IconLibrary.MINE) "Своих иконок пока нет: добавьте набор из картинки или иконку из галереи."
+                            else "Папка пуста. Добавьте набор из картинки, иконку из галереи или встроенную.",
+                            color = extra.dim, fontSize = 13.sp, modifier = Modifier.padding(vertical = 12.dp),
+                        )
+                        ReorderGrid(
+                            keys, 68.dp, Modifier.weight(1f),
+                            reorderable = reorderable,
+                            onTap = { k -> selected = if (k in selected) selected - k else selected + k },
+                            onReorder = ::saveOrder,
+                        ) { k, dragging ->
+                            val on = k in selected
+                            Box(
+                                Modifier.padding(4.dp).aspectRatio(1f).clip(RoundedCornerShape(14.dp)).background(extra.card)
+                                    .border(if (on || dragging) 3.dp else 1.dp, if (on || dragging) MaterialTheme.colorScheme.primary else extra.line, RoundedCornerShape(14.dp)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                IconCell(k, 32.dp)
+                                if (on) Text("✓", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.align(Alignment.TopEnd).padding(5.dp))
+                                if (IconSets.isEdited(ctx, k)) Text("✎", fontSize = 11.sp, color = extra.dim, modifier = Modifier.align(Alignment.TopStart).padding(5.dp))
+                            }
                         }
                     }
                 }
@@ -128,18 +175,25 @@ fun IconManagerScreen(nav: NavHostController) {
                 if (selected.isNotEmpty()) Column(Modifier.padding(vertical = 8.dp)) {
                     Text("Выбрано: ${selected.size}", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
-                        Button(onClick = { dialog = "move" }) { Text("Переместить") }
-                        OutlinedButton(onClick = { dialog = "copy" }) { Text("Копировать") }
-                        if (selected.size == 1) {
+                        if (selected.size == 1 && IconSets.canEdit(selected.first())) {
                             val k = selected.first()
-                            OutlinedButton(onClick = { IconSets.moveKey(ctx, folder.id, k, -1) }) { Text("← Раньше") }
-                            OutlinedButton(onClick = { IconSets.moveKey(ctx, folder.id, k, 1) }) { Text("Позже →") }
-                            if (k.startsWith("u:")) OutlinedButton(onClick = { editIcon = k }) { Text("Править") }
+                            Button(onClick = { editIcon = k }) { Text("Редактировать") }
                         }
-                        if (folder.id != IconSets.MINE) OutlinedButton(onClick = { IconSets.removeKeys(ctx, folder.id, selected); selected = emptySet() }) { Text("Убрать из папки") }
-                        OutlinedButton(onClick = { dialog = "deleteIcons" }) { Text("Удалить", color = extra.danger) }
-                        TextButton(onClick = { selected = if (selected.size == folder.keys.size) emptySet() else folder.keys.toSet() }) {
-                            Text(if (selected.size == folder.keys.size) "Снять все" else "Выбрать все")
+                        if (folder != null) OutlinedButton(onClick = { dialog = "move" }) { Text("Переместить") }
+                        OutlinedButton(onClick = { dialog = "copy" }) { Text(if (folder != null) "Копировать" else "В папку") }
+                        if (selected.size == 1 && reorderable) {
+                            val k = selected.first()
+                            OutlinedButton(onClick = { shift(k, -1) }) { Text("←") }
+                            OutlinedButton(onClick = { shift(k, 1) }) { Text("→") }
+                        }
+                        val edited = selected.filter { IconSets.isEdited(ctx, it) }
+                        if (edited.isNotEmpty()) OutlinedButton(onClick = {
+                            Graph.scope.launch { edited.forEach { IconSets.revert(ctx, it) } }
+                        }) { Text("Вернуть исходный вид") }
+                        if (folder != null) OutlinedButton(onClick = { IconSets.removeKeys(ctx, folder.id, selected); selected = emptySet() }) { Text("Убрать из папки") }
+                        if (level != IconLibrary.BUILTIN) OutlinedButton(onClick = { dialog = "deleteIcons" }) { Text("Удалить", color = extra.danger) }
+                        TextButton(onClick = { selected = if (selected.size == keys.size) emptySet() else keys.toSet() }) {
+                            Text(if (selected.size == keys.size) "Снять все" else "Выбрать все")
                         }
                     }
                 } else TextButton(onClick = { dialog = "overrides" }, modifier = Modifier.fillMaxWidth()) {
@@ -156,7 +210,7 @@ fun IconManagerScreen(nav: NavHostController) {
             text = { TextInput(name, { name = it }, "Название") },
             confirmButton = {
                 TextButton(onClick = {
-                    if (dialog == "new") folderId = IconSets.createFolder(ctx, name) else IconSets.renameFolder(ctx, folder.id, name)
+                    if (dialog == "new") { level = IconLibrary.SETS; open = IconSets.createFolder(ctx, name) } else folder?.let { IconSets.renameFolder(ctx, it.id, name) }
                     dialog = null
                 }) { Text("Готово") }
             },
@@ -164,9 +218,9 @@ fun IconManagerScreen(nav: NavHostController) {
         )
         "delete" -> AlertDialog(
             onDismissRequest = { dialog = null },
-            title = { Text("Удалить папку «${folder.title}»?") },
+            title = { Text("Удалить папку «${folder?.title.orEmpty()}»?") },
             text = { Text("Иконки из неё не пропадут — они перейдут в «Мои иконки».") },
-            confirmButton = { TextButton(onClick = { IconSets.deleteFolder(ctx, folder.id); folderId = IconSets.MINE; dialog = null }) { Text("Удалить", color = extra.danger) } },
+            confirmButton = { TextButton(onClick = { folder?.let { IconSets.deleteFolder(ctx, it.id) }; open = null; dialog = null }) { Text("Удалить", color = extra.danger) } },
             dismissButton = { TextButton(onClick = { dialog = null }) { Text("Отмена") } },
         )
         "move", "copy" -> AlertDialog(
@@ -174,7 +228,7 @@ fun IconManagerScreen(nav: NavHostController) {
             title = { Text(if (dialog == "move") "Переместить в папку" else "Копировать в папку") },
             text = {
                 Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
-                    folders.filter { it.id != folder.id }.forEach { f ->
+                    allFolders.filter { it.id != folder?.id }.forEach { f ->
                         TextButton(onClick = {
                             if (dialog == "move") IconSets.moveKeys(ctx, selected, f.id) else IconSets.addKeys(ctx, f.id, selected.toList())
                             selected = emptySet(); dialog = null
@@ -192,7 +246,8 @@ fun IconManagerScreen(nav: NavHostController) {
             confirmButton = {
                 TextButton(onClick = {
                     val id = IconSets.createFolder(ctx, name)
-                    IconSets.moveKeys(ctx, selected, id); selected = emptySet(); folderId = id; dialog = null
+                    if (folder != null) IconSets.moveKeys(ctx, selected, id) else IconSets.addKeys(ctx, id, selected.toList())
+                    selected = emptySet(); level = IconLibrary.SETS; open = id; dialog = null
                 }) { Text("Переместить") }
             },
             dismissButton = { TextButton(onClick = { dialog = null }) { Text("Отмена") } },
@@ -206,9 +261,11 @@ fun IconManagerScreen(nav: NavHostController) {
         )
         "import" -> IconSetImportDialog(onDismiss = { dialog = null }) { first ->
             dialog = null
-            first?.let { k -> IconSets.folderOf(ctx, k)?.let { folderId = it } }
+            first?.let { k ->
+                IconSets.folderOf(ctx, k)?.let { f -> if (f == IconSets.MINE) { level = IconLibrary.MINE; open = null } else { level = IconLibrary.SETS; open = f } }
+            }
         }
-        "builtin" -> GlyphPickerDialog("", onDismiss = { dialog = null }) { k -> IconSets.addKeys(ctx, folder.id, listOf(k)) }
+        "builtin" -> GlyphPickerDialog("", onDismiss = { dialog = null }) { k -> IconSets.addKeys(ctx, targetFolder, listOf(k)) }
         "overrides" -> AlertDialog(
             onDismissRequest = { dialog = null },
             title = { Text("Заменённые иконки") },

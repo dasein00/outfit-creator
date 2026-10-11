@@ -47,8 +47,28 @@ object IconSets {
     fun keysOf(ctx: Context, id: String): List<String> =
         File(root(ctx), id).listFiles().orEmpty().filter { it.extension == "webp" && !it.name.endsWith(".orig.webp") }.map { "u:$id/" + it.nameWithoutExtension }.sorted()
 
-    /** Файл иконки по ключу «u:набор/номер». */
-    fun file(ctx: Context, key: String): File = File(root(ctx), key.removePrefix("u:") + ".webp")
+    /** Файл иконки по ключу «u:набор/номер»; для встроенной — файл её правки (files/iconsets/edited). */
+    fun file(ctx: Context, key: String): File =
+        if (key.startsWith("u:")) File(root(ctx), key.removePrefix("u:") + ".webp")
+        else File(root(ctx), "edited/" + key.replace(Regex("[^A-Za-z0-9_-]"), "_") + ".webp")
+
+    /** Встроенная иконка (из приложения), а не своя. */
+    fun isBuiltin(key: String) = !key.startsWith("u:") && !key.startsWith("/")
+
+    /** Иконку можно править: свою из набора или любую встроенную. Фото из галереи — нет. */
+    fun canEdit(key: String) = !key.startsWith("/")
+
+    private val editedCache = HashMap<String, Boolean>()
+
+    /** Встроенная иконка изменена (отражена, повёрнута…) — рисуется из файла правки. */
+    fun isEdited(ctx: Context, key: String): Boolean =
+        isBuiltin(key) && synchronized(editedCache) { editedCache.getOrPut(key) { file(ctx, key).exists() } }
+
+    /** Встроенная картинка как в приложении, без правок. */
+    fun builtinSource(ctx: Context, key: String): Bitmap? = runCatching {
+        if (key.startsWith("ui:")) android.graphics.BitmapFactory.decodeResource(ctx.resources, com.dasein.poryadok.ui.common.Ic.byName(key.removePrefix("ui:")))
+        else ctx.assets.open(com.dasein.poryadok.ui.common.Glyphs.assetPath(key)).use { android.graphics.BitmapFactory.decodeStream(it) }
+    }.getOrNull()
 
     fun deleteSet(ctx: Context, id: String) {
         File(root(ctx), id).deleteRecursively()
@@ -166,6 +186,23 @@ object IconSets {
         after.map { if (it.id == MINE) it.copy(keys = (it.keys + orphans).distinct()) else it }
     }
 
+    /** Новый порядок иконок папки (после перетаскивания). Ключи не из папки добавляются. */
+    fun setKeys(ctx: Context, folderId: String, keys: List<String>) = update(ctx) { l ->
+        l.map { if (it.id == folderId) it.copy(keys = keys.distinct()) else it }
+    }
+
+    /**
+     * «Мои иконки»: всё, что вы добавили сами, — иконки из папки «Мои иконки» в её порядке,
+     * затем свои иконки из остальных папок и наборов и картинки из галереи.
+     */
+    fun mine(ctx: Context): List<String> {
+        val fs = folders(ctx)
+        val own = fs.flatMap { it.keys }.filter { !isBuiltin(it) }
+        val loose = sets(ctx).flatMap { keysOf(ctx, it.id) } + ownImages(ctx)
+        return (fs.firstOrNull { it.id == MINE }?.keys.orEmpty() + own + loose).distinct()
+            .filter { k -> !k.startsWith("/") || File(k).exists() }
+    }
+
     /** Сдвинуть иконку в папке на [delta] позиций (упорядочивание). */
     fun moveKey(ctx: Context, folderId: String, key: String, delta: Int) = update(ctx) { l ->
         l.map { f ->
@@ -183,7 +220,7 @@ object IconSets {
                 k.startsWith("u:") -> listOf(file(ctx, k), origFile(ctx, k), editFile(ctx, k)).forEach { it.delete() }
                 k.startsWith("/") && k.startsWith(File(ctx.filesDir, "icons").absolutePath) -> File(k).delete()
             }
-            overrides.value.filterValues { it == k }.keys.forEach { setOverride(ctx, it, null) }
+            if (!isBuiltin(k)) overrides.value.filterValues { it == k }.keys.forEach { setOverride(ctx, it, null) }
         }
         update(ctx) { l -> l.map { it.copy(keys = it.keys - keys.toSet()) } }
         changed()
@@ -210,6 +247,7 @@ object IconSets {
 
     /** Исходная картинка (до всех правок). */
     fun original(ctx: Context, key: String): Bitmap? {
+        if (isBuiltin(key)) return builtinSource(ctx, key)
         val o = origFile(ctx, key)
         return android.graphics.BitmapFactory.decodeFile((if (o.exists()) o else file(ctx, key)).absolutePath)
     }
@@ -232,6 +270,17 @@ object IconSets {
 
     /** Сохранить правку: исходник откладывается один раз, иконка перерисовывается от него. */
     suspend fun saveEdit(ctx: Context, key: String, e: Edit) = withContext(Dispatchers.IO) {
+        if (isBuiltin(key)) {
+            // Встроенная: исходник всегда в приложении, сохраняем только результат правки.
+            val f = file(ctx, key)
+            if (e.isIdentity) { f.delete(); editFile(ctx, key).delete() } else {
+                val src = builtinSource(ctx, key) ?: return@withContext
+                f.parentFile?.mkdirs()
+                writeWebp(f, render(src, e))
+                editFile(ctx, key).writeText(json.encodeToString(Edit.serializer(), e))
+            }
+            changed(); return@withContext
+        }
         val f = file(ctx, key); val o = origFile(ctx, key)
         if (!o.exists()) f.copyTo(o)
         val src = android.graphics.BitmapFactory.decodeFile(o.absolutePath) ?: return@withContext
@@ -243,7 +292,8 @@ object IconSets {
     /** Вернуть иконку как было до правок. */
     suspend fun revert(ctx: Context, key: String) = withContext(Dispatchers.IO) {
         val f = file(ctx, key); val o = origFile(ctx, key)
-        if (o.exists()) { o.copyTo(f, overwrite = true); o.delete() }
+        if (isBuiltin(key)) f.delete()
+        else if (o.exists()) { o.copyTo(f, overwrite = true); o.delete() }
         editFile(ctx, key).delete()
         changed()
     }
@@ -257,6 +307,7 @@ object IconSets {
 
     /** Картинки поменялись — сбрасываем кэши, иконки перерисуются. */
     private fun changed() {
+        synchronized(editedCache) { editedCache.clear() }
         com.dasein.poryadok.ui.common.Glyphs.evictAll()
         com.dasein.poryadok.ui.common.IconTint.evictAll()
         version.intValue++
@@ -284,7 +335,6 @@ object IconSets {
         val key = resolve(com.dasein.poryadok.ui.common.Glyphs.normalize(key0))
         val raw = runCatching {
             when {
-                key.startsWith("ui:") -> android.graphics.BitmapFactory.decodeResource(ctx.resources, com.dasein.poryadok.ui.common.Ic.byName(key.removePrefix("ui:")))
                 key.startsWith("/") -> android.graphics.BitmapFactory.decodeFile(key)
                 else -> com.dasein.poryadok.ui.common.Glyphs.bitmap(ctx, key)
             }

@@ -181,10 +181,11 @@ object Glyphs {
 
     fun evictAll() = cache.evictAll()
 
-    /** Картинка по ключу: свои наборы — из files/iconsets, остальное — из assets. */
+    /** Картинка по ключу: свои наборы и правки встроенных — из files/iconsets, остальное — из приложения. */
     fun bitmap(ctx: Context, key: String): android.graphics.Bitmap? = runCatching {
-        if (key.startsWith("u:")) BitmapFactory.decodeFile(com.dasein.poryadok.system.IconSets.file(ctx, key).absolutePath)
-        else ctx.assets.open(assetPath(key)).use { BitmapFactory.decodeStream(it) }
+        val sets = com.dasein.poryadok.system.IconSets
+        if (key.startsWith("u:") || sets.isEdited(ctx, key)) BitmapFactory.decodeFile(sets.file(ctx, key).absolutePath)
+        else sets.builtinSource(ctx, key)
     }.getOrNull()
 
     fun load(ctx: Context, key: String): ImageBitmap? {
@@ -222,9 +223,11 @@ fun Glyph(value: String, size: Dp = 24.dp, modifier: Modifier = Modifier, badge:
 @Composable
 internal fun GlyphRaw(key: String, editKey: String?, size: Dp = 24.dp, modifier0: Modifier = Modifier, badge: Boolean? = null, dimmed: Boolean = false) {
     val modifier = if (editKey != null && LocalIconEditable.current) modifier0.iconLongPress(editKey) else modifier0
-    // Свои иконки можно править — перерисовываем после правки.
-    val ver = if (key.startsWith("u:")) com.dasein.poryadok.system.IconSets.version.intValue else 0
-    if (key.startsWith("ui:")) {
+    // Иконки можно править — перерисовываем после правки.
+    val ver = com.dasein.poryadok.system.IconSets.version.intValue
+    val ctx0 = LocalContext.current
+    val edited = remember(key, ver) { com.dasein.poryadok.system.IconSets.isEdited(ctx0, key) }
+    if (key.startsWith("ui:") && !edited) {
         val res = Ic.byName(key.removePrefix("ui:"))
         AppIconRaw(res, size, modifier, badge = badge ?: false, dimmed = dimmed)
         return
@@ -254,18 +257,10 @@ internal fun GlyphRaw(key: String, editKey: String?, size: Dp = 24.dp, modifier0
     } else inner(modifier.size(size).alpha(a))
 }
 
-/** Свои картинки, загруженные раньше (иконки, фото рецептов), без сохранённых исходников для перекадрирования. */
-private fun ownImages(ctx: Context, dishes: Boolean): List<String> =
-    (listOf("icons") + if (dishes) listOf("recipes") else emptyList()).flatMap { dir ->
-        java.io.File(ctx.filesDir, dir).listFiles().orEmpty()
-            .filter { it.isFile && !it.name.contains("_orig") && it.extension.lowercase() in setOf("png", "jpg", "jpeg", "webp") }
-    }.sortedByDescending { it.lastModified() }.map { it.absolutePath }
-
-private const val OWN_TAB = "own:"
-
 /**
- * Выбор иконки или иллюстрации на весь экран: вкладки наборов — лентой сверху, сетка картинок занимает всё остальное место,
- * поэтому даже при крупном шрифте телефона картинки видны.
+ * Выбор иконки или иллюстрации на весь экран, в три раздела:
+ * «Мои иконки» — всё, что вы добавили; «Мои наборы» — ваши папки; «Исходный» — встроенные наборы.
+ * В «Моих иконках» и в папках иконку можно перетащить на другое место, удерживая её.
  */
 @Composable
 fun GlyphPickerDialog(
@@ -275,53 +270,49 @@ fun GlyphPickerDialog(
     onPick: (String) -> Unit,
 ) {
     val ctx = LocalContext.current
+    val extra = LocalExtra.current
+    val sets = com.dasein.poryadok.system.IconSets
     val current = Glyphs.normalize(selected)
+    val ver = sets.version.intValue
     var ownVersion by remember { mutableStateOf(0) }
-    val own = remember(ownVersion) { ownImages(ctx, dishes) }
-    val setsVer = com.dasein.poryadok.system.IconSets.version.intValue
-    // Свои папки иконок (из «Ещё» → «Иконки»): их порядок и содержимое — как вы разложили.
-    val folders = remember(setsVer) { if (dishes) emptyList() else com.dasein.poryadok.system.IconSets.folders(ctx).filter { it.keys.isNotEmpty() || it.id == com.dasein.poryadok.system.IconSets.MINE } }
     var importing by remember { mutableStateOf(false) }
+    var editMode by remember { mutableStateOf(false) }
     var editIcon by remember { mutableStateOf<String?>(null) }
-    val tabs = buildList {
-        if (dishes && own.isNotEmpty()) add("Мои картинки" to OWN_TAB)
-        folders.forEach { add("${it.title} · ${it.keys.size}" to "f:${it.id}") }
-        if (dishes) Glyphs.DISH_SETS.forEach { (t, s) -> add(t to "dish:$s") }
-        add("Основные" to "ui")
-        Glyphs.SETS.forEach { add(it) }
-        if (!dishes) Glyphs.DISH_SETS.filter { it.second in Glyphs.SHARED_DISH_SETS }.forEach { (t, s) -> add(t to "dish:$s") }
+    val builtin = remember(dishes) { IconLibrary.builtinGroups(dishes) }
+    // С чего открыть: со своей иконки — «Мои иконки», со встроенной — её набор.
+    var level by remember {
+        mutableStateOf(
+            when {
+                selected.isNotBlank() && (current.startsWith("u:") || current.startsWith("/")) -> IconLibrary.MINE
+                else -> IconLibrary.BUILTIN
+            },
+        )
     }
-    val initial = remember {
-        when {
-            !dishes && (current.startsWith("/") || current.startsWith("u:")) ->
-                com.dasein.poryadok.system.IconSets.folderOf(ctx, current)?.let { "f:$it" } ?: "f:${com.dasein.poryadok.system.IconSets.MINE}"
-            current.startsWith("/") && own.isNotEmpty() -> OWN_TAB
-            current.startsWith("dish/") -> "dish:" + current.removePrefix("dish/").substringBefore('/')
-            current.startsWith("ui:") -> "ui"
-            '/' in current && !dishes -> current.substringBefore('/')
-            else -> tabs.first { it.second != OWN_TAB }.second
+    var open by remember {
+        mutableStateOf(if (selected.isBlank()) null else IconLibrary.groupOf(current)?.takeIf { g -> builtin.any { it.id == g } })
+    }
+    val folders = remember(ver) { userFolders(ctx) }
+    val (mineCount, setsCount) = rememberLibraryCounts(dishes)
+    val keys = remember(level, open, ver, ownVersion) {
+        when (level) {
+            IconLibrary.MINE -> IconLibrary.mine(ctx, dishes)
+            IconLibrary.SETS -> folders.firstOrNull { it.id == open }?.keys.orEmpty()
+            else -> open?.let { IconLibrary.builtinKeys(ctx, it) }.orEmpty()
         }
     }
-    var tab by remember { mutableStateOf(initial) }
-    val keys = remember(tab, own, setsVer) {
-        when {
-            tab == OWN_TAB -> own
-            tab.startsWith("f:") -> folders.firstOrNull { "f:${it.id}" == tab }?.keys.orEmpty()
-            tab == "ui" -> Glyphs.UI.map { "ui:$it" }
-            tab.startsWith("dish:") -> Glyphs.dishKeysOf(ctx, tab.removePrefix("dish:"))
-            else -> Glyphs.keysOf(ctx, tab)
-        }
-    }
+    val showGrid = level == IconLibrary.MINE || open != null
+    val reorderable = !editMode && !dishes && (level == IconLibrary.MINE || level == IconLibrary.SETS)
     val pickOwn = rememberImagePickerWithCrop(1f, "icons", round = !dishes, png = !dishes, outW = if (dishes) 900 else 320) { path ->
         ownVersion++
         // Своя картинка-иконка попадает в «Мои иконки».
-        if (!dishes) com.dasein.poryadok.system.IconSets.addKeys(ctx, com.dasein.poryadok.system.IconSets.MINE, listOf(path))
+        if (!dishes) sets.addKeys(ctx, sets.MINE, listOf(path))
         onPick(path); onDismiss()
     }
-    val tabsState = androidx.compose.foundation.lazy.rememberLazyListState(
-        initialFirstVisibleItemIndex = tabs.indexOfFirst { it.second == initial }.coerceAtLeast(0),
-    )
-    val big = dishes || tab == OWN_TAB
+    val title = when {
+        level == IconLibrary.SETS && open != null -> folders.firstOrNull { it.id == open }?.title ?: "Набор"
+        level == IconLibrary.BUILTIN && open != null -> builtin.firstOrNull { it.id == open }?.title ?: "Набор"
+        else -> if (dishes) "Иллюстрация" else "Иконка"
+    }
     androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
@@ -332,65 +323,71 @@ fun GlyphPickerDialog(
             color = MaterialTheme.colorScheme.surface,
         ) {
             Column(Modifier.padding(vertical = 16.dp)) {
-                androidx.compose.foundation.layout.Row(
-                    Modifier.padding(horizontal = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        if (dishes) "Иллюстрация" else "Иконка",
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.weight(1f),
-                    )
+                androidx.compose.foundation.layout.Row(Modifier.padding(start = 8.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (open != null && level != IconLibrary.MINE) TextButton(onClick = { open = null }) { Text("‹ Назад") }
+                    else Box(Modifier.size(12.dp))
+                    Text(title, style = MaterialTheme.typography.headlineSmall, maxLines = 1, modifier = Modifier.weight(1f))
                     TextButton(onClick = onDismiss) { Text("Закрыть") }
                 }
-                androidx.compose.foundation.lazy.LazyRow(
-                    state = tabsState,
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.padding(top = 8.dp),
-                ) {
-                    items(tabs.size) { i -> val (t, s) = tabs[i]; Pill(t, s == tab) { tab = s } }
+                Box(Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+                    IconLibraryTabs(level, mineCount, setsCount) { level = it; open = null }
                 }
-                androidx.compose.foundation.layout.Row {
-                    TextButton(onClick = { pickOwn() }, modifier = Modifier.padding(start = 8.dp)) { Text("+ Своя картинка") }
+                androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { pickOwn() }, modifier = Modifier.padding(start = 8.dp)) { Text("+ Своя") }
                     if (!dishes) TextButton(onClick = { importing = true }) { Text("+ Набор из картинки") }
+                    Box(Modifier.weight(1f))
+                    if (showGrid) Box(Modifier.padding(end = 16.dp)) { Pill(if (editMode) "✓ Готово" else "✎ Редактировать", editMode) { editMode = !editMode } }
                 }
-                if (tab.startsWith("f:")) Text(
-                    "Удерживайте иконку, чтобы отразить, повернуть или наклонить её.",
-                    fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(horizontal = 20.dp),
+                if (showGrid) Text(
+                    when {
+                        editMode -> "Нажмите на иконку, чтобы отразить, повернуть, наклонить или изменить размер."
+                        reorderable -> "Удерживайте иконку и перетащите, чтобы поменять её место."
+                        else -> "Нажмите на иконку, чтобы выбрать её."
+                    },
+                    fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(horizontal = 20.dp),
                 )
-                if (keys.isEmpty()) {
-                    Text(
-                        "В этом наборе пока нет картинок",
-                        color = LocalExtra.current.dim,
-                        modifier = Modifier.padding(20.dp),
-                    )
-                }
-                LazyVerticalGrid(
-                    GridCells.Adaptive(if (big) 84.dp else 60.dp),
-                    Modifier.weight(1f).padding(horizontal = 12.dp),
-                ) {
-                    items(keys, key = { it }) { k ->
-                        Box(
-                            Modifier.padding(4.dp).aspectRatio(1f).clip(RoundedCornerShape(14.dp))
-                                .then(
-                                    if (k == current) Modifier.border(3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(14.dp))
-                                    else Modifier,
-                                )
-                                .combinedClickable(
-                                    onClick = { onPick(k); onDismiss() },
-                                    // Свои иконки — удержание открывает правку.
-                                    onLongClick = if (k.startsWith("u:")) ({ editIcon = k }) else null,
-                                ),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            when {
-                                k.startsWith("/") -> {
-                                    val img by rememberImage(k, 256)
-                                    img?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+                when {
+                    level == IconLibrary.SETS && open == null -> {
+                        if (folders.isEmpty()) Text(
+                            "Своих наборов пока нет. Добавьте набор из картинки или создайте папку в «Ещё» → «Иконки».",
+                            color = extra.dim, modifier = Modifier.padding(20.dp),
+                        )
+                        IconGroupList(folders.map { it.id to it.title }, { id -> folders.firstOrNull { it.id == id }?.keys.orEmpty() }, Modifier.weight(1f).padding(horizontal = 12.dp)) { open = it }
+                    }
+                    level == IconLibrary.BUILTIN && open == null ->
+                        IconGroupList(builtin.map { it.id to it.title }, { IconLibrary.builtinKeys(ctx, it) }, Modifier.weight(1f).padding(horizontal = 12.dp)) { open = it }
+                    else -> {
+                        if (keys.isEmpty()) Text(
+                            if (level == IconLibrary.MINE) "Своих иконок пока нет: добавьте картинку или набор из картинки." else "В этом наборе пока нет картинок",
+                            color = extra.dim, modifier = Modifier.padding(20.dp),
+                        )
+                        val big = keys.firstOrNull()?.let { it.startsWith("dish/") || it.startsWith("/") } == true && dishes
+                        ReorderGrid(
+                            keys, if (big) 84.dp else 60.dp, Modifier.weight(1f).padding(horizontal = 12.dp),
+                            reorderable = reorderable,
+                            onTap = { k ->
+                                if (editMode) { if (sets.canEdit(k)) editIcon = k }
+                                else { onPick(k); onDismiss() }
+                            },
+                            onReorder = { l ->
+                                if (level == IconLibrary.MINE) sets.setKeys(ctx, sets.MINE, l) else open?.let { sets.setKeys(ctx, it, l) }
+                            },
+                        ) { k, _ ->
+                            Box(
+                                Modifier.padding(4.dp).aspectRatio(1f).clip(RoundedCornerShape(14.dp))
+                                    .then(if (k == current) Modifier.border(3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(14.dp)) else Modifier)
+                                    .then(if (editMode && sets.canEdit(k)) Modifier.border(1.dp, extra.line, RoundedCornerShape(14.dp)) else Modifier),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                when {
+                                    k.startsWith("/") -> {
+                                        val img by rememberImage(k, 256)
+                                        img?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+                                    }
+                                    k.startsWith("dish/") -> GlyphRaw(k, null, if (dishes) 72.dp else 30.dp)
+                                    else -> GlyphRaw(k, null, 30.dp)
                                 }
-                                k.startsWith("dish/") -> GlyphRaw(k, null, 72.dp)
-                                else -> GlyphRaw(k, null, 30.dp)
+                                if (editMode && sets.canEdit(k)) Text("✎", fontSize = 11.sp, color = extra.dim, modifier = Modifier.align(Alignment.TopEnd).padding(4.dp))
                             }
                         }
                     }
@@ -401,7 +398,9 @@ fun GlyphPickerDialog(
     editIcon?.let { k -> IconEditorDialog(k) { editIcon = null } }
     if (importing) IconSetImportDialog(onDismiss = { importing = false }) { first ->
         importing = false
-        first?.let { k -> com.dasein.poryadok.system.IconSets.folderOf(ctx, k)?.let { tab = "f:$it" } }
+        first?.let { k ->
+            sets.folderOf(ctx, k)?.let { f -> if (f == sets.MINE) { level = IconLibrary.MINE; open = null } else { level = IconLibrary.SETS; open = f } }
+        }
     }
 }
 
