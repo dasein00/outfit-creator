@@ -73,8 +73,11 @@ object IconSets {
         }
     }
 
-    /** Сохраняет выбранные иконки новым набором. Возвращает id набора. */
-    suspend fun save(ctx: Context, title: String, icons: List<Bitmap>): String = withContext(Dispatchers.IO) {
+    /**
+     * Сохраняет выбранные иконки. Они попадают в папку [folderId] (по умолчанию «Мои иконки»);
+     * если задан [newFolder] — в новую папку с этим названием. Возвращает id набора файлов.
+     */
+    suspend fun save(ctx: Context, title: String, icons: List<Bitmap>, folderId: String = MINE, newFolder: String? = null): String = withContext(Dispatchers.IO) {
         val id = "s" + System.currentTimeMillis()
         val dir = File(root(ctx), id).apply { mkdirs() }
         icons.forEachIndexed { i, bmp ->
@@ -84,9 +87,110 @@ object IconSets {
             }
         }
         writeIndex(ctx, sets(ctx) + IconSet(id, title.ifBlank { "Мой набор ${sets(ctx).size + 1}" }))
+        val keys = keysOf(ctx, id)
+        val target = newFolder?.takeIf { it.isNotBlank() }?.let { createFolder(ctx, it) } ?: folderId
+        addKeys(ctx, target, keys)
         version.intValue++
         id
     }
+
+    // ---------- Папки иконок ----------
+
+    /** Папка иконок: свои иконки и любые встроенные, разложенные как удобно. Порядок ключей — порядок показа. */
+    @Serializable
+    data class Folder(val id: String, val title: String, val keys: List<String> = emptyList())
+
+    /** «Мои иконки» — сюда попадает всё новое, удалить её нельзя. */
+    const val MINE = "mine"
+
+    private fun foldersFile(ctx: Context) = File(root(ctx), "folders.json")
+
+    /** Свои картинки-иконки, загруженные из галереи (files/icons). */
+    private fun ownImages(ctx: Context): List<String> = File(ctx.filesDir, "icons").listFiles().orEmpty()
+        .filter { it.isFile && !it.name.contains("_orig") && it.extension.lowercase() in setOf("png", "jpg", "jpeg", "webp") }
+        .sortedBy { it.lastModified() }.map { it.absolutePath }
+
+    fun folders(ctx: Context): List<Folder> {
+        val f = foldersFile(ctx)
+        val list = if (f.exists()) runCatching { json.decodeFromString(ListSerializer(Folder.serializer()), f.readText()) }.getOrNull() else null
+        if (list != null && list.any { it.id == MINE }) return list
+        // Первый запуск: «Мои иконки» — картинки из галереи; прежние наборы — отдельными папками.
+        val migrated = listOf(Folder(MINE, "Мои иконки", ownImages(ctx))) + sets(ctx).map { Folder(it.id, it.title, keysOf(ctx, it.id)) }
+        writeFolders(ctx, migrated)
+        return migrated
+    }
+
+    private fun writeFolders(ctx: Context, l: List<Folder>) =
+        runCatching { foldersFile(ctx).writeText(json.encodeToString(ListSerializer(Folder.serializer()), l)) }
+
+    fun saveFolders(ctx: Context, l: List<Folder>) { writeFolders(ctx, l); version.intValue++ }
+
+    private fun update(ctx: Context, f: (List<Folder>) -> List<Folder>) = saveFolders(ctx, f(folders(ctx)))
+
+    fun createFolder(ctx: Context, title: String): String {
+        val id = "f" + System.currentTimeMillis()
+        update(ctx) { it + Folder(id, title.ifBlank { "Новая папка" }) }
+        return id
+    }
+
+    fun renameFolder(ctx: Context, id: String, title: String) = update(ctx) { l -> l.map { if (it.id == id) it.copy(title = title.ifBlank { it.title }) else it } }
+
+    /** Удалить папку: иконки из неё переходят в «Мои иконки». */
+    fun deleteFolder(ctx: Context, id: String) {
+        if (id == MINE) return
+        update(ctx) { l ->
+            val moved = l.firstOrNull { it.id == id }?.keys.orEmpty()
+            l.filter { it.id != id }.map { if (it.id == MINE) it.copy(keys = (it.keys + moved).distinct()) else it }
+        }
+    }
+
+    fun moveFolder(ctx: Context, id: String, delta: Int) = update(ctx) { l ->
+        val i = l.indexOfFirst { it.id == id }
+        val j = (i + delta).coerceIn(0, l.lastIndex)
+        if (i < 0 || i == j) l else l.toMutableList().also { m -> val x = m.removeAt(i); m.add(j, x) }
+    }
+
+    fun addKeys(ctx: Context, folderId: String, keys: List<String>) = update(ctx) { l ->
+        l.map { if (it.id == folderId) it.copy(keys = (it.keys + keys).distinct()) else it }
+    }
+
+    /** Переложить иконки в другую папку (из всех остальных они убираются). */
+    fun moveKeys(ctx: Context, keys: Collection<String>, to: String) = update(ctx) { l ->
+        l.map { f -> if (f.id == to) f.copy(keys = (f.keys + keys).distinct()) else f.copy(keys = f.keys - keys.toSet()) }
+    }
+
+    /** Убрать из папки, не удаляя файл. Свои иконки, не оставшиеся ни в одной папке, возвращаются в «Мои иконки». */
+    fun removeKeys(ctx: Context, folderId: String, keys: Collection<String>) = update(ctx) { l ->
+        val after = l.map { if (it.id == folderId) it.copy(keys = it.keys - keys.toSet()) else it }
+        val orphans = keys.filter { k -> (k.startsWith("u:") || k.startsWith("/")) && after.none { k in it.keys } }
+        after.map { if (it.id == MINE) it.copy(keys = (it.keys + orphans).distinct()) else it }
+    }
+
+    /** Сдвинуть иконку в папке на [delta] позиций (упорядочивание). */
+    fun moveKey(ctx: Context, folderId: String, key: String, delta: Int) = update(ctx) { l ->
+        l.map { f ->
+            if (f.id != folderId) f else {
+                val i = f.keys.indexOf(key); val j = (i + delta).coerceIn(0, f.keys.lastIndex)
+                if (i < 0 || i == j) f else f.copy(keys = f.keys.toMutableList().also { m -> val x = m.removeAt(i); m.add(j, x) })
+            }
+        }
+    }
+
+    /** Удалить иконки совсем: свои файлы стираются, замены на них сбрасываются. Встроенные просто убираются из папок. */
+    fun deleteKeys(ctx: Context, keys: Collection<String>) {
+        keys.forEach { k ->
+            when {
+                k.startsWith("u:") -> listOf(file(ctx, k), origFile(ctx, k), editFile(ctx, k)).forEach { it.delete() }
+                k.startsWith("/") && k.startsWith(File(ctx.filesDir, "icons").absolutePath) -> File(k).delete()
+            }
+            overrides.value.filterValues { it == k }.keys.forEach { setOverride(ctx, it, null) }
+        }
+        update(ctx) { l -> l.map { it.copy(keys = it.keys - keys.toSet()) } }
+        changed()
+    }
+
+    /** В какой папке иконка (для открытия нужной вкладки). */
+    fun folderOf(ctx: Context, key: String): String? = folders(ctx).firstOrNull { key in it.keys }?.id
 
     // ---------- Правка своих иконок ----------
 
@@ -144,10 +248,7 @@ object IconSets {
         changed()
     }
 
-    fun deleteIcon(ctx: Context, key: String) {
-        listOf(file(ctx, key), origFile(ctx, key), editFile(ctx, key)).forEach { it.delete() }
-        changed()
-    }
+    fun deleteIcon(ctx: Context, key: String) = deleteKeys(ctx, listOf(key))
 
     private fun writeWebp(f: File, bmp: Bitmap) = f.outputStream().use {
         @Suppress("DEPRECATION")

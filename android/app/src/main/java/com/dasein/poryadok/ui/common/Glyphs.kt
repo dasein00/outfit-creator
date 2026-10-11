@@ -279,12 +279,13 @@ fun GlyphPickerDialog(
     var ownVersion by remember { mutableStateOf(0) }
     val own = remember(ownVersion) { ownImages(ctx, dishes) }
     val setsVer = com.dasein.poryadok.system.IconSets.version.intValue
-    val userSets = remember(setsVer) { userSetTabs(ctx) }
+    // Свои папки иконок (из «Ещё» → «Иконки»): их порядок и содержимое — как вы разложили.
+    val folders = remember(setsVer) { if (dishes) emptyList() else com.dasein.poryadok.system.IconSets.folders(ctx).filter { it.keys.isNotEmpty() || it.id == com.dasein.poryadok.system.IconSets.MINE } }
     var importing by remember { mutableStateOf(false) }
     var editIcon by remember { mutableStateOf<String?>(null) }
     val tabs = buildList {
-        if (own.isNotEmpty()) add("Мои картинки" to OWN_TAB)
-        addAll(userSets)
+        if (dishes && own.isNotEmpty()) add("Мои картинки" to OWN_TAB)
+        folders.forEach { add("${it.title} · ${it.keys.size}" to "f:${it.id}") }
         if (dishes) Glyphs.DISH_SETS.forEach { (t, s) -> add(t to "dish:$s") }
         add("Основные" to "ui")
         Glyphs.SETS.forEach { add(it) }
@@ -292,10 +293,11 @@ fun GlyphPickerDialog(
     }
     val initial = remember {
         when {
+            !dishes && (current.startsWith("/") || current.startsWith("u:")) ->
+                com.dasein.poryadok.system.IconSets.folderOf(ctx, current)?.let { "f:$it" } ?: "f:${com.dasein.poryadok.system.IconSets.MINE}"
             current.startsWith("/") && own.isNotEmpty() -> OWN_TAB
             current.startsWith("dish/") -> "dish:" + current.removePrefix("dish/").substringBefore('/')
             current.startsWith("ui:") -> "ui"
-            current.startsWith("u:") -> "u:" + current.removePrefix("u:").substringBefore('/')
             '/' in current && !dishes -> current.substringBefore('/')
             else -> tabs.first { it.second != OWN_TAB }.second
         }
@@ -304,7 +306,7 @@ fun GlyphPickerDialog(
     val keys = remember(tab, own, setsVer) {
         when {
             tab == OWN_TAB -> own
-            tab.startsWith("u:") -> com.dasein.poryadok.system.IconSets.keysOf(ctx, tab.removePrefix("u:"))
+            tab.startsWith("f:") -> folders.firstOrNull { "f:${it.id}" == tab }?.keys.orEmpty()
             tab == "ui" -> Glyphs.UI.map { "ui:$it" }
             tab.startsWith("dish:") -> Glyphs.dishKeysOf(ctx, tab.removePrefix("dish:"))
             else -> Glyphs.keysOf(ctx, tab)
@@ -312,6 +314,8 @@ fun GlyphPickerDialog(
     }
     val pickOwn = rememberImagePickerWithCrop(1f, "icons", round = !dishes, png = !dishes, outW = if (dishes) 900 else 320) { path ->
         ownVersion++
+        // Своя картинка-иконка попадает в «Мои иконки».
+        if (!dishes) com.dasein.poryadok.system.IconSets.addKeys(ctx, com.dasein.poryadok.system.IconSets.MINE, listOf(path))
         onPick(path); onDismiss()
     }
     val tabsState = androidx.compose.foundation.lazy.rememberLazyListState(
@@ -351,7 +355,7 @@ fun GlyphPickerDialog(
                     TextButton(onClick = { pickOwn() }, modifier = Modifier.padding(start = 8.dp)) { Text("+ Своя картинка") }
                     if (!dishes) TextButton(onClick = { importing = true }) { Text("+ Набор из картинки") }
                 }
-                if (tab.startsWith("u:")) Text(
+                if (tab.startsWith("f:")) Text(
                     "Удерживайте иконку, чтобы отразить, повернуть или наклонить её.",
                     fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(horizontal = 20.dp),
                 )
@@ -397,7 +401,7 @@ fun GlyphPickerDialog(
     editIcon?.let { k -> IconEditorDialog(k) { editIcon = null } }
     if (importing) IconSetImportDialog(onDismiss = { importing = false }) { first ->
         importing = false
-        first?.let { tab = "u:" + it.removePrefix("u:").substringBefore('/') }
+        first?.let { k -> com.dasein.poryadok.system.IconSets.folderOf(ctx, k)?.let { tab = "f:$it" } }
     }
 }
 

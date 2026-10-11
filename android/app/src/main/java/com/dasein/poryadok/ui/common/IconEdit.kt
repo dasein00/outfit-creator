@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.dasein.poryadok.ui.common
 
 import android.graphics.Bitmap
@@ -158,6 +160,8 @@ fun IconSetImportDialog(onDismiss: () -> Unit, onSaved: (String?) -> Unit) {
     var chosen by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var busy by remember { mutableStateOf(false) }
     var title by remember { mutableStateOf("") }
+    val folders = remember { IconSets.folders(ctx) }
+    var target by remember { mutableStateOf(IconSets.MINE) }
     var message by remember { mutableStateOf<String?>(null) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) scope.launch {
@@ -195,12 +199,22 @@ fun IconSetImportDialog(onDismiss: () -> Unit, onSaved: (String?) -> Unit) {
                             Text(if (chosen.size == icons.size) "Снять все" else "Все")
                         }
                     }
-                    TextInput(title, { title = it }, "Название набора")
+                    // Куда положить: «Мои иконки», любая своя папка или новая.
+                    Text("Папка:", fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
+                        folders.forEach { f -> Pill(f.title, target == f.id) { target = f.id } }
+                        Pill("+ Новая папка", target == NEW_FOLDER) { target = NEW_FOLDER }
+                    }
+                    if (target == NEW_FOLDER) TextInput(title, { title = it }, "Название новой папки")
                     Button(
                         onClick = {
                             scope.launch {
                                 busy = true
-                                val id = IconSets.save(ctx, title, chosen.sorted().map { icons[it] })
+                                val id = IconSets.save(
+                                    ctx, title, chosen.sorted().map { icons[it] },
+                                    folderId = if (target == NEW_FOLDER) IconSets.MINE else target,
+                                    newFolder = if (target == NEW_FOLDER) title.ifBlank { "Новая папка" } else null,
+                                )
                                 busy = false
                                 onSaved(IconSets.keysOf(ctx, id).firstOrNull())
                             }
@@ -227,6 +241,8 @@ fun IconSetImportDialog(onDismiss: () -> Unit, onSaved: (String?) -> Unit) {
         }
     }
 }
+
+private const val NEW_FOLDER = "+new"
 
 /** Свои наборы: заголовок и ключи, для вкладок выбора иконки. */
 internal fun userSetTabs(ctx: android.content.Context): List<Pair<String, String>> = IconSets.sets(ctx).map { it.title to "u:${it.id}" }

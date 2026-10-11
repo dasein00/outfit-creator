@@ -176,7 +176,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                                         }
                                     }
                                 }
-                                Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.health(3)) }, padding = 12.dp) {
+                                Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.training(4)) }, padding = 12.dp) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         ProgressRing(burned.total / 600f, Palette.item(0), size = 54.dp, stroke = 6.dp) { Glyph("sport/22", 24.dp, badge = false) }
                                         Column(Modifier.padding(start = 10.dp)) {

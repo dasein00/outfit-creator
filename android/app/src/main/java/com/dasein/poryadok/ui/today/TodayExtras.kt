@@ -289,7 +289,7 @@ fun DayMetrics(nav: NavHostController, currency: String) {
         Metric(
             "workouts", "ui:flame", "Тренировки", "${workoutsWeek.size}",
             "на неделе · ${workoutsWeek.sumOf { it.minutes }} мин",
-        ) { nav.navigate(Routes.health(3)) },
+        ) { nav.navigate(Routes.training(4)) },
         Metric(
             "steps", "ui:stats", "Шаги в среднем", "$stepsAvg", "в день за 7 дней",
             stepsAvg / (profile?.stepsGoal ?: 8000).coerceAtLeast(1).toFloat(), extra.ok,

@@ -131,6 +131,7 @@ fun HealthScreen(nav: NavHostController, initialTab: Int) {
     val dao = Graph.dao
     val profileOrNull by observe(null) { dao.profile() }
     val weights by observe(emptyList()) { dao.weights() }
+    LaunchedEffect(initialTab) { if (initialTab == 3) nav.navigate(com.dasein.poryadok.ui.Routes.training(4)) }
     LaunchedEffect(profileOrNull) {
         if (profileOrNull == null && dao.profileNow() == null) dao.upsertProfile(BodyProfile(startDay = Dates.weekStart(Dates.today())))
     }
@@ -141,7 +142,9 @@ fun HealthScreen(nav: NavHostController, initialTab: Int) {
         Column(Modifier.padding(pad)) {
             // Калькулятор КБЖУ убран из вкладок; норма калорий по-прежнему считается по «Замерам».
             if (tab == 4) tab = 0
-            val tabs = listOf(0 to "Питание", 1 to "Вес", 2 to "Замеры", 3 to "Тренировки", 5 to "Прогресс")
+            // «Тренировки» переехали в раздел «Тренировки» → «Журнал»; старые ссылки ведут туда.
+            if (tab == 3) tab = 1
+            val tabs = listOf(0 to "Питание", 1 to "Вес", 2 to "Замеры", 5 to "Прогресс")
             ScrollableTabRow(selectedTabIndex = tabs.indexOfFirst { it.first == tab }.coerceAtLeast(0), edgePadding = 12.dp, containerColor = MaterialTheme.colorScheme.background) {
                 tabs.forEach { (i, t) -> Tab(tab == i, onClick = { tab = i }, text = { Text(t) }) }
             }
@@ -615,8 +618,9 @@ private fun MeasureTab(nav: NavHostController, profile: BodyProfile?, current: D
     }
 }
 
+/** Журнал тренировок: быстрая запись, неделя, 8 недель, список. Живёт в разделе «Тренировки» → «Журнал». */
 @Composable
-private fun WorkoutTab(nav: NavHostController) {
+internal fun WorkoutTab(nav: NavHostController, inTraining: Boolean = false) {
     val extra = LocalExtra.current
     val list by observe(emptyList()) { Graph.dao.workouts() }
     var edit by remember { mutableStateOf<Workout?>(null) }
@@ -624,7 +628,7 @@ private fun WorkoutTab(nav: NavHostController) {
     val weekStart = Dates.weekStart(today)
     val thisWeek = list.filter { it.day >= weekStart }
     Gap(8.dp)
-    Tile(onClick = { nav.navigate(com.dasein.poryadok.ui.Routes.training(0)) }, color = MaterialTheme.colorScheme.primary.copy(alpha = .12f)) {
+    if (!inTraining) Tile(onClick = { nav.navigate(com.dasein.poryadok.ui.Routes.training(0)) }, color = MaterialTheme.colorScheme.primary.copy(alpha = .12f)) {
         Text("Программы, подходы и прогрессия", fontWeight = FontWeight.SemiBold)
         Text("Силовые с весом и повторами, фото и видео техники, таймер отдыха, рост нагрузки по дням", fontSize = 12.sp, color = extra.dim)
     }

@@ -151,7 +151,7 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
             androidx.compose.material3.ScrollableTabRow(selectedTabIndex = tab, edgePadding = 12.dp, containerColor = MaterialTheme.colorScheme.background) {
-                listOf("Программы", "Упражнения", "История", "Прогресс").forEachIndexed { i, label ->
+                listOf("Программы", "Упражнения", "История", "Прогресс", "Журнал").forEachIndexed { i, label ->
                     androidx.compose.material3.Tab(tab == i, onClick = { tab = i }, text = { Text(label) })
                 }
             }
@@ -200,9 +200,14 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
                     item { HowTo("training") }
                 }
                 1 -> ExerciseLibrary(exercises, sets) { nav.navigate(Routes.exercise(it)) }
+                // Журнал: быстрая запись бега, йоги, прогулок и любых тренировок, статистика недели и 8 недель.
+                4 -> Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp)) {
+                    com.dasein.poryadok.ui.health.WorkoutTab(nav, inTraining = true)
+                    Gap(80.dp)
+                }
                 2 -> LazyColumn(contentPadding = PaddingValues(12.dp, 8.dp, 12.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     item {
-                        OutlinedButton(onClick = { nav.navigate(Routes.health(3)) }, Modifier.fillMaxWidth()) { Text("Бег, йога, прогулки — быстрая запись") }
+                        OutlinedButton(onClick = { tab = 4 }, Modifier.fillMaxWidth()) { Text("Бег, йога, прогулки — быстрая запись") }
                     }
                     val done = sessions.filter { it.finishedAt != null }
                     if (done.isEmpty()) item { Text("Завершённых тренировок пока нет.", color = extra.dim, modifier = Modifier.padding(8.dp)) }
