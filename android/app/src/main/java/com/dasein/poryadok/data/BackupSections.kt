@@ -25,7 +25,7 @@ enum class BackupSection(
     TUTOR("Репетитор", "tutor/00", "выученные слова, прогресс, свои слова, настройки", listOf("tutor")),
     PRESSURE("Давление и пульс", "pressure/00", "люди, замеры давления и пульса, заметки", listOf("pressure")),
     CRAFTS("Рукоделие", "minimal/04", "схемы алмазной мозаики, вышивки и бисера: фото, настройки, отмеченные цвета", listOf("crafts")),
-    SETTINGS("Настройки и виджет", "train/38", "тема, PIN, профиль Small Talks, холодильник, темп ходьбы, вид виджета, свои иконки", listOf("icons"));
+    SETTINGS("Настройки и виджет", "train/38", "тема, PIN, профиль Small Talks, холодильник, темп ходьбы, вид виджета, свои иконки и наборы, замены иконок", listOf("icons", "iconsets"));
 
     /** Переносит данные раздела из [src] в [dst] (остальное в [dst] не меняется). */
     fun copy(src: BackupData, dst: BackupData): BackupData {

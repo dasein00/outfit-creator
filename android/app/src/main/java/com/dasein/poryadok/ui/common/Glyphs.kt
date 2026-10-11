@@ -177,15 +177,21 @@ object Glyphs {
 
     private val cache = LruCache<String, ImageBitmap>(400)
 
+    /** Картинка по ключу: свои наборы — из files/iconsets, остальное — из assets. */
+    fun bitmap(ctx: Context, key: String): android.graphics.Bitmap? = runCatching {
+        if (key.startsWith("u:")) BitmapFactory.decodeFile(com.dasein.poryadok.system.IconSets.file(ctx, key).absolutePath)
+        else ctx.assets.open(assetPath(key)).use { BitmapFactory.decodeStream(it) }
+    }.getOrNull()
+
     fun load(ctx: Context, key: String): ImageBitmap? {
         cache.get(key)?.let { return it }
-        val bmp = runCatching { ctx.assets.open(assetPath(key)).use { BitmapFactory.decodeStream(it) } }.getOrNull() ?: return null
+        val bmp = bitmap(ctx, key) ?: return null
         return bmp.asImageBitmap().also { cache.put(key, it) }
     }
 
     fun loadTinted(ctx: Context, key: String, tone: IconTone): ImageBitmap? =
         if (tone.identity) load(ctx, key)
-        else IconTint.cached("g:$key", tone) { runCatching { ctx.assets.open(assetPath(key)).use { BitmapFactory.decodeStream(it) } }.getOrNull() }
+        else IconTint.cached("g:$key", tone) { bitmap(ctx, key) }
 
     fun list(ctx: Context, folder: String): List<String> =
         runCatching { ctx.assets.list(folder)?.sorted().orEmpty() }.getOrDefault(emptyList()).map { it.removeSuffix(".webp") }
@@ -201,9 +207,20 @@ object Glyphs {
 @Composable
 fun Glyph(value: String, size: Dp = 24.dp, modifier: Modifier = Modifier, badge: Boolean? = null, dimmed: Boolean = false) {
     val key = Glyphs.normalize(value)
+    val ctx = LocalContext.current
+    remember { com.dasein.poryadok.system.IconSets.load(ctx); 0 }
+    // Иконку могли заменить долгим нажатием — показываем замену, а менять можно по исходному ключу.
+    val shown = com.dasein.poryadok.system.IconSets.overrides.value[key] ?: key
+    GlyphRaw(shown, key, size, modifier, badge, dimmed)
+}
+
+/** Иконка ровно по ключу [key], без замен. [editKey] — что меняет долгое нажатие (null — нельзя). */
+@Composable
+internal fun GlyphRaw(key: String, editKey: String?, size: Dp = 24.dp, modifier0: Modifier = Modifier, badge: Boolean? = null, dimmed: Boolean = false) {
+    val modifier = if (editKey != null && LocalIconEditable.current) modifier0.iconLongPress(editKey) else modifier0
     if (key.startsWith("ui:")) {
         val res = Ic.byName(key.removePrefix("ui:"))
-        AppIcon(res, size, modifier, badge = badge ?: false, dimmed = dimmed)
+        AppIconRaw(res, size, modifier, badge = badge ?: false, dimmed = dimmed)
         return
     }
     val ctx = LocalContext.current
@@ -255,8 +272,12 @@ fun GlyphPickerDialog(
     val current = Glyphs.normalize(selected)
     var ownVersion by remember { mutableStateOf(0) }
     val own = remember(ownVersion) { ownImages(ctx, dishes) }
+    val setsVer = com.dasein.poryadok.system.IconSets.version.intValue
+    val userSets = remember(setsVer) { userSetTabs(ctx) }
+    var importing by remember { mutableStateOf(false) }
     val tabs = buildList {
         if (own.isNotEmpty()) add("Мои картинки" to OWN_TAB)
+        addAll(userSets)
         if (dishes) Glyphs.DISH_SETS.forEach { (t, s) -> add(t to "dish:$s") }
         add("Основные" to "ui")
         Glyphs.SETS.forEach { add(it) }
@@ -267,14 +288,16 @@ fun GlyphPickerDialog(
             current.startsWith("/") && own.isNotEmpty() -> OWN_TAB
             current.startsWith("dish/") -> "dish:" + current.removePrefix("dish/").substringBefore('/')
             current.startsWith("ui:") -> "ui"
+            current.startsWith("u:") -> "u:" + current.removePrefix("u:").substringBefore('/')
             '/' in current && !dishes -> current.substringBefore('/')
             else -> tabs.first { it.second != OWN_TAB }.second
         }
     }
     var tab by remember { mutableStateOf(initial) }
-    val keys = remember(tab, own) {
+    val keys = remember(tab, own, setsVer) {
         when {
             tab == OWN_TAB -> own
+            tab.startsWith("u:") -> com.dasein.poryadok.system.IconSets.keysOf(ctx, tab.removePrefix("u:"))
             tab == "ui" -> Glyphs.UI.map { "ui:$it" }
             tab.startsWith("dish:") -> Glyphs.dishKeysOf(ctx, tab.removePrefix("dish:"))
             else -> Glyphs.keysOf(ctx, tab)
@@ -317,7 +340,10 @@ fun GlyphPickerDialog(
                 ) {
                     items(tabs.size) { i -> val (t, s) = tabs[i]; Pill(t, s == tab) { tab = s } }
                 }
-                TextButton(onClick = { pickOwn() }, modifier = Modifier.padding(start = 8.dp)) { Text("+ Своя картинка из галереи") }
+                androidx.compose.foundation.layout.Row {
+                    TextButton(onClick = { pickOwn() }, modifier = Modifier.padding(start = 8.dp)) { Text("+ Своя картинка") }
+                    if (!dishes) TextButton(onClick = { importing = true }) { Text("+ Набор из картинки") }
+                }
                 if (keys.isEmpty()) {
                     Text(
                         "В этом наборе пока нет картинок",
@@ -344,14 +370,18 @@ fun GlyphPickerDialog(
                                     val img by rememberImage(k, 256)
                                     img?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
                                 }
-                                k.startsWith("dish/") -> Glyph(k, 72.dp)
-                                else -> Glyph(k, 30.dp)
+                                k.startsWith("dish/") -> GlyphRaw(k, null, 72.dp)
+                                else -> GlyphRaw(k, null, 30.dp)
                             }
                         }
                     }
                 }
             }
         }
+    }
+    if (importing) IconSetImportDialog(onDismiss = { importing = false }) { first ->
+        importing = false
+        first?.let { tab = "u:" + it.removePrefix("u:").substringBefore('/') }
     }
 }
 

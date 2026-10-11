@@ -98,14 +98,30 @@ object Ic {
     }
 
     fun byName(name: String): Int = all[name] ?: grid
+
+    private val names by lazy { all.entries.associate { (k, v) -> v to k } }
+
+    /** Имя иконки по ресурсу — чтобы и её можно было заменить долгим нажатием. */
+    fun nameOf(res: Int): String? = names[res]
 }
 
-/**
- * Иконка из набора. Кремовые детали плохо видны на светлом фоне,
- * поэтому в светлой теме иконка по умолчанию лежит на тёмной плашке.
- */
+/** Иконка из набора по ресурсу; её тоже можно заменить долгим нажатием (идёт через [Glyph]). */
 @Composable
 fun AppIcon(
+    @DrawableRes res: Int,
+    size: Dp = 24.dp,
+    modifier: Modifier = Modifier,
+    badge: Boolean = false,
+    dimmed: Boolean = false,
+) {
+    val name = Ic.nameOf(res)
+    if (name != null) Glyph("ui:$name", size, modifier, badge = badge, dimmed = dimmed)
+    else AppIconRaw(res, size, modifier, badge, dimmed)
+}
+
+/** Иконка-ресурс как есть, перекрашенная под оформление. */
+@Composable
+internal fun AppIconRaw(
     @DrawableRes res: Int,
     size: Dp = 24.dp,
     modifier: Modifier = Modifier,

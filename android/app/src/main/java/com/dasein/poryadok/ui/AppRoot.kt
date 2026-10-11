@@ -401,13 +401,17 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
         }
         if (showBar) {
             var editTab by remember { mutableStateOf<Pair<Int, Tab>?>(null) }
-            NavigationBar(containerColor = MaterialTheme.colorScheme.background, tonalElevation = 0.dp) {
-                barTabs.forEachIndexed { i, t ->
-                    TabButton(t, current == t.base, { nav.openTab(t.route) }) { editTab = i to t }
+            // В нижней панели долгое нажатие — своё меню вкладки (там же меняется иконка раздела).
+            androidx.compose.runtime.CompositionLocalProvider(com.dasein.poryadok.ui.common.LocalIconEditable provides false) {
+                NavigationBar(containerColor = MaterialTheme.colorScheme.background, tonalElevation = 0.dp) {
+                    barTabs.forEachIndexed { i, t ->
+                        TabButton(t, current == t.base, { nav.openTab(t.route) }) { editTab = i to t }
+                    }
                 }
             }
             editTab?.let { (i, t) -> TabMenu(nav, i, t) { editTab = null } }
         }
+        com.dasein.poryadok.ui.common.IconEditHost()
     }
 }
 
