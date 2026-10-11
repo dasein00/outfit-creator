@@ -276,6 +276,13 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                 }
             }
 
+            // «Описание» — исходный текст рецепта (например, из Instagram), чтобы сверить, всё ли определилось.
+            if (r.notes.isNotBlank()) {
+                Gap(8.dp)
+                com.dasein.poryadok.ui.common.FoldTile("recipe_desc", "Описание") {
+                    androidx.compose.foundation.text.selection.SelectionContainer { Text(r.notes, fontSize = 14.sp, lineHeight = 20.sp) }
+                }
+            }
             val doneCount = steps.indices.count { done[it] == true }
             SectionTitle(
                 if (steps.isEmpty()) "Приготовление" else "Приготовление · $doneCount из ${steps.size}",
@@ -314,7 +321,7 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
             Column(Modifier.onGloballyPositioned { videoY = it.positionInParent().y.toInt() }) { RecipeVideosSection(r) }
 
             RecipeRating(r.id)
-            if (r.notes.isNotBlank()) { SectionTitle("Описание и заметки"); Text(r.notes) }
+
             if (r.tips.isNotBlank()) { SectionTitle("Советы"); Text(r.tips) }
             val swapList = baseIngr.mapNotNull { ing -> Cooking.SWAPS[ing.name]?.let { ing.name to it } }
             if (swapList.isNotEmpty() || r.swaps.isNotBlank()) {

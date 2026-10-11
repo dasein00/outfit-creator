@@ -68,3 +68,73 @@ class RecipeTextTest {
         assertEquals(90, RecipeText.minutesIn("Запекать 1,5 часа"))
     }
 }
+
+class RecipeTextUserExamplesTest {
+    @Test fun doughWithNotes() {
+        val p = RecipeText.parse(
+            """
+            Для теста:
+
+            -Греческий йогурт 250 гр
+
+            -пшеничная мука 150 Гр + 10-20 гр на обвалку
+
+            -соль (при желании разрыхлитель, но я о нем забываю)
+
+            Из сыров очень рекомендую взять сулугуни, он
+
+            отлично плавится а если еще добавить зелень (лук /
+
+            укроп/кинзу) то вообще сказка
+
+            24 июля
+
+            меньше
+            """.trimIndent(),
+        )
+        assertEquals(listOf("Греческий йогурт", "Пшеничная мука", "Соль"), p.ingredients.map { it.name })
+        assertEquals(250.0, p.ingredients[0].amount, 0.01)
+        assertEquals(150.0, p.ingredients[1].amount, 0.01)
+        assertEquals("г", p.ingredients[1].unit)
+        assertEquals(0, p.steps.size)
+        // Продукты из пояснения находятся отдельно по базе.
+        val t = RecipeText.tokens("Из сыров очень рекомендую взять сулугуни, добавить зелень (лук / укроп/кинзу)")
+        assertTrue(RecipeText.mentions(t, "сулугуни"))
+        assertTrue(RecipeText.mentions(t, "лук"))
+        assertTrue(RecipeText.mentions(t, "кинза"))
+    }
+
+    @Test fun listWithoutAmounts() {
+        val p = RecipeText.parse(
+            """
+            МИНИ ПИЦЦЫ В ЛАВАШЕ
+
+            Классическая докторская колбаса Нарлен обладает плотной, упругой, но при этом нежной текстурой, что идеально подходит для этого рецепта
+
+            Ингредиенты:
+
+            Докторская колбаса Narlen
+
+            Сыр
+
+            Майонез
+
+            Лаваш
+
+            Яйца
+
+            Масло для жарки
+
+            Приготовление:
+
+            1. Лаваш нарезать кругами.
+            2. Смазать майонезом, выложить колбасу и сыр.
+            3. Обжарить на масле 3 минуты.
+            """.trimIndent(),
+        )
+        assertEquals("МИНИ ПИЦЦЫ В ЛАВАШЕ", p.title)
+        assertEquals(listOf("Докторская колбаса Narlen", "Сыр", "Майонез", "Лаваш", "Яйца", "Масло для жарки"), p.ingredients.map { it.name })
+        assertEquals(3, p.steps.size)
+        assertEquals(3, p.steps[2].minutes)
+    }
+}

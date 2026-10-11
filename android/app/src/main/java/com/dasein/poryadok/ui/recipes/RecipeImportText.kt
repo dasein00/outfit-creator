@@ -58,10 +58,29 @@ private fun pieceGrams(name: String): Double {
     }
 }
 
+/**
+ * Продукты из базы, которые упомянуты в тексте, но не попали в список («рекомендую взять сулугуни», «добавить укроп»):
+ * добавляются «по вкусу», чтобы ничего не потерялось.
+ */
+internal fun mentionedExtra(text: String, found: List<RecipeText.Ingredient>, products: List<FoodProduct>): List<RecipeText.Ingredient> {
+    val tokens = RecipeText.tokens(text)
+    val have = found.flatMap { RecipeText.keyWords(it.name) }.toMutableSet()
+    val out = ArrayList<RecipeText.Ingredient>()
+    products.sortedBy { it.name.length }.forEach { p ->
+        val words = RecipeText.keyWords(p.name)
+        val hit = words.firstOrNull { w -> RecipeText.mentions(tokens, w) } ?: return@forEach
+        if (have.any { h -> h.startsWith(hit.take(maxOf(3, hit.length - 1))) || hit.startsWith(h.take(maxOf(3, h.length - 1))) }) return@forEach
+        have += hit
+        out += RecipeText.Ingredient(p.name, 0.0, "по вкусу")
+    }
+    return out
+}
+
 /** Разобранный текст → ингредиенты черновика с КБЖУ из базы продуктов. */
-internal suspend fun ingredientsFrom(parsed: RecipeText.Parsed): List<RecipeIngredient> {
+internal suspend fun ingredientsFrom(parsed: RecipeText.Parsed, text: String = ""): List<RecipeIngredient> {
     val products = Graph.extra.productsNow()
-    return parsed.ingredients.mapIndexed { i, ing ->
+    val all = parsed.ingredients + if (text.isNotBlank()) mentionedExtra(text, parsed.ingredients, products) else emptyList()
+    return all.mapIndexed { i, ing ->
         val p = matchProduct(ing.name, products)
         val per = when {
             ing.gramsPerUnit > 0 -> ing.gramsPerUnit
@@ -103,7 +122,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                     Text(
                         listOfNotNull(
                             p.title?.let { "Название: $it" },
-                            "Ингредиентов: ${p.ingredients.size}",
+                            "Ингредиентов: ${p.ingredients.size}" + " (+ упомянутые в тексте)",
                             "Этапов: ${p.steps.size}",
                             p.servings?.let { "Порций: $it" } ?: "Порции посчитаю по весу",
                         ).joinToString(" · "),
@@ -116,7 +135,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
             TextButton(enabled = preview != null, onClick = {
                 val p = preview ?: return@TextButton
                 scope.launch {
-                    val ings = ingredientsFrom(p)
+                    val ings = ingredientsFrom(p, text)
                     var r = d.recipe.copy(notes = text.trim())
                     if (r.name.isBlank() && p.title != null) r = r.copy(name = p.title)
                     val total = ings.sumOf { it.grams }

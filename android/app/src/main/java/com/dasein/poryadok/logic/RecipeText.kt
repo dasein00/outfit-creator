@@ -87,7 +87,8 @@ object RecipeText {
     private fun looksLikeAction(line: String): Boolean {
         val first = line.trim().substringBefore(' ').lowercase().trim(',', '.', ':')
         return "°" in line || Regex("""градус""", RegexOption.IGNORE_CASE).containsMatchIn(line) ||
-            (first.length > 3 && (first.endsWith("ть") || first.endsWith("те") || first.endsWith("йте") || first.endsWith("ите")))
+            (first.length > 3 && (first.endsWith("ть") || first.endsWith("те") || first.endsWith("йте") || first.endsWith("ите"))) ||
+            (first.length > 4 && (first.endsWith("ем") || first.endsWith("им") || first.endsWith("ём")) && line.trim().split(' ').size >= 3)
     }
 
     /** Строка ингредиента без проверки заголовков (для самих заголовков). */
@@ -109,18 +110,39 @@ object RecipeText {
             val name = cleanName(if (u != null) rest.substring(u.third) else rest)
             if (name.isNotEmpty() && name.any { it.isLetter() }) return listOf(Ingredient(name, amountOf(m), u?.first ?: "шт", u?.second ?: 0.0))
         }
-        // «Мука — 200 г», «Молоко 1 стакан», «Яйца: 2 шт», «Куриное филе 500гр»
-        val m = QTY_ANY.findAll(line).lastOrNull { it.range.first > 0 } ?: return null
+        // «Мука — 200 г», «Молоко 1 стакан», «Яйца: 2 шт», «Мука 150 г + 10–20 г на обвалку», «Сливки 20% — 200 мл».
+        // Берём первое количество с единицей (проценты жирности — не количество); без единицы — первое число.
+        val all = QTY_ANY.findAll(line).filter { it.range.first > 0 && line.getOrNull(it.range.last + 1) != '%' && line.getOrNull(it.range.last) != '%' }.toList()
+        if (all.isEmpty()) return null
+        val withUnit = all.firstOrNull { unitAt(line.substring(it.range.last + 1)) != null }
+        val m = withUnit ?: all.first()
         val rest = line.substring(m.range.last + 1)
         val u = unitAt(rest)
-        val tail = if (u != null) rest.substring(u.third) else rest
-        // После количества не должно быть длинного текста — иначе это шаг («Варим 20 минут…»).
-        if (tail.trim().length > 25) return null
-        val name = cleanName(line.substring(0, m.range.first) + " " + tail.trim().trimStart('(').trimEnd(')'))
+        val before = line.substring(0, m.range.first)
+        val tail = (if (u != null) rest.substring(u.third) else rest).trim()
+        val nameRaw = if (before.any { it.isLetter() }) before else tail
+        // Без единицы и с длинным хвостом — это скорее действие («Варим 20 минут…»).
+        if (u == null && (tail.length > 25 || MINUTES.containsMatchIn(line))) return null
+        val name = cleanName(nameRaw.substringBefore('(').trimEnd())
         if (name.isEmpty() || !name.any { it.isLetter() } || name.split(' ').size > 6) return null
-        if (u == null && MINUTES.containsMatchIn(line)) return null
         return listOf(Ingredient(name, amountOf(m), u?.first ?: "шт", u?.second ?: 0.0))
     }
+
+    /** Строка-мусор из Instagram: дата поста, «ещё», «меньше», «показать перевод». */
+    private val JUNK = Regex("""^(\d{1,2}\s+(январ|феврал|март|апрел|ма[яй]|июн|июл|август|сентябр|октябр|ноябр|декабр)\p{L}*(\s+\d{4})?(\s*г\.?)?|меньше|ещё|еще|показать перевод|показать оригинал|перевод|нравится|ответить|подробнее|читать далее|… ?ещё|\.\.\. ?ещё)$""", RegexOption.IGNORE_CASE)
+
+    /** Продукт без количества: «Соль (при желании разрыхлитель)», «Сыр», «Масло для жарки». */
+    private fun bareIngredient(line: String, bullet: Boolean): Ingredient? {
+        // Продолжение предыдущей фразы («укроп/кинзу) то вообще сказка») — не продукт.
+        if (!bullet && (line.first().isLowerCase() || ')' in line.substringBefore('('))) return null
+        val name = cleanName(line.substringBefore('(').substringBefore(',').substringBefore(" — ").substringBefore(" - "))
+        if (name.isEmpty() || !name.any { it.isLetter() }) return null
+        val words = name.split(' ').size
+        return if ((bullet && words <= 6) || (words <= 5 && line.length <= 45)) Ingredient(name, 0.0, "по вкусу") else null
+    }
+
+    private fun isStepLike(line: String, numbered: Boolean): Boolean =
+        numbered || looksLikeAction(line) || (line.length > 60 && line.split(' ').size > 8)
 
     /** Шаги, если все действия написаны одним абзацем: делим по предложениям, короткие склеиваем. */
     private fun splitParagraph(p: String): List<String> {
@@ -132,37 +154,39 @@ object RecipeText {
 
     fun parse(text: String): Parsed {
         val tags = HASHTAG.findAll(text).map { it.value.removePrefix("#") }.toList()
+        // Строки без маркеров списка; запоминаем, был ли маркер («-», «•», эмодзи) — это признак пункта списка.
         val lines = text.replace("\r", "").replace(HASHTAG, "").lines()
-            .map { it.replace(LEADING_JUNK, "").replace(Regex("""\s+"""), " ").trim() }
-            .filter { it.isNotEmpty() }
+            .map { raw ->
+                val t = raw.trim()
+                val bullet = t.isNotEmpty() && !t[0].isLetterOrDigit() && t[0] !in "½¼¾⅓⅔"
+                val numbered = NUMBERING.containsMatchIn(t)
+                Triple(t.replace(LEADING_JUNK, "").replace(Regex("""\s+"""), " ").trim(), bullet, numbered)
+            }
+            .filter { it.first.isNotEmpty() && !JUNK.matches(it.first) }
         var title: String? = null
         var servings: Int? = null
         var total: Int? = null
         val ings = ArrayList<Ingredient>()
         val steps = ArrayList<String>()
-        var mode = 0 // 0 — до разделов, 1 — ингредиенты, 2 — шаги
-        for (raw in lines) {
-            val line = raw.trimEnd()
+        var sawStepHead = false
+        var mode = 0 // 0 — до разделов (название, описание), 1 — ингредиенты, 2 — шаги
+        for ((line, bullet, numbered) in lines) {
             SERVINGS.find(line)?.let { m -> if (servings == null) servings = (m.groupValues[1].ifBlank { m.groupValues[2] }).toIntOrNull() }
             if (TOTAL_TIME.containsMatchIn(line) && MINUTES.containsMatchIn(line) && line.length < 60) { total = minutesIn(line); continue }
-            if (isHead(STEP_HEAD, line)) { mode = 2; continue }
+            if (isHead(STEP_HEAD, line)) { mode = 2; sawStepHead = true; continue }
             if (isHead(ING_HEAD, line)) { mode = 1; continue }
-            // «Для теста:», «Соус:» — подзаголовки внутри ингредиентов.
-            if (line.endsWith(":") && line.length < 30 && ingredient(line) == null) { if (mode == 0) mode = 1; continue }
+            // «Для теста:», «Соус:» — подзаголовки; в шагах они остаются как есть.
+            if (line.endsWith(":") && line.length < 35 && ingredient(line) == null) { if (mode == 0) mode = 1; continue }
             if (SERVINGS.matches(line)) continue
-            when (mode) {
-                2 -> steps += line.replace(NUMBERING, "")
-                else -> {
-                    val parsed = ingredient(line)
-                    when {
-                        parsed != null -> { ings += parsed; mode = 1 }
-                        mode == 0 && title == null && line.length in 3..80 -> title = line.trimEnd(':', '.', '!')
-                        line.length >= 25 || looksLikeAction(line) -> { steps += line.replace(NUMBERING, ""); if (mode == 1) mode = 2 }
-                        mode == 0 && title == null -> title = line
-                        // «Масло для жарки» — продукт без количества.
-                        mode == 1 && line.any { it.isLetter() } -> ings += Ingredient(cleanName(line), 0.0, "по вкусу")
-                    }
-                }
+            val parsed = if (mode == 2 && sawStepHead) null else ingredient(line)
+            when {
+                parsed != null -> { ings += parsed; if (mode == 0) mode = 1 }
+                mode == 2 -> steps += line.replace(NUMBERING, "")
+                mode == 0 && title == null && line.length in 3..80 && !isStepLike(line, numbered) -> title = line.trimEnd(':', '.', '!')
+                // До списка продуктов длинный текст — описание блюда, этапом он становится, только если это действие.
+                if (mode == 0) numbered || looksLikeAction(line) else isStepLike(line, numbered) -> { steps += line.replace(NUMBERING, ""); if (mode == 1) mode = 2 }
+                // В списке продуктов строка без количества — продукт «по вкусу»; длинный текст без маркера — пояснение, пропускаем.
+                mode == 1 -> bareIngredient(line, bullet)?.let { ings += it }
             }
         }
         val stepTexts = steps.flatMap { if (it.length > 140 && steps.size <= 2) splitParagraph(it) else listOf(it) }
@@ -175,6 +199,20 @@ object RecipeText {
             tags = tags,
         )
     }
+
+    private val ADJ = Regex("""(ый|ий|ой|ая|яя|ое|ее|ые|ие)$""")
+
+    /** Слова продукта, по которым его узнать в тексте: существительные («сулугуни», «масло», «лук»), без прилагательных. */
+    fun keyWords(productName: String): List<String> =
+        productName.lowercase().replace('ё', 'е').split(' ', ',', '(', ')', '/', '-').map { it.trim() }
+            .filter { it.length >= 3 && it.all { c -> c.isLetter() } && !(it.length > 4 && ADJ.containsMatchIn(it)) }
+
+    /** Встречается ли слово продукта в тексте (с учётом падежей: «сулугуни», «маслом», «луком»). */
+    fun mentions(tokens: Set<String>, word: String): Boolean =
+        if (word.length <= 3) word in tokens
+        else { val stem = if (word.length >= 5) word.dropLast(1) else word; tokens.any { it.startsWith(stem) && it.length - word.length <= 3 } }
+
+    fun tokens(text: String): Set<String> = text.lowercase().replace('ё', 'е').split(Regex("""[^\p{L}]+""")).filter { it.length >= 3 }.toSet()
 
     /** Порции, если в тексте их нет: по весу блюда, тарелка ≈ 300 г. */
     fun guessServings(totalGrams: Double): Int = (totalGrams / 300.0).roundToInt().coerceIn(1, 12)
