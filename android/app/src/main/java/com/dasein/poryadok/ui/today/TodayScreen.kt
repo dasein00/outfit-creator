@@ -350,26 +350,6 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                                         }
                                     }
                                 }
-                                Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.wellbeing(0)) }) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) { Glyph("ui:smile", 18.dp, badge = false); Text("  Настроение", fontSize = 13.sp, color = extra.dim) }
-                                    if (moodToday != null) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            MoodFace(moodToday.level, 24.dp)
-                                            Text("  " + MOODS[moodToday.level - 1], style = MaterialTheme.typography.titleMedium)
-                                        }
-                                        if (moodToday.tags.isNotBlank()) Text(moodToday.tags.replace(",", ", "), fontSize = 12.sp, color = extra.dim, maxLines = 2)
-                                    } else {
-                                        Text("Как вы сегодня?", style = MaterialTheme.typography.titleMedium)
-                                        Gap(6.dp)
-                                        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                                            MOODS.forEachIndexed { i, _ ->
-                                                MoodFace(i + 1, 24.dp, Modifier.clip(CircleShape).clickable {
-                                                    io { dao.upsertMood(MoodEntry(at = System.currentTimeMillis(), day = today, level = i + 1)) }
-                                                })
-                                            }
-                                        }
-                                    }
-                                }
                             }
                         }
 

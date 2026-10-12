@@ -105,9 +105,14 @@ object TalkRepo {
         }
     }.getOrDefault("")
 
+    /** Из сети пришли новые факты — перечитать базу. */
+    fun invalidate() { cache = null; version.intValue++ }
+    val version = androidx.compose.runtime.mutableIntStateOf(0)
+
     fun load(ctx: Context): Data = cache ?: run {
         val facts = SmallTalk.parseFacts(read(ctx, "smalltalk") { it.startsWith("facts") && it.endsWith(".txt") }) +
-            SmallTalk.parseFacts(read(ctx, "facts") { it.endsWith(".txt") })
+            SmallTalk.parseFacts(read(ctx, "facts") { it.endsWith(".txt") }) +
+            com.dasein.poryadok.system.TalkOnline.facts(ctx)
         Data(
             facts.distinctBy { it.id },
             SmallTalk.parseStories(read(ctx, "smalltalk") { it.startsWith("stories") && it.endsWith(".txt") }),
@@ -148,7 +153,7 @@ private var lastTalkSettings: com.dasein.poryadok.data.Settings? = null
 fun TalkFactCard(onOpen: () -> Unit) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
-    val data = remember { TalkRepo.load(ctx) }
+    val data = remember(TalkRepo.version.intValue) { TalkRepo.load(ctx) }
     // Последние настройки — чтобы при прокрутке назад плашка сразу была на месте, без «прыжка».
     val settings by observe(lastTalkSettings) { Graph.prefs.settings }
     val s = settings ?: return
@@ -220,7 +225,7 @@ private enum class TalkSort(val label: String) { ORDER("По порядку"), R
 @Composable
 fun SmallTalkScreen(nav: NavHostController) {
     val ctx = LocalContext.current
-    val data = remember { TalkRepo.load(ctx) }
+    val data = remember(TalkRepo.version.intValue) { TalkRepo.load(ctx) }
     val settings by observe(null) { Graph.prefs.settings }
     var tab by rememberSaveable { mutableIntStateOf(0) }
     Screen("Small Talks", onBack = { nav.popBackStack() }) { pad ->
@@ -355,6 +360,7 @@ private fun FactsTab(data: TalkRepo.Data, s: AppSettings, favorites: List<Int>) 
         factOfTheDay(data, s, favorites)
         item(key = "facts_head") {
             SectionTitle("Каталог фактов · ${pool.size}")
+            OnlineFactsLine()
             SearchField(q, { q = it }, "Слова или \"точное выражение\"")
             Gap(8.dp)
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -694,4 +700,36 @@ private fun androidx.compose.foundation.lazy.LazyListScope.favoritesTab(data: Ta
     }
     if (favStories.isNotEmpty()) item { SectionTitle("Истории · ${favStories.size}") }
     items(favStories, key = { "s${it.id}" }) { st -> StoryCard(st, true) }
+}
+
+
+/** Сколько фактов пришло из сети и кнопка «загрузить новые» (Википедия «Знаете ли вы» и ИИ, если подключён). */
+@Composable
+private fun OnlineFactsLine() {
+    val ctx = LocalContext.current
+    val extra = LocalExtra.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val ver = TalkRepo.version.intValue
+    val n = remember(ver) { com.dasein.poryadok.system.TalkOnline.count(ctx) }
+    var busy by remember { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
+        Text(
+            if (n > 0) "Из сети: $n — новые факты подгружаются сами, когда есть интернет" else "Новые факты подгружаются из сети сами, когда есть интернет",
+            fontSize = 12.sp, color = extra.dim, modifier = Modifier.weight(1f),
+        )
+        androidx.compose.material3.TextButton(enabled = !busy, onClick = {
+            busy = true
+            scope.launch {
+                if (!com.dasein.poryadok.system.Offline.hasNetwork(ctx)) {
+                    android.widget.Toast.makeText(ctx, "Нет интернета", android.widget.Toast.LENGTH_SHORT).show()
+                } else {
+                    // Принудительно: сбрасываем «уже загружали сегодня».
+                    ctx.getSharedPreferences("talk_online", android.content.Context.MODE_PRIVATE).edit().remove("wiki_day").remove("ai_day").apply()
+                    val got = com.dasein.poryadok.system.TalkOnline.sync(ctx)
+                    android.widget.Toast.makeText(ctx, if (got > 0) "Новых фактов: $got" else "Новых фактов пока нет", android.widget.Toast.LENGTH_SHORT).show()
+                }
+                busy = false
+            }
+        }) { Text(if (busy) "Загружаю…" else "Загрузить новые", fontSize = 13.sp) }
+    }
 }

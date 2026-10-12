@@ -154,7 +154,7 @@ fun SettingsScreen(nav: NavHostController, s: Settings) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("Вечерний итог")
-                        Text("В 21:00 — отметить настроение и привычки", fontSize = 12.sp, color = extra.dim)
+                        Text("В 21:00 — отметить привычки и подвести итог дня", fontSize = 12.sp, color = extra.dim)
                     }
                     Switch(s.eveningReviewOn, { v -> upd { it.copy(eveningReviewOn = v) } })
                 }

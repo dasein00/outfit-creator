@@ -51,7 +51,9 @@ import androidx.navigation.NavHostController
 import com.dasein.poryadok.Graph
 import com.dasein.poryadok.data.FoodProduct
 import com.dasein.poryadok.data.MealRepeat
+import com.dasein.poryadok.data.Recipe
 import com.dasein.poryadok.data.RecipeRepo
+import androidx.compose.foundation.layout.size
 import com.dasein.poryadok.data.toIngr
 import com.dasein.poryadok.logic.Cooking
 import com.dasein.poryadok.logic.DIFFICULTY
@@ -276,28 +278,82 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                 }
             }
 
-            // «Описание» — исходный текст рецепта (например, из Instagram), чтобы сверить, всё ли определилось.
-            if (r.notes.isNotBlank()) {
-                Gap(8.dp)
-                com.dasein.poryadok.ui.common.FoldTile("recipe_desc", "Описание") {
-                    androidx.compose.foundation.text.selection.SelectionContainer { Text(r.notes, fontSize = 14.sp, lineHeight = 20.sp) }
+            // «Описание» — ваши заметки к блюду (сюда же попадает текст рецепта при вставке из Instagram). Пишется прямо здесь.
+            Gap(8.dp)
+            RecipeDescription(r)
+
+            // Шаги: кратко, как в рецепте, или подробно для новичка (расписывает ИИ, сохраняется на телефоне).
+            val ingrLines = remember(baseIngr) { baseIngr.map { listOf(it.name, Cooking.label(it.toIngr())).joinToString(" — ") } }
+            val srcSteps = remember(steps) { steps.map { it.text } }
+            var detailed by com.dasein.poryadok.ui.common.rememberUiFlag("recipe_detailed", true)
+            var detail by remember(id, srcSteps, ingrLines) { mutableStateOf(com.dasein.poryadok.system.RecipeDetail.saved(ctx, id, srcSteps, ingrLines)) }
+            var detailBusy by remember(id) { mutableStateOf(false) }
+            var detailError by remember(id) { mutableStateOf<String?>(null) }
+            val aiOn = remember { com.dasein.poryadok.system.Ai.enabled(ctx) }
+            fun makeDetail() {
+                if (detailBusy || srcSteps.isEmpty()) return
+                detailBusy = true; detailError = null
+                scope.launch {
+                    val res = runCatching { com.dasein.poryadok.system.RecipeDetail.make(ctx, id, r.name, r.servings, ingrLines, srcSteps) }
+                    detailBusy = false
+                    res.onSuccess { detail = it; done.clear(); timers.clear() }.onFailure { detailError = it.message ?: "Не получилось" }
                 }
             }
-            val doneCount = steps.indices.count { done[it] == true }
+            LaunchedEffect(detailed, srcSteps) {
+                if (detailed && detail == null && aiOn && srcSteps.isNotEmpty() && com.dasein.poryadok.system.Offline.hasNetwork(ctx)) makeDetail()
+            }
+            val shown: List<Pair<String, Int>> = if (detailed && detail != null) detail!!.map { it.text to it.minutes }
+                else steps.map { it.text to it.minutes }
+            val doneCount = shown.indices.count { done[it] == true }
             SectionTitle(
-                if (steps.isEmpty()) "Приготовление" else "Приготовление · $doneCount из ${steps.size}",
+                if (shown.isEmpty()) "Приготовление" else "Приготовление · $doneCount из ${shown.size}",
                 action = if (done.isNotEmpty() || have.isNotEmpty()) "Сбросить" else null,
             ) { done.clear(); have.clear(); timers.clear() }
-            if (steps.isNotEmpty()) Text("Нажмите на этап, когда выполните его, — он загорится зелёным. Пока готовите, экран не гаснет.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(bottom = 6.dp))
-            steps.forEachIndexed { i, s ->
+            if (steps.isNotEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp)) {
+                    Pill("Подробно для новичка", detailed) { if (!detailed) { detailed = true; done.clear(); timers.clear() } }
+                    Pill("Кратко", !detailed) { if (detailed) { detailed = false; done.clear(); timers.clear() } }
+                }
+                if (detailed && detail == null) Tile(Modifier.padding(bottom = 8.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = .08f)) {
+                    when {
+                        detailBusy -> Row(verticalAlignment = Alignment.CenterVertically) {
+                            androidx.compose.material3.CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                            Text("  ИИ расписывает шаги подробно… обычно 10–30 секунд", fontSize = 13.sp)
+                        }
+                        !aiOn -> Text(
+                            "Подробные шаги расписывает бесплатный ИИ. Добавьте ключ в «Настройки» → «ИИ-помощник». А пока — подсказки новичку под каждым шагом.",
+                            fontSize = 13.sp, color = extra.dim,
+                        )
+                        else -> Column {
+                            Text(detailError ?: "Подробные шаги появятся, когда будет интернет. Пока — подсказки новичку под каждым шагом.", fontSize = 13.sp, color = if (detailError != null) extra.danger else extra.dim)
+                            TextButton(onClick = { makeDetail() }) { Text("Расписать подробно") }
+                        }
+                    }
+                }
+                Text("Нажмите на этап, когда выполните его, — он загорится зелёным. Пока готовите, экран не гаснет.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(bottom = 6.dp))
+            }
+            // Подсказки новичку (без интернета): каждая — один раз, у первого шага, где встречается.
+            val hints = remember(shown) {
+                val seen = HashSet<String>()
+                shown.map { (t, _) -> com.dasein.poryadok.logic.CookingHints.forStep(t, 3).filter { seen.add(it) }.take(2) }
+            }
+            val showHints = !(detailed && detail != null)
+            shown.forEachIndexed { i, (stepText, stepMin) ->
                 val isDone = done[i] == true
-                val mins = s.minutes.takeIf { it > 0 } ?: com.dasein.poryadok.logic.RecipeText.minutesIn(s.text)
+                val mins = stepMin.takeIf { it > 0 } ?: com.dasein.poryadok.logic.RecipeText.minutesIn(stepText)
                 Tile(Modifier.padding(bottom = 8.dp), onClick = { done[i] = !isDone }, color = if (isDone) green.copy(alpha = .22f) else extra.card) {
                     Row {
                         CheckDot(isDone, green, onClick = { done[i] = !isDone }, size = 24.dp)
                         Column(Modifier.padding(start = 10.dp).weight(1f)) {
                             Text(if (isDone) "Этап ${i + 1} · готово" else "Этап ${i + 1}", fontSize = 12.sp, color = if (isDone) green else extra.dim, fontWeight = if (isDone) FontWeight.SemiBold else FontWeight.Normal)
-                            Text(s.text, color = MaterialTheme.colorScheme.onSurface)
+                            Text(stepText, color = MaterialTheme.colorScheme.onSurface, lineHeight = 21.sp)
+                            if (showHints && !isDone) hints.getOrNull(i).orEmpty().forEach { h ->
+                                Text(
+                                    "Подсказка: $h", fontSize = 13.sp, lineHeight = 18.sp, color = extra.dim,
+                                    modifier = Modifier.padding(top = 6.dp).clip(RoundedCornerShape(10.dp))
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = .07f)).padding(8.dp),
+                                )
+                            }
                             if (mins > 0 && !isDone) {
                                 val end = timers[i]
                                 val label = if (end != null) {
@@ -316,7 +372,10 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                     }
                 }
             }
-            if (steps.isNotEmpty() && doneCount == steps.size) Text("Готово! Приятного аппетита 🍽", color = green, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
+            if (detailed && detail != null) TextButton(onClick = { com.dasein.poryadok.system.RecipeDetail.forget(ctx, id); detail = null; makeDetail() }, enabled = !detailBusy) {
+                Text(if (detailBusy) "Расписываю заново…" else "Расписать заново")
+            }
+            if (shown.isNotEmpty() && doneCount == shown.size) Text("Готово! Приятного аппетита 🍽", color = green, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
             if (steps.isEmpty()) Text("Шаги не добавлены", color = extra.dim)
             Column(Modifier.onGloballyPositioned { videoY = it.positionInParent().y.toInt() }) { RecipeVideosSection(r) }
 
@@ -619,5 +678,30 @@ private fun RecipeRating(id: Long) {
             )
         }
         if (rate > 0) Text("  " + listOf("", "не понравилось", "так себе", "нормально", "вкусно", "шедевр")[rate], fontSize = 13.sp, color = LocalExtra.current.dim)
+    }
+}
+
+
+/** «Описание» в карточке блюда: свои заметки, пишутся прямо здесь и сохраняются сами. */
+@Composable
+private fun RecipeDescription(r: Recipe) {
+    val extra = LocalExtra.current
+    var text by remember(r.id) { mutableStateOf(r.notes) }
+    val latest by androidx.compose.runtime.rememberUpdatedState(r)
+    // Сохраняем через полсекунды после набора.
+    LaunchedEffect(text) {
+        if (text == latest.notes) return@LaunchedEffect
+        kotlinx.coroutines.delay(600)
+        Graph.extra.upsertRecipe(latest.copy(notes = text))
+    }
+    com.dasein.poryadok.ui.common.FoldTile(
+        "recipe_desc", "Описание",
+        summary = text.lineSequence().firstOrNull { it.isNotBlank() }?.take(60) ?: "ваши заметки к блюду",
+    ) {
+        androidx.compose.material3.OutlinedTextField(
+            text, { text = it }, Modifier.fillMaxWidth().padding(bottom = 8.dp), minLines = 3,
+            placeholder = { Text("Ваши заметки: что изменить в следующий раз, как получилось, с чем подать…", color = extra.dim) },
+            shape = RoundedCornerShape(14.dp),
+        )
     }
 }

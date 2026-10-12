@@ -91,15 +91,15 @@ val MOOD_TAGS: List<String> = Glyphs.MOOD_TAGS.keys.toList()
 
 @Composable
 fun WellbeingScreen(nav: NavHostController, initialTab: Int) {
-    var tab by rememberSaveable(initialTab) { mutableStateOf(initialTab) }
+    // Раздел «Настроение» убран: остались «Сон» (1) и «Вода» (2).
+    var tab by rememberSaveable(initialTab) { mutableStateOf(initialTab.coerceIn(1, 2)) }
     Screen(title = "Самочувствие", onBack = { nav.popBackStack() }) { pad ->
         Column(Modifier.padding(pad)) {
-            TabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.background) {
-                listOf("Настроение", "Сон", "Вода").forEachIndexed { i, t -> Tab(tab == i, onClick = { tab = i }, text = { Text(t) }) }
+            TabRow(selectedTabIndex = tab - 1, containerColor = MaterialTheme.colorScheme.background) {
+                listOf("Сон", "Вода").forEachIndexed { i, t -> Tab(tab == i + 1, onClick = { tab = i + 1 }, text = { Text(t) }) }
             }
             Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
                 when (tab) {
-                    0 -> MoodTab()
                     1 -> SleepTab()
                     else -> WaterTab()
                 }

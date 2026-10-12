@@ -205,12 +205,11 @@ object Alarms {
             }
             "evening" -> {
                 val spent = dao.txns().first().filter { it.day == today && it.type == TxnType.EXPENSE }.sumOf { it.amount }
-                val hasMood = dao.moods().first().any { it.day == today }
                 val text = buildString {
-                    append(if (hasMood) "Отметьте привычки и подведите итог дня." else "Как прошёл день? Отметьте настроение и привычки.")
+                    append("Как прошёл день? Отметьте привычки и подведите итог.")
                     if (spent > 0) append(" Потрачено сегодня: ${Money.format(spent, Graph.prefs.now().currency)}.")
                 }
-                notify(ctx, nid, CH_SUMMARY, "Вечерний итог", text, Routes.wellbeing(0))
+                notify(ctx, nid, CH_SUMMARY, "Вечерний итог", text, Routes.HABITS)
             }
             "focus" -> Focus.finishIfDue()?.let { phase -> Focus.announce(ctx, phase) }
         }

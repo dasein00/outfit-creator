@@ -539,7 +539,7 @@ private fun StepParams(d: RecipeDraft) {
 private fun StepFinish(d: RecipeDraft) {
     val r = d.recipe
     val extra = LocalExtra.current
-    TextInput(r.notes, { d.recipe = r.copy(notes = it) }, "Описание (исходный текст рецепта)", singleLine = false, minLines = 2)
+    TextInput(r.notes, { d.recipe = r.copy(notes = it) }, "Описание (ваши заметки и исходный текст)", singleLine = false, minLines = 2)
     Gap(8.dp)
     TextInput(r.tips, { d.recipe = r.copy(tips = it) }, "Советы", singleLine = false, minLines = 2)
     Gap(8.dp)

@@ -79,6 +79,8 @@ object Offline {
                     delay(150)
                 }
                 if (got > 0 || failures == 0) sp(ctx).edit().putLong("last_at", System.currentTimeMillis()).apply()
+                // Новые факты для Small Talks — тоже про запас, чтобы читать без сети.
+                runCatching { TalkOnline.sync(ctx) }
             } catch (e: Exception) {
                 Log.w("DASEIN", "offline sync", e)
             } finally {

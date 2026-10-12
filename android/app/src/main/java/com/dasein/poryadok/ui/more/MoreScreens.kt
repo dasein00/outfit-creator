@@ -78,14 +78,13 @@ val HUB = listOf(
     Hub("d08/02", "Вес и состав тела", "весы, метрики, тренд", Routes.health(1)),
     Hub("d08/09", "Тренировки", "программы, подходы, прогресс", Routes.training(0)),
     Hub("d08/04", "Шаги", "синхронизация с телефоном", Routes.STEPS),
-    Hub("d08/07", "Настроение", "дневник и инсайты", Routes.wellbeing(0)),
     Hub("d08/06", "Сон", "автоопределение и режим", Routes.wellbeing(1)),
     Hub("d08/05", "Вода", "норма на день", Routes.wellbeing(2)),
     Hub("d18/00", "Заметки", "страницы, статьи, картинки", Routes.NOTES),
     Hub("d17/00", "Фильмы, сериалы, книги", "коллекция и отзывы", Routes.topsHub(0)),
     Hub("d19/00", "Гардероб", "образы на манекене", Routes.WARDROBE),
     Hub("d20/00", "Репетитор", "английский: слова на каждый день, тренировки, повторение", com.dasein.poryadok.ui.tutor.TutorRoutes.HOME),
-    Hub("d20/04", "Переводчик", "слова с подсказками, фразы, идиомы — без интернета", com.dasein.poryadok.ui.tutor.TutorRoutes.translate(0)),
+    Hub("d20/04", "Переводчик", "в сети переводит ИИ, без интернета — словарь и модель на телефоне", com.dasein.poryadok.ui.tutor.TutorRoutes.translate(0)),
     Hub("d21/00", "Рукоделие", "алмазная мозаика, вышивка, бисер — схема из любого фото", Routes.CRAFT),
     Hub("d05/14", "Понравившееся", "отмеченные «+» события, факты, праздники — выгрузка файлом", LIKES_ROUTE),
     Hub("d22/00", "Small Talks", "факты, истории и вопросы для разговора", Routes.SMALL_TALK),
@@ -236,7 +235,7 @@ fun ReviewScreen(nav: NavHostController, settings: Settings) {
                 Gap(8.dp)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Stat("${weekWorkouts.size}", "тренировок", Modifier.weight(1f))
-                    Stat("${weekMoods.size}", "отметок настроения", Modifier.weight(1f))
+                    Stat("${weekSleep.size}", "ночей со сном", Modifier.weight(1f))
                 }
                 SectionTitle("Деньги")
                 Tile {
@@ -252,16 +251,12 @@ fun ReviewScreen(nav: NavHostController, settings: Settings) {
                 }
                 SectionTitle("Самочувствие")
                 Tile {
-                    if (weekMoods.isNotEmpty()) {
-                        val avg = weekMoods.map { it.level }.average()
-                        Text("Настроение: ${MOODS[(avg.toInt() - 1).coerceIn(0, 4)].lowercase()}, %.1f из 5".format(avg))
-                    }
                     if (weekSleep.isNotEmpty()) {
                         val avg = weekSleep.map { sleepMinutes(it) }.average().toInt()
                         Text("Сон: в среднем ${avg / 60} ч ${avg % 60} мин")
                     }
                     if (wStart != null && wEnd != null) Text("Вес: ${"%.1f".format(wEnd)} кг (${if (wEnd - wStart >= 0) "+" else ""}${"%.1f".format(wEnd - wStart)})")
-                    if (weekMoods.isEmpty() && weekSleep.isEmpty() && wEnd == null) Text("Записей о самочувствии нет", color = extra.dim)
+                    if (weekSleep.isEmpty() && wEnd == null) Text("Записей о самочувствии нет", color = extra.dim)
                 }
                 SectionTitle("Привычки")
             }

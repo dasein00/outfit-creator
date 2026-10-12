@@ -308,11 +308,6 @@ fun DayMetrics(nav: NavHostController, currency: String) {
             streakHabit?.takeIf { bestStreak > 0 }?.name ?: "привычек подряд",
         ) { nav.navigate(Routes.HABITS) },
         Metric(
-            "mood", "ui:smile", "Настроение",
-            if (moodWeek.isEmpty()) "—" else "%.1f".format(moodWeek.map { it.level }.average()).replace('.', ',') + " / 5",
-            "в среднем за неделю",
-        ) { nav.navigate(Routes.wellbeing(0)) },
-        Metric(
             "overdue", "ui:target", "Просрочено", "$overdue", if (overdue == 0) "задач нет — отлично" else "задач ждут",
             color = if (overdue > 0) extra.warn else null,
         ) { nav.goTab(Routes.plan(1)) },

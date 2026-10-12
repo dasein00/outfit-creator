@@ -101,6 +101,9 @@ private fun TranslateTab(sp: Speaker) {
     var downloading by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<String?>(null) }
     var translating by remember { mutableStateOf(false) }
+    // Откуда перевод: «ИИ» (в сети, если подключён) или «офлайн» (модель на телефоне).
+    var via by remember { mutableStateOf("") }
+    val aiOn = remember { com.dasein.poryadok.system.Ai.enabled(ctx) }
     LaunchedEffect(Unit) { ready = OfflineTranslator.ready() }
 
     val q = text.trim()
@@ -115,12 +118,19 @@ private fun TranslateTab(sp: Speaker) {
 
     // Перевод фраз и предложений (и слов, которых нет в словаре) — офлайн-моделью, с паузой после набора.
     LaunchedEffect(q, ready) {
-        result = null
-        if (q.isEmpty() || ready != true) return@LaunchedEffect
-        if (!isPhrase && exact != null) return@LaunchedEffect
-        delay(600)
+        result = null; via = ""
+        if (q.isEmpty()) return@LaunchedEffect
+        val online = aiOn && com.dasein.poryadok.system.Offline.hasNetwork(ctx)
+        // В сети — ИИ переводит всё (и слова — с учётом контекста); без сети — словарь и модель на телефоне.
+        if (!online && (ready != true || (!isPhrase && exact != null))) return@LaunchedEffect
+        delay(if (online) 900 else 600)
         translating = true
-        val r = OfflineTranslator.translate(q, enToRu = !ruToEn)
+        var r: Result<String> = Result.failure(Exception())
+        if (online) {
+            r = runCatching { aiTranslate(ctx, q, enToRu = !ruToEn) }
+            if (r.isSuccess) via = "ИИ"
+        }
+        if (r.isFailure && ready == true) { r = OfflineTranslator.translate(q, enToRu = !ruToEn); if (r.isSuccess) via = "офлайн" }
         translating = false
         result = r.getOrNull()
         r.getOrNull()?.let { out ->
@@ -139,6 +149,13 @@ private fun TranslateTab(sp: Speaker) {
                 text, { text = it; picked = null }, Modifier.fillMaxWidth(), minLines = 2, maxLines = 6,
                 placeholder = { Text("Введите слово, фразу или предложение — по-английски или по-русски") },
                 shape = RoundedCornerShape(14.dp),
+            )
+        }
+        if (q.isEmpty()) item {
+            Text(
+                if (aiOn) "В сети переводит ИИ (точнее, с учётом смысла), без интернета — словарь и модель на телефоне."
+                else "Сейчас перевод — без интернета. Чтобы в сети переводил ИИ, добавьте бесплатный ключ в «Настройки» → «ИИ-помощник».",
+                fontSize = 12.sp, color = extra.dim,
             )
         }
         if (ready == false) item {
@@ -172,9 +189,9 @@ private fun TranslateTab(sp: Speaker) {
             }
         }
         // Перевод фразы/предложения
-        if (q.isNotEmpty() && (isPhrase || exact == null)) item {
+        if (q.isNotEmpty() && (isPhrase || exact == null || result != null || translating)) item {
             Tile {
-                Text(if (ruToEn) "По-английски" else "По-русски", fontSize = 12.sp, color = extra.dim)
+                Text((if (ruToEn) "По-английски" else "По-русски") + if (via.isNotEmpty()) " · $via" else "", fontSize = 12.sp, color = extra.dim)
                 when {
                     translating && result == null -> Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp); Text("  Перевожу…", fontSize = 13.sp, color = extra.dim)
@@ -376,4 +393,14 @@ private fun PhraseQuiz(list: List<Phrases.Phrase>, all: List<Phrases.Phrase>, sp
             Button(onClick = { chosen = null; i++ }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) { Text(if (i + 1 < list.size) "Дальше" else "Итоги") }
         }
     }
+}
+
+
+/** Перевод через бесплатный ИИ: естественно, с сохранением смысла и стиля. */
+private suspend fun aiTranslate(ctx: Context, text: String, enToRu: Boolean): String {
+    val (from, to) = if (enToRu) "английского" to "русский" else "русского" to "английский"
+    val system = "Ты профессиональный переводчик. Переведи текст с $from на $to язык естественно и точно, сохраняя смысл, тон и стиль. " +
+        "Если это одно слово — дай основной перевод и через запятую 1–2 частых варианта. " +
+        "Ответь только переводом, без пояснений, кавычек и транслитерации."
+    return com.dasein.poryadok.system.Ai.ask(ctx, system, text).trim().trim('"', '«', '»').trim()
 }
