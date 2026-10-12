@@ -112,7 +112,8 @@ class SmallTalkTest {
         assertTrue("фактов мало: ${facts.size}", facts.size >= 500)
         val spheres = SmallTalk.SPHERES.map { it.first }.toSet()
         facts.forEach { assertTrue("неизвестная сфера ${it.tag}", it.tag in spheres) }
-        SmallTalk.SPHERES.filter { it.first != "Здоровье" }.forEach { (s, _) -> assertTrue("пустая сфера $s", facts.count { it.tag == s } >= 20) }
+        // «Знаете ли вы» наполняется только из сети (Википедия), встроенных фактов в ней нет.
+        SmallTalk.SPHERES.filter { it.first != "Здоровье" && it.first != "Знаете ли вы" }.forEach { (s, _) -> assertTrue("пустая сфера $s", facts.count { it.tag == s } >= 20) }
         val stories = SmallTalk.parseStories(dir.listFiles()!!.filter { it.name.startsWith("stories") }.joinToString("\n") { it.readText() })
         assertTrue(stories.size >= 40)
         stories.forEach { assertTrue("неизвестная сфера ${it.sphere}", it.sphere in spheres) }
