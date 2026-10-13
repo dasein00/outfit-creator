@@ -818,6 +818,7 @@ fun MediaCardScreen(nav: NavHostController, id: Long, kind0: Int) {
                 SectionTitle("Персонажи и цитаты")
                 TextInput(m.cast, { m = m.copy(cast = it) }, "Персонажи, любимые цитаты", singleLine = false, minLines = 3)
             }
+            MediaFactsSection(m)
             if (m.url.isNotBlank()) TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(m.url))) } }) { Text("Открыть на ${m.source}") }
 
             SectionTitle("Папки")

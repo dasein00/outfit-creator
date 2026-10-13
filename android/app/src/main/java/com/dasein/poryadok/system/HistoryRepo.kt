@@ -123,6 +123,6 @@ object CultureRepo {
         com.dasein.poryadok.logic.CultureDay.merge(
             builtIn(ctx)[HistoryRepo.md(d)].orEmpty(),
             HistoryRepo.wikiText(ctx, d, online)?.let { com.dasein.poryadok.logic.CultureDay.parseWiki(it) }.orEmpty(),
-        ).also { r -> if (r.size >= (memo[d]?.size ?: 0)) memo[d] = r }
+        ).let { runCatching { MediaFacts.cultureItems(ctx, d) }.getOrDefault(emptyList()) + it }.also { r -> if (r.size >= (memo[d]?.size ?: 0)) memo[d] = r }
     }
 }
