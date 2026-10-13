@@ -61,7 +61,7 @@
                 <data android:mimeType="image/*" />
             </intent-filter>
             <!-- Рецепт: «Поделиться» постом Instagram или ссылкой на сайт → новый рецепт с разбором. -->
-            <intent-filter android:label="Рецепт в DASEIN">
+            <intent-filter android:label="В DASEIN: рецепт или фильм">
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />

@@ -242,6 +242,7 @@ object WidgetModels {
 
     fun icon(ctx: Context, key: String): Bitmap? =
         if (key.startsWith("wx:")) key.split(':').let { WeatherIcons.render(it.getOrNull(1)?.toIntOrNull() ?: 2, it.getOrNull(2) != "0", 96) }
+            .let { raw -> accentOf(ctx)?.let { acc -> com.dasein.poryadok.ui.common.IconTint.apply(raw, com.dasein.poryadok.ui.common.IconTint.tone(acc, light = false)) } ?: raw }
         else IconSets.widgetBitmap(ctx, key, accentOf(ctx))
 
     suspend fun load(ctx: Context, cfg: WidgetConfig = WidgetPrefs.load(ctx)): WidgetModel {

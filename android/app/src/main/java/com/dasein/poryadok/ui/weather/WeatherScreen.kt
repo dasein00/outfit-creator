@@ -63,7 +63,9 @@ import kotlin.math.roundToInt
 
 @Composable
 fun WeatherIcon(code: Int, isDay: Boolean, size: Dp) {
-    val bmp = remember(code, isDay) { WeatherIcons.render(code, isDay, 160).asImageBitmap() }
+    // Перекрашиваем под цвет оформления, как остальные иконки (в светлой теме — тёмные).
+    val tone = com.dasein.poryadok.ui.common.iconTone(onPlate = false)
+    val bmp = remember(code, isDay, tone) { com.dasein.poryadok.ui.common.IconTint.apply(WeatherIcons.render(code, isDay, 160), tone).asImageBitmap() }
     Image(bmp, WeatherLogic.describe(code), Modifier.size(size))
 }
 

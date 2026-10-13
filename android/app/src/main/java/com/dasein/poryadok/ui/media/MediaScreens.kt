@@ -238,6 +238,7 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
                 FloatingActionButton(onClick = { menu = true }, containerColor = MaterialTheme.colorScheme.primary) { Icon(Icons.Default.Add, "Добавить") }
                 DropdownMenu(menu, { menu = false }) {
                     DropdownMenuItem(text = { Text(btnLabel("Найти в каталоге")) }, leadingIcon = { Glyph("habit/24", 20.dp) }, onClick = { menu = false; nav.navigate(Routes.mediaSearch(kind)) })
+                    if (kind != MediaKind.BOOK) DropdownMenuItem(text = { Text("По ссылке (Кинопоиск, Шикимори)") }, leadingIcon = { Glyph("ui:globe", 20.dp) }, onClick = { menu = false; nav.navigate(MEDIA_LINK_ROUTE) })
                     DropdownMenuItem(text = { Text(btnLabel("Заполнить карточку самому")) }, leadingIcon = { Glyph("habit/23", 20.dp) }, onClick = { menu = false; nav.navigate(Routes.media(0, kind)) })
                     if (kind != MediaKind.BOOK) DropdownMenuItem(text = { Text(btnLabel("Импорт с Кинопоиска")) }, leadingIcon = { Glyph("habit/01", 20.dp) }, onClick = { menu = false; nav.navigate(Routes.kpImport(kind)) })
                     DropdownMenuItem(text = { Text(btnLabel("Импорт списка текстом")) }, leadingIcon = { Glyph("habit/26", 20.dp) }, onClick = { menu = false; import = true })
@@ -721,6 +722,8 @@ fun MediaCardScreen(nav: NavHostController, id: Long, kind0: Int) {
     var toTop by remember { mutableStateOf(false) }
     var pickDate by remember { mutableStateOf(false) }
     var searching by remember { mutableStateOf(false) }
+    // Готовая карточка открывается для чтения; правка — кнопкой «Редактировать» или долгим нажатием на поле.
+    var editing by remember { mutableStateOf(id == 0L) }
     val lists by observe(emptyList()) { Graph.extra.mediaLists() }
     val listItems by observe(emptyList()) { Graph.extra.mediaListItems() }
     val allMedia by observe(emptyList()) { Graph.extra.media() }
@@ -745,20 +748,37 @@ fun MediaCardScreen(nav: NavHostController, id: Long, kind0: Int) {
         onBack = { nav.popBackStack() },
         actions = {
             IconAction(if (m.favorite) "habit/28" else "ui:heart", "Любимое") { m = m.copy(favorite = !m.favorite) }
-            IconAction("ui:check", "Сохранить") { save() }
+            if (editing) IconAction("ui:check", "Сохранить") { if (m.id == 0L) save() else { save(back = false); editing = false } }
+            else IconAction("ui:notebook", "Редактировать карточку") { editing = true }
         },
     ) { pad ->
         if (!loaded) { Box(Modifier.padding(pad).fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return@Screen }
+        // В режиме чтения статус, оценка, прогресс и «любимое» сохраняются сразу.
+        LaunchedEffect(m, editing) {
+            if (!editing && m.id != 0L) { kotlinx.coroutines.delay(400); Graph.extra.upsertMedia(m) }
+        }
+        val toEdit: () -> Unit = { editing = true }
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             Row {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Poster(m, 120.dp, Modifier.clickable { pickPoster() })
-                    TextButton(onClick = { pickPoster() }) { Text(if (m.poster.isBlank()) "Загрузить постер" else "Заменить", fontSize = 12.sp) }
-                    if (m.poster.isNotBlank()) TextButton(onClick = { recrop = true }) { Text(btnLabel("Кадр"), fontSize = 12.sp) }
-                    if (m.poster.isNotBlank()) TextButton(onClick = { m = m.copy(poster = "") }) { Text(btnLabel("Убрать"), fontSize = 12.sp) }
+                    Poster(m, 120.dp, if (editing) Modifier.clickable { pickPoster() } else Modifier.longEdit(toEdit))
+                    if (editing) {
+                        TextButton(onClick = { pickPoster() }) { Text(if (m.poster.isBlank()) "Загрузить постер" else "Заменить", fontSize = 12.sp) }
+                        if (m.poster.isNotBlank()) TextButton(onClick = { recrop = true }) { Text(btnLabel("Кадр"), fontSize = 12.sp) }
+                        if (m.poster.isNotBlank()) TextButton(onClick = { m = m.copy(poster = "") }) { Text(btnLabel("Убрать"), fontSize = 12.sp) }
+                    }
                 }
                 HGap(12.dp)
-                Column(Modifier.weight(1f)) {
+                if (!editing) Column(Modifier.weight(1f).longEdit(toEdit)) {
+                    Text(MediaKind.names[m.kind], fontSize = 12.sp, color = extra.dim)
+                    Text(m.title, fontSize = 22.sp, fontWeight = FontWeight.Bold, lineHeight = 26.sp)
+                    if (m.originalTitle.isNotBlank()) Text(m.originalTitle, fontSize = 14.sp, color = extra.dim)
+                    val meta = listOfNotNull(m.year?.toString(), m.countries.ifBlank { null }, m.length.ifBlank { null })
+                    if (meta.isNotEmpty()) Text(meta.joinToString(" · "), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                    if (m.genres.isNotBlank()) Text(m.genres, fontSize = 13.sp, color = extra.dim)
+                    if (m.externalRating != null) Text("${m.source}: ★ %.1f".format(m.externalRating), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
+                    Text("Удерживайте любое поле, чтобы изменить", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
+                } else Column(Modifier.weight(1f)) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         MediaKind.names.forEachIndexed { i, n -> Pill(n, m.kind == i, glyph = kindIcon(i)) { m = m.copy(kind = i) } }
                     }
@@ -794,11 +814,21 @@ fun MediaCardScreen(nav: NavHostController, id: Long, kind0: Int) {
             Gap(8.dp)
             FieldButton(if (book) "Прочитано" else "Просмотрено", m.finishedDay?.let { Dates.full(it) } ?: "дата не указана", Modifier.fillMaxWidth(), glyph = "cal/06") { pickDate = true }
             Gap(8.dp)
-            TextInput(m.review, { m = m.copy(review = it) }, "Моё мнение", singleLine = false, minLines = 3)
-            Gap(4.dp)
-            TextInput(m.tags, { m = m.copy(tags = it) }, "Мои метки через запятую: в кино, с семьёй, посоветовали")
+            if (editing) {
+                TextInput(m.review, { m = m.copy(review = it) }, "Моё мнение", singleLine = false, minLines = 3)
+                Gap(4.dp)
+                TextInput(m.tags, { m = m.copy(tags = it) }, "Мои метки через запятую: в кино, с семьёй, посоветовали")
+            } else {
+                ViewField("Моё мнение", m.review.ifBlank { "удерживайте, чтобы написать" }, toEdit)
+                if (m.tags.isNotBlank()) ViewField("Метки", m.tags, toEdit)
+            }
 
             SectionTitle(if (book) "О книге" else "О фильме")
+            if (!editing) {
+                ViewField(if (book) "Автор(ы)" else "Режиссёр(ы)", m.creators.ifBlank { "—" }, toEdit)
+                ViewField(if (book) "Аннотация" else "Сюжет", m.description.ifBlank { "—" }, toEdit)
+                if (m.cast.isNotBlank()) ViewField(if (book) "Персонажи и цитаты" else "В ролях", m.cast.lines().filter { it.isNotBlank() }.take(15).joinToString("\n"), toEdit)
+            } else {
             TextInput(m.creators, { m = m.copy(creators = it) }, if (book) "Автор(ы)" else "Режиссёр(ы)")
             Gap(4.dp)
             TextInput(m.genres, { m = m.copy(genres = it) }, "Жанры")
@@ -817,6 +847,7 @@ fun MediaCardScreen(nav: NavHostController, id: Long, kind0: Int) {
             } else {
                 SectionTitle("Персонажи и цитаты")
                 TextInput(m.cast, { m = m.copy(cast = it) }, "Персонажи, любимые цитаты", singleLine = false, minLines = 3)
+            }
             }
             MediaFactsSection(m)
             if (m.url.isNotBlank()) TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(m.url))) } }) { Text("Открыть на ${m.source}") }
@@ -839,7 +870,10 @@ fun MediaCardScreen(nav: NavHostController, id: Long, kind0: Int) {
             }
 
             Gap(16.dp)
-            Button(onClick = { save() }, Modifier.fillMaxWidth()) { Text(btnLabel("Сохранить")) }
+            if (editing) Button(onClick = { if (m.id == 0L) save() else { save(back = false); editing = false } }, Modifier.fillMaxWidth()) { Text(btnLabel("Сохранить")) }
+            else OutlinedButton(onClick = { editing = true }, Modifier.fillMaxWidth()) {
+                Text(when (m.kind) { MediaKind.BOOK -> "Редактировать карточку книги"; MediaKind.SERIES -> "Редактировать карточку сериала"; else -> "Редактировать карточку фильма" })
+            }
             Row {
                 OutlinedButton(onClick = { toTop = true }, Modifier.weight(1f), enabled = m.title.isNotBlank()) { Text(btnLabel("В топ")) }
                 HGap(8.dp)
@@ -956,4 +990,19 @@ private fun FillFromCatalogDialog(m: MediaItem, onDismiss: () -> Unit, onPick: (
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Закрыть")) } },
     )
+}
+
+
+/** Долгое нажатие на поле карточки — перейти к правке. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+private fun Modifier.longEdit(onLong: () -> Unit): Modifier = this.combinedClickable(onClick = {}, onLongClick = onLong)
+
+/** Поле карточки в режиме чтения: подпись и значение; удержание — правка. */
+@Composable
+private fun ViewField(label: String, value: String, onLong: () -> Unit) {
+    val extra = LocalExtra.current
+    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(12.dp)).longEdit(onLong).padding(vertical = 4.dp)) {
+        Text(label, fontSize = 12.sp, color = extra.dim)
+        Text(value, fontSize = 15.sp, lineHeight = 21.sp)
+    }
 }

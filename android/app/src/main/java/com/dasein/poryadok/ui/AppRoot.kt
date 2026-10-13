@@ -354,6 +354,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable(com.dasein.poryadok.ui.more.LIKES_ROUTE) { com.dasein.poryadok.ui.more.LikesScreen(nav) }
             composable(com.dasein.poryadok.ui.more.ICON_MANAGER_ROUTE) { com.dasein.poryadok.ui.more.IconManagerScreen(nav) }
             composable(com.dasein.poryadok.ui.recipes.WHAT_TO_COOK_ROUTE) { com.dasein.poryadok.ui.recipes.WhatToCookScreen(nav) }
+            composable(com.dasein.poryadok.ui.media.MEDIA_LINK_ROUTE) { com.dasein.poryadok.ui.media.MediaLinkScreen(nav) }
             composable(com.dasein.poryadok.ui.tutor.TUTOR_CARDS_ROUTE) { com.dasein.poryadok.ui.tutor.TutorCardsScreen(nav) }
             composable(
                 "${com.dasein.poryadok.ui.tutor.TUTOR_CHAT_ROUTE}?tab={tab}",

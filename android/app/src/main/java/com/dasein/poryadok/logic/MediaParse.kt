@@ -166,6 +166,21 @@ object MediaParse {
             )
         }
 
+    /** Шикимори: карточка аниме по id (api/animes/{id}) — с описанием и жанрами. */
+    fun shikimoriDetails(text: String): MediaHit? {
+        val o = json.parseToJsonElement(text).obj() ?: return null
+        val k = if (o["kind"].str() == "movie") MOVIE else SERIES
+        val base = shikimori("[$text]", k).firstOrNull() ?: return null
+        val genres = o["genres"].arr().orEmpty().mapNotNull { it.obj()?.let { g -> g["russian"].str() ?: g["name"].str() } }
+        val studios = o["studios"].arr().orEmpty().mapNotNull { it.obj()?.get("name").str() }
+        val desc = o["description"].str()?.replace(Regex("\\[\\[|]]"), "")?.replace(Regex("\\[/?[a-z_]+(=[^]]*)?]"), "")?.trim().orEmpty()
+        return base.copy(
+            genres = (listOf("аниме") + genres).distinct().joinToString(", "),
+            creators = studios.joinToString(", "),
+            description = desc,
+        )
+    }
+
     /** TVMaze (сериалы, без ключа): поиск шоу. */
     fun tvmazeSearch(text: String): List<MediaHit> =
         json.parseToJsonElement(text).arr().orEmpty().mapNotNull { e -> e.obj()?.get("show").obj()?.let { tvmazeShow(it) } }

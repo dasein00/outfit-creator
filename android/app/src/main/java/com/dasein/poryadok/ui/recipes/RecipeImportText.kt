@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.recipes
 
 import android.content.ClipboardManager
+import com.dasein.poryadok.ui.common.OutlinedButton
 import com.dasein.poryadok.ui.common.Button
 import com.dasein.poryadok.ui.common.btnLabel
 import android.content.Context
@@ -101,14 +102,15 @@ internal suspend fun ingredientsFrom(parsed: RecipeText.Parsed, text: String = "
 private val AI_UNITS = setOf("г", "кг", "мл", "л", "шт", "ст.л.", "ч.л.", "стакан", "щепотка", "по вкусу")
 
 /** Инструкция для ИИ: вернуть рецепт строго в JSON. */
-private const val AI_RECIPE_PROMPT = """Ты помощник кулинарного приложения. Из текста рецепта (подпись из Instagram, заметка) извлеки данные и верни ТОЛЬКО JSON без пояснений:
+private const val AI_RECIPE_PROMPT = """Ты помощник кулинарного приложения. Текст — это подпись к рецепту из Instagram, заметка, страница сайта или расшифровка речи из видео (тогда в нём могут быть разговорные слова, повторы и ошибки распознавания — пойми смысл). Извлеки рецепт и верни ТОЛЬКО JSON без пояснений:
 {"title": "название блюда", "servings": число порций или null,
  "ingredients": [{"name": "продукт в именительном падеже, без количества", "amount": число, "unit": "г|кг|мл|л|шт|ст.л.|ч.л.|стакан|щепотка|по вкусу", "grams_per_piece": вес одной штуки в граммах для unit=шт, иначе null}],
- "steps": [{"text": "этап приготовления одним-двумя предложениями", "minutes": минуты этапа или 0}]}
+ "steps": [{"text": "подробный этап для новичка", "minutes": минуты этапа или 0}]}
 Правила: включи ВСЕ продукты, упомянутые в тексте, даже в советах (например «можно добавить сулугуни» — продукт с unit "по вкусу").
 Если для продукта указано несколько количеств («150 г + 20 г на обвалку»), сложи их. Проценты жирности оставь в названии.
-Если этапов в тексте нет — придумай короткие логичные этапы по смыслу рецепта. Не выдумывай продукты, которых нет в тексте.
-Даты, хештеги, рекламу и «ещё/меньше» игнорируй."""
+Если количество сказано на глаз («горсть», «пара ложек», «кусочек») — переведи в граммы или ложки примерно. Если не сказано совсем — оцени разумное количество на указанные порции.
+Этапы пиши подробно и понятно новичку: что сделать, какой огонь или температура духовки, сколько минут, как понять, что готово. Не выдумывай продукты, которых нет в тексте.
+Даты, хештеги, рекламу, приветствия и «ещё/меньше» игнорируй."""
 
 /** Разбор рецепта ИИ (бесплатные модели OpenRouter). null — не получилось, тогда работает встроенный разбор. */
 internal suspend fun aiParse(ctx: Context, text: String): RecipeText.Parsed {
@@ -143,6 +145,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
     var aiBusy by remember { mutableStateOf(false) }
     var aiError by remember { mutableStateOf<String?>(null) }
     var linkBusy by remember { mutableStateOf(false) }
+    var videoBusy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     val link = remember(text) { com.dasein.poryadok.system.RecipeLink.findUrl(text)?.takeIf { text.trim().length < it.length + 40 } }
     // Пришла одна ссылка (поделились постом) — сразу загружаем рецепт.
@@ -164,6 +167,33 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
             aiBusy = false; onDismiss()
         }
     }
+    fun fromVideo(uri: android.net.Uri) {
+        videoBusy = true; aiError = null
+        scope.launch {
+            runCatching { com.dasein.poryadok.system.VideoSpeech.transcribe(ctx, uri) { st -> status = st } }
+                .onSuccess { speech ->
+                    text = speech.trim()
+                    status = null; videoBusy = false
+                    // Речь есть — сразу разбираем ИИ: ингредиенты с граммовками, подробные этапы и описание.
+                    if (aiOn) {
+                        aiBusy = true; status = "ИИ заполняет карточку…"
+                        runCatching { aiParse(ctx, text) }.onSuccess { applyResult(it, viaAi = true) }
+                            .onFailure { aiError = it.message ?: "ошибка"; aiBusy = false; status = null }
+                    }
+                }
+                .onFailure { e ->
+                    videoBusy = false; status = null
+                    aiError = if (e is com.dasein.poryadok.system.VideoSpeech.NoSpeech)
+                        "${e.message}. Вставьте сюда описание из Instagram, ссылку на пост или сайт, или свой текст — карточка заполнится по нему."
+                    else "Не удалось распознать речь: ${e.message}"
+                }
+        }
+    }
+    val videoPicker = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) fromVideo(uri)
+    }
+    // Видео, уже прикреплённые к рецепту (файлы на телефоне).
+    val ownVideos = remember(d.recipe.videos) { d.recipe.videos.lines().map { it.trim() }.filter { it.startsWith("/") && java.io.File(it).exists() } }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(btnLabel("Описание блюда")) },
@@ -175,6 +205,15 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                     cm.primaryClip?.getItemAt(0)?.coerceToText(ctx)?.toString()?.let { text = it }
                 }) { Text(btnLabel("Вставить из буфера обмена")) }
                 TextInput(text, { text = it }, "Описание или ссылка (Instagram, сайт с рецептом)", singleLine = false, minLines = 6)
+                // Видео со звуком: речь распознаётся, и по ней ИИ заполняет карточку.
+                OutlinedButton(enabled = !videoBusy && !aiBusy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp), onClick = {
+                    videoPicker.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.VideoOnly))
+                }) { Text(if (videoBusy) (status ?: "Распознаю…") else "🎬 Из видео: распознать речь") }
+                ownVideos.forEachIndexed { i, v ->
+                    TextButton(enabled = !videoBusy && !aiBusy, onClick = { fromVideo(android.net.Uri.fromFile(java.io.File(v))) }) {
+                        Text("Распознать речь из видео рецепта" + if (ownVideos.size > 1) " №${i + 1}" else "")
+                    }
+                }
                 if (link != null) Button(enabled = !linkBusy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp), onClick = {
                     linkBusy = true; aiError = null
                     scope.launch {
@@ -185,7 +224,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                     }
                 }) { Text(if (linkBusy) "Загружаю рецепт…" else "Загрузить рецепт по ссылке") }
                 status?.let { Text(it, fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp)) }
-                aiError?.let { Text(it + " Можно нажать «Разобрать» — встроенный разбор работает без интернета.", fontSize = 12.sp, color = extra.danger, modifier = Modifier.padding(top = 6.dp)) }
+                aiError?.let { Text(if ("Вставьте сюда" in it) it else it + " Можно нажать «Разобрать» — встроенный разбор работает без интернета.", fontSize = 12.sp, color = extra.danger, modifier = Modifier.padding(top = 6.dp)) }
                 if (!aiOn) Text("Точнее разбирает бесплатный ИИ: добавьте ключ OpenRouter в «Настройки» → «ИИ-помощник».", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
                 preview?.let { p ->
                     Text(

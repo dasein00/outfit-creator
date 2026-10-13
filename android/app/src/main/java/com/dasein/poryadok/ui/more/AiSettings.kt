@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.more
 
 import android.content.Intent
+import com.dasein.poryadok.ui.common.TextButton
 import com.dasein.poryadok.ui.common.btnLabel
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
@@ -56,6 +57,14 @@ fun AiSettingsSection() {
         }
         Gap(6.dp)
         TextInput(key, { key = it; Ai.setKey(ctx, it) }, "Ключ OpenRouter (sk-or-…)")
+        // Речь из видео рецептов: бесплатный Whisper от Groq.
+        var groq by remember { mutableStateOf(com.dasein.poryadok.system.VideoSpeech.groqKey(ctx)) }
+        Text(
+            "Распознавание речи из видео рецептов: бесплатный ключ Groq (console.groq.com → API Keys → Create). Без ключа на Android 13+ речь распознаёт сам телефон, но хуже.",
+            fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 8.dp),
+        )
+        TextInput(groq, { groq = it; com.dasein.poryadok.system.VideoSpeech.setGroqKey(ctx, it) }, "Ключ Groq (gsk_…) — необязательно")
+        TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.groq.com/keys"))) } }) { Text("Получить ключ Groq") }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
             OutlinedButton(onClick = {
                 busy = true

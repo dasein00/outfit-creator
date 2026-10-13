@@ -103,6 +103,11 @@ class MainActivity : FragmentActivity() {
             Intent.ACTION_VIEW, Intent.ACTION_SEND -> {
                 // Текст или ссылка (Instagram «Поделиться», сайт с рецептом) — в новый рецепт с разбором.
                 val shared = intent.getStringExtra(Intent.EXTRA_TEXT)
+                // Ссылка на фильм или сериал (Кинопоиск, Шикимори) — сразу карточка в «Фильмы и сериалы».
+                if (intent.action == Intent.ACTION_SEND && !shared.isNullOrBlank() && com.dasein.poryadok.system.MediaSearch.isMediaLink(shared)) {
+                    com.dasein.poryadok.ui.media.MediaInbox.put(shared.trim())
+                    return com.dasein.poryadok.ui.media.MEDIA_LINK_ROUTE
+                }
                 if (intent.action == Intent.ACTION_SEND && intent.type?.startsWith("text/plain") == true && !shared.isNullOrBlank()) {
                     com.dasein.poryadok.ui.recipes.RecipeInbox.put(shared.trim())
                     return Routes.recipeEdit(0)

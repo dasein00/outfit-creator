@@ -212,6 +212,37 @@ object MediaSearch {
         } ?: hit
     }
 
+    /**
+     * Карточка по ссылке: kinopoisk.ru/film/123, kinopoisk.ru/series/123 (с токеном — из API Кинопоиска,
+     * без токена — из Викиданных по номеру Кинопоиска) и shikimori.one/animes/123-… (без ключа).
+     */
+    suspend fun byLink(link: String): MediaHit = withContext(Dispatchers.IO) {
+        val url = link.trim()
+        Regex("""kinopoisk\.ru/(film|series)/(\d+)""").find(url)?.let { m ->
+            val (type, id) = m.destructured
+            val kind = if (type == "series") MediaParse.SERIES else MediaParse.MOVIE
+            val token = Graph.prefs.now().kinopoiskToken.trim()
+            if (token.isNotBlank()) runCatching {
+                MediaParse.kinopoiskDetails(get("https://api.kinopoisk.dev/v1.4/movie/$id", mapOf("X-API-KEY" to token)))
+            }.getOrNull()?.let { return@withContext it.copy(url = it.url.ifBlank { "https://www.kinopoisk.ru/$type/$id/" }) }
+            // Без токена: ищем фильм в Викиданных по номеру Кинопоиска (свойство P2603).
+            val q = "SELECT ?item WHERE { ?item wdt:P2603 \"$id\" } LIMIT 3"
+            val text = get("https://query.wikidata.org/sparql?format=json&query=${enc(q)}", mapOf("Accept" to "application/sparql-results+json"), timeout = 30_000)
+            val ids = MediaDiscover.sparqlIds(text)
+            val hit = wikiByIds(kind, ids, 1, strictKind = false).firstOrNull()
+                ?: error("Не нашли этот фильм без токена Кинопоиска. Добавьте бесплатный токен в поиске («Где взять токен Кинопоиска») — тогда карточка заполнится по любой ссылке.")
+            return@withContext hit.copy(kind = kind, url = "https://www.kinopoisk.ru/$type/$id/")
+        }
+        Regex("""shikimori\.(?:one|me)/animes/[a-z]*(\d+)""").find(url)?.let { m ->
+            val id = m.groupValues[1]
+            return@withContext MediaParse.shikimoriDetails(get("https://shikimori.one/api/animes/$id"))
+                ?: error("Шикимори не отдал карточку")
+        }
+        error("Нужна ссылка на страницу фильма или сериала на Кинопоиске (kinopoisk.ru/film/…) или аниме на Шикимори (shikimori.one/animes/…)")
+    }
+
+    fun isMediaLink(text: String) = Regex("""kinopoisk\.ru/(film|series)/\d+|shikimori\.(one|me)/animes/""").containsMatchIn(text)
+
     /** Скачивает постер в личную папку приложения. */
     suspend fun downloadPoster(ctx: Context, url: String): String? = withContext(Dispatchers.IO) {
         if (url.isBlank()) return@withContext null

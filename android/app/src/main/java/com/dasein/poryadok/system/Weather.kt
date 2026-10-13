@@ -163,72 +163,139 @@ class WeatherWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
     }
 }
 
-/** Иконки погоды, нарисованные в стиле приложения: солнце, облака, дождь, снег, гроза, туман. */
+/**
+ * Иконки погоды в стиле иконок DASEIN: кремовые облака с мягкой нижней тенью, оранжевое солнце,
+ * кремовая луна со звёздами, оранжевые капли, кремовые снежинки, тёплый туман. Плоская заливка, без обводок.
+ * На экране перекрашиваются под цвет оформления, как остальные иконки.
+ */
 object WeatherIcons {
-    private const val SUN = 0xFFE8A53C.toInt()
-    private const val MOON = 0xFFE9DFC6.toInt()
-    private const val CLOUD = 0xFFE7E1D6.toInt()
-    private const val CLOUD_DARK = 0xFFA79E90.toInt()
-    private const val RAIN = 0xFF5B8DD2.toInt()
-    private const val SNOW = 0xFFFFFFFF.toInt()
-    private const val BOLT = 0xFFF2C94C.toInt()
+    private const val ORANGE = 0xFFFF9527.toInt()
+    private const val ORANGE_LIGHT = 0xFFFFB65C.toInt()
+    private const val CREAM = 0xFFFFF1D6.toInt()
+    private const val CREAM_SHADE = 0xFFF2DDB8.toInt()
+    private const val TAN = 0xFFD69A55.toInt()
+    private const val TAN_SHADE = 0xFFB97F42.toInt()
+    private const val BROWN = 0xFF5A4636.toInt()
 
     fun render(code: Int, isDay: Boolean, size: Int = 128): Bitmap {
         val b = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val c = Canvas(b)
         val s = size / 100f
         val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        fun fill(col: Int) { p.style = Paint.Style.FILL; p.color = col; p.xfermode = null }
+
         fun sun(cx: Float, cy: Float, r: Float) {
-            if (isDay) {
-                p.color = SUN; p.style = Paint.Style.STROKE; p.strokeWidth = 5 * s; p.strokeCap = Paint.Cap.ROUND
-                for (k in 0 until 8) {
-                    val a = Math.PI / 4 * k
-                    c.drawLine(cx + cos(a).toFloat() * r * 1.35f, cy + sin(a).toFloat() * r * 1.35f, cx + cos(a).toFloat() * r * 1.75f, cy + sin(a).toFloat() * r * 1.75f, p)
-                }
-                p.style = Paint.Style.FILL
-                c.drawCircle(cx, cy, r, p)
-            } else {
-                p.style = Paint.Style.FILL; p.color = MOON
-                c.drawCircle(cx, cy, r * 1.1f, p)
-                p.color = 0x00000000; p.xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR)
-                c.drawCircle(cx + r * 0.55f, cy - r * 0.35f, r * 0.95f, p)
-                p.xfermode = null
+            fill(ORANGE)
+            // Лучи — скруглённые капсулы.
+            for (k in 0 until 8) {
+                val a = Math.PI / 4 * k
+                val x1 = cx + cos(a).toFloat() * r * 1.38f; val y1 = cy + sin(a).toFloat() * r * 1.38f
+                val x2 = cx + cos(a).toFloat() * r * 1.78f; val y2 = cy + sin(a).toFloat() * r * 1.78f
+                p.style = Paint.Style.STROKE; p.strokeWidth = r * 0.26f; p.strokeCap = Paint.Cap.ROUND
+                c.drawLine(x1, y1, x2, y2, p)
             }
+            fill(ORANGE); c.drawCircle(cx, cy, r, p)
+            fill(ORANGE_LIGHT); c.drawCircle(cx - r * 0.18f, cy - r * 0.18f, r * 0.62f, p)
         }
-        fun cloud(x: Float, y: Float, w: Float, color: Int) {
-            p.style = Paint.Style.FILL; p.color = color
-            val h = w * 0.42f
-            c.drawRoundRect(RectF(x, y + h * 0.35f, x + w, y + h), h * 0.35f, h * 0.35f, p)
-            c.drawCircle(x + w * 0.33f, y + h * 0.42f, h * 0.38f, p)
-            c.drawCircle(x + w * 0.62f, y + h * 0.3f, h * 0.5f, p)
+        fun star(x: Float, y: Float, r: Float) {
+            c.drawPath(Path().apply {
+                moveTo(x, y - r); quadTo(x, y, x + r, y); quadTo(x, y, x, y + r); quadTo(x, y, x - r, y); quadTo(x, y, x, y - r); close()
+            }, p)
         }
-        fun drops(color: Int, snow: Boolean) {
-            p.color = color; p.style = Paint.Style.FILL
+        fun moon(cx: Float, cy: Float, r: Float) {
+            val layer = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            val lc = Canvas(layer)
+            val lp = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = CREAM }
+            lc.drawCircle(cx, cy, r, lp)
+            lp.color = CREAM_SHADE; lc.drawCircle(cx + r * 0.12f, cy + r * 0.12f, r * 0.8f, lp)
+            lp.xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR)
+            lc.drawCircle(cx + r * 0.62f, cy - r * 0.38f, r * 0.9f, lp)
+            c.drawBitmap(layer, 0f, 0f, null)
+            fill(ORANGE)
+            star(cx + r * 1.15f, cy + r * 0.35f, r * 0.22f)
+            star(cx + r * 0.65f, cy + r * 1.05f, r * 0.15f)
+        }
+        fun cloud(x: Float, y: Float, w: Float, top: Int, shade: Int) {
+            val h = w * 0.5f
+            // Тень снизу — тем же силуэтом, чуть смещённым.
+            fun shape(dy: Float, col: Int) {
+                fill(col)
+                c.drawRoundRect(RectF(x, y + h * 0.42f + dy, x + w, y + h + dy), h * 0.3f, h * 0.3f, p)
+                c.drawCircle(x + w * 0.3f, y + h * 0.5f + dy, h * 0.33f, p)
+                c.drawCircle(x + w * 0.58f, y + h * 0.36f + dy, h * 0.46f, p)
+                c.drawCircle(x + w * 0.8f, y + h * 0.6f + dy, h * 0.3f, p)
+            }
+            shape(h * 0.1f, shade)
+            shape(0f, top)
+        }
+        fun drop(x: Float, y: Float, k: Float, col: Int) {
+            fill(col)
+            c.drawPath(Path().apply {
+                moveTo(x, y - 7 * k * s); cubicTo(x - 1 * k * s, y - 3 * k * s, x - 5 * k * s, y + 1 * k * s, x - 5 * k * s, y + 4 * k * s)
+                cubicTo(x - 5 * k * s, y + 8 * k * s, x + 5 * k * s, y + 8 * k * s, x + 5 * k * s, y + 4 * k * s)
+                cubicTo(x + 5 * k * s, y + 1 * k * s, x + 1 * k * s, y - 3 * k * s, x, y - 7 * k * s); close()
+            }, p)
+        }
+        fun flake(x: Float, y: Float, r: Float) {
+            p.style = Paint.Style.STROKE; p.color = CREAM; p.strokeWidth = r * 0.34f; p.strokeCap = Paint.Cap.ROUND; p.xfermode = null
             for (k in 0 until 3) {
-                val x = (30 + k * 20) * s
-                val y = (74 + (k % 2) * 8) * s
-                if (snow) c.drawCircle(x, y, 4.5f * s, p)
-                else {
-                    val path = Path().apply { moveTo(x, y - 7 * s); lineTo(x - 4 * s, y + 2 * s); quadTo(x, y + 8 * s, x + 4 * s, y + 2 * s); close() }
-                    c.drawPath(path, p)
-                }
+                val a = Math.PI / 3 * k
+                c.drawLine(x - cos(a).toFloat() * r, y - sin(a).toFloat() * r, x + cos(a).toFloat() * r, y + sin(a).toFloat() * r, p)
             }
+            fill(ORANGE); c.drawCircle(x, y, r * 0.28f, p)
         }
+        fun bolt(x: Float, y: Float) {
+            fill(ORANGE)
+            c.drawPath(Path().apply {
+                moveTo(x + 4 * s, y); lineTo(x - 8 * s, y + 22 * s); lineTo(x + 1 * s, y + 22 * s); lineTo(x - 5 * s, y + 40 * s)
+                lineTo(x + 14 * s, y + 14 * s); lineTo(x + 5 * s, y + 14 * s); lineTo(x + 11 * s, y); close()
+            }, p)
+            fill(ORANGE_LIGHT)
+            c.drawPath(Path().apply { moveTo(x + 4 * s, y + 2 * s); lineTo(x - 4 * s, y + 18 * s); lineTo(x + 1 * s, y + 18 * s); close() }, p)
+        }
+        val heavy = code in setOf(55, 65, 67, 75, 82, 86, 99)
+        val freezing = code in setOf(56, 57, 66, 67)
+        val light = code in setOf(51, 61, 71, 80, 85)
         when (WeatherLogic.sky(code)) {
-            Sky.CLEAR -> sun(50 * s, 50 * s, 20 * s)
-            Sky.PARTLY -> { sun(36 * s, 36 * s, 15 * s); cloud(26 * s, 40 * s, 64 * s, CLOUD) }
-            Sky.CLOUDY -> { cloud(10 * s, 22 * s, 56 * s, CLOUD_DARK); cloud(26 * s, 38 * s, 64 * s, CLOUD) }
-            Sky.FOG -> {
-                cloud(18 * s, 16 * s, 64 * s, CLOUD)
-                p.color = CLOUD_DARK; p.style = Paint.Style.STROKE; p.strokeWidth = 5 * s; p.strokeCap = Paint.Cap.ROUND
-                for (k in 0 until 3) c.drawLine((18 + k * 4) * s, (62 + k * 11) * s, (82 - k * 4) * s, (62 + k * 11) * s, p)
+            Sky.CLEAR -> if (isDay) {
+                if (code == 1) { sun(46 * s, 46 * s, 20 * s); cloud(48 * s, 58 * s, 40 * s, CREAM, CREAM_SHADE) } else sun(50 * s, 50 * s, 22 * s)
+            } else {
+                moon(46 * s, 50 * s, 24 * s)
+                if (code == 1) cloud(48 * s, 60 * s, 40 * s, CREAM, CREAM_SHADE)
             }
-            Sky.DRIZZLE, Sky.RAIN -> { cloud(16 * s, 18 * s, 68 * s, CLOUD); drops(RAIN, false) }
-            Sky.SNOW -> { cloud(16 * s, 18 * s, 68 * s, CLOUD); drops(SNOW, true) }
+            Sky.PARTLY -> {
+                if (isDay) sun(36 * s, 36 * s, 15 * s) else moon(36 * s, 36 * s, 16 * s)
+                cloud(22 * s, 40 * s, 68 * s, CREAM, CREAM_SHADE)
+            }
+            Sky.CLOUDY -> { cloud(8 * s, 18 * s, 56 * s, TAN, TAN_SHADE); cloud(26 * s, 36 * s, 66 * s, CREAM, CREAM_SHADE) }
+            Sky.FOG -> {
+                cloud(16 * s, 10 * s, 68 * s, CREAM, CREAM_SHADE)
+                p.style = Paint.Style.STROKE; p.strokeWidth = 6 * s; p.strokeCap = Paint.Cap.ROUND; p.xfermode = null
+                p.color = TAN; c.drawLine(16 * s, 64 * s, 70 * s, 64 * s, p); c.drawLine(78 * s, 64 * s, 84 * s, 64 * s, p)
+                p.color = CREAM_SHADE; c.drawLine(24 * s, 76 * s, 84 * s, 76 * s, p)
+                p.color = TAN; c.drawLine(16 * s, 88 * s, 34 * s, 88 * s, p); c.drawLine(42 * s, 88 * s, 76 * s, 88 * s, p)
+            }
+            Sky.DRIZZLE -> {
+                cloud(14 * s, 12 * s, 72 * s, CREAM, CREAM_SHADE)
+                listOf(30f to 72f, 50f to 80f, 70f to 72f, 40f to 90f, 60f to 90f).forEach { (x, y) -> drop(x * s, y * s, 0.55f, if (freezing) CREAM else ORANGE) }
+            }
+            Sky.RAIN -> {
+                if (code in 80..82 && isDay) sun(70 * s, 22 * s, 13 * s)
+                cloud(12 * s, 14 * s, 74 * s, if (heavy) TAN else CREAM, if (heavy) TAN_SHADE else CREAM_SHADE)
+                val xs = if (heavy) listOf(26f, 42f, 58f, 74f) else if (light) listOf(38f, 62f) else listOf(30f, 50f, 70f)
+                xs.forEachIndexed { i, x -> drop(x * s, (76 + (i % 2) * 10) * s, if (heavy) 0.95f else 0.85f, if (freezing) CREAM else ORANGE) }
+                if (freezing) flake(50 * s, 92 * s, 5 * s)
+            }
+            Sky.SNOW -> {
+                cloud(12 * s, 12 * s, 74 * s, CREAM, CREAM_SHADE)
+                val pts = if (heavy) listOf(26f to 74f, 46f to 82f, 66f to 74f, 36f to 93f, 58f to 93f) else if (light) listOf(38f to 80f, 62f to 84f) else listOf(30f to 76f, 52f to 86f, 72f to 76f)
+                pts.forEach { (x, y) -> flake(x * s, y * s, 7 * s) }
+            }
             Sky.STORM -> {
-                cloud(16 * s, 14 * s, 68 * s, CLOUD_DARK)
-                p.color = BOLT; p.style = Paint.Style.FILL
-                c.drawPath(Path().apply { moveTo(52 * s, 50 * s); lineTo(40 * s, 74 * s); lineTo(50 * s, 74 * s); lineTo(44 * s, 94 * s); lineTo(62 * s, 66 * s); lineTo(52 * s, 66 * s); lineTo(58 * s, 50 * s); close() }, p)
+                cloud(12 * s, 10 * s, 76 * s, TAN, TAN_SHADE)
+                bolt(46 * s, 54 * s)
+                if (code != 95) listOf(26f, 74f).forEach { x -> fill(CREAM); c.drawCircle(x * s, 80 * s, 4 * s, p) }
+                else listOf(26f, 74f).forEach { x -> drop(x * s, 78 * s, 0.7f, ORANGE) }
             }
         }
         return b
