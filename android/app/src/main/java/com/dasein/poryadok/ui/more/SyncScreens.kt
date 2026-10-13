@@ -1,6 +1,9 @@
 package com.dasein.poryadok.ui.more
 
 import com.dasein.poryadok.ui.common.Hint
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import android.Manifest
@@ -299,6 +302,7 @@ fun SberScreen(nav: NavHostController, settings: AppSettings) {
                     OutlinedButton(onClick = { run(0) }, enabled = !importing, modifier = Modifier.fillMaxWidth()) { Text(btnLabel("Перечитать все SMS 900 (за всё время)")) }
                 }
             }
+            UnparsedSms(settings)
             SectionTitle("Последние операции «Сбер»")
             Text("Всего записано: ${settings.sberImported}. Последняя: ${ago(settings.sberLastAt)}", fontSize = 12.sp, color = extra.dim)
             Gap(6.dp)
@@ -418,5 +422,91 @@ private fun HourStat(value: String, label: String, modifier: Modifier) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
         Text(label, fontSize = 12.sp, color = LocalExtra.current.dim, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+    }
+}
+
+
+/**
+ * «Не распознано»: сообщения банка с суммой, которые встроенный разбор не понял. Отмечаете нужные —
+ * и только они уходят в бесплатный ИИ. Результат показывается для проверки, записывается после «Добавить».
+ */
+@Composable
+private fun UnparsedSms(settings: AppSettings) {
+    val ctx = LocalContext.current
+    val extra = LocalExtra.current
+    val scope = rememberCoroutineScope()
+    val ver = com.dasein.poryadok.system.SmsAi.version.intValue
+    val items = remember(ver) { com.dasein.poryadok.system.SmsAi.list(ctx).sortedByDescending { it.at } }
+    if (items.isEmpty()) return
+    var picked by remember(ver) { mutableStateOf(items.take(10).map { it.key }.toSet()) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var guesses by remember { mutableStateOf<List<com.dasein.poryadok.system.SmsAi.Guess>?>(null) }
+    var keep by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val aiOn = remember { com.dasein.poryadok.system.Ai.enabled(ctx) }
+    SectionTitle("Не распознано · ${items.size}")
+    Text(
+        "Сообщения с суммой, которые встроенный разбор не понял. Отметьте нужные и нажмите «Разобрать с ИИ» — в интернет уйдут только отмеченные тексты.",
+        fontSize = 12.sp, color = extra.dim,
+    )
+    Gap(6.dp)
+    val g = guesses
+    if (g == null) {
+        items.take(30).forEach { it0 ->
+            val on = it0.key in picked
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { picked = if (on) picked - it0.key else picked + it0.key }.padding(vertical = 6.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                androidx.compose.material3.Checkbox(on, { picked = if (on) picked - it0.key else picked + it0.key })
+                Column(Modifier.weight(1f)) {
+                    Text(ago(it0.at), fontSize = 11.sp, color = extra.dim)
+                    Text(it0.text, fontSize = 13.sp, maxLines = 4)
+                }
+            }
+        }
+        error?.let { Text(it, color = extra.danger, fontSize = 12.sp) }
+        if (!aiOn) Text("Нужен бесплатный ключ ИИ: «Настройки» → «ИИ-помощник».", fontSize = 12.sp, color = extra.dim)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
+            Button(enabled = aiOn && picked.isNotEmpty() && !busy, onClick = {
+                busy = true; error = null
+                scope.launch {
+                    runCatching { com.dasein.poryadok.system.SmsAi.ask(ctx, items.filter { it.key in picked }.take(25)) }
+                        .onSuccess { r -> guesses = r; keep = r.filter { it.kind != "skip" && it.amount > 0 }.map { it.item.key }.toSet() }
+                        .onFailure { error = it.message }
+                    busy = false
+                }
+            }) { Text(if (busy) "ИИ думает…" else "Разобрать с ИИ (${picked.size})") }
+            OutlinedButton(enabled = picked.isNotEmpty(), onClick = { com.dasein.poryadok.system.SmsAi.dismiss(ctx, picked) }) { Text(btnLabel("Скрыть")) }
+        }
+    } else {
+        Text("Проверьте, что получилось, и снимите галочки с лишнего:", fontSize = 13.sp)
+        g.forEach { x ->
+            val op = x.kind == "expense" || x.kind == "income"
+            val on = x.item.key in keep
+            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.Top) {
+                androidx.compose.material3.Checkbox(on && op, { if (op) keep = if (on) keep - x.item.key else keep + x.item.key }, enabled = op)
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        if (!op) "Не операция — будет скрыто"
+                        else (if (x.kind == "income") "+" else "−") + com.dasein.poryadok.logic.Money.format(x.amount, settings.currency) +
+                            "  ${x.merchant}" + (x.category?.let { " · $it" } ?: ""),
+                        fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = if (!op) extra.dim else if (x.kind == "income") extra.ok else MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(x.item.text, fontSize = 12.sp, color = extra.dim, maxLines = 3)
+                }
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
+            Button(onClick = {
+                scope.launch {
+                    val n = com.dasein.poryadok.system.SmsAi.apply(ctx, g.filter { it.item.key in keep || (it.kind != "expense" && it.kind != "income") }
+                        .map { if (it.item.key in keep) it else it.copy(kind = "skip") })
+                    guesses = null
+                    Toast.makeText(ctx, "Добавлено операций: $n", Toast.LENGTH_LONG).show()
+                }
+            }) { Text(btnLabel("Добавить отмеченные")) }
+            OutlinedButton(onClick = { guesses = null }) { Text(btnLabel("Назад")) }
+        }
     }
 }

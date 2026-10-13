@@ -353,6 +353,12 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable(com.dasein.poryadok.ui.tutor.TutorRoutes.WORDS) { com.dasein.poryadok.ui.tutor.TutorWordsScreen(nav) }
             composable(com.dasein.poryadok.ui.more.LIKES_ROUTE) { com.dasein.poryadok.ui.more.LikesScreen(nav) }
             composable(com.dasein.poryadok.ui.more.ICON_MANAGER_ROUTE) { com.dasein.poryadok.ui.more.IconManagerScreen(nav) }
+            composable(com.dasein.poryadok.ui.recipes.WHAT_TO_COOK_ROUTE) { com.dasein.poryadok.ui.recipes.WhatToCookScreen(nav) }
+            composable(com.dasein.poryadok.ui.tutor.TUTOR_CARDS_ROUTE) { com.dasein.poryadok.ui.tutor.TutorCardsScreen(nav) }
+            composable(
+                "${com.dasein.poryadok.ui.tutor.TUTOR_CHAT_ROUTE}?tab={tab}",
+                arguments = listOf(navArgument("tab") { type = NavType.IntType; defaultValue = 0 }),
+            ) { com.dasein.poryadok.ui.tutor.TutorChatScreen(nav, it.int("tab")) }
             composable(com.dasein.poryadok.ui.tutor.TutorRoutes.DICT) { com.dasein.poryadok.ui.tutor.TutorDictScreen(nav) }
             composable(
                 "${com.dasein.poryadok.ui.tutor.TutorRoutes.TRANSLATE}?tab={tab}",

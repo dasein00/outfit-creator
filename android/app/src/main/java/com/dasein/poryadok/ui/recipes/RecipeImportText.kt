@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.recipes
 
 import android.content.ClipboardManager
+import com.dasein.poryadok.ui.common.Button
 import com.dasein.poryadok.ui.common.btnLabel
 import android.content.Context
 import androidx.compose.foundation.layout.Column
@@ -141,8 +142,27 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
     val aiOn = remember { com.dasein.poryadok.system.Ai.enabled(ctx) }
     var aiBusy by remember { mutableStateOf(false) }
     var aiError by remember { mutableStateOf<String?>(null) }
+    var linkBusy by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf<String?>(null) }
+    val link = remember(text) { com.dasein.poryadok.system.RecipeLink.findUrl(text)?.takeIf { text.trim().length < it.length + 40 } }
+    // Пришла одна ссылка (поделились постом) — сразу загружаем рецепт.
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        val l = link ?: return@LaunchedEffect
+        linkBusy = true
+        runCatching { com.dasein.poryadok.system.RecipeLink.fetch(l) }.onSuccess { text = it.trim() }.onFailure { aiError = "Не удалось загрузить: ${it.message}." }
+        linkBusy = false
+    }
     fun applyResult(p: RecipeText.Parsed, viaAi: Boolean) {
-        scope.launch { applyParsed(d, p, text, viaAi); aiBusy = false; onDismiss() }
+        scope.launch {
+            applyParsed(d, p, text, viaAi)
+            // С ИИ — ещё и красивое описание для карточки блюда (его потом можно править вручную).
+            if (viaAi) {
+                status = "Оформляю описание…"
+                runCatching { com.dasein.poryadok.system.RecipeLink.prettyDescription(ctx, text, d.recipe.name) }
+                    .onSuccess { if (it.length > 40) d.recipe = d.recipe.copy(notes = it) }
+            }
+            aiBusy = false; onDismiss()
+        }
     }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -154,7 +174,17 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                     val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     cm.primaryClip?.getItemAt(0)?.coerceToText(ctx)?.toString()?.let { text = it }
                 }) { Text(btnLabel("Вставить из буфера обмена")) }
-                TextInput(text, { text = it }, "Описание", singleLine = false, minLines = 6)
+                TextInput(text, { text = it }, "Описание или ссылка (Instagram, сайт с рецептом)", singleLine = false, minLines = 6)
+                if (link != null) Button(enabled = !linkBusy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp), onClick = {
+                    linkBusy = true; aiError = null
+                    scope.launch {
+                        runCatching { com.dasein.poryadok.system.RecipeLink.fetch(link) }
+                            .onSuccess { text = it.trim() }
+                            .onFailure { aiError = "Не удалось загрузить: ${it.message}." }
+                        linkBusy = false
+                    }
+                }) { Text(if (linkBusy) "Загружаю рецепт…" else "Загрузить рецепт по ссылке") }
+                status?.let { Text(it, fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp)) }
                 aiError?.let { Text(it + " Можно нажать «Разобрать» — встроенный разбор работает без интернета.", fontSize = 12.sp, color = extra.danger, modifier = Modifier.padding(top = 6.dp)) }
                 if (!aiOn) Text("Точнее разбирает бесплатный ИИ: добавьте ключ OpenRouter в «Настройки» → «ИИ-помощник».", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
                 preview?.let { p ->
@@ -179,7 +209,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                         .onSuccess { applyResult(it, viaAi = true) }
                         .onFailure { aiError = it.message ?: "ошибка"; aiBusy = false }
                 }
-            }) { Text(if (aiBusy) "ИИ думает…" else "✨ С ИИ") }
+            }) { Text(if (aiBusy) (status ?: "ИИ думает…") else "✨ С ИИ") }
             TextButton(enabled = preview != null && !aiBusy, onClick = { preview?.let { applyResult(it, viaAi = false) } }) { Text(btnLabel("Разобрать")) }
             }
         },

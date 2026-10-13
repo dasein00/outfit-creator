@@ -182,6 +182,25 @@ fun TutorHomeScreen(nav: NavHostController) {
                 }
             }
             Gap(8.dp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val dueMine = remember(s.progress, s.custom) { Tutor.due(words, s.progress, today).size }
+                Tile(Modifier.weight(1f), onClick = { nav.navigate(TUTOR_CARDS_ROUTE) }, padding = 12.dp) {
+                    Glyph("tutor/05", 26.dp, badge = false)
+                    Text("Карточки", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                    Text(if (dueMine > 0) "на повтор: $dueMine" else "как в Anki — по кривой забывания", fontSize = 11.sp, color = extra.dim, lineHeight = 14.sp)
+                }
+                Tile(Modifier.weight(1f), onClick = { nav.navigate(tutorChat(0)) }, padding = 12.dp) {
+                    Glyph("tutor/14", 26.dp, badge = false)
+                    Text("Разговор с ИИ", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                    Text("диалог и исправление ошибок", fontSize = 11.sp, color = extra.dim, lineHeight = 14.sp)
+                }
+                Tile(Modifier.weight(1f), onClick = { nav.navigate(tutorChat(1)) }, padding = 12.dp) {
+                    Glyph("tutor/12", 26.dp, badge = false)
+                    Text("Проверка", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                    Text("ошибки и правила в вашем тексте", fontSize = 11.sp, color = extra.dim, lineHeight = 14.sp)
+                }
+            }
+            Gap(8.dp)
             Tile {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     ProgressRing(startedToday / s.settings.perDay.coerceAtLeast(1).toFloat(), extra.ok, size = 56.dp, stroke = 6.dp) { Glyph("tutor/00", 26.dp, badge = false) }

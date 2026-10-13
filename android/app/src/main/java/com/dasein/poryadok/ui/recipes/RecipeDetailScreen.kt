@@ -683,11 +683,18 @@ private fun RecipeRating(id: Long) {
 }
 
 
-/** «Описание» в карточке блюда: свои заметки, пишутся прямо здесь и сохраняются сами. */
+/**
+ * «Описание» в карточке блюда: красиво оформленный текст (заголовки, списки, жирный). «Изменить» — правка
+ * обычным текстом, сохраняется сама. «Оформить с ИИ» — ИИ делает из текста рецепта аккуратное описание.
+ */
 @Composable
 private fun RecipeDescription(r: Recipe) {
+    val ctx = LocalContext.current
     val extra = LocalExtra.current
+    val scope = rememberCoroutineScope()
     var text by remember(r.id) { mutableStateOf(r.notes) }
+    var editing by remember(r.id) { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
     val latest by androidx.compose.runtime.rememberUpdatedState(r)
     // Сохраняем через полсекунды после набора.
     LaunchedEffect(text) {
@@ -697,12 +704,31 @@ private fun RecipeDescription(r: Recipe) {
     }
     com.dasein.poryadok.ui.common.FoldTile(
         "recipe_desc", "Описание",
-        summary = text.lineSequence().firstOrNull { it.isNotBlank() }?.take(60) ?: "ваши заметки к блюду",
+        summary = text.lineSequence().map { it.trim().trimStart('#', ' ') }.firstOrNull { it.isNotBlank() }?.take(60) ?: "ваши заметки к блюду",
     ) {
-        androidx.compose.material3.OutlinedTextField(
-            text, { text = it }, Modifier.fillMaxWidth().padding(bottom = 8.dp), minLines = 3,
-            placeholder = { Text("Ваши заметки: что изменить в следующий раз, как получилось, с чем подать…", color = extra.dim) },
-            shape = RoundedCornerShape(14.dp),
-        )
+        if (editing || text.isBlank()) {
+            androidx.compose.material3.OutlinedTextField(
+                text, { text = it }, Modifier.fillMaxWidth().padding(bottom = 6.dp), minLines = 4,
+                placeholder = { Text("Ваши заметки: что изменить в следующий раз, как получилось, с чем подать… Можно оформлять: «## Раздел», «- пункт», **жирный**.", color = extra.dim) },
+                shape = RoundedCornerShape(14.dp),
+            )
+        } else com.dasein.poryadok.ui.common.RichText(text, Modifier.padding(bottom = 6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 8.dp)) {
+            if (text.isNotBlank()) TextButton(onClick = { editing = !editing }) { Text(if (editing) "Готово" else "✎ Изменить") }
+            if (com.dasein.poryadok.system.Ai.enabled(ctx)) TextButton(enabled = !busy, onClick = {
+                busy = true
+                scope.launch {
+                    val src = text.ifBlank {
+                        val ing = Graph.extra.ingredientsOfNow(r.id).joinToString("\n") { "- ${it.name} ${Cooking.label(it.toIngr())}" }
+                        val st = Graph.extra.stepsOfNow(r.id).mapIndexed { i, s -> "${i + 1}. ${s.text}" }.joinToString("\n")
+                        "Ингредиенты:\n$ing\nПриготовление:\n$st"
+                    }
+                    runCatching { com.dasein.poryadok.system.RecipeLink.prettyDescription(ctx, src, r.name) }
+                        .onSuccess { if (it.length > 40) { text = it; editing = false } }
+                        .onFailure { android.widget.Toast.makeText(ctx, it.message ?: "Не получилось", android.widget.Toast.LENGTH_LONG).show() }
+                    busy = false
+                }
+            }) { Text(if (busy) "ИИ оформляет…" else "✨ Оформить с ИИ") }
+        }
     }
 }

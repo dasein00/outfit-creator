@@ -89,6 +89,7 @@ fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int, emb
         title = "Рецепты",
         onBack = if (embedded) null else ({ nav.popBackStack() }),
         actions = {
+            IconAction("ui:salad", "Что приготовить из того, что есть") { nav.navigate(WHAT_TO_COOK_ROUTE) }
             IconAction("food/04", "Список покупок") { nav.navigate(Routes.SHOPPING) }
             IconAction("food/22", "История готовки") { nav.navigate(Routes.COOK_HISTORY) }
             IconAction("food/28", "Шаблоны меню") { nav.navigate(Routes.PRESETS) }
@@ -108,6 +109,9 @@ fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int, emb
                 FullCenter { CircularProgressIndicator() }
                 return@Column
             }
+            if (tab == 0) com.dasein.poryadok.ui.common.OutlinedButton(
+                onClick = { nav.navigate(WHAT_TO_COOK_ROUTE) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            ) { Text("Что приготовить из того, что есть дома?") }
             when (tab) {
                 0 -> Catalog(nav, book)
                 1 -> MenuPlanner(nav, book, initialMode)

@@ -101,6 +101,12 @@ class MainActivity : FragmentActivity() {
         return when (intent.action) {
             "androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE", "android.intent.action.VIEW_PERMISSION_USAGE" -> Routes.STEPS
             Intent.ACTION_VIEW, Intent.ACTION_SEND -> {
+                // Текст или ссылка (Instagram «Поделиться», сайт с рецептом) — в новый рецепт с разбором.
+                val shared = intent.getStringExtra(Intent.EXTRA_TEXT)
+                if (intent.action == Intent.ACTION_SEND && intent.type?.startsWith("text/plain") == true && !shared.isNullOrBlank()) {
+                    com.dasein.poryadok.ui.recipes.RecipeInbox.put(shared.trim())
+                    return Routes.recipeEdit(0)
+                }
                 val uri = intent.data ?: if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
                 else @Suppress("DEPRECATION") intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
                 // Картинка (скриншот из Fitdays и других приложений весов) — в «Вес», файлы таблиц — в тетрадь финансов.

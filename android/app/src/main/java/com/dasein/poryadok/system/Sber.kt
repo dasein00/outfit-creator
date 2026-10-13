@@ -71,8 +71,12 @@ object Sber {
      * Дубли отсекаются трижды: по ключу источника, по тексту сообщения (SMS и её уведомление)
      * и по сумме и времени, если та же операция уже пришла по другому каналу (SMS и пуш СберБанк Онлайн).
      */
-    suspend fun record(text: String, at: Long, sourceKey: String, channel: Channel = Channel.SMS, sameText: String = text): Boolean = lock.withLock {
-        val op = BankSms.parse(text) ?: return false
+    suspend fun record(
+        text: String, at: Long, sourceKey: String, channel: Channel = Channel.SMS, sameText: String = text,
+        opOverride: BankSms.Op? = null,
+    ): Boolean = lock.withLock {
+        // Не разобрали, но в сообщении есть сумма — сохраняем в «Не распознано» (разобрать можно ИИ по кнопке).
+        val op = opOverride ?: BankSms.parse(text) ?: run { runCatching { SmsAi.remember(text, at, sourceKey, channel.prefix) }; return false }
         val key = "$KIND:${channel.prefix}:$sourceKey"
         val x = Graph.extra
         val dao = Graph.dao

@@ -49,6 +49,22 @@ object TalkOnline {
         return fresh.size
     }
 
+    /** Сохранить свои факты (например, найденные ИИ по теме) в каталог. Возвращает, сколько новых. */
+    fun addFacts(ctx: Context, sphere: String, facts: List<String>): Int = append(ctx, facts.map { sphere to it })
+
+    /** Факты, с чего начать разговор и что спросить — по любой теме, которую вы напишете (ИИ). */
+    data class Topic(val facts: List<String>, val openers: List<String>, val questions: List<String>)
+
+    suspend fun topic(ctx: Context, topic: String): Topic = withContext(Dispatchers.IO) {
+        val system = "Ты помогаешь вести лёгкую светскую беседу. По теме пользователя (праздник, событие, место, увлечение, что угодно) " +
+            "дай по-русски: 8 интересных малоизвестных, но достоверных фактов (1–2 предложения каждый, без выдумок); " +
+            "3 естественные фразы, чтобы завести разговор на эту тему; 4 открытых вопроса собеседнику. " +
+            "Ответ строго JSON: {\"facts\":[\"…\"],\"openers\":[\"…\"],\"questions\":[\"…\"]}"
+        val o = Ai.extractJson(Ai.ask(ctx, system, topic)) ?: throw Ai.AiError("ИИ ответил не по формату — попробуйте ещё раз.")
+        fun list(k: String) = (o[k] as? kotlinx.serialization.json.JsonArray).orEmpty().mapNotNull { (it as? JsonPrimitive)?.contentOrNull?.trim()?.takeIf { s -> s.isNotEmpty() } }
+        Topic(list("facts"), list("openers"), list("questions"))
+    }
+
     /** Догрузить новое: свежий месяц «Знаете ли вы» (раз в день), один старый месяц архива и подборку от ИИ (раз в день). */
     suspend fun sync(ctx: Context): Int = withContext(Dispatchers.IO) {
         var got = 0

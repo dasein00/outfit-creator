@@ -229,6 +229,13 @@ private fun TranslateTab(sp: Speaker) {
         if (card != null && !isPhrase) item(key = "card_${card.en}") {
             DictCard(card, sp, startOpen = true, added = card.en.lowercase() in mine) { addWord(ctx, scope, card) }
         }
+        // Живые примеры употребления (ИИ): для слова из словаря или для переведённой фразы.
+        val exWord = when {
+            card != null && !isPhrase -> card.en
+            result != null && !translating -> if (ruToEn) result.orEmpty() else q
+            else -> null
+        }
+        if (exWord != null && exWord.split(' ').size <= 6) item(key = "ex_$exWord") { AiExamples(exWord, sp) }
         if (suggestions.isNotEmpty() && (card == null || suggestions.size > 1)) {
             item { Text(if (ruToEn) "Подходящие слова" else "Подсказки из словаря", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp)) }
             items(suggestions.filter { it != card }, key = { "s_" + it.en }) { e ->

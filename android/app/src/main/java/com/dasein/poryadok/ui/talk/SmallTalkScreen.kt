@@ -360,6 +360,7 @@ private fun FactsTab(data: TalkRepo.Data, s: AppSettings, favorites: List<Int>) 
     TabList(0, listState) {
         factOfTheDay(data, s, favorites)
         item(key = "facts_head") {
+            TopicOfDay()
             SectionTitle("Каталог фактов · ${pool.size}")
             OnlineFactsLine()
             SearchField(q, { q = it }, "Слова или \"точное выражение\"")
@@ -732,5 +733,83 @@ private fun OnlineFactsLine() {
                 busy = false
             }
         }) { Text(if (busy) "Загружаю…" else "Загрузить новые", fontSize = 13.sp) }
+    }
+}
+
+
+/**
+ * «Тема дня»: напишите любую тему (праздник, новость, место, хобби) или выберите подсказку —
+ * ИИ подберёт интересные факты, фразы, чтобы начать разговор, и вопросы собеседнику. Факты можно сохранить в каталог.
+ */
+@Composable
+private fun TopicOfDay() {
+    val ctx = LocalContext.current
+    val extra = LocalExtra.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val aiOn = remember { com.dasein.poryadok.system.Ai.enabled(ctx) }
+    val today = remember { java.time.LocalDate.now() }
+    val holidays = remember { runCatching { com.dasein.poryadok.data.HolidayRepo.entries(ctx, today, emptyList(), emptyList()).map { it.name }.take(4) }.getOrDefault(emptyList()) }
+    val ideas = holidays + listOf("Кофе", "Путешествия", "Космос", "Кино этого года", "Осень", "Еда разных стран")
+    var topic by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var res by remember { mutableStateOf<com.dasein.poryadok.system.TalkOnline.Topic?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var saved by remember { mutableStateOf<Set<String>>(emptySet()) }
+    fun go(t: String) {
+        if (t.isBlank()) return
+        topic = t; busy = true; error = null; res = null
+        scope.launch {
+            runCatching { com.dasein.poryadok.system.TalkOnline.topic(ctx, t.trim()) }.onSuccess { res = it }.onFailure { error = it.message }
+            busy = false
+        }
+    }
+    Column(Modifier.fillMaxWidth().padding(bottom = 10.dp).clip(RoundedCornerShape(18.dp)).background(LocalExtra.current.card).padding(14.dp)) {
+        Text("Тема дня", fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, fontSize = 16.sp)
+        if (!aiOn) {
+            Text("Напишите тему — ИИ подберёт факты и вопросы для разговора. Нужен бесплатный ключ: «Настройки» → «ИИ-помощник».", fontSize = 12.sp, color = extra.dim)
+            return@Column
+        }
+        Text("Напишите тему или выберите подсказку — ИИ подберёт факты, как начать разговор и что спросить.", fontSize = 12.sp, color = extra.dim)
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 6.dp)) {
+            ideas.forEach { t -> Pill(t, topic == t) { go(t) } }
+        }
+        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            androidx.compose.material3.OutlinedTextField(
+                topic, { topic = it }, Modifier.weight(1f), singleLine = true, shape = RoundedCornerShape(14.dp),
+                placeholder = { Text("Например: Хэллоуин, чемпионат мира, Армения") },
+            )
+            com.dasein.poryadok.ui.common.Button(onClick = { go(topic) }, enabled = topic.isNotBlank() && !busy, modifier = Modifier.padding(start = 8.dp)) { Text(if (busy) "…" else "Найти") }
+        }
+        if (busy) Text("ИИ подбирает факты…", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
+        error?.let { Text(it, fontSize = 12.sp, color = extra.danger) }
+        res?.let { r ->
+            if (r.facts.isNotEmpty()) {
+                Text("Факты", fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
+                r.facts.forEach { f ->
+                    Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = androidx.compose.ui.Alignment.Top) {
+                        Text("• $f", fontSize = 14.sp, modifier = Modifier.weight(1f))
+                        val on = f in saved
+                        Text(
+                            if (on) "✓" else "+", fontSize = 16.sp, color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(enabled = !on) {
+                                com.dasein.poryadok.system.TalkOnline.addFacts(ctx, com.dasein.poryadok.system.TalkOnline.SPHERE_WIKI, listOf(f)); saved = saved + f
+                            }.padding(horizontal = 8.dp, vertical = 2.dp),
+                        )
+                    }
+                }
+                com.dasein.poryadok.ui.common.TextButton(onClick = {
+                    val n = com.dasein.poryadok.system.TalkOnline.addFacts(ctx, com.dasein.poryadok.system.TalkOnline.SPHERE_WIKI, r.facts); saved = saved + r.facts
+                    android.widget.Toast.makeText(ctx, "В каталог добавлено: $n", android.widget.Toast.LENGTH_SHORT).show()
+                }) { Text("Сохранить все факты в каталог") }
+            }
+            if (r.openers.isNotEmpty()) {
+                Text("Как начать разговор", fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                r.openers.forEach { Text("— $it", fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp)) }
+            }
+            if (r.questions.isNotEmpty()) {
+                Text("Что спросить", fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+                r.questions.forEach { Text("? $it", fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp)) }
+            }
+        }
     }
 }

@@ -191,10 +191,11 @@ private fun StepBasics(d: RecipeDraft) {
     val r = d.recipe
     val pickPhoto = com.dasein.poryadok.ui.common.rememberImagePickerWithCrop(1f, "recipes") { d.recipe = d.recipe.copy(photo = it) }
     var recrop by remember { mutableStateOf(false) }
-    var fromText by remember { mutableStateOf(false) }
+    // Поделились рецептом из Instagram или ИИ придумал блюдо — сразу открываем разбор этого текста.
+    var fromText by remember { mutableStateOf(RecipeInbox.take()?.let { t -> d.recipe = d.recipe.copy(notes = t); true } ?: false) }
     // Рецепт из подписи в Instagram: ингредиенты, порции и этапы разбираются сами.
     Button(onClick = { fromText = true }, modifier = Modifier.fillMaxWidth()) {
-        Text(if (r.notes.isBlank()) "📋 Описание из Instagram — разобрать" else "📋 Описание блюда — разобрать заново")
+        Text(if (r.notes.isBlank()) "📋 Рецепт из Instagram или по ссылке" else "📋 Описание блюда — разобрать заново")
     }
     if (fromText) RecipeTextDialog(d) { fromText = false }
     Gap(10.dp)

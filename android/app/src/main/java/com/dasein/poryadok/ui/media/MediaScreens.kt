@@ -258,7 +258,8 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
                 Column {
                     SearchField(q, { q = it }, "Название, режиссёр, актёр, жанр, метка")
                     Gap(8.dp)
-                    ContinueShelf(base.filter { it.status == MediaStatus.IN_PROGRESS }.sortedByDescending { it.startedDay ?: 0L }) { nav.navigate(Routes.media(it.id, kind)) }
+                    if (kind == MediaKind.BOOK) ReadingGoalCard(base) { nav.navigate(Routes.media(it.id, kind)) }
+                    else ContinueShelf(base.filter { it.status == MediaStatus.IN_PROGRESS }.sortedByDescending { it.startedDay ?: 0L }) { nav.navigate(Routes.media(it.id, kind)) }
                     FolderShelf(base, myLists, listItems, listKey, onSelect = { listKey = it }, onNew = { newList = true }, onEdit = { renameList = it }, onRenameAll = { renameAll = true })
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         SortButton(MediaSort.entries, sort, { it.label }) { sort = it }

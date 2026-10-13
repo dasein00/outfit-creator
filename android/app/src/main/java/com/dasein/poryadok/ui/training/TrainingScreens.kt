@@ -578,19 +578,14 @@ fun ExerciseScreen(nav: NavHostController, id: Long) {
             if (id != 0L) {
                 val h = TrainingRepo.history(sets, sessions)
                 if (h.isNotEmpty()) {
-                    SectionTitle(
-                        when (ex.kind) { ExKind.TIME -> "Лучшее время по тренировкам"; ExKind.REPS -> "Лучший подход по тренировкам"; else -> "Расчётный максимум (формула Эпли)" },
-                    )
-                    val values = h.map {
-                        when (ex.kind) { ExKind.TIME -> it.bestSeconds.toFloat(); ExKind.REPS -> it.bestReps.toFloat(); else -> it.best1rm.toFloat() }
-                    }
-                    Tile { LineChart(listOf(Series(values, MaterialTheme.colorScheme.primary)), labels = h.map { Dates.short(it.day) }.let { l -> if (l.size > 6) l.filterIndexed { i, _ -> i % (l.size / 6 + 1) == 0 } else l }) }
+                    ExerciseRecords(ex.kind, h)
+                    val prDays = remember(h) { recordDays(ex.kind, h) }
                     SectionTitle("История")
                     h.reversed().forEach { d ->
                         Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
                             Text(Dates.label(d.day), Modifier.width(96.dp), fontSize = 13.sp, color = extra.dim)
                             Column(Modifier.weight(1f)) {
-                                Text(TrainingRepo.describeDone(ex.kind, d.sets), fontSize = 14.sp)
+                                Text(TrainingRepo.describeDone(ex.kind, d.sets) + if (d.day in prDays) "  · рекорд!" else "", fontSize = 14.sp, fontWeight = if (d.day in prDays) FontWeight.SemiBold else FontWeight.Normal)
                                 if (ex.kind == ExKind.WEIGHT) Text("1ПМ ≈ ${TrainingRepo.e1rmText(d.best1rm)} · тоннаж ${w(d.volume)} кг", fontSize = 12.sp, color = extra.dim)
                             }
                         }
@@ -719,6 +714,26 @@ fun SessionScreen(nav: NavHostController, id: Long) {
                                 if (showVideo) "Скрыть" else "▶ Видео", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { showVideo = !showVideo }.padding(horizontal = 8.dp, vertical = 4.dp),
                             )
+                        }
+                        // Подсказка на сегодня по прошлой тренировке — для упражнений не из программы.
+                        if (!finished && pe == null && prev != null && list.none { it.done }) {
+                            val sug = remember(prev) { com.dasein.poryadok.logic.Progression.suggest(kind, prev.map { com.dasein.poryadok.logic.DoneSet(it.reps, it.weight, it.seconds, it.done) }) }
+                            sug?.let { nt ->
+                                val tg = nt.target
+                                Row(
+                                    Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(10.dp)).background(scheme.primary.copy(alpha = .10f)).padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text("Сегодня: " + TrainingRepo.describe(kind, tg.sets, tg.reps, tg.weight, tg.seconds), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                        Text(nt.reason, fontSize = 12.sp, color = extra.dim)
+                                    }
+                                    TextButton(onClick = {
+                                        io { list.filter { !it.done }.forEach { st -> t.upsertSet(st.copy(weight = if (kind == ExKind.WEIGHT) tg.weight else st.weight, reps = if (kind == ExKind.TIME) st.reps else tg.reps, seconds = if (kind == ExKind.TIME) tg.seconds else st.seconds)) } }
+                                        list.forEach { fields.remove(it.id) }
+                                    }) { Text("Применить") }
+                                }
+                            }
                         }
                         if (showVideo && video != null) {
                             Gap(6.dp)

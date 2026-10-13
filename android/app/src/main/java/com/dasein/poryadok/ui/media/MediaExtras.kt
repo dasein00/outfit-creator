@@ -79,6 +79,8 @@ fun sortMedia(list: List<MediaItem>, sort: MediaSort): List<MediaItem> = when (s
 fun stepProgress(m: MediaItem, delta: Int): MediaItem {
     val total = MediaCatalog.total(m)
     val p = (m.progress + delta).coerceAtLeast(0).let { if (total > 0) it.coerceAtMost(total) else it }
+    // Страницы книг — в журнал чтения (для цели на год и статистики).
+    if (m.kind == MediaKind.BOOK) ReadingLog.add(p - m.progress)
     val started = m.startedDay ?: Dates.today()
     val status = when {
         total > 0 && p >= total -> MediaStatus.DONE

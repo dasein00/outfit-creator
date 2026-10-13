@@ -66,6 +66,42 @@ object Progression {
         }
     }
 
+    /**
+     * Подсказка на сегодня по прошлой тренировке, если упражнение не из программы (как в Hevy и Fitbod):
+     * все рабочие подходы сделаны на одинаковое число повторов — добавляем вес (или повтор, или 5 секунд);
+     * подходы «просели» — тот же вес, подтянуть отстающие до лучшего подхода.
+     */
+    fun suggest(kind: Int, prev: List<DoneSet>): NextTarget? {
+        val done = prev.filter { it.done }
+        if (done.isEmpty()) return null
+        return when (kind) {
+            2 -> {
+                val best = done.maxOf { it.seconds }; val worst = done.minOf { it.seconds }
+                val t = Target(kind, done.size, 0, 0.0, best, 0, 0, 0.0, 5)
+                if (worst >= best - 2) NextTarget(t.copy(seconds = best + 5), "Все подходы ровные — +5 секунд")
+                else NextTarget(t.copy(seconds = best), "Подтяните остальные подходы до ${best} с")
+            }
+            1 -> {
+                val max = done.maxOf { it.reps }; val min = done.minOf { it.reps }
+                val t = Target(kind, done.size, max, 0.0, 0, 0, 0, 0.0, 5)
+                if (min >= max) NextTarget(t.copy(reps = max + 1), "Все подходы по $max — на повтор больше")
+                else NextTarget(t, "Подтяните отстающие подходы до $max повторов")
+            }
+            else -> {
+                val w = done.maxOf { it.weight }
+                val top = done.filter { it.weight >= w - 0.01 }
+                val max = top.maxOf { it.reps }; val min = top.minOf { it.reps }
+                val step = if (w >= 10) 2.5 else 1.0
+                val t = Target(kind, done.size, max, w, 0, 0, 0, step, 5)
+                when {
+                    w <= 0 -> NextTarget(t.copy(reps = max + 1), "Без веса — на повтор больше")
+                    min >= max && top.size >= done.size -> NextTarget(t.copy(weight = roundTo(w + step, step)), "Все подходы по $max повторов — +${fmt(step)} кг")
+                    else -> NextTarget(t.copy(reps = max), "Тот же вес — подтяните отстающие подходы до $max повторов")
+                }
+            }
+        }
+    }
+
     /** Не дотянули до нижней границы повторов — нужно для правила разгрузки. */
     fun failed(t: Target, sets: List<DoneSet>): Boolean {
         val done = sets.filter { it.done }

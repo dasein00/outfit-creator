@@ -117,6 +117,7 @@ fun PressureHomeScreen(nav: NavHostController) {
     var deleting by remember { mutableStateOf<Pressure.Reading?>(null) }
     var ortho by remember { mutableStateOf(false) }
     var imported by remember { mutableStateOf<Pressure.Imported?>(null) }
+    var report by remember { mutableStateOf(false) }
     val importer = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
             val text = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -131,6 +132,7 @@ fun PressureHomeScreen(nav: NavHostController) {
         "Давление и пульс", onBack = { nav.popBackStack() },
         actions = {
             IconAction("ui:folder", "Загрузить замеры из файла") { importer.launch(arrayOf("text/*", "application/vnd.ms-excel", "application/octet-stream", "*/*")) }
+            if (person != null) IconAction("ui:document", "Отчёт для врача (PDF)") { report = true }
             if (person != null) IconAction("ui:people", "Профиль") { nav.navigate(PressureRoutes.person(person.id)) }
         },
         fab = {
@@ -176,6 +178,8 @@ fun PressureHomeScreen(nav: NavHostController) {
             Gap(10.dp)
             LatestCard(person, rs.firstOrNull(), target) { nav.navigate(PressureRoutes.add(person.id, it.id)) }
             Gap(10.dp)
+            OutlinedButton(onClick = { report = true }, modifier = Modifier.fillMaxWidth()) { Text("Отчёт для врача — PDF") }
+            Gap(8.dp)
             Segments(listOf(0 to "Обзор", 1 to "Дневник", 2 to "Аналитика", 3 to "Советы"), tab, { tab = it })
             Gap(8.dp)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -193,6 +197,41 @@ fun PressureHomeScreen(nav: NavHostController) {
             HowTo("pressure")
             Gap(96.dp)
         }
+    }
+    if (report && person != null) {
+        val all = d.readings
+        AlertDialog(
+            onDismissRequest = { report = false },
+            title = { Text("Отчёт для врача") },
+            text = {
+                Column {
+                    Text("PDF: средние за период — общие, утренние и вечерние, график, таблица по дням и все замеры с отметками. Его можно отправить врачу или распечатать.", fontSize = 13.sp)
+                    Gap(8.dp)
+                    listOf(14, 30, 90).forEach { days ->
+                        Button(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), onClick = {
+                            report = false
+                            scope.launch {
+                                runCatching {
+                                    val f = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                        java.io.File(java.io.File(ctx.cacheDir, "share").apply { mkdirs() }, "Давление_${person.name}_$days.pdf")
+                                            .also { file -> file.outputStream().use { com.dasein.poryadok.system.PressurePdf.write(person, all, days, it) } }
+                                    }
+                                    val uri = androidx.core.content.FileProvider.getUriForFile(ctx, ctx.packageName + ".files", f)
+                                    ctx.startActivity(
+                                        android.content.Intent.createChooser(
+                                            android.content.Intent(android.content.Intent.ACTION_SEND).setType("application/pdf").putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                                .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION),
+                                            "Отчёт о давлении",
+                                        ),
+                                    )
+                                }.onFailure { Toast.makeText(ctx, "Не удалось: ${it.message}", Toast.LENGTH_LONG).show() }
+                            }
+                        }) { Text("За $days дней") }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { report = false }) { Text("Закрыть") } },
+        )
     }
     deleting?.let { r ->
         ConfirmDialog("Удалить замер ${r.sys}/${r.dia}?", fmtTime(r.time), onDismiss = { deleting = null }) {
