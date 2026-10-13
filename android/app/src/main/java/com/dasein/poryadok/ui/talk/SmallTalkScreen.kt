@@ -741,6 +741,7 @@ private fun OnlineFactsLine() {
  * «Тема дня»: напишите любую тему (праздник, новость, место, хобби) или выберите подсказку —
  * ИИ подберёт интересные факты, фразы, чтобы начать разговор, и вопросы собеседнику. Факты можно сохранить в каталог.
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun TopicOfDay() {
     val ctx = LocalContext.current
