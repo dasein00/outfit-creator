@@ -40,6 +40,19 @@
     o.connect(g); o2.connect(g2); g2.connect(g); g.connect(c.destination);
     o.start(t); o2.start(t); o.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
   };
+  // пример к уроку: шаги [нота | [аккорд] | 0, доли, длительность звука в сек.]
+  let seqT = [];
+  A.playSeq = (steps, bpm = 80) => {
+    seqT.forEach(clearTimeout); seqT = [];
+    const beat = 60 / bpm; let t = 0;
+    (steps || []).forEach(([n, d, dur]) => {
+      const notes = Array.isArray(n) ? n : n ? [n] : [];
+      seqT.push(setTimeout(() => notes.forEach((m) => A.playNote(m, dur || Math.max(0.25, d * beat * 0.95))), t * 1000));
+      t += d * beat;
+    });
+    return t;
+  };
+  A.stopSeq = () => { seqT.forEach(clearTimeout); seqT = []; };
   const click = (accent) => { const c = audio(); if (!c) return; const t = c.currentTime, o = c.createOscillator(), g = c.createGain(); o.frequency.value = accent ? 1600 : 1000; g.gain.setValueAtTime(0.4, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 0.07); };
 
   const NAMES = ["до", "до♯", "ре", "ре♯", "ми", "фа", "фа♯", "соль", "соль♯", "ля", "ля♯", "си"];
@@ -376,6 +389,7 @@
         h += '<div class="card peach"><div class="small muted">Урок ' + (i + 1) + " · " + esc(l.mod) + '</div><h2 style="font-size:22px;margin:4px 0">' + esc(l.title) + '</h2><p><b>Цель:</b> ' + esc(l.goal) + "</p></div>" +
           '<div class="card"><h3>Теория</h3><p>' + esc(l.theory) + '</p><h3 style="margin-top:12px">Пошагово</h3><ol>' + l.steps.map((s) => "<li>" + esc(s) + "</li>").join("") + "</ol></div>" +
           '<div class="card"><h3>Упражнение</h3><p>' + esc(l.exercise) + "</p>" + (["p02", "p03", "p04", "p05", "p10", "p13", "p14"].includes(l.id) ? A.keyboard(l.id === "p04" ? 48 : 60, 2) : "") + (["p08", "p09"].includes(l.id) ? '<a class="btn" href="#/piano/read' + (l.id === "p09" ? "?clef=bass" : "") + '">Открыть тренажёр нот</a>' : "") + (["p06", "p07"].includes(l.id) ? '<a class="btn" href="#/piano/metro">Открыть метроном</a>' : "") + "</div>" +
+          (window.PIANO2 && window.PIANO2.ex[l.id] ? '<div class="card sage"><h3>{{i:piano}} На вашем пианино</h3><p>' + esc(window.PIANO2.ex[l.id].instr) + "</p>" + (window.PIANO2.ex[l.id].notes.length ? '<button class="btn sm primary" data-a="exPlay" data-id="' + l.id + '">{{i:play}} Послушать пример</button>' : "") + '<a class="link small" href="#/pianotutor/instr" style="margin-left:10px">Как работают кнопки пианино</a></div>' : "") +
           '<div class="card"><h3>Практическое задание</h3><p>' + esc(l.task) + '</p><h3 style="margin-top:12px">Критерий завершения</h3><p>' + esc(l.done) + "</p></div>" +
           '<div class="card"><h3>Заметки</h3><textarea rows="4" data-c="lnote" data-live data-id="' + l.id + '">' + esc(P.notes[l.id] || "") + "</textarea></div>" +
           '<div class="btns"><button class="btn" data-a="setCur" data-id="' + l.id + '">Сделать текущим</button><button class="btn" data-a="practice" data-id="' + l.id + '">+ практика</button><button class="btn primary" data-a="lessonDone" data-id="' + l.id + '">' + (P.done[l.id] ? "Отменить завершение" : "Урок завершён ✓") + "</button></div>" +
@@ -434,6 +448,7 @@
       A.bind(el, {
         sec(b) { if (metroT) { clearInterval(metroT); metroT = null; } A.go("piano/" + b.dataset.v, true); },
         lesson(b) { A.go("piano/lesson/" + b.dataset.id); },
+        exPlay(b) { const e = window.PIANO2.ex[b.dataset.id]; if (e) A.playSeq(e.notes, e.bpm); },
         chord(b) {
           const ch = window.SONGS.chord(b.dataset.v); if (!ch) return;
           el.querySelectorAll(".pk.lit").forEach((k) => k.classList.remove("lit"));

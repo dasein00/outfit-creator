@@ -166,6 +166,16 @@
         bankAccess() { A.native.openBankAccess(); A.toast("Найдите «Путь жизни» и разрешите доступ"); },
         appSettings() { A.native.openAppSettings(); },
         bankSetup() { A.go("money/import"); },
+        bankRebind() { try { A.native.bankRebind(); } catch (e) {} A.toast("Служба перезапускается…"); setTimeout(() => A.refresh(), 1500); },
+        bankPaste() {
+          A.formSheet("Вставить SMS от 900", [{ k: "t", label: "Текст одного или нескольких SMS (каждое с новой строки)", type: "textarea", rows: 10, full: true }], {}, (o) => {
+            // каждая строка — отдельное SMS; строки-продолжения («Баланс …», со строчной буквы) приклеиваем к предыдущей
+            const msgs = []; String(o.t || "").split(/\n/).map((x) => x.trim()).filter(Boolean).forEach((l) => { if (msgs.length && (/^(баланс|доступно|остаток)/i.test(l) || /^[a-zа-яё]/.test(l))) msgs[msgs.length - 1] += " " + l; else msgs.push(l); });
+            const rows = msgs.map((m) => A.parseSberSms(m, Date.now())).filter(Boolean);
+            if (!rows.length) return A.toast("Операций в тексте не найдено");
+            setTimeout(() => A.importPreview(rows, "SMS (вставлено вручную)", { src: "sms" }), 350); // после закрытия формы
+          });
+        },
         bankNow() { A.bankSync(true); if (A.db().profile.smsImport || (A.native.smsAllowed && A.native.smsAllowed())) A.smsImport(false); },
         smsScan() { A.smsImport(true); },
         fp(b) { const P = A.db().finplan[mk()]; P[b.dataset.k] = b.type === "number" ? (b.value === "" ? null : A.num(b.value)) : b.value; A.save(); if (b.type === "number") A.refresh(); }
@@ -268,7 +278,8 @@
     return null;
   };
   A.bankCard = () => {
-    if (!A.native) return '<div class="card"><h3>{{i:landmark}} Синхронизация со Сбербанком</h3><p class="small muted">Доступно в Android-приложении.</p></div>';
+    const paste = '<button class="btn sm" data-a="bankPaste">{{i:clipboard-list}} Вставить текст SMS</button>';
+    if (!A.native) return '<div class="card"><h3>{{i:landmark}} Синхронизация со Сбербанком</h3><p class="small muted">Автоматическая синхронизация доступна в Android-приложении. Здесь можно вставить текст SMS вручную.</p><div class="btns">' + paste + "</div></div>";
     const N = A.native, p = A.db().profile;
     const push = N.bankAccess ? N.bankAccess() : false, sms = N.smsAllowed ? N.smsAllowed() : false;
     const ok = (v) => '<b style="color:' + (v ? "var(--good)" : "var(--bad)") + '">' + (v ? "включено" : "выключено") + "</b>";
@@ -284,7 +295,18 @@
         '<li>Нажмите «Настройки приложения» ниже → меню ⋮ в правом верхнем углу → <b>«Разрешить ограниченные настройки»</b> и подтвердите.</li>' +
         "<li>Вернитесь и снова нажмите «Включить доступ к уведомлениям» → «Путь жизни» → разрешить. Для SMS — «Разрешения» → «SMS» → разрешить.</li>" +
         "<li>В приложении СберБанк Онлайн должны быть включены push-уведомления об операциях (Профиль → Настройки → Уведомления).</li>" +
-        '<li>Номер карты: укажите последние 4 цифры в счёте — операции попадут на нужный счёт.</li></ol><button class="btn sm" data-a="appSettings">Настройки приложения</button></details>' : "") + "</div>";
+        '<li>Номер карты: укажите последние 4 цифры в счёте — операции попадут на нужный счёт.</li></ol><button class="btn sm" data-a="appSettings">Настройки приложения</button></details>' : "") +
+      (push && N.bankConnected && !N.bankConnected() ? '<div class="warn small" style="margin-top:8px">Доступ выдан, но служба чтения уведомлений сейчас не запущена системой (бывает после обновления приложения или из-за экономии батареи). <button class="link" data-a="bankRebind">Перезапустить службу</button>. Если не помогает — выключите и снова включите доступ к уведомлениям, а в настройках батареи разрешите приложению работу в фоне.</div>' : "") +
+      '<div class="btns" style="margin-top:8px">' + paste + "</div>" + bankDebugHtml() + "</div>";
+  };
+  // журнал: что служба увидела в уведомлениях банка и SMS и что с этим сделала
+  const bankDebugHtml = () => {
+    if (!A.native || !A.native.bankDebug) return "";
+    let L = []; try { L = JSON.parse(A.native.bankDebug() || "[]"); } catch (e) {}
+    const rows = L.slice(-12).reverse();
+    return '<details class="small" style="margin-top:8px"><summary><b>Что пришло от банка</b> (' + L.length + ')</summary>' +
+      (rows.length ? rows.map((x) => '<div class="item" style="min-height:0;padding:6px 0"><div class="tx"><b style="font-size:12.5px">' + esc(new Date(x.ts).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })) + " · " + esc(x.title || x.pkg) + '</b><small style="white-space:normal">' + esc(x.text) + "</small></div><span class=\"tag\">" + esc(x.v) + "</span></div>").join("")
+        : '<p class="muted">Пока ничего. Если вы недавно получили SMS 900 или push от Сбера, а здесь пусто — служба не получает уведомления: проверьте доступ и нажмите «Перезапустить службу».</p>') + "</details>";
   };
   A.parseSberSms = (body, ts) => { const x = A.parseSber(body, ts); return x && x.kind !== "move" ? x : null; };
 

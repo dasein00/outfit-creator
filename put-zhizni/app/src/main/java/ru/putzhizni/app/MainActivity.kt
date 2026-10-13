@@ -95,7 +95,9 @@ class MainActivity : Activity() {
                 return try {
                     val i = Intent(Intent.ACTION_OPEN_DOCUMENT)
                     i.addCategory(Intent.CATEGORY_OPENABLE)
-                    i.type = "*/*"
+                    // для фото (расклады, обрезка) сразу показываем изображения
+                    val img = params.acceptTypes.any { it.startsWith("image") }
+                    i.type = if (img) "image/*" else "*/*"
                     startActivityForResult(i, REQ_CHOOSER)
                     true
                 } catch (e: Exception) {

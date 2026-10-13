@@ -447,3 +447,48 @@ details.lgrp summary { padding: 11px 0; font-weight: 600; cursor: pointer; }
 .pt-vis { color: var(--ink); }
 .pt-vis .staff { max-width: 280px; display: block; margin: 0 auto; }
 .tw-opts.pt-7 { grid-template-columns: repeat(4, 1fr); }
+
+/* ---------- ИИ-помощник ---------- */
+.ai-msg { padding: 10px 12px; border-radius: 14px; margin: 0 0 8px; max-width: 92%; line-height: 1.45; overflow-wrap: anywhere; }
+.ai-msg p { margin: 0 0 6px; } .ai-msg p:last-child { margin: 0; }
+.ai-msg.user { background: var(--accent); color: var(--accent-ink); margin-left: auto; border-bottom-right-radius: 4px; }
+.ai-msg.assistant { background: var(--card); box-shadow: var(--shadow); border-bottom-left-radius: 4px; }
+.ai-bar { display: flex; gap: 8px; align-items: flex-end; margin-top: 10px; }
+.ai-bar textarea { flex: 1; font-size: 16px; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+.ai-out { line-height: 1.5; } .ai-out p { margin: 0 0 8px; }
+
+/* ---------- Расклады ---------- */
+.sp-lay { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 10px 0; }
+.sp-slot { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 84px; text-align: center; cursor: pointer; }
+.sp-slot small { font-size: 10.5px; color: var(--ink2); line-height: 1.2; }
+.sp-card { width: 76px; aspect-ratio: 0.58; border-radius: 6px; overflow: hidden; box-shadow: var(--shadow); background: var(--bg2); }
+.sp-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sp-card.rev img { transform: rotate(180deg); }
+.sp-card.sm { width: 52px; }
+.sp-card.empty { display: flex; align-items: center; justify-content: center; color: var(--ink2); }
+.sp-card.leno { background: linear-gradient(160deg, #fbf3e3, #f1e2c4); color: #4a3b26; border: 1px solid #d8c39a; }
+.lc { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 4px 2px; }
+.lc-n { font-size: 11px; font-weight: 700; } .lc-ic { font-size: 26px; color: #8a5a2b; }
+.sp-card.sm .lc-ic { font-size: 18px; }
+.lc-name { font-size: 10px; font-weight: 600; line-height: 1.1; } .lc-pc { font-size: 8px; opacity: .75; }
+.sp-card.sm .lc-name { font-size: 8px; } .sp-card.sm .lc-pc { display: none; }
+.sp-lay.sq { display: grid; grid-template-columns: repeat(3, 84px); }
+.sp-lay.gt { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 3px; }
+.sp-lay.gt .sp-slot { width: auto; } .sp-lay.gt .sp-card.sm { width: 100%; }
+.sp-lay.gt .s33 { grid-column: 3; } 
+.sp-lay.celtic { display: grid; grid-template-columns: repeat(4, 64px); grid-template-areas: ". s5 . s10" "s4 s1 s6 s9" ". s3 . s8" ". . . s7"; gap: 6px; }
+.sp-lay.celtic .s2 { transform: rotate(90deg) translateX(-8px); z-index: 2; } .sp-lay.celtic .s2 small { display: none; }
+.sp-lay.celtic .sp-slot { width: 64px; } .sp-lay.celtic .sp-card.sm { width: 56px; }
+.sp-lay.celtic .s1 { grid-area: s1; } .sp-lay.celtic .s2 { grid-area: s1; } .sp-lay.celtic .s3 { grid-area: s3; } .sp-lay.celtic .s4 { grid-area: s4; } .sp-lay.celtic .s5 { grid-area: s5; }
+.sp-lay.celtic .s6 { grid-area: s6; } .sp-lay.celtic .s7 { grid-area: s7; } .sp-lay.celtic .s8 { grid-area: s8; } .sp-lay.celtic .s9 { grid-area: s9; } .sp-lay.celtic .s10 { grid-area: s10; }
+
+/* ---------- Мини-гримуар ---------- */
+.moon-svg .moon-dark { fill: #3b3550; } .moon-svg .moon-lit { fill: #f3ecd2; }
+:root[data-theme="dark"] .moon-svg .moon-dark { fill: #15131b; }
+.gr-hero { background: linear-gradient(160deg, #2e2945, #4b3f6e); color: #f3eefc; }
+.gr-hero .muted, .gr-hero .small.muted { color: #cfc6e6; }
+.gr-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.gr-day { display: flex; flex-direction: column; align-items: center; padding: 4px 0; border-radius: 10px; font-size: 12px; }
+.gr-day.on { background: var(--accent2); } .gr-day small { font-size: 9px; color: var(--ink2); min-height: 11px; }
+.gr-rune { width: 52px; height: 64px; border-radius: 10px; background: #e9dfc9; color: #5a3d1e; font-size: 36px; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; font-family: "Noto Sans Runic", "Segoe UI Historic", serif; }
+.gr-rune.sm { width: 36px; height: 44px; font-size: 24px; } .gr-rune.rev { transform: rotate(180deg); }

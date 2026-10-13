@@ -277,6 +277,11 @@ class Bridge(private val act: MainActivity) {
         act.checkSelfPermission(android.Manifest.permission.READ_SMS) == android.content.pm.PackageManager.PERMISSION_GRANTED
     @JavascriptInterface fun bankQueue(): String = try { BankListener.read(act) } catch (e: Exception) { "[]" }
     @JavascriptInterface fun bankAck(ids: String) { try { BankListener.ack(act, ids) } catch (_: Exception) {} }
+    @JavascriptInterface fun bankDebug(): String = try { BankListener.debug(act) } catch (e: Exception) { "[]" }
+    @JavascriptInterface fun bankConnected(): Boolean = BankListener.connected
+    @JavascriptInterface fun bankRebind() {
+        try { android.service.notification.NotificationListenerService.requestRebind(android.content.ComponentName(act, BankListener::class.java)) } catch (_: Exception) {}
+    }
     @JavascriptInterface fun openBankAccess() = act.runOnUiThread {
         try { act.startActivity(Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) } catch (_: Exception) {}
     }

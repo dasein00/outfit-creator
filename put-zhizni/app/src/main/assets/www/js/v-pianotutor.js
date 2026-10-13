@@ -134,6 +134,7 @@
     return '<div class="pt-cod"><div class="tw-head"><div class="tw-w">' + esc(x.title.split(" — ")[0]) + '</div><button class="icon-btn tw-say" data-a="ptPlay" data-id="' + x.id + '" aria-label="Сыграть">{{i:play}}</button></div>' +
       '<div class="tw-ipa">' + esc(x.title.split(" — ")[1] || "") + " · " + esc(x.ans) + "</div>" + miniKb(x.midi) +
       '<div class="tw-ex"><span><b>' + esc(w.title) + "</b> — " + esc(w.ans) + "</span></div>" +
+      (curLesson() ? '<a class="item" style="text-decoration:none;color:inherit;min-height:0;padding:8px 0" href="#/piano/lesson/' + curLesson().id + '"><div class="tx"><b>Урок: ' + esc(curLesson().title) + '</b><small>' + esc(curLesson().goal) + '</small></div><span class="muted">›</span></a>' : "") +
       '<div class="btns"><button class="btn sm" data-a="ptNext" data-s="' + ((shift || 0) + 1) + '">{{i:shuffle}} Другой</button><a class="btn sm' + (left || dn ? " primary" : "") + '" href="#/pianotutor">' + (left ? "Новое: " + left : dn ? "Повторить: " + dn : "Репетитор") + "</a></div></div>";
   };
   A.todayCards.pianotutor = () => '<div class="card"><h3>{{i:piano}} Пианино: аккорд дня<span class="sp"></span><small>{{i:flame}} ' + streak() + "</small></h3><div id=\"ptBox\">" + codHtml(0) + "</div></div>";
@@ -144,7 +145,16 @@
   });
 
   /* ---------- экраны ---------- */
-  const SUB = { "": "Репетитор фортепиано", learn: "Новое на сегодня", quiz: "Тренировка", set: "Настройки", base: "База знаний" };
+  const SUB = { "": "Репетитор фортепиано", learn: "Новое на сегодня", quiz: "Тренировка", set: "Настройки", base: "База знаний", instr: "Моё пианино" };
+  const curLesson = () => { const P = A.db().piano || {}, L = (window.LEARN && window.LEARN.PIANO) || []; const done = P.done || {}; return L.find((l) => l.id === P.cur && !done[l.id]) || L.find((l) => !done[l.id]) || L[L.length - 1]; };
+  const instrHtml = () => {
+    const I = window.PIANO2.instr, notes = (st().instrNotes || "");
+    return '<div class="card tint"><p class="small">' + esc(I.intro) + '</p><p class="small"><b>Дисплей.</b> ' + esc(I.display) + "</p></div>" +
+      '<div class="card"><h3>{{i:keyboard-music}} Кнопки панели</h3><div class="list">' + I.buttons.map(([n, ic, t]) => '<div class="item" style="align-items:flex-start"><div class="ic">{{i:' + ic + '}}</div><div class="tx"><b>' + esc(n) + '</b><small style="white-space:normal">' + esc(t) + "</small></div></div>").join("") + "</div></div>" +
+      '<div class="card sage"><h3>{{i:lightbulb}} Фишки для занятий</h3>' + I.tips.map(([h, t]) => "<p><b>" + esc(h) + ".</b> " + esc(t) + "</p>").join("") + "</div>" +
+      '<div class="card"><h3>{{i:timer}} Занятие на ' + I.routine.reduce((s, r) => s + r[1], 0) + " минут</h3><ol>" + I.routine.map(([h, m, t]) => "<li><b>" + esc(h) + "</b> · " + m + " мин — " + esc(t) + "</li>").join("") + '</ol><a class="btn sm" href="#/piano/log">Отметить занятие</a></div>' +
+      '<div class="card"><h3>{{i:notebook-pen}} Мои заметки по инструменту</h3><p class="small muted">Номера тембров и ритмов, комбинации кнопок вашей модели.</p><textarea id="insNotes" rows="6" placeholder="001 — рояль, 008 — струнные, точка SPLIT — до первой октавы…">' + esc(notes) + "</textarea></div>";
+  };
   let S = null;
   const card = (x, hide) => '<div class="tw-card"><div class="tw-head"><div class="tw-w">' + esc(x.title) + "</div>" + (x.midi ? '<button class="icon-btn tw-say" data-a="pPlay" data-id="' + x.id + '">{{i:play}}</button>' : "") + "</div>" +
     '<div class="pt-vis">' + visual(x) + "</div>" + (hide ? '<button class="btn ghost tw-reveal" data-a="pReveal">{{i:eye}} Показать ответ</button><div class="tw-hidden" hidden>' : "<div>") +
@@ -164,6 +174,7 @@
           '<div class="btns tw-actions"><button class="btn" data-a="lKnow" data-id="' + x.id + '">{{i:check}} Уже знаю</button><button class="btn primary" data-a="lLearn" data-id="' + x.id + '">{{i:list-plus}} Учить</button></div>';
       }
       if (sub === "quiz") return '<div id="pq"></div>';
+      if (sub === "instr") return instrHtml();
       if (sub === "set") {
         const c = t.cfg;
         return '<div class="card"><h3>{{i:graduation-cap}} Уровень</h3>' + A.seg(LEVELS, c.level, "sLv") + '<p class="small muted">Начинающий — белые клавиши, ноты в скрипичном ключе, простые аккорды и термины; дальше добавляются басовый ключ, все тональности, септаккорды и слух.</p></div>' +
@@ -181,7 +192,9 @@
         '<p class="small muted" style="margin-top:8px">Уровень: <b>' + LEVELS[t.cfg.level - 1][1] + "</b> · " + (t.cfg.topic ? esc(TOPICS[t.cfg.topic][0]) : "все темы") + " · " + t.cfg.n + ' нового в день · <button class="link" data-a="pGo" data-v="set">изменить</button></p></div>';
       h += '<div class="tw-tiles">' + tile("learn", "book-open-check", "Новое на сегодня", left ? "осталось " + left + " из " + dl.ids.length : "пройдено", left) + tile("quiz?m=review", "repeat", "Повторение", dn ? dn + " ждут" : "на сегодня всё", dn) +
         tile("quiz?m=treble", "music", "Чтение нот", "скрипичный и басовый ключ") + tile("quiz?m=keys", "piano", "Найди клавишу", "на клавиатуре") + tile("quiz?m=chords", "layers", "Аккорды", "из каких нот состоят") + tile("quiz?m=ear", "headphones", "Слух", "интервалы и аккорды") +
-        tile("quiz?m=terms", "book-a", "Термины и ритм", "что значит знак") + tile("base", "library", "База знаний", ITEMS.length + " элементов") + "</div>";
+        tile("quiz?m=terms", "book-a", "Термины и ритм", "что значит знак") + tile("base", "library", "База знаний", ITEMS.length + " элементов") +
+        '<button class="tw-tile" data-a="pAbs" data-v="piano"><span class="tw-ti">{{i:graduation-cap}}</span><b>Уроки курса</b><small>' + ((window.LEARN && window.LEARN.PIANO) || []).length + " уроков · сейчас: " + esc((curLesson() || {}).title || "") + "</small></button>" +
+        tile("instr", "keyboard-music", "Моё пианино", "кнопки панели и фишки") + "</div>";
       h += '<div class="card"><h3>{{i:target}} Темы</h3><div class="tw-topics">' + Object.keys(TOPICS).map((k) => { const tot = ITEMS.filter((x) => x.t === k).length, g = ITEMS.filter((x) => x.t === k && (t.srs[x.id] || t.known[x.id])).length; return '<button class="tw-topic' + (t.cfg.topic === k ? " on" : "") + '" data-a="tTopic" data-v="' + k + '"><span>{{i:' + TOPICS[k][1] + "}}</span><b>" + TOPICS[k][0] + "</b><small>" + g + "/" + tot + "</small>" + A.bar(g / tot) + "</button>"; }).join("") + "</div></div>";
       h += '<div class="card sage"><h3>{{i:lightbulb}} План на 15 минут</h3><ol class="small"><li>2 мин — гамма дня и разминка пальцев.</li><li>3 мин — новое на сегодня.</li><li>3 мин — повторение.</li><li>7 мин — урок курса или песня: <a class="link" href="#/piano">Курс и песни</a>.</li></ol></div>';
       return h;
@@ -190,6 +203,7 @@
       const sub = r.args[0] || "", t = st();
       A.bind(el, {
         pGo(b) { A.go("pianotutor/" + b.dataset.v); },
+        pAbs(b) { A.go(b.dataset.v); },
         pPlay(b) { const x = BY[b.dataset.id]; if (x) play(x); },
         pReveal(b) { const h = b.parentNode.querySelector(".tw-hidden"); if (h) h.hidden = false; b.remove(); },
         tTopic(b) { t.cfg.topic = b.dataset.v; A.save(); A.go("pianotutor/learn"); },
@@ -205,6 +219,7 @@
         qGrade(b) { const q = +b.dataset.q; if (q >= 3) S.ok++; else S.bad.push(S.cur); grade(S.cur.id, q); S.i++; drawQ(el.querySelector("#pq")); }
       });
       if (sub === "quiz") startQuiz(el, r.params.m || "review");
+      const ins = el.querySelector("#insNotes"); if (ins) ins.addEventListener("change", () => { t.instrNotes = ins.value; A.save(); });
       const done = (id) => { const dl = daily(); if (!dl.done.includes(id)) dl.done.push(id); A.save(); A.refresh(); };
     }
   });

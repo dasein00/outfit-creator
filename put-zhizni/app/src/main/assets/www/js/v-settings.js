@@ -12,8 +12,8 @@
         ["habits", "{{i:circle-check}}", "Привычки"], ["reminders", "{{i:bell}}", "Напоминания"], ["calendar/month", "{{i:calendar-days}}", "Календарь"],
         ["health", "{{i:heart}}", "Здоровье и вес"], ["bp", "{{i:activity}}", "Давление и пульс"], ["labs", "{{i:droplet}}", "Анализы крови"], ["food", "{{i:apple}}", "Дневник питания"], ["recipes", "{{i:soup}}", "Рецепты и меню"],
         ["recipes/shop", "{{i:shopping-cart}}", "Список покупок"], ["workouts", "{{i:dumbbell}}", "Тренировки"], ["health/balance", "{{i:radar}}", "Баланс жизни"],
-        ["money", "{{i:wallet}}", "Финансы"], ["learn", "{{i:graduation-cap}}", "Обучение"], ["tutor", "{{i:speech}}", "Репетитор"], ["pianotutor", "{{i:piano}}", "Репетитор фортепиано"], ["hobbies", "{{i:palette}}", "Хобби"],
-        ["culture", "{{i:library}}", "Книги / фильмы / сериалы"], ["culturecal", "{{i:clapperboard}}", "Календарь культуры"], ["reader", "{{i:book-open}}", "Читалка"], ["piano", "{{i:piano}}", "Пианино"], ["tarot", "{{i:wand-sparkles}}", "Таро"],
+        ["money", "{{i:wallet}}", "Финансы"], ["learn", "{{i:graduation-cap}}", "Обучение"], ["ai", "{{i:sparkles}}", "ИИ-помощник"], ["tutor", "{{i:speech}}", "Репетитор"], ["pianotutor", "{{i:piano}}", "Репетитор фортепиано"], ["hobbies", "{{i:palette}}", "Хобби"],
+        ["culture", "{{i:library}}", "Книги / фильмы / сериалы"], ["culturecal", "{{i:clapperboard}}", "Календарь культуры"], ["reader", "{{i:book-open}}", "Читалка"], ["piano", "{{i:piano}}", "Пианино"], ["grimoire", "{{i:moon-star}}", "Мини-гримуар"], ["spreads", "{{i:layout-grid}}", "Расклады Таро и Ленорман"], ["tarot", "{{i:wand-sparkles}}", "Таро"],
         ["ketu", "{{i:leaf}}", "Кету"], ["bazi", "{{i:orbit}}", "Бацзы"], ["english", "{{i:languages}}", "Английский"], ["spanish", "{{i:languages}}", "Испанский"], ["french", "{{i:languages}}", "Французский"],
         ["latin", "{{i:landmark}}", "Латынь"], ["piano/songs", "{{i:guitar}}", "Песни на пианино"], ["stats", "{{i:chart-column}}", "Статистика"],
         ["book", "{{i:book}}", "Книга PRIME ERA"], ["ideas", "{{i:lightbulb}}", "Идеи"], ["settings", "{{i:settings}}", "Настройки"]
@@ -46,13 +46,14 @@
 
   const validBackup = (o) => o && typeof o === "object" && o.profile && o.days && Array.isArray(o.habits);
 
-  const SECTIONS = [["profile", "Профиль и режим"], ["targets", "Цели по здоровью"], ["look", "Оформление"], ["cards", "Экран «Сегодня»"], ["notif", "Уведомления"], ["security", "Защита"], ["data", "Данные и экспорт"], ["about", "О приложении"]];
+  const SECTIONS = [["ai", "ИИ-помощник (бесплатно)"], ["profile", "Профиль и режим"], ["targets", "Цели по здоровью"], ["look", "Оформление"], ["cards", "Экран «Сегодня»"], ["notif", "Уведомления"], ["security", "Защита"], ["data", "Данные и экспорт"], ["about", "О приложении"]];
 
   A.view("settings", {
     title: (r) => (r.args[0] ? (SECTIONS.find((s) => s[0] === r.args[0]) || [0, "Настройки"])[1] : "Настройки"), tab: "more",
     render(el, r) {
       const p = A.db().profile, sec = r.args[0];
       if (!sec) return '<div class="card"><div class="list">' + SECTIONS.map((s) => '<a class="item" style="text-decoration:none;color:inherit" href="#/settings/' + s[0] + '"><div class="tx"><b>' + s[1] + '</b></div><span class="muted">›</span></a>').join("") + "</div></div>";
+      if (sec === "ai") return A.aiSettingsHtml();
       if (sec === "profile") {
         return '<div class="card"><div class="form">' +
           '<div class="fld full"><label>Имя</label><input data-c="p" data-k="name" value="' + esc(p.name) + '"></div>' +
@@ -111,6 +112,7 @@
     },
     bind(el, r) {
       const p = A.db().profile;
+      if (r.args[0] === "ai") { A.aiSettingsBind(el); return; }
       A.bind(el, {
         p(b) { p[b.dataset.k] = b.value.trim(); A.save(); },
         plist(b) { p[b.dataset.k] = b.value.split("\n").map((x) => x.trim()).filter(Boolean); A.save(); },

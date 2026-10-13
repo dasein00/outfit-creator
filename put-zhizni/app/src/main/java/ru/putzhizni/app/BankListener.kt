@@ -19,20 +19,25 @@ import java.io.File
 class BankListener : NotificationListenerService() {
 
     override fun onListenerConnected() {
+        connected = true
         try { activeNotifications?.forEach { handle(this, it) } } catch (_: Exception) {}
     }
+
+    override fun onListenerDisconnected() { connected = false }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         try { handle(this, sbn) } catch (_: Exception) {}
     }
 
     companion object {
+        @Volatile var connected = false
         private val OPS = Regex("(покупк|оплат|списан|зачислен|перевод|перев[её]л|отправил|выдач|сняти|поступ|возврат|плат[её]ж|зарплат|аванс|пополн|кешб|кэшб)", RegexOption.IGNORE_CASE)
         private val SKIP = Regex("(код|пароль|никому не сообщайте|вход в сбербанк|отказ|недостаточно)", RegexOption.IGNORE_CASE)
 
         fun isBankPackage(pkg: String) = pkg.contains("sber", true)
         private fun isSmsPackage(pkg: String) = Regex("messag|mms|sms|telephony", RegexOption.IGNORE_CASE).containsMatchIn(pkg)
-        private fun isSmsFrom900(title: String) = Regex("^\\s*(\\+?7?900|900|SBERBANK|СберБанк)\\s*$", RegexOption.IGNORE_CASE).matches(title)
+        // «900», «+7900», «СберБанк 900», «SBERBANK», «Сбер» — как бы номер ни был записан в контактах
+        private fun isSmsFrom900(title: String) = Regex("(^|\\D)900(\\D|$)|sber|сбер", RegexOption.IGNORE_CASE).containsMatchIn(title)
 
         fun enabled(ctx: Context): Boolean {
             val flat = Settings.Secure.getString(ctx.contentResolver, "enabled_notification_listeners") ?: return false
@@ -43,6 +48,23 @@ class BankListener : NotificationListenerService() {
         private fun dir(ctx: Context) = File(ctx.filesDir, "bank").apply { mkdirs() }
         private fun queue(ctx: Context) = File(dir(ctx), "queue.jsonl")
         private fun seen(ctx: Context) = File(dir(ctx), "seen.txt")
+        private fun dbg(ctx: Context) = File(dir(ctx), "debug.jsonl")
+
+        /** Журнал для диагностики: последние уведомления от банка и SMS-приложений и что с ними сделано. */
+        @Synchronized
+        fun log(ctx: Context, pkg: String, title: String, text: String, verdict: String) {
+            try {
+                val f = dbg(ctx)
+                val old = if (f.exists()) f.readLines().takeLast(29) else emptyList()
+                val o = JSONObject().put("ts", System.currentTimeMillis()).put("pkg", pkg).put("title", title.take(60)).put("text", text.take(160)).put("v", verdict)
+                f.writeText((old + o.toString()).joinToString("\n") + "\n")
+            } catch (_: Exception) {}
+        }
+        fun debug(ctx: Context): String {
+            val arr = JSONArray(); val f = dbg(ctx)
+            if (f.exists()) f.readLines().filter { it.isNotBlank() }.forEach { try { arr.put(JSONObject(it)) } catch (_: Exception) {} }
+            return arr.toString()
+        }
 
         @Synchronized
         fun append(ctx: Context, id: String, ts: Long, src: String, title: String, text: String) {
@@ -79,14 +101,37 @@ class BankListener : NotificationListenerService() {
             if (!bank && !isSmsPackage(pkg)) return
             val ex = sbn.notification.extras
             val title = ex.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
-            if (!bank && !isSmsFrom900(title)) return
+            val conv = ex.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString() ?: ""
+            // Сообщения в стиле переписки (Google Сообщения, Samsung): текст и отправитель лежат в EXTRA_MESSAGES
+            val msgs = mutableListOf<Pair<String, String>>()
+            try {
+                ex.getParcelableArray(Notification.EXTRA_MESSAGES)?.forEach { p ->
+                    val b = p as? android.os.Bundle ?: return@forEach
+                    val t = b.getCharSequence("text")?.toString() ?: return@forEach
+                    val snd = b.getCharSequence("sender")?.toString() ?: ""
+                    msgs.add(snd to t)
+                }
+            } catch (_: Exception) {}
+            val from900 = bank || isSmsFrom900(title) || isSmsFrom900(conv) || msgs.any { isSmsFrom900(it.first) }
+            if (!from900) return
             val parts = mutableListOf<String>()
-            val lines = ex.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)
-            if (lines != null && lines.isNotEmpty()) lines.forEach { parts.add(it.toString()) }
-            else (ex.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: ex.getCharSequence(Notification.EXTRA_TEXT))?.let { parts.add(it.toString()) }
+            if (msgs.isNotEmpty()) msgs.forEach { parts.add(it.second) }
+            else {
+                val lines = ex.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)
+                if (lines != null && lines.isNotEmpty()) lines.forEach { parts.add(it.toString()) }
+                else (ex.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: ex.getCharSequence(Notification.EXTRA_TEXT))?.let { parts.add(it.toString()) }
+            }
+            if (parts.isEmpty()) log(ctx, pkg, title, "", "пустой текст")
             for (text in parts) {
                 val full = if (bank) "$title $text" else text
-                if (!OPS.containsMatchIn(full) || SKIP.containsMatchIn(full) || !Regex("\\d").containsMatchIn(full)) continue
+                val verdict = when {
+                    !Regex("\\d").containsMatchIn(full) -> "нет суммы"
+                    SKIP.containsMatchIn(full) -> "служебное (код, отказ)"
+                    !OPS.containsMatchIn(full) -> "не операция"
+                    else -> "в очередь"
+                }
+                log(ctx, pkg, title, text, verdict)
+                if (verdict != "в очередь") continue
                 val id = (if (bank) "push" else "sms") + (full.trim().hashCode().toLong() and 0xffffffffL) + "_" + (sbn.postTime / 600_000)
                 append(ctx, id, sbn.postTime, if (bank) "push" else "sms", title, text)
             }
