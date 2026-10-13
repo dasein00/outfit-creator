@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.weather
 
 import android.Manifest
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -19,11 +20,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -91,10 +92,10 @@ fun WeatherTile(nav: NavHostController) {
                 WeatherIcon(2, true, 36.dp)
                 HGap(10.dp)
                 Column(Modifier.weight(1f)) {
-                    Text("Погода", fontWeight = FontWeight.SemiBold)
+                    Text(btnLabel("Погода"), fontWeight = FontWeight.SemiBold)
                     Text(error ?: "Загружаем прогноз…", fontSize = 12.sp, color = extra.dim)
                 }
-                Text("›", fontSize = 22.sp, color = extra.dim)
+                Text(btnLabel("›"), fontSize = 22.sp, color = extra.dim)
             }
             return@Tile
         }
@@ -127,7 +128,7 @@ fun WeatherTile(nav: NavHostController) {
                     color = if (rain.startsWith("Без")) extra.dim else MaterialTheme.colorScheme.primary, maxLines = 2,
                 )
             }
-            Text("›", fontSize = 22.sp, color = extra.dim)
+            Text(btnLabel("›"), fontSize = 22.sp, color = extra.dim)
         }
     }
 }
@@ -186,8 +187,8 @@ fun WeatherScreen(nav: NavHostController) {
                     Weather.setManualPlace(ctx, null); manual = null
                     if (Weather.hasLocationPermission(ctx)) reload()
                     else askLocation.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION))
-                }) { Text("Где я сейчас") }
-                OutlinedButton(onClick = { pickCity = true }) { Text("Выбрать город") }
+                }) { Text(btnLabel("Где я сейчас")) }
+                OutlinedButton(onClick = { pickCity = true }) { Text(btnLabel("Выбрать город")) }
             }
             if (w == null) {
                 Tile { Text(if (busy) "Загружаем прогноз…" else "Прогноза пока нет. Разрешите доступ к местоположению или выберите город.", color = extra.dim) }
@@ -290,7 +291,7 @@ private fun CityDialog(onDismiss: () -> Unit, onPick: (WeatherLogic.Place) -> Un
     var searching by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Город") },
+        title = { Text(btnLabel("Город")) },
         text = {
             Column {
                 TextInput(q, { q = it }, "Название города")
@@ -304,9 +305,9 @@ private fun CityDialog(onDismiss: () -> Unit, onPick: (WeatherLogic.Place) -> Un
                         Text(listOf(p.region, p.country).filter { it.isNotBlank() }.joinToString(", "), fontSize = 12.sp, color = extra.dim)
                     }
                 }
-                if (!searching && results.isEmpty() && q.isNotBlank()) Text("Введите название и нажмите «Найти»", fontSize = 12.sp, color = extra.dim)
+                if (!searching && results.isEmpty() && q.isNotBlank()) Text(btnLabel("Введите название и нажмите «Найти»"), fontSize = 12.sp, color = extra.dim)
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Закрыть") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Закрыть")) } },
     )
 }

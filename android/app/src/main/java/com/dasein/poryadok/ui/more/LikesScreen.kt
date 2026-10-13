@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.more
 
 import androidx.compose.foundation.horizontalScroll
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,7 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -59,7 +60,7 @@ fun LikesScreen(nav: NavHostController) {
                         fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
                     )
                     Button(onClick = { scope.launch { Likes.share(ctx) } }, enabled = all.isNotEmpty(), modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                        Text("Выгрузить понравившееся (файл)")
+                        Text(btnLabel("Выгрузить понравившееся (файл)"))
                     }
                 }
                 Row(Modifier.padding(top = 8.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -70,7 +71,7 @@ fun LikesScreen(nav: NavHostController) {
                     }
                 }
             }
-            if (shown.isEmpty()) item { Text("Пока ничего не отмечено.", color = extra.dim, modifier = Modifier.padding(top = 12.dp)) }
+            if (shown.isEmpty()) item { Text(btnLabel("Пока ничего не отмечено."), color = extra.dim, modifier = Modifier.padding(top = 12.dp)) }
             items(shown, key = { it.key }) { l ->
                 Tile(color = likedColor(true)) {
                     Row(verticalAlignment = Alignment.Top) {

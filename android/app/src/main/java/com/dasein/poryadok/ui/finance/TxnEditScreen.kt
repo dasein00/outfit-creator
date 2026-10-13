@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.finance
 
 import androidx.activity.compose.BackHandler
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.IconAction
@@ -25,7 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -143,7 +144,7 @@ fun TxnEditScreen(nav: NavHostController, id: Long, income: Boolean, settings: S
                 value = amountText,
                 onValueChange = { v -> amountText = v.filter { it.isDigit() || it in ".,+- " } },
                 textStyle = TextStyle(fontSize = 34.sp, textAlign = TextAlign.Center, color = typeColor),
-                placeholder = { Text("0", fontSize = 34.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
+                placeholder = { Text(btnLabel("0"), fontSize = 34.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
                 suffix = { Text(settings.currency, fontSize = 22.sp) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 singleLine = true,
@@ -205,7 +206,7 @@ fun TxnEditScreen(nav: NavHostController, id: Long, income: Boolean, settings: S
             Button(
                 onClick = { save() }, modifier = Modifier.fillMaxWidth(),
                 enabled = amount != null && amount > 0,
-            ) { Text("Сохранить", color = if (amount != null && amount > 0) MaterialTheme.colorScheme.onPrimary else Color.Unspecified) }
+            ) { Text(btnLabel("Сохранить"), color = if (amount != null && amount > 0) MaterialTheme.colorScheme.onPrimary else Color.Unspecified) }
             HowTo("txn")
             Gap(40.dp)
         }

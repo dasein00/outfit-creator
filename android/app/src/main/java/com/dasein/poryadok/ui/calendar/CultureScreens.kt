@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.calendar
 
 import android.content.Intent
+import com.dasein.poryadok.ui.common.btnLabel
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,9 +17,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -75,14 +76,14 @@ fun CultureTab(selectedDay: Long) {
     }
     Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
-            Text("‹", fontSize = 26.sp, modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { day -= 1 }.padding(horizontal = 14.dp))
+            Text(btnLabel("‹"), fontSize = 26.sp, modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { day -= 1 }.padding(horizontal = 14.dp))
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(date.format(CDAY), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                Text("В этот день в культуре", fontSize = 12.sp, color = extra.dim)
+                Text(btnLabel("В этот день в культуре"), fontSize = 12.sp, color = extra.dim)
             }
-            Text("›", fontSize = 26.sp, modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { day += 1 }.padding(horizontal = 14.dp))
+            Text(btnLabel("›"), fontSize = 26.sp, modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { day += 1 }.padding(horizontal = 14.dp))
         }
-        if (day != Dates.today()) TextButton(onClick = { day = Dates.today() }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("К сегодняшнему дню") }
+        if (day != Dates.today()) TextButton(onClick = { day = Dates.today() }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text(btnLabel("К сегодняшнему дню")) }
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Pill("Вся культура", kind.isEmpty()) { kind = "" }
             Pill("Дни рождения", kind == CultureDay.BIRTH) { kind = if (kind == CultureDay.BIRTH) "" else CultureDay.BIRTH }
@@ -138,8 +139,8 @@ fun CultureCard(i: CultureDay.Item, date: LocalDate? = null) {
             com.dasein.poryadok.ui.common.LikeButton(like, liked)
         }
         if (open && i.context.isNotBlank()) Text(i.context, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 8.dp))
-        if (open && i.url.isNotBlank()) TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(i.url))) } }) { Text("Читать в Википедии") }
-        if (!open && i.context.isNotBlank()) Text("Подробнее ▾", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
+        if (open && i.url.isNotBlank()) TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(i.url))) } }) { Text(btnLabel("Читать в Википедии")) }
+        if (!open && i.context.isNotBlank()) Text(btnLabel("Подробнее ▾"), fontSize = 13.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
     }
 }
 
@@ -168,7 +169,7 @@ fun HomeCultureCard(nav: NavHostController) {
     Tile(onClick = { nav.navigate(Routes.calendar(4)) }, color = com.dasein.poryadok.ui.common.likedColor(curLiked)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Glyph("habit/01", 22.dp, badge = false)
-            Text("  В этот день в культуре", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text(btnLabel("  В этот день в культуре"), fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             Text(today.format(CDAY), fontSize = 12.sp, color = extra.dim)
         }
         if (list.isEmpty()) {
@@ -192,7 +193,7 @@ fun HomeCultureCard(nav: NavHostController) {
         Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             PrevNext(n, list.size, { pos.value = n - 1 }, { pos.value = n + 1 })
             Box(Modifier.weight(1f))
-            TextButton(onClick = { nav.navigate(Routes.calendar(4)) }) { Text("Все →") }
+            TextButton(onClick = { nav.navigate(Routes.calendar(4)) }) { Text(btnLabel("Все →")) }
         }
     }
 }

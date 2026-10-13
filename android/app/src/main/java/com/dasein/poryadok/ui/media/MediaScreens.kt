@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.media
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.NumberField
 import android.content.Intent
@@ -41,16 +42,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -225,8 +226,8 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
         title = MediaKind.plural[kind],
         actions = {
             if (selected.isNotEmpty()) {
-                TextButton(onClick = { selected = list.map { it.id }.toSet() }) { Text("Все") }
-                TextButton(onClick = { selected = emptySet() }) { Text("Отмена") }
+                TextButton(onClick = { selected = list.map { it.id }.toSet() }) { Text(btnLabel("Все")) }
+                TextButton(onClick = { selected = emptySet() }) { Text(btnLabel("Отмена")) }
             } else IconAction("habit/24", "Найти онлайн") { nav.navigate(Routes.mediaSearch(kind)) }
         },
         fab = {
@@ -236,12 +237,12 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
             ) else Box {
                 FloatingActionButton(onClick = { menu = true }, containerColor = MaterialTheme.colorScheme.primary) { Icon(Icons.Default.Add, "Добавить") }
                 DropdownMenu(menu, { menu = false }) {
-                    DropdownMenuItem(text = { Text("Найти в каталоге") }, leadingIcon = { Glyph("habit/24", 20.dp) }, onClick = { menu = false; nav.navigate(Routes.mediaSearch(kind)) })
-                    DropdownMenuItem(text = { Text("Заполнить карточку самому") }, leadingIcon = { Glyph("habit/23", 20.dp) }, onClick = { menu = false; nav.navigate(Routes.media(0, kind)) })
-                    if (kind != MediaKind.BOOK) DropdownMenuItem(text = { Text("Импорт с Кинопоиска") }, leadingIcon = { Glyph("habit/01", 20.dp) }, onClick = { menu = false; nav.navigate(Routes.kpImport(kind)) })
-                    DropdownMenuItem(text = { Text("Импорт списка текстом") }, leadingIcon = { Glyph("habit/26", 20.dp) }, onClick = { menu = false; import = true })
-                    DropdownMenuItem(text = { Text("Новая папка") }, leadingIcon = { Glyph("ui:folder", 20.dp) }, onClick = { menu = false; newList = true })
-                    DropdownMenuItem(text = { Text("Переименовать папки и статусы") }, leadingIcon = { Glyph("ui:sliders", 20.dp) }, onClick = { menu = false; renameAll = true })
+                    DropdownMenuItem(text = { Text(btnLabel("Найти в каталоге")) }, leadingIcon = { Glyph("habit/24", 20.dp) }, onClick = { menu = false; nav.navigate(Routes.mediaSearch(kind)) })
+                    DropdownMenuItem(text = { Text(btnLabel("Заполнить карточку самому")) }, leadingIcon = { Glyph("habit/23", 20.dp) }, onClick = { menu = false; nav.navigate(Routes.media(0, kind)) })
+                    if (kind != MediaKind.BOOK) DropdownMenuItem(text = { Text(btnLabel("Импорт с Кинопоиска")) }, leadingIcon = { Glyph("habit/01", 20.dp) }, onClick = { menu = false; nav.navigate(Routes.kpImport(kind)) })
+                    DropdownMenuItem(text = { Text(btnLabel("Импорт списка текстом")) }, leadingIcon = { Glyph("habit/26", 20.dp) }, onClick = { menu = false; import = true })
+                    DropdownMenuItem(text = { Text(btnLabel("Новая папка")) }, leadingIcon = { Glyph("ui:folder", 20.dp) }, onClick = { menu = false; newList = true })
+                    DropdownMenuItem(text = { Text(btnLabel("Переименовать папки и статусы")) }, leadingIcon = { Glyph("ui:sliders", 20.dp) }, onClick = { menu = false; renameAll = true })
                 }
             }
         },
@@ -310,7 +311,7 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
                         Text("Найдено ${list.size} из ${base.size}", fontSize = 12.sp, color = extra.dim, modifier = Modifier.weight(1f))
                         if (active > 0) TextButton(onClick = {
                             status = ""; genre = ""; decade = ""; country = ""; creator = ""; rating = ""; ext = ""; len = ""; tag = ""; listKey = ""
-                        }) { Text("Сбросить фильтры", fontSize = 12.sp) }
+                        }) { Text(btnLabel("Сбросить фильтры"), fontSize = 12.sp) }
                     }
                     if (selected.isEmpty() && list.isNotEmpty()) Text(
                         "Долгое нажатие на карточку — выбрать несколько: разложить по папкам, сменить статус, удалить.",
@@ -319,8 +320,8 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
                     myLists.firstOrNull { it.id == listFilter }?.let { l ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("«${l.name}»", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                            TextButton(onClick = { renameList = l }) { Text("Переименовать", fontSize = 12.sp) }
-                            TextButton(onClick = { deleteList = l }) { Text("Удалить", fontSize = 12.sp, color = extra.danger) }
+                            TextButton(onClick = { renameList = l }) { Text(btnLabel("Переименовать"), fontSize = 12.sp) }
+                            TextButton(onClick = { deleteList = l }) { Text(btnLabel("Удалить"), fontSize = 12.sp, color = extra.danger) }
                         }
                     }
                 }
@@ -397,7 +398,7 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
         }
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { randomSource = false },
-            title = { Text("Откуда выбрать случайно?") },
+            title = { Text(btnLabel("Откуда выбрать случайно?")) },
             text = {
                 Column(Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState())) {
                     sources.forEach { (name, pool) ->
@@ -412,7 +413,7 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { randomSource = false }) { Text("Закрыть") } },
+            dismissButton = { TextButton(onClick = { randomSource = false }) { Text(btnLabel("Закрыть")) } },
         )
     }
     if (import) ImportDialog(kind) { import = false }
@@ -460,11 +461,11 @@ fun ListNameDialog(title: String, name0: String, onDismiss: () -> Unit, glyph0: 
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
                     listOf("Пересмотреть", "Посоветовали", "Новогодние", "С детьми", "Дорамы", "Аниме", "Лучшее за год", "Классика").forEach { t -> Pill(t, name == t) { name = t } }
                 }
-                if (onDelete != null) TextButton(onClick = onDelete) { Text("Удалить папку", color = LocalExtra.current.danger) }
+                if (onDelete != null) TextButton(onClick = onDelete) { Text(btnLabel("Удалить папку"), color = LocalExtra.current.danger) }
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(name.trim(), glyph) }, enabled = name.isNotBlank()) { Text("Сохранить") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        confirmButton = { TextButton(onClick = { onSave(name.trim(), glyph) }, enabled = name.isNotBlank()) { Text(btnLabel("Сохранить")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
     if (pick) GlyphPickerDialog(glyph, { pick = false }) { glyph = it }
 }
@@ -479,7 +480,7 @@ private fun ImportDialog(kind: Int, onDismiss: () -> Unit) {
     val lines = text.lines().mapNotNull { MediaParse.parseListLine(it) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Импорт списка") },
+        title = { Text(btnLabel("Импорт списка")) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text("Вставьте список — по одному в строке, можно с годом: «Интерстеллар (2014)». Подойдёт список, скопированный с Кинопоиска, IMDb, LiveLib или заметки.", fontSize = 12.sp, color = LocalExtra.current.dim)
@@ -506,9 +507,9 @@ private fun ImportDialog(kind: Int, onDismiss: () -> Unit) {
                     Toast.makeText(ctx, "Добавлено: $n. Откройте карточку, чтобы дополнить её из каталога.", Toast.LENGTH_LONG).show()
                     onDismiss()
                 }
-            }, enabled = lines.isNotEmpty()) { Text("Добавить") }
+            }, enabled = lines.isNotEmpty()) { Text(btnLabel("Добавить")) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
 }
 
@@ -601,7 +602,7 @@ fun MediaSearchScreen(nav: NavHostController, kind: Int, fillId: Long = 0) {
                 if (src == MediaSource.TMDB && settings?.tmdbToken.isNullOrBlank()) {
                     var tmdb by rememberSaveable { mutableStateOf("") }
                     Tile {
-                        Text("TMDB нужен бесплатный ключ", fontWeight = FontWeight.SemiBold)
+                        Text(btnLabel("TMDB нужен бесплатный ключ"), fontWeight = FontWeight.SemiBold)
                         Hint(
                             "tmdb_token",
                             "Зарегистрируйтесь на themoviedb.org → Настройки → API → «Создать» (тип — личный). Скопируйте «Ключ API» или «Токен доступа» и вставьте сюда. " +
@@ -611,21 +612,21 @@ fun MediaSearchScreen(nav: NavHostController, kind: Int, fillId: Long = 0) {
                         Gap(6.dp)
                         TextInput(tmdb, { tmdb = it }, "Ключ API или токен")
                         Row {
-                            TextButton(onClick = { io { Graph.prefs.update { it.copy(tmdbToken = tmdb.trim()) } } }, enabled = tmdb.isNotBlank()) { Text("Сохранить ключ") }
-                            TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.themoviedb.org/settings/api"))) } }) { Text("Открыть сайт") }
+                            TextButton(onClick = { io { Graph.prefs.update { it.copy(tmdbToken = tmdb.trim()) } } }, enabled = tmdb.isNotBlank()) { Text(btnLabel("Сохранить ключ")) }
+                            TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.themoviedb.org/settings/api"))) } }) { Text(btnLabel("Открыть сайт")) }
                         }
                     }
                     Gap(8.dp)
                 }
                 if (src == MediaSource.KINOPOISK && settings?.kinopoiskToken.isNullOrBlank()) {
                     Tile {
-                        Text("Кинопоиску нужен бесплатный личный токен", fontWeight = FontWeight.SemiBold)
+                        Text(btnLabel("Кинопоиску нужен бесплатный личный токен"), fontWeight = FontWeight.SemiBold)
                         Hint("kp_token", "Получите его в Telegram у бота @kinopoiskdev_bot (сайт kinopoisk.dev) и вставьте сюда. Без токена фильмы и сериалы ищутся в Википедии.", title = "Где взять токен Кинопоиска")
                         Gap(6.dp)
                         TextInput(token, { token = it }, "Токен")
                         Row {
-                            TextButton(onClick = { io { Graph.prefs.update { it.copy(kinopoiskToken = token.trim()) } } }, enabled = token.isNotBlank()) { Text("Сохранить токен") }
-                            TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/kinopoiskdev_bot"))) } }) { Text("Открыть бота") }
+                            TextButton(onClick = { io { Graph.prefs.update { it.copy(kinopoiskToken = token.trim()) } } }, enabled = token.isNotBlank()) { Text(btnLabel("Сохранить токен")) }
+                            TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/kinopoiskdev_bot"))) } }) { Text(btnLabel("Открыть бота")) }
                         }
                     }
                     Gap(8.dp)
@@ -645,7 +646,7 @@ fun MediaSearchScreen(nav: NavHostController, kind: Int, fillId: Long = 0) {
                         if (canDiscover && q.isBlank()) "Без названия — подборка по фильтрам" else "Страна, жанр, годы, режиссёр, актёр, рейтинг",
                         fontSize = 12.sp, color = extra.dim, modifier = Modifier.weight(1f),
                     )
-                    if (filter.count > 0) TextButton(onClick = { filter = MediaDiscover.Filter() }) { Text("Сбросить", fontSize = 12.sp) }
+                    if (filter.count > 0) TextButton(onClick = { filter = MediaDiscover.Filter() }) { Text(btnLabel("Сбросить"), fontSize = 12.sp) }
                 }
                 if (showFilters) {
                     Gap(6.dp)
@@ -684,7 +685,7 @@ fun MediaSearchScreen(nav: NavHostController, kind: Int, fillId: Long = 0) {
                             fontSize = 12.sp, color = extra.dim, maxLines = 2, overflow = TextOverflow.Ellipsis,
                         )
                         if (h.description.isNotBlank()) Text(h.description, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        if (mine) Text("✓ Уже в коллекции", fontSize = 12.sp, color = extra.ok, fontWeight = FontWeight.Medium)
+                        if (mine) Text(btnLabel("✓ Уже в коллекции"), fontSize = 12.sp, color = extra.ok, fontWeight = FontWeight.Medium)
                         Row {
                             MediaStatus.names(kind).take(3).forEachIndexed { i, n ->
                                 TextButton(onClick = {
@@ -752,8 +753,8 @@ fun MediaCardScreen(nav: NavHostController, id: Long, kind0: Int) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Poster(m, 120.dp, Modifier.clickable { pickPoster() })
                     TextButton(onClick = { pickPoster() }) { Text(if (m.poster.isBlank()) "Загрузить постер" else "Заменить", fontSize = 12.sp) }
-                    if (m.poster.isNotBlank()) TextButton(onClick = { recrop = true }) { Text("Кадр", fontSize = 12.sp) }
-                    if (m.poster.isNotBlank()) TextButton(onClick = { m = m.copy(poster = "") }) { Text("Убрать", fontSize = 12.sp) }
+                    if (m.poster.isNotBlank()) TextButton(onClick = { recrop = true }) { Text(btnLabel("Кадр"), fontSize = 12.sp) }
+                    if (m.poster.isNotBlank()) TextButton(onClick = { m = m.copy(poster = "") }) { Text(btnLabel("Убрать"), fontSize = 12.sp) }
                 }
                 HGap(12.dp)
                 Column(Modifier.weight(1f)) {
@@ -769,7 +770,7 @@ fun MediaCardScreen(nav: NavHostController, id: Long, kind0: Int) {
                     if (m.externalRating != null) Text("${m.source}: ★ %.1f".format(m.externalRating), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
                 }
             }
-            if (m.externalId.isBlank() && m.title.isNotBlank()) TextButton(onClick = { searching = true }) { Text("Дополнить из каталога…") }
+            if (m.externalId.isBlank() && m.title.isNotBlank()) TextButton(onClick = { searching = true }) { Text(btnLabel("Дополнить из каталога…")) }
 
             SectionTitle("Моё")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -836,11 +837,11 @@ fun MediaCardScreen(nav: NavHostController, id: Long, kind0: Int) {
             }
 
             Gap(16.dp)
-            Button(onClick = { save() }, Modifier.fillMaxWidth()) { Text("Сохранить") }
+            Button(onClick = { save() }, Modifier.fillMaxWidth()) { Text(btnLabel("Сохранить")) }
             Row {
-                OutlinedButton(onClick = { toTop = true }, Modifier.weight(1f), enabled = m.title.isNotBlank()) { Text("В топ") }
+                OutlinedButton(onClick = { toTop = true }, Modifier.weight(1f), enabled = m.title.isNotBlank()) { Text(btnLabel("В топ")) }
                 HGap(8.dp)
-                if (m.id != 0L) OutlinedButton(onClick = { confirmDelete = true }, Modifier.weight(1f)) { Text("Удалить", color = extra.danger) }
+                if (m.id != 0L) OutlinedButton(onClick = { confirmDelete = true }, Modifier.weight(1f)) { Text(btnLabel("Удалить"), color = extra.danger) }
             }
             Gap(40.dp)
         }
@@ -886,10 +887,10 @@ private fun CastEditor(cast: String, onChange: (String) -> Unit) {
             Box(Modifier.weight(1f)) { TextInput(name, { v -> onChange(rows.toMutableList().also { it[i] = if (role.isBlank()) v else "$v — $role" }.joinToString("\n")) }, "Актёр") }
             HGap(6.dp)
             Box(Modifier.weight(1f)) { TextInput(role, { v -> onChange(rows.toMutableList().also { it[i] = if (v.isBlank()) name else "$name — $v" }.joinToString("\n")) }, "Роль") }
-            Text("✕", Modifier.clip(RoundedCornerShape(8.dp)).clickable { onChange(rows.toMutableList().also { it.removeAt(i) }.joinToString("\n")) }.padding(8.dp), color = extra.dim)
+            Text(btnLabel("✕"), Modifier.clip(RoundedCornerShape(8.dp)).clickable { onChange(rows.toMutableList().also { it.removeAt(i) }.joinToString("\n")) }.padding(8.dp), color = extra.dim)
         }
     }
-    TextButton(onClick = { onChange((rows + "Актёр").joinToString("\n")) }) { Text("+ Добавить роль") }
+    TextButton(onClick = { onChange((rows + "Актёр").joinToString("\n")) }) { Text(btnLabel("+ Добавить роль")) }
 }
 
 @Composable
@@ -898,10 +899,10 @@ private fun AddToTopDialog(m: MediaItem, onDismiss: () -> Unit) {
     val lists by observe(emptyList()) { Graph.dao.topLists() }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Добавить в топ") },
+        title = { Text(btnLabel("Добавить в топ")) },
         text = {
             Column {
-                if (lists.isEmpty()) Text("Сначала создайте топ во вкладке «Топы».", color = LocalExtra.current.dim)
+                if (lists.isEmpty()) Text(btnLabel("Сначала создайте топ во вкладке «Топы»."), color = LocalExtra.current.dim)
                 lists.forEach { l ->
                     Row(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable {
@@ -913,11 +914,11 @@ private fun AddToTopDialog(m: MediaItem, onDismiss: () -> Unit) {
                             onDismiss()
                         }.padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                    ) { Glyph(l.emoji, 20.dp); Text("  " + l.title) }
+                    ) { Glyph(l.emoji, 20.dp); Text(btnLabel("  ") + l.title) }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Закрыть") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Закрыть")) } },
     )
 }
 
@@ -951,6 +952,6 @@ private fun FillFromCatalogDialog(m: MediaItem, onDismiss: () -> Unit, onPick: (
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Закрыть") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Закрыть")) } },
     )
 }

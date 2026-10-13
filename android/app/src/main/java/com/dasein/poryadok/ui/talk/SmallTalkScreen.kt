@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.talk
 
 import com.dasein.poryadok.ui.common.HowTo
+import com.dasein.poryadok.ui.common.btnLabel
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
@@ -173,7 +174,7 @@ fun TalkFactCard(onOpen: () -> Unit) {
         Row(Modifier.clickable(onClick = onOpen), verticalAlignment = Alignment.CenterVertically) {
             Glyph(SmallTalk.glyph(fact.tag), 22.dp)
             Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                Text("Интересный факт", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(btnLabel("Интересный факт"), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 Text("${fact.tag} · Small Talks", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
             }
             Text("$read из ${facts.size}  ", fontSize = 12.sp, color = extra.dim)
@@ -416,7 +417,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.factOfTheDay(data: Ta
         val fact = SmallTalk.current(facts, deck)
         val read = SmallTalk.read(facts, deck)
 
-        Text("Сферы — они же показываются на главной", fontSize = 12.sp, color = extra.dim)
+        Text(btnLabel("Сферы — они же показываются на главной"), fontSize = 12.sp, color = extra.dim)
         Gap(6.dp)
         SphereChips(counts, spheres) { saveSpheres(it) }
         Gap(12.dp)
@@ -717,7 +718,7 @@ private fun OnlineFactsLine() {
             if (n > 0) "Из сети: $n — новые факты подгружаются сами, когда есть интернет" else "Новые факты подгружаются из сети сами, когда есть интернет",
             fontSize = 12.sp, color = extra.dim, modifier = Modifier.weight(1f),
         )
-        androidx.compose.material3.TextButton(enabled = !busy, onClick = {
+        com.dasein.poryadok.ui.common.TextButton(enabled = !busy, onClick = {
             busy = true
             scope.launch {
                 if (!com.dasein.poryadok.system.Offline.hasNetwork(ctx)) {

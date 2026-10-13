@@ -45,7 +45,7 @@ fun HowTo(key: String, modifier: Modifier = Modifier.padding(top = 20.dp, bottom
             Glyph("ui:bulb", 18.dp, badge = false)
             HGap(8.dp)
             Column(Modifier.weight(1f)) {
-                Text("Как пользоваться", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text(btnLabel("Как пользоваться"), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 Text(g.title, fontSize = 12.sp, color = extra.dim)
             }
             Icon(if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore, if (open) "Свернуть" else "Подробная инструкция", tint = extra.dim)
@@ -60,7 +60,7 @@ fun HowTo(key: String, modifier: Modifier = Modifier.padding(top = 20.dp, bottom
                     }
                 }
                 if (g.tips.isNotEmpty()) {
-                    Text("Советы", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp))
+                    Text(btnLabel("Советы"), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp))
                     g.tips.forEach { t -> Text("• $t", fontSize = 13.sp, lineHeight = 19.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp)) }
                 }
             }

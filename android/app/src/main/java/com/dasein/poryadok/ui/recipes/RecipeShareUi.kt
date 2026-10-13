@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.recipes
 
 import android.content.Intent
+import com.dasein.poryadok.ui.common.btnLabel
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -15,10 +16,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,10 +61,10 @@ fun RecipeShareButtons(mine: List<Recipe>) {
         }
     }
     Row {
-        OutlinedButton(onClick = { share = true }, enabled = mine.isNotEmpty(), modifier = Modifier.weight(1f)) { Text("Поделиться", maxLines = 1) }
+        OutlinedButton(onClick = { share = true }, enabled = mine.isNotEmpty(), modifier = Modifier.weight(1f)) { Text(btnLabel("Поделиться"), maxLines = 1) }
         HGap(8.dp)
         OutlinedButton(onClick = { open.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream", "*/*")) }, modifier = Modifier.weight(1f)) {
-            Text("Загрузить", maxLines = 1)
+            Text(btnLabel("Загрузить"), maxLines = 1)
         }
     }
     Text(
@@ -96,12 +97,12 @@ fun ShareRecipesDialog(all: List<Recipe>, preselected: Set<Long>, onDismiss: () 
     }
     AlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
-        title = { Text("Поделиться рецептами") },
+        title = { Text(btnLabel("Поделиться рецептами")) },
         text = {
             Column {
                 if (all.size > 1) Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { chosen = all.map { it.id }.toSet() }) { Text("Все") }
-                    TextButton(onClick = { chosen = emptySet() }) { Text("Снять все") }
+                    TextButton(onClick = { chosen = all.map { it.id }.toSet() }) { Text(btnLabel("Все")) }
+                    TextButton(onClick = { chosen = emptySet() }) { Text(btnLabel("Снять все")) }
                 }
                 Column(Modifier.heightIn(max = 280.dp).verticalScroll(rememberScrollState())) {
                     all.forEach { r ->
@@ -115,7 +116,7 @@ fun ShareRecipesDialog(all: List<Recipe>, preselected: Set<Long>, onDismiss: () 
                     }
                 }
                 if (hasVideo) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
-                    Text("С видеороликами", modifier = Modifier.weight(1f))
+                    Text(btnLabel("С видеороликами"), modifier = Modifier.weight(1f))
                     Switch(withVideo, { withVideo = it })
                 }
                 Text(
@@ -126,7 +127,7 @@ fun ShareRecipesDialog(all: List<Recipe>, preselected: Set<Long>, onDismiss: () 
                     "Файл большой: в почту может не пройти. Отправьте через Telegram или сохраните на диск.",
                     fontSize = 12.sp, color = extra.warn,
                 )
-                if (busy) Text("Собираю файл…", fontSize = 12.sp, color = extra.dim)
+                if (busy) Text(btnLabel("Собираю файл…"), fontSize = 12.sp, color = extra.dim)
             }
         },
         confirmButton = {
@@ -142,12 +143,12 @@ fun ShareRecipesDialog(all: List<Recipe>, preselected: Set<Long>, onDismiss: () 
                     }.onSuccess { onDismiss() }.onFailure { Toast.makeText(ctx, "Не удалось подготовить файл", Toast.LENGTH_SHORT).show() }
                     busy = false
                 }
-            }) { Text("Отправить") }
+            }) { Text(btnLabel("Отправить")) }
         },
         dismissButton = {
             Row {
-                TextButton(enabled = chosen.isNotEmpty() && !busy, onClick = { save.launch("Рецепты DASEIN.zip") }) { Text("В файл") }
-                TextButton(onClick = onDismiss, enabled = !busy) { Text("Отмена") }
+                TextButton(enabled = chosen.isNotEmpty() && !busy, onClick = { save.launch("Рецепты DASEIN.zip") }) { Text(btnLabel("В файл")) }
+                TextButton(onClick = onDismiss, enabled = !busy) { Text(btnLabel("Отмена")) }
             }
         },
     )

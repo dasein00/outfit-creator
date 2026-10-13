@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.notes
 
 import android.widget.Toast
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,7 +21,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -63,7 +64,7 @@ fun TopRankDialog(entries: List<TopItem>, mediaOf: (TopItem) -> MediaItem?, onDo
     if (q == null) { androidx.compose.runtime.LaunchedEffect(Unit) { onDone(rank.result()) }; return }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Что лучше?") },
+        title = { Text(btnLabel("Что лучше?")) },
         text = {
             Column {
                 Text(
@@ -83,11 +84,11 @@ fun TopRankDialog(entries: List<TopItem>, mediaOf: (TopItem) -> MediaItem?, onDo
                         }
                     }
                 }
-                TextButton(onClick = { rank.answer(false); tick++ }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Одинаково / не знаю") }
+                TextButton(onClick = { rank.answer(false); tick++ }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text(btnLabel("Одинаково / не знаю")) }
             }
         },
-        confirmButton = { TextButton(onClick = { onDone(rank.result()) }) { Text("Сохранить как есть") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        confirmButton = { TextButton(onClick = { onDone(rank.result()) }) { Text(btnLabel("Сохранить как есть")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
 }
 
@@ -108,7 +109,7 @@ fun AddFromCollectionDialog(listId: Long, media: List<MediaItem>, already: Set<L
     }.sortedWith(compareByDescending<MediaItem> { it.myRating }.thenByDescending { it.favorite }.thenBy { it.title })
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Из коллекции") },
+        title = { Text(btnLabel("Из коллекции")) },
         text = {
             Column {
                 TextInput(q, { q = it }, "Название или режиссёр")
@@ -119,7 +120,7 @@ fun AddFromCollectionDialog(listId: Long, media: List<MediaItem>, already: Set<L
                     Pill("В планах", status == MediaStatus.PLANNED) { status = if (status == MediaStatus.PLANNED) null else MediaStatus.PLANNED }
                 }
                 Column(Modifier.heightIn(max = 380.dp).verticalScroll(rememberScrollState()).padding(top = 6.dp)) {
-                    if (shown.isEmpty()) Text("Ничего не нашлось", color = extra.dim, modifier = Modifier.padding(8.dp))
+                    if (shown.isEmpty()) Text(btnLabel("Ничего не нашлось"), color = extra.dim, modifier = Modifier.padding(8.dp))
                     shown.take(150).forEach { m ->
                         val on = m.id in picked
                         Row(
@@ -147,7 +148,7 @@ fun AddFromCollectionDialog(listId: Long, media: List<MediaItem>, already: Set<L
                 }
             }, enabled = picked.isNotEmpty()) { Text("Добавить (${picked.size})") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
 }
 
@@ -176,7 +177,7 @@ fun ReadyTops(nav: NavHostController, media: List<MediaItem>, lists: List<com.da
         ),
     ).filter { it.third.size >= 2 }
     if (ideas.isEmpty()) return
-    Text("Собрать из коллекции", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp, bottom = 2.dp))
+    Text(btnLabel("Собрать из коллекции"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp, bottom = 2.dp))
     Text("Готовый топ по вашим оценкам — дальше его можно править и уточнить кнопкой «Что лучше?».", fontSize = 12.sp, color = extra.dim)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp, bottom = 10.dp)) {
         ideas.forEach { (title, glyph, items) ->

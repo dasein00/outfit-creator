@@ -29,13 +29,10 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -109,7 +106,7 @@ fun IconEditHost() {
     val shown = over ?: key
     if (!pick && !import && editIcon == null) AlertDialog(
         onDismissRequest = { IconEdit.target.value = null },
-        title = { Text("Иконка") },
+        title = { Text(btnLabel("Иконка")) },
         text = {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -121,17 +118,17 @@ fun IconEditHost() {
                         fontSize = 13.sp, color = extra.dim, modifier = Modifier.weight(1f),
                     )
                 }
-                Button(onClick = { pick = true }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) { Text("Выбрать из базы иконок") }
+                Button(onClick = { pick = true }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) { Text(btnLabel("Выбрать из базы иконок")) }
                 if (IconSets.canEdit(shown)) OutlinedButton(onClick = { editIcon = shown }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
                     Text("Редактировать: отразить, повернуть, наклонить")
                 }
-                OutlinedButton(onClick = { import = true }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("Добавить новый набор из картинки") }
+                OutlinedButton(onClick = { import = true }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text(btnLabel("Добавить новый набор из картинки")) }
                 if (over != null) TextButton(onClick = { IconSets.setOverride(ctx, key, null); IconEdit.target.value = null }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Вернуть исходную")
+                    Text(btnLabel("Вернуть исходную"))
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { IconEdit.target.value = null }) { Text("Закрыть") } },
+        confirmButton = { TextButton(onClick = { IconEdit.target.value = null }) { Text(btnLabel("Закрыть")) } },
     )
     if (pick) androidx.compose.runtime.CompositionLocalProvider(LocalIconEditable provides false) {
         GlyphPickerDialog(over ?: key, onDismiss = { pick = false }) { picked ->
@@ -172,12 +169,12 @@ fun IconSetImportDialog(onDismiss: () -> Unit, onSaved: (String?) -> Unit) {
             busy = false
         }
     }
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Surface(Modifier.fillMaxSize().systemBarsPadding().imePadding().padding(horizontal = 12.dp, vertical = 12.dp), shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Новый набор иконок", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                    TextButton(onClick = onDismiss) { Text("Закрыть") }
+                    Text(btnLabel("Новый набор иконок"), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                    TextButton(onClick = onDismiss) { Text(btnLabel("Закрыть")) }
                 }
                 Text(
                     "Выберите картинку с несколькими иконками (например, сетку из ChatGPT). Приложение само нарежет их, " +
@@ -189,7 +186,7 @@ fun IconSetImportDialog(onDismiss: () -> Unit, onSaved: (String?) -> Unit) {
                     enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 ) { Text(if (icons.isEmpty()) "Выбрать картинку" else "Другая картинка") }
                 if (busy) Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Text("  Нарезаю…")
+                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Text(btnLabel("  Нарезаю…"))
                 }
                 message?.let { Text(it, color = extra.danger, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp)) }
                 if (icons.isNotEmpty()) {
@@ -200,7 +197,7 @@ fun IconSetImportDialog(onDismiss: () -> Unit, onSaved: (String?) -> Unit) {
                         }
                     }
                     // Куда положить: «Мои иконки», любая своя папка или новая.
-                    Text("Папка:", fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                    Text(btnLabel("Папка:"), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
                     androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
                         folders.forEach { f -> Pill(f.title, target == f.id) { target = f.id } }
                         Pill("+ Новая папка", target == NEW_FOLDER) { target = NEW_FOLDER }
@@ -232,7 +229,7 @@ fun IconSetImportDialog(onDismiss: () -> Unit, onSaved: (String?) -> Unit) {
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Image(b.asImageBitmap(), null, Modifier.fillMaxSize().padding(10.dp))
-                                if (on) Text("✓", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.align(Alignment.TopEnd).padding(6.dp))
+                                if (on) Text(btnLabel("✓"), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.align(Alignment.TopEnd).padding(6.dp))
                             }
                         }
                     }
@@ -263,12 +260,12 @@ fun IconEditorDialog(key: String, onDismiss: () -> Unit) {
     fun drag(n: IconSets.Edit) { if (dragStart == null) dragStart = e; e = n }
     fun dragEnd() { dragStart?.let { if (it != e) history.add(it) }; dragStart = null }
     val preview = remember(e, src) { src?.let { IconSets.render(it, e).asImageBitmap() } }
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Surface(Modifier.fillMaxSize().systemBarsPadding().padding(12.dp), shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.padding(16.dp).androidxVerticalScroll()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Правка иконки", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                    TextButton(onClick = onDismiss) { Text("Закрыть") }
+                    Text(btnLabel("Правка иконки"), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                    TextButton(onClick = onDismiss) { Text(btnLabel("Закрыть")) }
                 }
                 Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.Center) {
                     // Как на тёмной и на светлой теме.
@@ -277,12 +274,12 @@ fun IconEditorDialog(key: String, onDismiss: () -> Unit) {
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    OutlinedButton(onClick = { step(e.copy(flipH = !e.flipH)) }, modifier = Modifier.weight(1f)) { Text("⇋ Отразить") }
-                    OutlinedButton(onClick = { step(e.copy(flipV = !e.flipV)) }, modifier = Modifier.weight(1f)) { Text("⇅ Перевернуть") }
+                    OutlinedButton(onClick = { step(e.copy(flipH = !e.flipH)) }, modifier = Modifier.weight(1f)) { Text(btnLabel("⇋ Отразить")) }
+                    OutlinedButton(onClick = { step(e.copy(flipV = !e.flipV)) }, modifier = Modifier.weight(1f)) { Text(btnLabel("⇅ Перевернуть")) }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
-                    OutlinedButton(onClick = { step(e.copy(angle = norm(e.angle - 90))) }, modifier = Modifier.weight(1f)) { Text("↺ 90°") }
-                    OutlinedButton(onClick = { step(e.copy(angle = norm(e.angle + 90))) }, modifier = Modifier.weight(1f)) { Text("↻ 90°") }
+                    OutlinedButton(onClick = { step(e.copy(angle = norm(e.angle - 90))) }, modifier = Modifier.weight(1f)) { Text(btnLabel("↺ 90°")) }
+                    OutlinedButton(onClick = { step(e.copy(angle = norm(e.angle + 90))) }, modifier = Modifier.weight(1f)) { Text(btnLabel("↻ 90°")) }
                 }
                 Text("Поворот: ${e.angle.toInt()}°", fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
                 androidx.compose.material3.Slider(e.angle, { drag(e.copy(angle = it)) }, valueRange = -180f..180f, onValueChangeFinished = ::dragEnd)
@@ -293,17 +290,17 @@ fun IconEditorDialog(key: String, onDismiss: () -> Unit) {
                 Text("Размер: ${(e.scale * 100).toInt()}%", fontSize = 13.sp)
                 androidx.compose.material3.Slider(e.scale, { drag(e.copy(scale = it)) }, valueRange = 0.5f..1.5f, onValueChangeFinished = ::dragEnd)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    OutlinedButton(onClick = { e = history.removeAt(history.lastIndex) }, enabled = history.isNotEmpty(), modifier = Modifier.weight(1f)) { Text("Шаг назад") }
-                    OutlinedButton(onClick = { step(IconSets.Edit()) }, enabled = !e.isIdentity, modifier = Modifier.weight(1f)) { Text("Как в оригинале") }
+                    OutlinedButton(onClick = { e = history.removeAt(history.lastIndex) }, enabled = history.isNotEmpty(), modifier = Modifier.weight(1f)) { Text(btnLabel("Шаг назад")) }
+                    OutlinedButton(onClick = { step(IconSets.Edit()) }, enabled = !e.isIdentity, modifier = Modifier.weight(1f)) { Text(btnLabel("Как в оригинале")) }
                 }
                 Button(
                     onClick = { scope.launch { IconSets.saveEdit(ctx, key, e); onDismiss() } },
                     enabled = e != saved, modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                ) { Text("Сохранить") }
+                ) { Text(btnLabel("Сохранить")) }
                 if (!saved.isIdentity) TextButton(onClick = { scope.launch { IconSets.revert(ctx, key); onDismiss() } }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Вернуть как было (до всех правок)")
+                    Text(btnLabel("Вернуть как было (до всех правок)"))
                 }
-                if (!IconSets.isBuiltin(key)) TextButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) { Text("Удалить иконку из набора", color = extra.danger) }
+                if (!IconSets.isBuiltin(key)) TextButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) { Text(btnLabel("Удалить иконку из набора"), color = extra.danger) }
                 if (IconSets.isBuiltin(key)) Text("Это встроенная иконка: правка применится везде, где она стоит в приложении.", fontSize = 12.sp, color = extra.dim)
                 Text("Правки всегда считаются от исходной картинки — качество не теряется, вернуть можно в любой момент.", fontSize = 12.sp, color = extra.dim)
             }
@@ -311,15 +308,15 @@ fun IconEditorDialog(key: String, onDismiss: () -> Unit) {
     }
     if (confirmDelete) AlertDialog(
         onDismissRequest = { confirmDelete = false },
-        title = { Text("Удалить иконку?") },
+        title = { Text(btnLabel("Удалить иконку?")) },
         text = { Text("Там, где она стоит, вернётся исходная иконка.") },
         confirmButton = {
             TextButton(onClick = {
                 IconSets.overrides.value.filterValues { it == key }.keys.forEach { IconSets.setOverride(ctx, it, null) }
                 IconSets.deleteIcon(ctx, key); confirmDelete = false; onDismiss()
-            }) { Text("Удалить", color = extra.danger) }
+            }) { Text(btnLabel("Удалить"), color = extra.danger) }
         },
-        dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(btnLabel("Отмена")) } },
     )
 }
 

@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.wardrobe
 
 import androidx.compose.foundation.Image
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.background
@@ -24,7 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -80,7 +81,7 @@ fun OutfitsScreen(nav: NavHostController) {
             }
             if (forgotten.isNotEmpty() && season == "все") item(span = { GridItemSpan(2) }) {
                 Column {
-                    Text("Давно не надевали — может, сегодня?", fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(vertical = 4.dp))
+                    Text(btnLabel("Давно не надевали — может, сегодня?"), fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(vertical = 4.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         rowItems(forgotten, key = { "f" + it.id }) { o ->
                             val img by rememberImage(o.preview.ifBlank { null }, 300)
@@ -149,12 +150,12 @@ fun OutfitsScreen(nav: NavHostController) {
                     WardrobeBus.pendingOutfit = o.id
                     open = null
                     nav.popBackStack()
-                }) { Text("Открыть в редакторе") }
+                }) { Text(btnLabel("Открыть в редакторе")) }
             },
             dismissButton = {
                 Row {
-                    TextButton(onClick = { confirm = true }) { Text("Удалить", color = extra.danger) }
-                    TextButton(onClick = { open = null }) { Text("Закрыть") }
+                    TextButton(onClick = { confirm = true }) { Text(btnLabel("Удалить"), color = extra.danger) }
+                    TextButton(onClick = { open = null }) { Text(btnLabel("Закрыть")) }
                 }
             },
         )

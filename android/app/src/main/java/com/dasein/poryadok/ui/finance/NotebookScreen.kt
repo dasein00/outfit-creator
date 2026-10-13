@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.finance
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import android.content.Context
 import android.net.Uri
@@ -14,11 +15,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -109,7 +110,7 @@ fun NotebookScreen(nav: NavHostController, settings: Settings) {
             }
             Gap(10.dp)
             Button(onClick = { picker.launch(arrayOf("application/json", "text/*", "text/csv", "application/octet-stream")) }, Modifier.fillMaxWidth()) {
-                Text("Выбрать файл тетради")
+                Text(btnLabel("Выбрать файл тетради"))
             }
             error?.let { Text(it, color = extra.danger, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp)) }
 
@@ -119,10 +120,10 @@ fun NotebookScreen(nav: NavHostController, settings: Settings) {
             if (months.isNotEmpty() || tableByMonth.isNotEmpty()) {
                 Row(Modifier.padding(top = 8.dp)) {
                     if (months.isNotEmpty()) {
-                        OutlinedButton(onClick = { yearDialog = true }, Modifier.weight(1f)) { Text("Изменить год") }
+                        OutlinedButton(onClick = { yearDialog = true }, Modifier.weight(1f)) { Text(btnLabel("Изменить год")) }
                         HGap(8.dp)
                     }
-                    OutlinedButton(onClick = { confirmWipe = true }, Modifier.weight(1f)) { Text("Удалить данные") }
+                    OutlinedButton(onClick = { confirmWipe = true }, Modifier.weight(1f)) { Text(btnLabel("Удалить данные")) }
                 }
                 if (months.isNotEmpty()) Text(
                     "Год в тетради не был указан — при импорте использован ${months.first().first}. Если он другой, поменяйте: месяцы и числа останутся прежними.",
@@ -146,7 +147,7 @@ fun NotebookScreen(nav: NavHostController, settings: Settings) {
         val a = remember(d) { Notebook.analyze(d) }
         AlertDialog(
             onDismissRequest = { preview = null },
-            title = { Text("Проверка перед импортом") },
+            title = { Text(btnLabel("Проверка перед импортом")) },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     if (d.dated.isNotEmpty() || d.skipped.isNotEmpty()) {
@@ -168,25 +169,25 @@ fun NotebookScreen(nav: NavHostController, settings: Settings) {
                     val y = year.toIntOrNull()?.takeIf { it in 2000..2100 } ?: d.year
                     preview = null
                     scope.launch { report = NotebookImport.apply(d, y) }
-                }) { Text("Импортировать") }
+                }) { Text(btnLabel("Импортировать")) }
             },
-            dismissButton = { TextButton(onClick = { preview = null }) { Text("Отмена") } },
+            dismissButton = { TextButton(onClick = { preview = null }) { Text(btnLabel("Отмена")) } },
         )
     }
     if (yearDialog) {
         var y by remember { mutableStateOf(months.firstOrNull()?.first?.toString() ?: "") }
         AlertDialog(
             onDismissRequest = { yearDialog = false },
-            title = { Text("Год записей тетради") },
+            title = { Text(btnLabel("Год записей тетради")) },
             text = { NumberField(y, { y = it }, "Год", decimal = false) },
             confirmButton = {
                 TextButton(onClick = {
                     val v = y.toIntOrNull()
                     if (v != null && v in 2000..2100) scope.launch { NotebookImport.changeYear(v) }
                     yearDialog = false
-                }) { Text("Применить") }
+                }) { Text(btnLabel("Применить")) }
             },
-            dismissButton = { TextButton(onClick = { yearDialog = false }) { Text("Отмена") } },
+            dismissButton = { TextButton(onClick = { yearDialog = false }) { Text(btnLabel("Отмена")) } },
         )
     }
     if (confirmWipe) ConfirmDialog(
@@ -217,7 +218,7 @@ private fun ReportCard(r: NotebookImport.Report, cur: String) {
         Text("  · дней без записи о доходе: ${r.noIncomeAdded}", fontSize = 13.sp, color = extra.dim)
         Text("Год: ${r.year}", fontSize = 13.sp, color = extra.dim)
         Gap(8.dp)
-        Text("Доходы по месяцам", fontWeight = FontWeight.SemiBold)
+        Text(btnLabel("Доходы по месяцам"), fontWeight = FontWeight.SemiBold)
         r.analysis.months.filter { it.incomeDays > 0 }.forEach {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("${Notebook.monthName(it.month)} (${it.incomeDays} дн.)", fontSize = 14.sp)
@@ -226,7 +227,7 @@ private fun ReportCard(r: NotebookImport.Report, cur: String) {
         }
         if (r.written.isNotEmpty()) {
             Gap(8.dp)
-            Text("Суммы, написанные в тетради", fontWeight = FontWeight.SemiBold)
+            Text(btnLabel("Суммы, написанные в тетради"), fontWeight = FontWeight.SemiBold)
             r.written.forEach { w ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("${Notebook.monthName(w.month)}: ${w.label}", fontSize = 14.sp, modifier = Modifier.weight(1f))
@@ -253,19 +254,19 @@ private fun MonthCard(year: Int, month: Int, incomeSum: Double, incomeDays: Int,
     Tile {
         Row(Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                Text("Доходы по дням", fontSize = 12.sp, color = extra.dim)
+                Text(btnLabel("Доходы по дням"), fontSize = 12.sp, color = extra.dim)
                 Text(Money.format(incomeSum, cur), style = MaterialTheme.typography.titleMedium, color = extra.ok)
                 Text("$incomeDays дн. с записью", fontSize = 12.sp, color = extra.dim)
             }
             Column(Modifier.weight(1f)) {
-                Text("Расходы без даты", fontSize = 12.sp, color = extra.dim)
+                Text(btnLabel("Расходы без даты"), fontSize = 12.sp, color = extra.dim)
                 Text(Money.format(expenseSum, cur), style = MaterialTheme.typography.titleMedium)
                 Text("${expenses.size} записей", fontSize = 12.sp, color = extra.dim)
             }
         }
         if (written.isNotEmpty()) {
             Gap(8.dp)
-            Text("Написано в тетради", fontSize = 12.sp, color = extra.dim)
+            Text(btnLabel("Написано в тетради"), fontSize = 12.sp, color = extra.dim)
             written.forEach { w ->
                 val cmp = Notebook.compareWith(w.label)
                 val computed = when (cmp) { "доходы" -> incomeSum; "расходы" -> expenseSum; else -> null }
@@ -315,7 +316,7 @@ private fun TablePreview(d: Notebook.Data, cur: String) {
         val days = d.dated.map { it.epochDay }
         Text("Даты: с ${LocalDate.ofEpochDay(days.min()).format(DMY)} по ${LocalDate.ofEpochDay(days.max()).format(DMY)}", fontSize = 13.sp, color = extra.dim)
         Gap(6.dp)
-        Text("Расходы по категориям", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        Text(btnLabel("Расходы по категориям"), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         out.groupBy { it.category }.entries.sortedByDescending { e -> e.value.sumOf { it.amount } }.forEach { (c, l) ->
             Row(Modifier.fillMaxWidth()) {
                 Text("$c (${l.size})", Modifier.weight(1f), fontSize = 13.sp)
@@ -349,8 +350,8 @@ private fun TableMonths(byMonth: Map<Pair<Int, Int>, List<com.dasein.poryadok.da
                     Text("${l.size} записей", fontSize = 12.sp, color = extra.dim)
                 }
                 Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
-                    Text("−" + Money.format(out, cur), fontSize = 14.sp)
-                    Text("+" + Money.format(inc, cur), fontSize = 14.sp, color = extra.ok)
+                    Text(btnLabel("−") + Money.format(out, cur), fontSize = 14.sp)
+                    Text(btnLabel("+") + Money.format(inc, cur), fontSize = 14.sp, color = extra.ok)
                 }
             }
         }

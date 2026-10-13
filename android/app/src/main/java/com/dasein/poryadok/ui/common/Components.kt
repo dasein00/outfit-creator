@@ -43,7 +43,6 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -199,7 +198,7 @@ fun EmojiPicker(selected: String, onSelect: (String) -> Unit) {
     var all by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     Column {
         GlyphRow(GLYPH_CHOICES, selected, onSelect)
-        TextButton(onClick = { all = true }) { Text("Все иконки…") }
+        TextButton(onClick = { all = true }) { Text(btnLabel("Все иконки…")) }
     }
     if (all) GlyphPickerDialog(selected, { all = false }, onPick = onSelect)
 }
@@ -228,8 +227,13 @@ fun ChipRow(options: List<Pair<String, String>>, selected: String, onSelect: (St
 @Composable
 fun Pill(text: String, selected: Boolean, glyph: String? = null, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
+    // Удержание — правка иконки и названия (подписи с числами меняются сами и не переименовываются).
+    val holder = androidx.compose.runtime.remember { LabelHolder() }
+    holder.label = text.takeIf { t -> t.none { it.isDigit() } }
+    val shownText = holder.label?.let { com.dasein.poryadok.data.CustomNames.get("btn:$it", it) } ?: text
     Surface(
         onClick = onClick,
+        modifier = if (LocalIconEditable.current) Modifier.labelLongPress(holder) else Modifier,
         shape = RoundedCornerShape(20.dp),
         color = if (selected) scheme.onSurface else Color.Transparent,
         border = if (selected) null else BorderStroke(1.dp, scheme.outline),
@@ -238,10 +242,12 @@ fun Pill(text: String, selected: Boolean, glyph: String? = null, onClick: () -> 
             Modifier.padding(start = if (glyph != null) 8.dp else 14.dp, end = 14.dp, top = if (glyph != null) 5.dp else 8.dp, bottom = if (glyph != null) 5.dp else 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (glyph != null) { Glyph(glyph, 18.dp); Spacer(Modifier.width(6.dp)) }
+            androidx.compose.runtime.CompositionLocalProvider(LocalLabelHolder provides holder) {
+                if (glyph != null) { Glyph(glyph, 18.dp); Spacer(Modifier.width(6.dp)) }
+            }
             // Подпись в одну строку: слово не должно переноситься по слогам («Последн-яя»).
             Text(
-                text, fontSize = 14.sp, maxLines = 1, softWrap = false,
+                shownText, fontSize = 14.sp, maxLines = 1, softWrap = false,
                 color = if (selected) scheme.surface else LocalExtra.current.dim,
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             )
@@ -294,12 +300,12 @@ fun DatePickDialog(initial: Long?, onDismiss: () -> Unit, onPick: (Long?) -> Uni
     DatePickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            TextButton(onClick = { onPick(state.selectedDateMillis?.let { it / 86_400_000L }); onDismiss() }) { Text("Готово") }
+            TextButton(onClick = { onPick(state.selectedDateMillis?.let { it / 86_400_000L }); onDismiss() }) { Text(btnLabel("Готово")) }
         },
         dismissButton = {
             Row {
-                if (allowClear) TextButton(onClick = { onPick(null); onDismiss() }) { Text("Без даты") }
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                if (allowClear) TextButton(onClick = { onPick(null); onDismiss() }) { Text(btnLabel("Без даты")) }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
         },
     ) { DatePicker(state = state, showModeToggle = false) }
@@ -311,11 +317,11 @@ fun TimePickDialog(initial: Int?, onDismiss: () -> Unit, onPick: (Int?) -> Unit,
     val state = rememberTimePickerState(initialHour = m / 60, initialMinute = m % 60, is24Hour = true)
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = { onPick(state.hour * 60 + state.minute); onDismiss() }) { Text("Готово") } },
+        confirmButton = { TextButton(onClick = { onPick(state.hour * 60 + state.minute); onDismiss() }) { Text(btnLabel("Готово")) } },
         dismissButton = {
             Row {
-                if (allowClear) TextButton(onClick = { onPick(null); onDismiss() }) { Text("Без времени") }
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                if (allowClear) TextButton(onClick = { onPick(null); onDismiss() }) { Text(btnLabel("Без времени")) }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
         },
         text = { TimePicker(state = state) },
@@ -331,7 +337,7 @@ fun ConfirmDialog(title: String, text: String, confirm: String = "Удалить
         confirmButton = {
             TextButton(onClick = { onConfirm(); onDismiss() }) { Text(confirm, color = LocalExtra.current.danger) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
 }
 

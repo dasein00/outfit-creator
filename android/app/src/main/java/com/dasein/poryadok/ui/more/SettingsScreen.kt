@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.more
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import android.app.AlarmManager
 import android.content.Intent
@@ -22,8 +23,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.OutlinedButton
+import com.dasein.poryadok.ui.common.Button
 import com.dasein.poryadok.ui.common.HGap
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -90,7 +91,7 @@ fun SettingsScreen(nav: NavHostController, s: Settings) {
             SectionTitle("Профиль")
             TextInput(name, { name = it; upd { st -> st.copy(name = it.trim()) } }, "Как к вам обращаться")
             Gap(10.dp)
-            Text("Валюта", fontSize = 13.sp, color = extra.dim)
+            Text(btnLabel("Валюта"), fontSize = 13.sp, color = extra.dim)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
                 listOf("₽", "$", "€", "₸", "₴", "Br").forEach { c -> Pill(c, s.currency == c) { upd { it.copy(currency = c) } } }
             }
@@ -113,27 +114,27 @@ fun SettingsScreen(nav: NavHostController, s: Settings) {
             SectionTitle("Подсказки и инструкции")
             Text("Все пояснения в разделах сворачиваются нажатием на заголовок. Здесь можно сразу свернуть или развернуть их везде.", fontSize = 12.sp, color = extra.dim)
             Row(Modifier.padding(top = 6.dp)) {
-                OutlinedButton(onClick = { com.dasein.poryadok.ui.common.UiState.setAllInfo(ctx, false); android.widget.Toast.makeText(ctx, "Подсказки свёрнуты", android.widget.Toast.LENGTH_SHORT).show() }, Modifier.weight(1f)) { Text("Свернуть все") }
+                OutlinedButton(onClick = { com.dasein.poryadok.ui.common.UiState.setAllInfo(ctx, false); android.widget.Toast.makeText(ctx, "Подсказки свёрнуты", android.widget.Toast.LENGTH_SHORT).show() }, Modifier.weight(1f)) { Text(btnLabel("Свернуть все")) }
                 HGap(8.dp)
-                OutlinedButton(onClick = { com.dasein.poryadok.ui.common.UiState.setAllInfo(ctx, true); android.widget.Toast.makeText(ctx, "Подсказки развёрнуты", android.widget.Toast.LENGTH_SHORT).show() }, Modifier.weight(1f)) { Text("Развернуть все") }
+                OutlinedButton(onClick = { com.dasein.poryadok.ui.common.UiState.setAllInfo(ctx, true); android.widget.Toast.makeText(ctx, "Подсказки развёрнуты", android.widget.Toast.LENGTH_SHORT).show() }, Modifier.weight(1f)) { Text(btnLabel("Развернуть все")) }
             }
 
             SectionTitle("Защита")
             Tile {
                 if (s.pinHash.isEmpty()) {
-                    Text("Приложение открывается без PIN")
+                    Text(btnLabel("Приложение открывается без PIN"))
                     Gap(8.dp)
-                    OutlinedButton(onClick = { pinStep = 1 }) { Text("Установить PIN-код") }
+                    OutlinedButton(onClick = { pinStep = 1 }) { Text(btnLabel("Установить PIN-код")) }
                 } else {
                     Text("PIN-код установлен. Приложение блокируется, если свернуть его дольше чем на 30 секунд.", fontSize = 13.sp)
                     val bioAvailable = remember { (ctx as? FragmentActivity)?.let { Pin.canUseBiometric(it) } ?: false }
                     if (bioAvailable) Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("Вход по отпечатку / лицу", Modifier.weight(1f))
+                        Text(btnLabel("Вход по отпечатку / лицу"), Modifier.weight(1f))
                         Switch(s.biometric, { v -> upd { it.copy(biometric = v) } })
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
-                        OutlinedButton(onClick = { pinStep = 1 }) { Text("Сменить PIN") }
-                        OutlinedButton(onClick = { upd { it.copy(pinHash = "", biometric = false) } }) { Text("Убрать PIN", color = extra.danger) }
+                        OutlinedButton(onClick = { pinStep = 1 }) { Text(btnLabel("Сменить PIN")) }
+                        OutlinedButton(onClick = { upd { it.copy(pinHash = "", biometric = false) } }) { Text(btnLabel("Убрать PIN"), color = extra.danger) }
                     }
                 }
             }
@@ -142,7 +143,7 @@ fun SettingsScreen(nav: NavHostController, s: Settings) {
             Tile {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Утренняя сводка")
+                        Text(btnLabel("Утренняя сводка"))
                         Text("План на день в ${s.summaryHour}:00", fontSize = 12.sp, color = extra.dim)
                     }
                     Switch(s.summaryOn, { v -> upd { it.copy(summaryOn = v) } })
@@ -153,7 +154,7 @@ fun SettingsScreen(nav: NavHostController, s: Settings) {
                 Gap(10.dp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Вечерний итог")
+                        Text(btnLabel("Вечерний итог"))
                         Text("В 21:00 — отметить привычки и подвести итог дня", fontSize = 12.sp, color = extra.dim)
                     }
                     Switch(s.eveningReviewOn, { v -> upd { it.copy(eveningReviewOn = v) } })
@@ -164,11 +165,11 @@ fun SettingsScreen(nav: NavHostController, s: Settings) {
                     Text("Чтобы напоминания приходили минута в минуту, разрешите точные будильники.", fontSize = 12.sp, color = extra.warn)
                     OutlinedButton(onClick = {
                         ctx.startActivity(Intent(AndroidSettings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + ctx.packageName)))
-                    }) { Text("Разрешить точные будильники") }
+                    }) { Text(btnLabel("Разрешить точные будильники")) }
                 }
                 OutlinedButton(onClick = {
                     ctx.startActivity(Intent(AndroidSettings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(AndroidSettings.EXTRA_APP_PACKAGE, ctx.packageName))
-                }) { Text("Настройки уведомлений") }
+                }) { Text(btnLabel("Настройки уведомлений")) }
             }
 
             AiSettingsSection()
@@ -177,17 +178,17 @@ fun SettingsScreen(nav: NavHostController, s: Settings) {
             Tile {
                 Hint("backup_about", "Все данные хранятся только на телефоне. Сохраните копию в файл — её можно перенести на новый телефон.", title = "Резервная копия")
                 Gap(8.dp)
-                Button(onClick = { nav.navigate(com.dasein.poryadok.ui.Routes.BACKUP) }, modifier = Modifier.fillMaxWidth()) { Text("Резервное копирование…") }
+                Button(onClick = { nav.navigate(com.dasein.poryadok.ui.Routes.BACKUP) }, modifier = Modifier.fillMaxWidth()) { Text(btnLabel("Резервное копирование…")) }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { exportLauncher.launch("dasein-${Dates.day(Dates.today())}.zip") }, modifier = Modifier.weight(1f)) { Text("Быстрая копия") }
-                    OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) }, modifier = Modifier.weight(1f)) { Text("Восстановить всё") }
+                    OutlinedButton(onClick = { exportLauncher.launch("dasein-${Dates.day(Dates.today())}.zip") }, modifier = Modifier.weight(1f)) { Text(btnLabel("Быстрая копия")) }
+                    OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) }, modifier = Modifier.weight(1f)) { Text(btnLabel("Восстановить всё")) }
                 }
                 OutlinedButton(onClick = {
                     scope.launch {
                         message = if (DemoData.fill()) "Пример данных добавлен — загляните на главный экран"
                         else "Пример добавляется только в пустое приложение"
                     }
-                }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Заполнить примером") }
+                }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text(btnLabel("Заполнить примером")) }
                 message?.let { Text(it, fontSize = 13.sp, color = extra.ok, modifier = Modifier.padding(top = 8.dp)) }
             }
             SectionTitle("О приложении")
@@ -206,7 +207,7 @@ fun SettingsScreen(nav: NavHostController, s: Settings) {
         }
     }
 
-    if (pinStep > 0) Dialog(onDismissRequest = { pinStep = 0 }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    if (pinStep > 0) Dialog(onDismissRequest = { pinStep = 0 }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         PinPad(
             title = if (pinStep == 1) "Новый PIN" else "Повторите PIN",
             subtitle = if (pinAttempt > 0) "PIN не совпал, попробуйте снова" else "4 цифры",

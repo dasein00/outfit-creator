@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.wardrobe
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
@@ -39,17 +40,17 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Transform
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -376,7 +377,7 @@ fun WardrobeScreen(nav: NavHostController) {
                     color = Color(0xFF6C6355), fontSize = 13.sp,
                     modifier = Modifier.align(Alignment.BottomCenter).padding(12.dp),
                 )
-                if (busy) Text("Убираю фон…", color = Color(0xFF211D18), modifier = Modifier.align(Alignment.Center))
+                if (busy) Text(btnLabel("Убираю фон…"), color = Color(0xFF211D18), modifier = Modifier.align(Alignment.Center))
             }
 
             Row(
@@ -405,7 +406,7 @@ fun WardrobeScreen(nav: NavHostController) {
                 }) { Icon(Icons.Default.Refresh, "Сбросить вещь") }
             }
             if (ed.mode == Mode.ERASE) Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Кисть", fontSize = 12.sp, color = extra.dim)
+                Text(btnLabel("Кисть"), fontSize = 12.sp, color = extra.dim)
                 Slider(ed.brush, { ed.brush = it }, valueRange = 4f..60f, modifier = Modifier.weight(1f).padding(horizontal = 8.dp))
                 Text(if (ed.sel == null) "выберите вещь или манекен" else "", fontSize = 11.sp, color = extra.dim)
             }
@@ -415,7 +416,7 @@ fun WardrobeScreen(nav: NavHostController) {
                     FilterChip(
                         selected = ed.sel == MODEL_ID,
                         onClick = { ed.sel = if (ed.sel == MODEL_ID) null else MODEL_ID; if (ed.sel == MODEL_ID) ed.mode = Mode.ERASE },
-                        label = { Text("Манекен") },
+                        label = { Text(btnLabel("Манекен")) },
                     )
                 }
                 items(ed.layers.values.sortedByDescending { Z_ORDER[items[it.id]?.category] ?: 0 }.toList(), key = { it.id }) { l ->
@@ -424,7 +425,7 @@ fun WardrobeScreen(nav: NavHostController) {
                         onClick = { ed.sel = if (ed.sel == l.id) null else l.id },
                         label = { Text(items[l.id]?.name ?: "?", maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(110.dp)) },
                         trailingIcon = {
-                            Text("×", fontSize = 18.sp, color = extra.danger, modifier = Modifier.clip(RoundedCornerShape(8.dp)).combinedClickable(onClick = {
+                            Text(btnLabel("×"), fontSize = 18.sp, color = extra.danger, modifier = Modifier.clip(RoundedCornerShape(8.dp)).combinedClickable(onClick = {
                                 items[l.id]?.let { wear(it) }
                             }))
                         },
@@ -451,15 +452,15 @@ fun WardrobeScreen(nav: NavHostController) {
                             }),
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
                     ) {
-                        Text("+", fontSize = 26.sp, color = MaterialTheme.colorScheme.primary)
-                        Text("Своё фото", fontSize = 11.sp, color = extra.dim)
+                        Text(btnLabel("+"), fontSize = 26.sp, color = MaterialTheme.colorScheme.primary)
+                        Text(btnLabel("Своё фото"), fontSize = 11.sp, color = extra.dim)
                     }
                 }
                 items(rack, key = { it.id }) { it0 -> RackCard(it0, ed.layers[it0.category]?.id == it0.id, onClick = { wear(it0) }, onLong = { if (!it0.builtin) deleteItem = it0 }) }
             }
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { saveDialog = true }, enabled = ed.layers.isNotEmpty(), modifier = Modifier.weight(1f)) { Text("Сохранить лук") }
-                OutlinedButton(onClick = { ed.layers = emptyMap(); ed.sel = null; ed.commit() }) { Text("Снять всё") }
+                Button(onClick = { saveDialog = true }, enabled = ed.layers.isNotEmpty(), modifier = Modifier.weight(1f)) { Text(btnLabel("Сохранить лук")) }
+                OutlinedButton(onClick = { ed.layers = emptyMap(); ed.sel = null; ed.commit() }) { Text(btnLabel("Снять всё")) }
             }
         }
     }
@@ -468,7 +469,7 @@ fun WardrobeScreen(nav: NavHostController) {
         var name by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { saveDialog = false },
-            title = { Text("Сохранить образ") },
+            title = { Text(btnLabel("Сохранить образ")) },
             text = {
                 Column {
                     Text("Лук запомнит подгонку каждой вещи и стёртые места.", fontSize = 13.sp, color = extra.dim)
@@ -493,9 +494,9 @@ fun WardrobeScreen(nav: NavHostController) {
                         )
                     }
                     saveDialog = false
-                }) { Text("Сохранить") }
+                }) { Text(btnLabel("Сохранить")) }
             },
-            dismissButton = { TextButton(onClick = { saveDialog = false }) { Text("Отмена") } },
+            dismissButton = { TextButton(onClick = { saveDialog = false }) { Text(btnLabel("Отмена")) } },
         )
     }
     addPending?.let { p ->
@@ -527,9 +528,9 @@ fun WardrobeScreen(nav: NavHostController) {
                     io { dao.upsertWardrobeItem(item) }
                     addPending = null
                     redraw++
-                }) { Text("Добавить") }
+                }) { Text(btnLabel("Добавить")) }
             },
-            dismissButton = { TextButton(onClick = { java.io.File(p.path).delete(); addPending = null }) { Text("Отмена") } },
+            dismissButton = { TextButton(onClick = { java.io.File(p.path).delete(); addPending = null }) { Text(btnLabel("Отмена")) } },
         )
     }
     deleteItem?.let { it0 ->

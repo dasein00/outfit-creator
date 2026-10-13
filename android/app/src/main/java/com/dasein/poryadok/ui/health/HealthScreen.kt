@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.health
 
 import com.dasein.poryadok.ui.common.HowTo
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.Hint
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,15 +37,15 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -149,7 +150,7 @@ fun HealthScreen(nav: NavHostController, initialTab: Int) {
                 tabs.forEach { (i, t) -> Tab(tab == i, onClick = { tab = i }, text = { Text(t) }) }
             }
             Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-                if (profileOrNull == null) Text("Загрузка…", Modifier.padding(16.dp), color = LocalExtra.current.dim)
+                if (profileOrNull == null) Text(btnLabel("Загрузка…"), Modifier.padding(16.dp), color = LocalExtra.current.dim)
                 else when (tab) {
                     0 -> FoodTab(nav, plan, profile)
                     1 -> BodyTab(nav, profile, weights)
@@ -180,7 +181,7 @@ private fun CalcTab(p: BodyProfile, current: Double, plan: NutritionPlan, onEdit
     Tile(onClick = onEditParams) {
         Text("${if (p.male) "Мужчина" else "Женщина"}, ${p.age} лет, рост ${p.heightCm.plain()} см", fontWeight = FontWeight.SemiBold)
         Text(ACTIVITY_LEVELS.firstOrNull { it.first == p.activity }?.second ?: "активность ×${p.activity}", fontSize = 13.sp, color = extra.dim)
-        Text("Изменить во вкладке «Замеры» →", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
+        Text(btnLabel("Изменить во вкладке «Замеры» →"), fontSize = 13.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
     }
     Gap(8.dp)
     NumberField(start, { start = it; it.num()?.let { v -> upd(p.copy(startWeight = v)) } }, "Стартовый вес", suffix = "кг")
@@ -225,7 +226,7 @@ private fun CalcTab(p: BodyProfile, current: Double, plan: NutritionPlan, onEdit
         NumberField(steps, { steps = it; it.toIntOrNull()?.let { v -> upd(p.copy(stepsGoal = v)) } }, "Шаги", Modifier.weight(1f), decimal = false)
     }
     TextButton(onClick = { water = Nutrition.waterGoalMl(current).toString(); upd(p.copy(waterGoalMl = Nutrition.waterGoalMl(current))) }) {
-        Text("Рассчитать воду по весу (30 мл/кг)")
+        Text(btnLabel("Рассчитать воду по весу (30 мл/кг)"))
     }
 }
 
@@ -282,7 +283,7 @@ private fun FoodTab(nav: NavHostController, plan: NutritionPlan, profile: BodyPr
             fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp),
         )
     }
-    TextButton(onClick = { nav.navigate(Routes.recipes(1)) }) { Text("Меню и рецепты →") }
+    TextButton(onClick = { nav.navigate(Routes.recipes(1)) }) { Text(btnLabel("Меню и рецепты →")) }
     MealType.order.forEach { mi ->
         val meal = MEALS[mi]
         val list = entries.filter { it.meal == mi }
@@ -295,7 +296,7 @@ private fun FoodTab(nav: NavHostController, plan: NutritionPlan, profile: BodyPr
                     Text(p.title, color = extra.dim)
                     Text("по плану · ${(p.kcal * p.servings).roundToInt()} ккал", fontSize = 11.sp, color = extra.dim)
                 }
-                TextButton(onClick = { io { RecipeRepo.markEaten(p) } }) { Text("Съедено") }
+                TextButton(onClick = { io { RecipeRepo.markEaten(p) } }) { Text(btnLabel("Съедено")) }
             }
         }
         list.forEach { e ->
@@ -388,7 +389,7 @@ private fun FoodDialog(e0: FoodEntry, history: List<FoodEntry>, onDismiss: () ->
                     Hint("food_plate", "Без граммовки считается порция на обычной гарвардской тарелке: ½ — овощи, ¼ — белок, ¼ — гарнир.", title = "Если не указать граммы")
                 }
                 if (e0.id == 0L && frequent.isNotEmpty()) {
-                    Text("Часто едите:", fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+                    Text(btnLabel("Часто едите:"), fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         frequent.forEach { fr ->
                             Pill(fr.name, false) {
@@ -427,12 +428,12 @@ private fun FoodDialog(e0: FoodEntry, history: List<FoodEntry>, onDismiss: () ->
                     io { Graph.dao.upsertFood(cur) }
                 }
                 onDismiss()
-            }) { Text("Сохранить") }
+            }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
             Row {
-                if (e0.id != 0L) TextButton(onClick = { io { Graph.dao.deleteFood(e0) }; onDismiss() }) { Text("Удалить", color = LocalExtra.current.danger) }
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                if (e0.id != 0L) TextButton(onClick = { io { Graph.dao.deleteFood(e0) }; onDismiss() }) { Text(btnLabel("Удалить"), color = LocalExtra.current.danger) }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
         },
     )
@@ -483,7 +484,7 @@ private fun BodyParamsForm(nav: NavHostController, p: BodyProfile, current: Doub
     }
 
     Tile {
-        Text("Мои параметры", fontWeight = FontWeight.SemiBold)
+        Text(btnLabel("Мои параметры"), fontWeight = FontWeight.SemiBold)
         Text("Вводятся только здесь и используются везде: калькулятор калорий, ИМТ, талия/рост, процент жира, базовый обмен.", fontSize = 12.sp, color = extra.dim)
         Gap(8.dp)
         Segments(listOf(false to "Женщина", true to "Мужчина"), male, { male = it })
@@ -504,7 +505,7 @@ private fun BodyParamsForm(nav: NavHostController, p: BodyProfile, current: Doub
                 Text(label, fontSize = 14.sp)
             }
         }
-        Text("Обхваты, см" + (base?.let { " · последние от ${Dates.label(it.day)}" } ?: ""), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
+        Text(btnLabel("Обхваты, см") + (base?.let { " · последние от ${Dates.label(it.day)}" } ?: ""), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
         MEASURE_FIELDS.chunked(2).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 6.dp)) {
                 row.forEach { (k, l) -> NumberField(girths.getValue(k).value, { girths.getValue(k).value = it }, l, Modifier.weight(1f), "см") }
@@ -524,7 +525,7 @@ private fun BodyParamsForm(nav: NavHostController, p: BodyProfile, current: Doub
     val (fat, method) = com.dasein.poryadok.logic.BodyScience.bestFat(facts)
     val bmiLabel = com.dasein.poryadok.logic.BodyScience.BMI_SCALE.let { it.labels[it.zone(b)] }
     Tile {
-        Text("Рассчитано по сохранённым параметрам", fontWeight = FontWeight.SemiBold)
+        Text(btnLabel("Рассчитано по сохранённым параметрам"), fontWeight = FontWeight.SemiBold)
         Gap(8.dp)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Stat("%.1f".format(b).replace('.', ','), "ИМТ · $bmiLabel", Modifier.weight(1f))
@@ -537,7 +538,7 @@ private fun BodyParamsForm(nav: NavHostController, p: BodyProfile, current: Doub
             Stat("${plan.tdee.roundToInt()}", "расход в день", Modifier.weight(1f))
             Stat("${plan.targetKcal}", "норма, ккал", Modifier.weight(1f), MaterialTheme.colorScheme.primary)
         }
-        TextButton(onClick = { nav.navigate(com.dasein.poryadok.ui.Routes.BODY_SCIENCE) }) { Text("Все показатели и источники") }
+        TextButton(onClick = { nav.navigate(com.dasein.poryadok.ui.Routes.BODY_SCIENCE) }) { Text(btnLabel("Все показатели и источники")) }
     }
 }
 
@@ -549,7 +550,7 @@ private fun MeasureTab(nav: NavHostController, profile: BodyProfile?, current: D
     var edit by remember { mutableStateOf<Measurement?>(null) }
     Gap(8.dp)
     if (profile == null || msOrNull == null) {
-        Text("Загрузка…", color = extra.dim)
+        Text(btnLabel("Загрузка…"), color = extra.dim)
         return
     }
     val today = Dates.today()
@@ -570,8 +571,8 @@ private fun MeasureTab(nav: NavHostController, profile: BodyProfile?, current: D
                 pointLabels = ms.map { Dates.short(it.day) }, format = { chartNumber(it) + " см" },
             )
             Row(Modifier.padding(top = 6.dp)) {
-                Text("● талия", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
-                Text("   ● бёдра", fontSize = 12.sp, color = Palette.item(3))
+                Text(btnLabel("● талия"), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                Text(btnLabel("   ● бёдра"), fontSize = 12.sp, color = Palette.item(3))
             }
         }
     }
@@ -589,7 +590,7 @@ private fun MeasureTab(nav: NavHostController, profile: BodyProfile?, current: D
         var pick by remember { mutableStateOf(false) }
         AlertDialog(
             onDismissRequest = { edit = null },
-            title = { Text("Замеры, см") },
+            title = { Text(btnLabel("Замеры, см")) },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     FieldButton("Дата", Dates.label(day), Modifier.fillMaxWidth()) { pick = true }
@@ -605,12 +606,12 @@ private fun MeasureTab(nav: NavHostController, profile: BodyProfile?, current: D
                     val m = Measurement(day, v["chest"], v["waist"], v["belly"], v["hips"], v["arm"], v["neck"])
                     io { if (day != m0.day) Graph.dao.deleteMeasurement(m0); Graph.dao.upsertMeasurement(m) }
                     edit = null
-                }) { Text("Сохранить") }
+                }) { Text(btnLabel("Сохранить")) }
             },
             dismissButton = {
                 Row {
-                    TextButton(onClick = { io { Graph.dao.deleteMeasurement(m0) }; edit = null }) { Text("Удалить", color = extra.danger) }
-                    TextButton(onClick = { edit = null }) { Text("Отмена") }
+                    TextButton(onClick = { io { Graph.dao.deleteMeasurement(m0) }; edit = null }) { Text(btnLabel("Удалить"), color = extra.danger) }
+                    TextButton(onClick = { edit = null }) { Text(btnLabel("Отмена")) }
                 }
             },
         )
@@ -629,11 +630,11 @@ internal fun WorkoutTab(nav: NavHostController, inTraining: Boolean = false) {
     val thisWeek = list.filter { it.day >= weekStart }
     Gap(8.dp)
     if (!inTraining) Tile(onClick = { nav.navigate(com.dasein.poryadok.ui.Routes.training(0)) }, color = MaterialTheme.colorScheme.primary.copy(alpha = .12f)) {
-        Text("Программы, подходы и прогрессия", fontWeight = FontWeight.SemiBold)
+        Text(btnLabel("Программы, подходы и прогрессия"), fontWeight = FontWeight.SemiBold)
         Text("Силовые с весом и повторами, фото и видео техники, таймер отдыха, рост нагрузки по дням", fontSize = 12.sp, color = extra.dim)
     }
     Gap(8.dp)
-    Button(onClick = { edit = Workout(day = today, type = WORKOUT_TYPES.first()) }, modifier = Modifier.fillMaxWidth()) { Text("+ Быстрая запись тренировки") }
+    Button(onClick = { edit = Workout(day = today, type = WORKOUT_TYPES.first()) }, modifier = Modifier.fillMaxWidth()) { Text(btnLabel("+ Быстрая запись тренировки")) }
     Gap(8.dp)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Stat("${thisWeek.size}", "на этой неделе", Modifier.weight(1f))
@@ -651,7 +652,7 @@ internal fun WorkoutTab(nav: NavHostController, inTraining: Boolean = false) {
         Tile(Modifier.padding(bottom = 8.dp), onClick = { edit = w }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Glyph(Glyphs.workout(w.type), 20.dp)
-                Text("  " + Glyphs.stripEmoji(w.type), Modifier.weight(1f), fontWeight = FontWeight.Medium)
+                Text(btnLabel("  ") + Glyphs.stripEmoji(w.type), Modifier.weight(1f), fontWeight = FontWeight.Medium)
                 Text(Dates.label(w.day), color = extra.dim, fontSize = 13.sp)
             }
             Text(listOfNotNull(
@@ -669,7 +670,7 @@ internal fun WorkoutTab(nav: NavHostController, inTraining: Boolean = false) {
         var pick by remember { mutableStateOf(false) }
         AlertDialog(
             onDismissRequest = { edit = null },
-            title = { Text("Тренировка") },
+            title = { Text(btnLabel("Тренировка")) },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -693,12 +694,12 @@ internal fun WorkoutTab(nav: NavHostController, inTraining: Boolean = false) {
                     val cur = w.copy(minutes = minutes.toIntOrNull() ?: 0, kcal = kcal.toIntOrNull() ?: 0)
                     io { Graph.dao.upsertWorkout(cur) }
                     edit = null
-                }) { Text("Сохранить") }
+                }) { Text(btnLabel("Сохранить")) }
             },
             dismissButton = {
                 Row {
-                    if (w0.id != 0L) TextButton(onClick = { io { Graph.dao.deleteWorkout(w0) }; edit = null }) { Text("Удалить", color = extra.danger) }
-                    TextButton(onClick = { edit = null }) { Text("Отмена") }
+                    if (w0.id != 0L) TextButton(onClick = { io { Graph.dao.deleteWorkout(w0) }; edit = null }) { Text(btnLabel("Удалить"), color = extra.danger) }
+                    TextButton(onClick = { edit = null }) { Text(btnLabel("Отмена")) }
                 }
             },
         )
@@ -732,10 +733,10 @@ private fun ProgressTab(weights: List<WeightEntry>) {
             }
         }
         Row(Modifier.padding(bottom = 4.dp)) {
-            Text("Показатель", Modifier.weight(1.4f), fontSize = 12.sp, color = extra.dim)
-            Text("Старт", Modifier.weight(1f), fontSize = 12.sp, color = extra.dim, textAlign = TextAlign.End)
-            Text("Сейчас", Modifier.weight(1f), fontSize = 12.sp, color = extra.dim, textAlign = TextAlign.End)
-            Text("Разница", Modifier.weight(1f), fontSize = 12.sp, color = extra.dim, textAlign = TextAlign.End)
+            Text(btnLabel("Показатель"), Modifier.weight(1.4f), fontSize = 12.sp, color = extra.dim)
+            Text(btnLabel("Старт"), Modifier.weight(1f), fontSize = 12.sp, color = extra.dim, textAlign = TextAlign.End)
+            Text(btnLabel("Сейчас"), Modifier.weight(1f), fontSize = 12.sp, color = extra.dim, textAlign = TextAlign.End)
+            Text(btnLabel("Разница"), Modifier.weight(1f), fontSize = 12.sp, color = extra.dim, textAlign = TextAlign.End)
         }
         rows.forEach { (label, s, n) ->
             Row(Modifier.padding(vertical = 4.dp)) {
@@ -782,8 +783,8 @@ private fun ProgressTab(weights: List<WeightEntry>) {
             onDismissRequest = { open = null },
             title = { Text("${ph.pose}, ${Dates.full(ph.day)}") },
             text = { big?.let { Image(it, null, Modifier.fillMaxWidth(), contentScale = ContentScale.Fit) } },
-            confirmButton = { TextButton(onClick = { open = null }) { Text("Закрыть") } },
-            dismissButton = { TextButton(onClick = { confirm = true }) { Text("Удалить", color = extra.danger) } },
+            confirmButton = { TextButton(onClick = { open = null }) { Text(btnLabel("Закрыть")) } },
+            dismissButton = { TextButton(onClick = { confirm = true }) { Text(btnLabel("Удалить"), color = extra.danger) } },
         )
         if (confirm) ConfirmDialog("Удалить фото?", "", onDismiss = { confirm = false }) {
             io { java.io.File(ph.path).delete(); Graph.dao.deletePhoto(ph) }

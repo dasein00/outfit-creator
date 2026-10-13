@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.recipes
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -23,14 +24,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -110,7 +111,7 @@ private fun DayNav(label: String, onPrev: () -> Unit, onNext: () -> Unit, onToda
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onPrev) { Icon(Icons.Default.ChevronLeft, "Раньше") }
         Text(label, Modifier.weight(1f), textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold)
-        if (onToday != null) TextButton(onClick = onToday) { Text("Сегодня") }
+        if (onToday != null) TextButton(onClick = onToday) { Text(btnLabel("Сегодня")) }
         IconButton(onClick = onNext) { Icon(Icons.Default.ChevronRight, "Позже") }
     }
 }
@@ -136,12 +137,12 @@ private fun DayView(
         val eaten = fact.sumOf { it.kcal }
         Row {
             Column(Modifier.weight(1f)) {
-                Text("Запланировано", fontSize = 12.sp, color = extra.dim)
+                Text(btnLabel("Запланировано"), fontSize = 12.sp, color = extra.dim)
                 Text("${planned.roundToInt()} ккал", style = MaterialTheme.typography.titleMedium)
                 Text("Б ${active.protein().roundToInt()} · Ж ${active.sumOf { it.fat * it.servings }.roundToInt()} · У ${active.sumOf { it.carbs * it.servings }.roundToInt()} г", fontSize = 12.sp, color = extra.dim)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("Фактически", fontSize = 12.sp, color = extra.dim)
+                Text(btnLabel("Фактически"), fontSize = 12.sp, color = extra.dim)
                 Text("$eaten ккал", style = MaterialTheme.typography.titleMedium)
                 Text("цель $targetKcal · белок $targetProtein г", fontSize = 12.sp, color = extra.dim)
             }
@@ -172,18 +173,18 @@ private fun DayView(
                         )
                     }
                     when {
-                        skipped -> TextButton(onClick = { io { Graph.extra.upsertPlan(p.copy(status = PlanStatus.PLANNED)) } }) { Text("Вернуть") }
-                        eaten -> TextButton(onClick = { io { RecipeRepo.unmarkEaten(p) } }) { Text("✓ Съедено", color = extra.ok) }
-                        else -> TextButton(onClick = { io { RecipeRepo.markEaten(p) } }) { Text("Съедено") }
+                        skipped -> TextButton(onClick = { io { Graph.extra.upsertPlan(p.copy(status = PlanStatus.PLANNED)) } }) { Text(btnLabel("Вернуть")) }
+                        eaten -> TextButton(onClick = { io { RecipeRepo.unmarkEaten(p) } }) { Text(btnLabel("✓ Съедено"), color = extra.ok) }
+                        else -> TextButton(onClick = { io { RecipeRepo.markEaten(p) } }) { Text(btnLabel("Съедено")) }
                     }
-                    Text("⋯", Modifier.clip(RoundedCornerShape(8.dp)).clickable { menuFor = p }.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = 18.sp)
+                    Text(btnLabel("⋯"), Modifier.clip(RoundedCornerShape(8.dp)).clickable { menuFor = p }.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = 18.sp)
                 }
             }
         }
     }
     Gap(10.dp)
     Row {
-        OutlinedButton(onClick = { nav.navigate(Routes.menuCreate(day)) }, Modifier.weight(1f)) { Text("Заполнить") }
+        OutlinedButton(onClick = { nav.navigate(Routes.menuCreate(day)) }, Modifier.weight(1f)) { Text(btnLabel("Заполнить")) }
         HGap(8.dp)
         OutlinedButton(onClick = {
             scope.launch {
@@ -191,9 +192,9 @@ private fun DayView(
                 Toast.makeText(ctx, if (n > 0) "В списке покупок: $n позиций" else "В меню на этот день нет блюд из рецептов", Toast.LENGTH_SHORT).show()
                 if (n > 0) nav.navigate(Routes.SHOPPING)
             }
-        }, Modifier.weight(1f)) { Text("Покупки") }
+        }, Modifier.weight(1f)) { Text(btnLabel("Покупки")) }
     }
-    TextButton(onClick = { savePreset = true }, enabled = active.isNotEmpty()) { Text("Сохранить день как шаблон") }
+    TextButton(onClick = { savePreset = true }, enabled = active.isNotEmpty()) { Text(btnLabel("Сохранить день как шаблон")) }
 
     addFor?.let { meal ->
         RecipePickerDialog(book, mealHint = meal, onDismiss = { addFor = null }) { r, s -> io { RecipeRepo.addToPlan(day, meal, r.id, s, MealType.defaultTime[meal]) } }
@@ -215,7 +216,7 @@ private fun PlanItemDialog(p: MealPlanItem, onDismiss: () -> Unit) {
         title = { Text(p.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
         text = {
             Column {
-                Text("Перенести в приём пищи", fontSize = 13.sp, color = LocalExtra.current.dim)
+                Text(btnLabel("Перенести в приём пищи"), fontSize = 13.sp, color = LocalExtra.current.dim)
                 Gap(4.dp)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     MealType.order.forEach { m -> Pill(MealType.name(m), m == meal) { meal = m } }
@@ -231,12 +232,12 @@ private fun PlanItemDialog(p: MealPlanItem, onDismiss: () -> Unit) {
                 val s = servings.num()?.takeIf { it > 0 } ?: p.servings
                 io { Graph.extra.upsertPlan(p.copy(meal = meal, servings = s, day = day, repeatId = if (day != p.day) null else p.repeatId)) }
                 onDismiss()
-            }) { Text("Сохранить") }
+            }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
             Row {
-                TextButton(onClick = { io { RecipeRepo.removeFromPlan(p) }; onDismiss() }) { Text("Убрать", color = LocalExtra.current.danger) }
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                TextButton(onClick = { io { RecipeRepo.removeFromPlan(p) }; onDismiss() }) { Text(btnLabel("Убрать"), color = LocalExtra.current.danger) }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
         },
     )
@@ -248,10 +249,10 @@ fun PresetNameDialog(initial: String, onDismiss: () -> Unit, onSave: (String) ->
     var name by remember { mutableStateOf(initial) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Название шаблона") },
+        title = { Text(btnLabel("Название шаблона")) },
         text = { TextInput(name, { name = it }, "Например: рабочая неделя") },
-        confirmButton = { TextButton(onClick = { if (name.isNotBlank()) { onSave(name.trim()); onDismiss() } }) { Text("Сохранить") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        confirmButton = { TextButton(onClick = { if (name.isNotBlank()) { onSave(name.trim()); onDismiss() } }) { Text(btnLabel("Сохранить")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
 }
 
@@ -296,7 +297,7 @@ private fun WeekView(
                 )
                 Text("план ${list.kcal().roundToInt()} · факт $fact", fontSize = 12.sp, color = extra.dim)
             }
-            if (list.isEmpty()) Text("Меню не составлено", fontSize = 13.sp, color = extra.dim)
+            if (list.isEmpty()) Text(btnLabel("Меню не составлено"), fontSize = 13.sp, color = extra.dim)
             MealType.order.forEach { m ->
                 val ms = list.filter { it.meal == m }
                 if (ms.isNotEmpty()) Text(
@@ -313,9 +314,9 @@ private fun WeekView(
                 Toast.makeText(ctx, if (n > 0) "Список покупок собран: $n позиций" else "На неделе нет блюд из рецептов", Toast.LENGTH_SHORT).show()
                 if (n > 0) nav.navigate(Routes.SHOPPING)
             }
-        }, Modifier.weight(1f)) { Text("Покупки на неделю") }
+        }, Modifier.weight(1f)) { Text(btnLabel("Покупки на неделю")) }
         HGap(8.dp)
-        OutlinedButton(onClick = { savePreset = true }, Modifier.weight(1f), enabled = weekItems.isNotEmpty()) { Text("Как шаблон") }
+        OutlinedButton(onClick = { savePreset = true }, Modifier.weight(1f), enabled = weekItems.isNotEmpty()) { Text(btnLabel("Как шаблон")) }
     }
     if (savePreset) PresetNameDialog("Рабочая неделя", onDismiss = { savePreset = false }) { name ->
         scope.launch { RecipeRepo.presetFromDays(name, start, 7); Toast.makeText(ctx, "Шаблон недели «$name» сохранён", Toast.LENGTH_SHORT).show() }
@@ -412,7 +413,7 @@ fun CreateMenuScreen(nav: NavHostController, startDay: Long) {
             }
             Gap(8.dp)
             when (period) {
-                Period.DAYS -> Row(verticalAlignment = Alignment.CenterVertically) { Text("Дней", Modifier.weight(1f)); Stepper(nDays) { nDays = it.coerceIn(2, 31) } }
+                Period.DAYS -> Row(verticalAlignment = Alignment.CenterVertically) { Text(btnLabel("Дней"), Modifier.weight(1f)); Stepper(nDays) { nDays = it.coerceIn(2, 31) } }
                 Period.CUSTOM -> Row {
                     FieldButton("С", Dates.label(from), Modifier.weight(1f)) { pickFrom = true }
                     HGap(8.dp)
@@ -442,7 +443,7 @@ fun CreateMenuScreen(nav: NavHostController, startDay: Long) {
                     Gap(6.dp)
                     TextInput(exclude, { exclude = it }, "Исключить продукты (через запятую)")
                     Gap(6.dp)
-                    Text("Категории (пусто — все)", fontSize = 13.sp, color = extra.dim)
+                    Text(btnLabel("Категории (пусто — все)"), fontSize = 13.sp, color = extra.dim)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         RECIPE_CATEGORIES.forEach { c -> Pill(c, c in cats) { cats = if (c in cats) cats - c else cats + c } }
                     }
@@ -456,12 +457,12 @@ fun CreateMenuScreen(nav: NavHostController, startDay: Long) {
                             Text(if (p.days == 7) "Шаблон недели — блюда по дням недели" else "Шаблон дня — на каждый день периода", fontSize = 12.sp, color = extra.dim)
                         }
                     }
-                    TextButton(onClick = { nav.navigate(Routes.PRESETS) }) { Text("Управлять шаблонами") }
+                    TextButton(onClick = { nav.navigate(Routes.PRESETS) }) { Text(btnLabel("Управлять шаблонами")) }
                 }
                 else -> Text("Откроется меню на первый день периода — добавляйте блюда в нужные приёмы пищи кнопкой «+ Блюдо».", color = extra.dim)
             }
             if (mode != 2) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-                Text("Заменить уже запланированное", Modifier.weight(1f))
+                Text(btnLabel("Заменить уже запланированное"), Modifier.weight(1f))
                 Switch(replace, { replace = it })
             }
             Gap(16.dp)

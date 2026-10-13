@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.tutor
 
 import android.speech.tts.TextToSpeech
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,12 +28,12 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -137,7 +138,7 @@ internal fun SpeakButton(sp: Speaker, text: String, size: Int = 36) {
     Box(
         Modifier.size(size.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = .15f)).clickable { sp.say(text) },
         contentAlignment = Alignment.Center,
-    ) { Text("🔊", fontSize = (size / 2.3).sp) }
+    ) { Text(btnLabel("🔊"), fontSize = (size / 2.3).sp) }
 }
 
 /** Главный экран репетитора: серия, цель дня, слова на сегодня, повторение, тренировки, прогресс. */
@@ -171,13 +172,13 @@ fun TutorHomeScreen(nav: NavHostController) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Tile(Modifier.weight(1f), onClick = { nav.navigate(TutorRoutes.translate(0)) }, padding = 12.dp) {
                     Glyph("tutor/04", 26.dp, badge = false)
-                    Text("Переводчик", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
-                    Text("слова с подсказками, фразы и предложения", fontSize = 11.sp, color = extra.dim, lineHeight = 14.sp)
+                    Text(btnLabel("Переводчик"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                    Text(btnLabel("слова с подсказками, фразы и предложения"), fontSize = 11.sp, color = extra.dim, lineHeight = 14.sp)
                 }
                 Tile(Modifier.weight(1f), onClick = { nav.navigate(TutorRoutes.translate(1)) }, padding = 12.dp) {
                     Glyph("tutor/17", 26.dp, badge = false)
-                    Text("Идиомы и фразы", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
-                    Text("устойчивые выражения с примерами", fontSize = 11.sp, color = extra.dim, lineHeight = 14.sp)
+                    Text(btnLabel("Идиомы и фразы"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                    Text(btnLabel("устойчивые выражения с примерами"), fontSize = 11.sp, color = extra.dim, lineHeight = 14.sp)
                 }
             }
             Gap(8.dp)
@@ -185,7 +186,7 @@ fun TutorHomeScreen(nav: NavHostController) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     ProgressRing(startedToday / s.settings.perDay.coerceAtLeast(1).toFloat(), extra.ok, size = 56.dp, stroke = 6.dp) { Glyph("tutor/00", 26.dp, badge = false) }
                     Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                        Text("Слова на сегодня", fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
+                        Text(btnLabel("Слова на сегодня"), fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
                         Text(
                             "Новых: $startedToday из ${s.settings.perDay}" + when (s.settings.mode) {
                                 0 -> " · тема дня: ${Tutor.TOPICS[Tutor.topicOfDay(s.settings, today, words)]}"
@@ -212,7 +213,7 @@ fun TutorHomeScreen(nav: NavHostController) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Glyph("tutor/03", 30.dp, badge = false)
                     Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                        Text("Повторение", fontWeight = FontWeight.SemiBold)
+                        Text(btnLabel("Повторение"), fontWeight = FontWeight.SemiBold)
                         Text(if (stats.due > 0) "${stats.due} слов пора повторить — интервалы 1, 2, 4, 7, 15, 30 дней" else "На сегодня повторять нечего", fontSize = 12.sp, color = extra.dim)
                     }
                     if (stats.due > 0) Text("${stats.due}", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
@@ -295,32 +296,32 @@ private fun SettingsDialog(s: TutorStore.State, onDismiss: () -> Unit) {
         title = { Text(if (s.onboarded) "Настройки обучения" else "Давайте настроим обучение") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                Text("Уровень владения", fontWeight = FontWeight.SemiBold)
+                Text(btnLabel("Уровень владения"), fontWeight = FontWeight.SemiBold)
                 Text("Можно выбрать несколько — например, A2 и B1.", fontSize = 12.sp, color = extra.dim)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 6.dp)) {
                     Tutor.LEVELS.forEach { l -> Pill(Tutor.LEVEL_NAMES[l] ?: l, l in set.levels) { set = set.copy(levels = (if (l in set.levels) set.levels - l else set.levels + l).ifEmpty { listOf(l) }) } }
                 }
-                Text("Распространённость слов", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                Text(btnLabel("Распространённость слов"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 6.dp)) {
                     Tutor.FREQ_NAMES.forEach { (k, n) -> Pill(n, set.freq == k) { set = set.copy(freq = k) } }
                 }
-                Text("Сферы (пусто — все)", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                Text(btnLabel("Сферы (пусто — все)"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 6.dp)) {
                     Tutor.TOPICS.forEach { (k, n) -> Pill(n, k in set.topics, glyph = Tutor.TOPIC_GLYPH[k]) { set = set.copy(topics = if (k in set.topics) set.topics - k else set.topics + k) } }
                 }
-                Text("Слов в день", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                Text(btnLabel("Слов в день"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 6.dp)) {
                     listOf(5, 10, 15, 20).forEach { n -> Pill("$n", set.perDay == n) { set = set.copy(perDay = n) } }
                 }
-                Text("Как подбирать слова", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                Text(btnLabel("Как подбирать слова"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 6.dp)) {
                     listOf(0 to "Тема дня", 1 to "Случайные", 2 to "Смешанно").forEach { (k, n) -> Pill(n, set.mode == k) { set = set.copy(mode = k) } }
                 }
                 Text("Подходит новых слов: $available", fontSize = 13.sp, color = if (available >= set.perDay) extra.ok else extra.warn)
             }
         },
-        confirmButton = { TextButton(onClick = { scope.launch { TutorStore.update(ctx) { it.copy(settings = set, onboarded = true) } }; onDismiss() }) { Text("Сохранить") } },
-        dismissButton = { if (s.onboarded) TextButton(onClick = onDismiss) { Text("Отмена") } },
+        confirmButton = { TextButton(onClick = { scope.launch { TutorStore.update(ctx) { it.copy(settings = set, onboarded = true) } }; onDismiss() }) { Text(btnLabel("Сохранить")) } },
+        dismissButton = { if (s.onboarded) TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
 }
 
@@ -399,14 +400,14 @@ fun TutorSessionScreen(nav: NavHostController, mode: String, topic: String) {
                 }
                 Column(Modifier.fillMaxWidth().padding(top = 30.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Glyph("tutor/07", 72.dp, badge = false)
-                    Text("Готово!", fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
+                    Text(btnLabel("Готово!"), fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
                     if (graded > 0) Text("Верно: $correct из $graded · +${correct * 10 + (graded - correct) * 2} очков", fontSize = 16.sp)
                     if (wrongWords.isNotEmpty()) {
-                        Text("Стоит повторить:", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 16.dp))
+                        Text(btnLabel("Стоит повторить:"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 16.dp))
                         wrongWords.distinct().forEach { Text("${it.en} — ${it.ru}", fontSize = 14.sp) }
-                        Text("Они вернутся на повторение завтра.", fontSize = 12.sp, color = extra.dim)
+                        Text(btnLabel("Они вернутся на повторение завтра."), fontSize = 12.sp, color = extra.dim)
                     }
-                    Button(onClick = { nav.popBackStack() }, modifier = Modifier.padding(top = 20.dp)) { Text("Закончить") }
+                    Button(onClick = { nav.popBackStack() }, modifier = Modifier.padding(top = 20.dp)) { Text(btnLabel("Закончить")) }
                 }
                 return@Column
             }
@@ -447,7 +448,7 @@ private fun WordHeader(w: Tutor.Word, sp: Speaker, showEn: Boolean = true) {
 private fun Intro(w: Tutor.Word, sp: Speaker, onKnown: () -> Unit, onNext: () -> Unit) {
     val extra = LocalExtra.current
     LaunchedEffect(w) { delay(300); sp.say(w.en) }
-    Text("Новое слово", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+    Text(btnLabel("Новое слово"), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
     WordHeader(w, sp)
     Text(w.ru, fontSize = 22.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 6.dp))
     Tile(Modifier.padding(top = 14.dp)) {
@@ -459,8 +460,8 @@ private fun Intro(w: Tutor.Word, sp: Speaker, onKnown: () -> Unit, onNext: () ->
     }
     Text("Совет: произнесите слово вслух и придумайте с ним свою фразу — так запоминается быстрее.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 10.dp))
     Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = onKnown, modifier = Modifier.weight(1f)) { Text("Уже знаю") }
-        Button(onClick = onNext, modifier = Modifier.weight(1f)) { Text("Запомнил →") }
+        OutlinedButton(onClick = onKnown, modifier = Modifier.weight(1f)) { Text(btnLabel("Уже знаю")) }
+        Button(onClick = onNext, modifier = Modifier.weight(1f)) { Text(btnLabel("Запомнил →")) }
     }
 }
 
@@ -475,7 +476,7 @@ private fun Card(w: Tutor.Word, sp: Speaker, onAnswer: (Boolean) -> Unit) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
             if (!flipped) {
                 Text(w.en, fontSize = 32.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-                Text("нажмите, чтобы перевернуть", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
+                Text(btnLabel("нажмите, чтобы перевернуть"), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
             } else {
                 Text(w.ru, fontSize = 26.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.primary)
                 Text(w.ex, fontSize = 14.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp))
@@ -485,8 +486,8 @@ private fun Card(w: Tutor.Word, sp: Speaker, onAnswer: (Boolean) -> Unit) {
     }
     Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) { SpeakButton(sp, w.en); Text("  ${w.level} · ${Tutor.TOPICS[w.topic]}", fontSize = 12.sp, color = extra.dim) }
     if (flipped) Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = { onAnswer(false) }, modifier = Modifier.weight(1f)) { Text("Не вспомнил") }
-        Button(onClick = { onAnswer(true) }, modifier = Modifier.weight(1f)) { Text("Знаю") }
+        OutlinedButton(onClick = { onAnswer(false) }, modifier = Modifier.weight(1f)) { Text(btnLabel("Не вспомнил")) }
+        Button(onClick = { onAnswer(true) }, modifier = Modifier.weight(1f)) { Text(btnLabel("Знаю")) }
     }
 }
 
@@ -498,14 +499,14 @@ private fun Choice(q: Q, sp: Speaker, onAnswer: (Boolean) -> Unit) {
     val ruAnswers = q.kind == Kind.CHOICE_RU || q.kind == Kind.LISTEN
     LaunchedEffect(q) { if (q.kind == Kind.LISTEN || q.kind == Kind.CHOICE_RU) { delay(250); sp.say(w.en) } }
     when (q.kind) {
-        Kind.CHOICE_RU -> { Text("Выберите перевод", fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp)); WordHeader(w, sp) }
-        Kind.CHOICE_EN -> { Text("Как это по-английски?", fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp)); WordHeader(w, sp, showEn = false) }
+        Kind.CHOICE_RU -> { Text(btnLabel("Выберите перевод"), fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp)); WordHeader(w, sp) }
+        Kind.CHOICE_EN -> { Text(btnLabel("Как это по-английски?"), fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp)); WordHeader(w, sp, showEn = false) }
         Kind.LISTEN -> {
-            Text("Прослушайте и выберите перевод", fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
+            Text(btnLabel("Прослушайте и выберите перевод"), fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
             Row(Modifier.padding(vertical = 16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.Center) { SpeakButton(sp, w.en, 80) }
         }
         else -> {
-            Text("Вставьте пропущенное слово", fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
+            Text(btnLabel("Вставьте пропущенное слово"), fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
             Tile(Modifier.padding(top = 10.dp)) {
                 Text(Tutor.cloze(w) ?: w.ex, fontSize = 18.sp, lineHeight = 24.sp)
                 Text(w.exRu, fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
@@ -536,7 +537,7 @@ private fun Choice(q: Q, sp: Speaker, onAnswer: (Boolean) -> Unit) {
             Text(w.ex, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
             Text(w.exRu, fontSize = 13.sp, color = extra.dim)
         }
-        if (!ok) Button(onClick = { onAnswer(false) }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Дальше") }
+        if (!ok) Button(onClick = { onAnswer(false) }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text(btnLabel("Дальше")) }
     }
 }
 
@@ -546,25 +547,25 @@ private fun Write(w: Tutor.Word, sp: Speaker, onAnswer: (Boolean) -> Unit) {
     var text by remember(w) { mutableStateOf("") }
     var result by remember(w) { mutableStateOf<Boolean?>(null) }
     var hint by remember(w) { mutableIntStateOf(0) }
-    Text("Напишите по-английски", fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
+    Text(btnLabel("Напишите по-английски"), fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
     WordHeader(w, sp, showEn = false)
-    if (hint > 0) Text("Подсказка: " + w.en.take(hint) + "…" + " (${w.en.length} букв)", fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
+    if (hint > 0) Text(btnLabel("Подсказка: ") + w.en.take(hint) + "…" + " (${w.en.length} букв)", fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
     fun check() { if (result == null && text.isNotBlank()) { result = Tutor.typedOk(text, w); sp.say(w.en) } }
     OutlinedTextField(
-        text, { if (result == null) text = it }, singleLine = true, label = { Text("Слово") },
+        text, { if (result == null) text = it }, singleLine = true, label = { Text(btnLabel("Слово")) },
         modifier = Modifier.fillMaxWidth().padding(top = 12.dp), shape = RoundedCornerShape(14.dp),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, autoCorrectEnabled = false), keyboardActions = KeyboardActions(onDone = { check() }),
     )
     if (result == null) Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = { hint = (hint + 1).coerceAtMost(w.en.length) }, modifier = Modifier.weight(1f)) { Text("Подсказка") }
-        Button(onClick = { check() }, enabled = text.isNotBlank(), modifier = Modifier.weight(1f)) { Text("Проверить") }
+        OutlinedButton(onClick = { hint = (hint + 1).coerceAtMost(w.en.length) }, modifier = Modifier.weight(1f)) { Text(btnLabel("Подсказка")) }
+        Button(onClick = { check() }, enabled = text.isNotBlank(), modifier = Modifier.weight(1f)) { Text(btnLabel("Проверить")) }
     } else {
         val ok = result == true
         Tile(Modifier.padding(top = 10.dp)) {
             Text(if (ok) (if (text.trim().equals(w.en, true)) "Верно!" else "Верно (с опечаткой): ${w.en}") else "Правильно: ${w.en}", fontWeight = FontWeight.SemiBold, color = if (ok) extra.ok else extra.danger)
             Text(w.ex, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp)); Text(w.exRu, fontSize = 13.sp, color = extra.dim)
         }
-        Button(onClick = { onAnswer(ok && hint == 0 || ok && hint <= 1) }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Дальше") }
+        Button(onClick = { onAnswer(ok && hint == 0 || ok && hint <= 1) }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text(btnLabel("Дальше")) }
     }
 }
 
@@ -589,19 +590,19 @@ private fun SprintScreen(nav: NavHostController, sp: Speaker) {
         Column(Modifier.padding(pad).fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             if (!started) {
                 Glyph("tutor/06", 72.dp, badge = false)
-                Text("60 секунд: верен ли перевод?", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp))
+                Text(btnLabel("60 секунд: верен ли перевод?"), fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp))
                 Text("Отвечайте быстро — каждый верный ответ +3 очка.", color = extra.dim, modifier = Modifier.padding(top = 4.dp))
-                Button(onClick = { started = true }, modifier = Modifier.padding(top = 20.dp)) { Text("Старт") }
+                Button(onClick = { started = true }, modifier = Modifier.padding(top = 20.dp)) { Text(btnLabel("Старт")) }
                 return@Column
             }
             Text("$seconds с", fontSize = 18.sp, color = if (seconds <= 10) extra.danger else extra.dim)
             Text("Счёт: $score из $total", fontSize = 15.sp)
             if (seconds == 0) {
-                Text("Время вышло!", fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 30.dp))
+                Text(btnLabel("Время вышло!"), fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 30.dp))
                 Text("Верно $score из $total · +${score * 3} очков", modifier = Modifier.padding(top = 6.dp))
                 Row(Modifier.padding(top = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { nav.popBackStack() }) { Text("Закончить") }
-                    Button(onClick = { seconds = 60; score = 0; total = 0; cur = pair() }) { Text("Ещё раз") }
+                    OutlinedButton(onClick = { nav.popBackStack() }) { Text(btnLabel("Закончить")) }
+                    Button(onClick = { seconds = 60; score = 0; total = 0; cur = pair() }) { Text(btnLabel("Ещё раз")) }
                 }
                 return@Column
             }
@@ -623,8 +624,8 @@ private fun SprintScreen(nav: NavHostController, sp: Speaker) {
             }
             LaunchedEffect(flash, total) { delay(250); flash = null }
             Row(Modifier.padding(top = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = { answer(false) }, modifier = Modifier.weight(1f).height(56.dp)) { Text("Неверно", fontSize = 17.sp) }
-                Button(onClick = { answer(true) }, modifier = Modifier.weight(1f).height(56.dp)) { Text("Верно", fontSize = 17.sp) }
+                OutlinedButton(onClick = { answer(false) }, modifier = Modifier.weight(1f).height(56.dp)) { Text(btnLabel("Неверно"), fontSize = 17.sp) }
+                Button(onClick = { answer(true) }, modifier = Modifier.weight(1f).height(56.dp)) { Text(btnLabel("Верно"), fontSize = 17.sp) }
             }
         }
     }
@@ -663,7 +664,7 @@ fun TutorWordsScreen(nav: NavHostController) {
                     Tutor.TOPICS.forEach { (k, n) -> Pill(n, topic == k) { topic = if (topic == k) "" else k } }
                 }
                 Text("Слов: ${shown.size} · ● выучено  ◐ учу  ○ новое", fontSize = 12.sp, color = extra.dim)
-                OutlinedButton(onClick = { adding = true }, modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) { Text("+ Добавить своё слово") }
+                OutlinedButton(onClick = { adding = true }, modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) { Text(btnLabel("+ Добавить своё слово")) }
             }
             items(shown, key = { it.id + it.topic }) { w ->
                 val p = s.progress[w.id]
@@ -678,7 +679,7 @@ fun TutorWordsScreen(nav: NavHostController) {
                     }
                     Text(w.level, fontSize = 11.sp, color = extra.dim)
                     SpeakButton(sp, w.en, 30)
-                    if (p == null) TextButton(onClick = { scope.launch { TutorStore.startLearning(ctx, w, today) } }) { Text("Учить", fontSize = 12.sp) }
+                    if (p == null) TextButton(onClick = { scope.launch { TutorStore.startLearning(ctx, w, today) } }) { Text(btnLabel("Учить"), fontSize = 12.sp) }
                 }
             }
         }
@@ -687,7 +688,7 @@ fun TutorWordsScreen(nav: NavHostController) {
         var en by remember { mutableStateOf("") }; var ru by remember { mutableStateOf("") }; var ex by remember { mutableStateOf("") }; var exRu by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { adding = false },
-            title = { Text("Своё слово") },
+            title = { Text(btnLabel("Своё слово")) },
             text = {
                 Column {
                     TextInput(en, { en = it }, "Слово по-английски"); Gap(6.dp)
@@ -704,9 +705,9 @@ fun TutorWordsScreen(nav: NavHostController) {
                         TutorStore.startLearning(ctx, Tutor.Word(w.en, w.ru, w.ex, w.exRu, "B1", 1, "my", true), today)
                     }
                     adding = false
-                }) { Text("Добавить и учить") }
+                }) { Text(btnLabel("Добавить и учить")) }
             },
-            dismissButton = { TextButton(onClick = { adding = false }) { Text("Отмена") } },
+            dismissButton = { TextButton(onClick = { adding = false }) { Text(btnLabel("Отмена")) } },
         )
     }
 }
@@ -731,7 +732,7 @@ fun HomeWordCard(nav: NavHostController) {
     Tile(onClick = { nav.navigate(TutorRoutes.HOME) }) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Glyph("tutor/00", 22.dp, badge = false)
-            Text("  Слово дня · английский", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text(btnLabel("  Слово дня · английский"), fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             Text(w.level, fontSize = 12.sp, color = extra.dim)
         }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
@@ -746,9 +747,9 @@ fun HomeWordCard(nav: NavHostController) {
             Text(w.exRu, fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 2.dp))
         }
         Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = { seed++ }) { Text("Другое") }
-            if (!learning) Button(onClick = { scope.launch { TutorStore.startLearning(ctx, w, today) } }) { Text("Учить") }
-            else Text("✓ в изучении", fontSize = 13.sp, color = extra.ok)
+            OutlinedButton(onClick = { seed++ }) { Text(btnLabel("Другое")) }
+            if (!learning) Button(onClick = { scope.launch { TutorStore.startLearning(ctx, w, today) } }) { Text(btnLabel("Учить")) }
+            else Text(btnLabel("✓ в изучении"), fontSize = 13.sp, color = extra.ok)
             Text(Tutor.TOPICS[w.topic] ?: "", fontSize = 11.sp, color = extra.dim, textAlign = TextAlign.End, maxLines = 1, modifier = Modifier.weight(1f))
         }
     }

@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.more
 
 import android.appwidget.AppWidgetManager
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import android.content.ComponentName
 import androidx.compose.foundation.Image
@@ -28,11 +29,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -123,7 +124,7 @@ fun WidgetEditorScreen(nav: NavHostController) {
             val mgr = remember { AppWidgetManager.getInstance(ctx) }
             if (android.os.Build.VERSION.SDK_INT >= 26 && mgr.isRequestPinAppWidgetSupported) {
                 OutlinedButton(onClick = { mgr.requestPinAppWidget(ComponentName(ctx, TodayWidgetReceiver::class.java), null, null) }, modifier = Modifier.padding(top = 8.dp)) {
-                    Text("Добавить виджет на рабочий стол")
+                    Text(btnLabel("Добавить виджет на рабочий стол"))
                 }
             }
 
@@ -193,10 +194,10 @@ fun WidgetEditorScreen(nav: NavHostController) {
                             Text(type.title, fontWeight = FontWeight.Medium, color = if (b.on) MaterialTheme.colorScheme.onSurface else extra.dim)
                             if (b.label.isNotBlank()) Text("подпись: «${b.label}»", fontSize = 11.sp, color = extra.dim)
                         }
-                        Text("↑", fontSize = 18.sp, modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(enabled = i > 0) {
+                        Text(btnLabel("↑"), fontSize = 18.sp, modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(enabled = i > 0) {
                             update(cfg.copy(blocks = cfg.blocks.toMutableList().also { l -> val x = l.removeAt(i); l.add(i - 1, x) }))
                         }.padding(8.dp))
-                        Text("↓", fontSize = 18.sp, modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(enabled = i < cfg.blocks.lastIndex) {
+                        Text(btnLabel("↓"), fontSize = 18.sp, modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(enabled = i < cfg.blocks.lastIndex) {
                             update(cfg.copy(blocks = cfg.blocks.toMutableList().also { l -> val x = l.removeAt(i); l.add(i + 1, x) }))
                         }.padding(8.dp))
                     }
@@ -207,7 +208,7 @@ fun WidgetEditorScreen(nav: NavHostController) {
                             if (b.type == "weather") {
                                 val on = b.weatherFields()
                                 Pill("☂ Будет ли дождь сегодня", b.rain) { setBlock(i) { it.copy(rain = !it.rain) } }
-                                Text("Подробности:", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
+                                Text(btnLabel("Подробности:"), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
                                 WEATHER_FIELDS.forEach { (key, name) ->
                                     Pill(name, key in on) {
                                         val next = WEATHER_FIELDS.map { it.first }.filter { k -> if (k == key) k !in on else k in on }
@@ -220,7 +221,7 @@ fun WidgetEditorScreen(nav: NavHostController) {
                     }
                 }
             }
-            OutlinedButton(onClick = { update(WidgetConfig().normalized()) }, modifier = Modifier.padding(vertical = 12.dp)) { Text("Как было по умолчанию") }
+            OutlinedButton(onClick = { update(WidgetConfig().normalized()) }, modifier = Modifier.padding(vertical = 12.dp)) { Text(btnLabel("Как было по умолчанию")) }
             HowTo("widget")
             Gap(24.dp)
         }
@@ -241,13 +242,13 @@ fun WidgetEditorScreen(nav: NavHostController) {
                     ColorRow("Цвет подписи", b.labelColor, pal.dim) { c -> setBlock(i) { it.copy(labelColor = c) } }
                     SliderRow("Размер текста", b.scale, 0.6f..1.8f, "${(b.scale * 100).roundToInt()}%") { v -> setBlock(i) { it.copy(scale = v) } }
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
-                        Text("Иконка", Modifier.weight(1f))
+                        Text(btnLabel("Иконка"), Modifier.weight(1f))
                         Switch(b.icon, { on -> setBlock(i) { it.copy(icon = on) } })
                     }
-                    TextButton(onClick = { setBlock(i) { WidgetBlock(it.type, it.style, it.count, it.on) } }) { Text("Сбросить оформление блока") }
+                    TextButton(onClick = { setBlock(i) { WidgetBlock(it.type, it.style, it.count, it.on) } }) { Text(btnLabel("Сбросить оформление блока")) }
                 }
             },
-            confirmButton = { TextButton(onClick = { editBlock = null }) { Text("Готово") } },
+            confirmButton = { TextButton(onClick = { editBlock = null }) { Text(btnLabel("Готово")) } },
         )
     }
 }
@@ -309,8 +310,8 @@ private fun ColorRow(title: String, value: Long, effective: Int, onChange: (Long
                     Box(Modifier.fillMaxWidth().height(36.dp).clip(RoundedCornerShape(10.dp)).background(parsed?.let { Color(it.toInt()) } ?: Color.Transparent).border(1.dp, extra.dim, RoundedCornerShape(10.dp)))
                 }
             },
-            confirmButton = { TextButton(enabled = parsed != null, onClick = { parsed?.let(onChange); custom = false }) { Text("Готово") } },
-            dismissButton = { TextButton(onClick = { custom = false }) { Text("Отмена") } },
+            confirmButton = { TextButton(enabled = parsed != null, onClick = { parsed?.let(onChange); custom = false }) { Text(btnLabel("Готово")) } },
+            dismissButton = { TextButton(onClick = { custom = false }) { Text(btnLabel("Отмена")) } },
         )
     }
 }
@@ -352,7 +353,7 @@ private fun WidgetPreview(m: WidgetModel, wDp: Int, hDp: Int) {
                 HGap(10.dp)
             }
             Column(Modifier.weight(1f)) {
-                if (visible.isEmpty()) Text("Выберите блоки ниже", color = Color(p.dim), fontSize = (14 * k).sp)
+                if (visible.isEmpty()) Text(btnLabel("Выберите блоки ниже"), color = Color(p.dim), fontSize = (14 * k).sp)
                 visible.forEach { r -> PreviewRow(r, p, k) }
             }
         }
@@ -367,13 +368,13 @@ private fun PreviewRow(r: WRow, p: WColors, k0: Float) {
     val labelColor = Color(b?.labelColor?.takeIf { it != 0L }?.toInt() ?: p.dim)
     if (r.kind == 3) {
         Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("○", color = Color(p.accent), fontSize = (18 * k).sp, fontWeight = FontWeight.Bold)
+            Text(btnLabel("○"), color = Color(p.accent), fontSize = (18 * k).sp, fontWeight = FontWeight.Bold)
             HGap(6.dp)
             Text(
                 r.title, Modifier.weight(1f), color = if (r.tone == WidgetModels.TONE_TEXT) valueColor else Color(p.tone(r.tone)),
                 fontSize = (16 * k).sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
-            if (r.value.isNotEmpty()) Text(" " + r.value, color = labelColor, fontSize = (14 * k).sp)
+            if (r.value.isNotEmpty()) Text(btnLabel(" ") + r.value, color = labelColor, fontSize = (14 * k).sp)
         }
         return
     }

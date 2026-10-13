@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.recipes
 
 import android.content.ClipboardManager
+import com.dasein.poryadok.ui.common.btnLabel
 import android.content.Context
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,7 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -145,14 +146,14 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Описание блюда") },
+        title = { Text(btnLabel("Описание блюда")) },
         text = {
             Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState())) {
                 Text("Вставьте подпись к рецепту из Instagram или любой текст: ингредиенты с граммовками, порции и этапы приготовления определятся сами.", fontSize = 13.sp, color = extra.dim)
                 TextButton(onClick = {
                     val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     cm.primaryClip?.getItemAt(0)?.coerceToText(ctx)?.toString()?.let { text = it }
-                }) { Text("Вставить из буфера обмена") }
+                }) { Text(btnLabel("Вставить из буфера обмена")) }
                 TextInput(text, { text = it }, "Описание", singleLine = false, minLines = 6)
                 aiError?.let { Text(it + " Можно нажать «Разобрать» — встроенный разбор работает без интернета.", fontSize = 12.sp, color = extra.danger, modifier = Modifier.padding(top = 6.dp)) }
                 if (!aiOn) Text("Точнее разбирает бесплатный ИИ: добавьте ключ OpenRouter в «Настройки» → «ИИ-помощник».", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
@@ -179,10 +180,10 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                         .onFailure { aiError = it.message ?: "ошибка"; aiBusy = false }
                 }
             }) { Text(if (aiBusy) "ИИ думает…" else "✨ С ИИ") }
-            TextButton(enabled = preview != null && !aiBusy, onClick = { preview?.let { applyResult(it, viaAi = false) } }) { Text("Разобрать") }
+            TextButton(enabled = preview != null && !aiBusy, onClick = { preview?.let { applyResult(it, viaAi = false) } }) { Text(btnLabel("Разобрать")) }
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
 }
 

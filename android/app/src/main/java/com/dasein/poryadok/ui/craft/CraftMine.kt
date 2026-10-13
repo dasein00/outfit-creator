@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.craft
 
 import android.graphics.Bitmap
+import com.dasein.poryadok.ui.common.btnLabel
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -29,13 +30,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -150,11 +151,11 @@ fun CraftMineScreen(nav: NavHostController) {
             )
             Gap(8.dp)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { runCatching { camera.launch(camUri) } }, enabled = !busy, modifier = Modifier.weight(1f)) { Text("📷 Снять") }
-                OutlinedButton(onClick = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy, modifier = Modifier.weight(1f)) { Text("Из галереи") }
+                Button(onClick = { runCatching { camera.launch(camUri) } }, enabled = !busy, modifier = Modifier.weight(1f)) { Text(btnLabel("📷 Снять")) }
+                OutlinedButton(onClick = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy, modifier = Modifier.weight(1f)) { Text(btnLabel("Из галереи")) }
             }
             if (busy) Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Text("  Определяю цвета…")
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Text(btnLabel("  Определяю цвета…"))
             }
             message?.let { Text(it, color = extra.danger, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp)) }
 
@@ -189,7 +190,7 @@ fun CraftMineScreen(nav: NavHostController) {
                             val n = CraftStore.addMine(ctx, listOf(c), auto = false, same = 2.0)
                             message = if (n == 0) "Такой цвет уже есть" else null
                             tapped = null
-                        }) { Text("+ Добавить") }
+                        }) { Text(btnLabel("+ Добавить")) }
                     }
                 }
 
@@ -208,7 +209,7 @@ fun CraftMineScreen(nav: NavHostController) {
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Box(Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)).background(swatch(f.rgb)), contentAlignment = Alignment.Center) {
-                                if (on) Text("✓", fontWeight = FontWeight.Bold, color = if (CraftPattern.symbolDark(f.rgb)) Color.Black else Color.White)
+                                if (on) Text(btnLabel("✓"), fontWeight = FontWeight.Bold, color = if (CraftPattern.symbolDark(f.rgb)) Color.Black else Color.White)
                             }
                             Text(if (f.share >= 0.01) "${(f.share * 100).roundToInt()}%" else "<1%", fontSize = 10.sp, color = extra.dim)
                         }
@@ -243,12 +244,12 @@ fun CraftMineScreen(nav: NavHostController) {
                         Text("Мой №${st.n} · ${st.name.ifBlank { "без названия" }}", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                         Text(listOfNotNull(hex(st.rgb), st.dmc.takeIf { it.isNotBlank() }?.let { "≈ DMC $it" }, if (st.auto) "по фото" else "вручную").joinToString(" · "), fontSize = 12.sp, color = extra.dim)
                     }
-                    TextButton(onClick = { CraftStore.setMine(ctx, stones.filter { it.n != st.n }) }) { Text("Удалить", color = extra.danger, fontSize = 12.sp) }
+                    TextButton(onClick = { CraftStore.setMine(ctx, stones.filter { it.n != st.n }) }) { Text(btnLabel("Удалить"), color = extra.danger, fontSize = 12.sp) }
                 }
             }
             Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { edit = MyStone(0, 0x9E9E9E) }, modifier = Modifier.weight(1f)) { Text("+ Цвет вручную") }
-                if (stones.isNotEmpty()) TextButton(onClick = { clearAll = true }) { Text("Удалить все", color = extra.danger) }
+                OutlinedButton(onClick = { edit = MyStone(0, 0x9E9E9E) }, modifier = Modifier.weight(1f)) { Text(btnLabel("+ Цвет вручную")) }
+                if (stones.isNotEmpty()) TextButton(onClick = { clearAll = true }) { Text(btnLabel("Удалить все"), color = extra.danger) }
             }
             Gap(40.dp)
         }
@@ -264,10 +265,10 @@ fun CraftMineScreen(nav: NavHostController) {
     } }
     if (clearAll) AlertDialog(
         onDismissRequest = { clearAll = false },
-        title = { Text("Удалить все мои цвета?") },
+        title = { Text(btnLabel("Удалить все мои цвета?")) },
         text = { Text("Схемы с «Только из моих страз» соберутся заново из каталога DMC, пока вы не добавите цвета.") },
-        confirmButton = { TextButton(onClick = { CraftStore.setMine(ctx, emptyList()); clearAll = false }) { Text("Удалить", color = extra.danger) } },
-        dismissButton = { TextButton(onClick = { clearAll = false }) { Text("Отмена") } },
+        confirmButton = { TextButton(onClick = { CraftStore.setMine(ctx, emptyList()); clearAll = false }) { Text(btnLabel("Удалить"), color = extra.danger) } },
+        dismissButton = { TextButton(onClick = { clearAll = false }) { Text(btnLabel("Отмена")) } },
     )
 }
 
@@ -305,22 +306,22 @@ internal fun ColorPickDialog(title: String, rgb0: Int, name0: String, showOld: B
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (st.n != 0) {
                         Box(Modifier.size(44.dp).clip(RoundedCornerShape(10.dp)).background(swatch(st.rgb)).border(1.dp, extra.line, RoundedCornerShape(10.dp)))
-                        Text("  →  ", color = extra.dim)
+                        Text(btnLabel("  →  "), color = extra.dim)
                     }
                     Box(Modifier.size(44.dp).clip(RoundedCornerShape(10.dp)).background(swatch(rgb)).border(1.dp, extra.line, RoundedCornerShape(10.dp)))
                     Text("  ≈ DMC ${CraftPattern.DMC[CraftPattern.nearestDmc(rgb)].code}", fontSize = 13.sp, color = extra.dim)
                 }
                 Gap(8.dp)
-                Text("Оттенок", fontSize = 12.sp)
+                Text(btnLabel("Оттенок"), fontSize = 12.sp)
                 Box(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp).clip(CircleShape)) {
                         (0 until 12).forEach { i -> Box(Modifier.weight(1f).size(6.dp).background(swatch(android.graphics.Color.HSVToColor(floatArrayOf(i * 30f, 1f, 1f))))) }
                     }
                 }
                 Slider(hue, { hue = it }, valueRange = 0f..360f)
-                Text("Насыщенность", fontSize = 12.sp)
+                Text(btnLabel("Насыщенность"), fontSize = 12.sp)
                 Slider(sat, { sat = it }, valueRange = 0f..1f)
-                Text("Яркость", fontSize = 12.sp)
+                Text(btnLabel("Яркость"), fontSize = 12.sp)
                 Slider(value, { value = it }, valueRange = 0f..1f)
                 TextInput(hexText, { t ->
                     hexText = t
@@ -335,7 +336,7 @@ internal fun ColorPickDialog(title: String, rgb0: Int, name0: String, showOld: B
                 TextInput(name, { name = it }, "Название (по желанию)")
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(rgb, name.trim()) }) { Text("Сохранить") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        confirmButton = { TextButton(onClick = { onSave(rgb, name.trim()) }) { Text(btnLabel("Сохранить")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
 }

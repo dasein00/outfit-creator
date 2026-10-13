@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.health
 
 import android.widget.Toast
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
@@ -24,11 +25,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -200,9 +201,9 @@ fun BodyTab(nav: NavHostController, profile: BodyProfile, weights: List<WeightEn
     }
     Gap(8.dp)
     Row {
-        Button(onClick = { ruler = true }, Modifier.weight(1f)) { Text("+ Взвешивание") }
+        Button(onClick = { ruler = true }, Modifier.weight(1f)) { Text(btnLabel("+ Взвешивание")) }
         HGap(8.dp)
-        OutlinedButton(onClick = { nav.navigate(Routes.BODY_COMPARE) }, enabled = readings.size >= 2, modifier = Modifier.weight(1f)) { Text("Сравнить") }
+        OutlinedButton(onClick = { nav.navigate(Routes.BODY_COMPARE) }, enabled = readings.size >= 2, modifier = Modifier.weight(1f)) { Text(btnLabel("Сравнить")) }
     }
     Gap(8.dp)
     OutlinedButton(
@@ -219,7 +220,7 @@ fun BodyTab(nav: NavHostController, profile: BodyProfile, weights: List<WeightEn
             Glyph("ui:v_chart", 26.dp)
             HGap(10.dp)
             Column(Modifier.weight(1f)) {
-                Text("Аналитика тела", fontWeight = FontWeight.SemiBold)
+                Text(btnLabel("Аналитика тела"), fontWeight = FontWeight.SemiBold)
                 Text("Моя модель, тип телосложения, научный анализ (ИМТ по ВОЗ, талия/рост, жир, обмен) и графики всех показателей", fontSize = 12.sp, color = extra.dim)
             }
         }
@@ -235,7 +236,7 @@ fun BodyTab(nav: NavHostController, profile: BodyProfile, weights: List<WeightEn
         val planPts = (0..12).map { Nutrition.plannedWeight(profile.startWeight, profile.changeKg, goal, it).toFloat() }
         val factPts = (0..12).map { w -> val from = start + w * 7L; weights.filter { it.day in from..(from + 6) }.lastOrNull()?.kg?.toFloat() }
         LineChart(listOf(Series(planPts, extra.dim, dashed = true), Series(factPts, MaterialTheme.colorScheme.primary)), labels = (0..12 step 2).map { "н${it + 1}" })
-        Text("— — план   ● факт", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
+        Text(btnLabel("— — план   ● факт"), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
     }
 
     SectionTitle("История")
@@ -248,7 +249,7 @@ fun BodyTab(nav: NavHostController, profile: BodyProfile, weights: List<WeightEn
                 Text("${fmt(m.weight)} кг" + (m.fatPct?.let { " · жир ${fmt(it)}%" } ?: ""), fontWeight = FontWeight.Medium)
                 Text(TIME.format(Date(m.at)) + " · " + m.source, fontSize = 12.sp, color = extra.dim)
             }
-            TextButton(onClick = { edit = m }) { Text("Изменить", fontSize = 12.sp) }
+            TextButton(onClick = { edit = m }) { Text(btnLabel("Изменить"), fontSize = 12.sp) }
         }
     }
     if (ruler) WeightRulerDialog(last?.weight ?: profile.startWeight, { ruler = false }) { m -> ruler = false; edit = m }
@@ -262,7 +263,7 @@ internal fun BodyComposition(r: BodyReading, p: Person) {
     val c = BodyComp.composition(r)
     val m = BodyComp.metrics(r, p).associateBy { it.key }
     com.dasein.poryadok.ui.common.FoldTile("body_model", "Моя модель · состав тела", summary = fmt(r.weight) + " кг") {
-        Text("Вес = Вода + Жир + Белок + Кость", fontSize = 12.sp, color = extra.dim)
+        Text(btnLabel("Вес = Вода + Жир + Белок + Кость"), fontSize = 12.sp, color = extra.dim)
         Gap(8.dp)
         Row(verticalAlignment = Alignment.CenterVertically) {
             ModelFigure(((r.waterPct ?: 50.0) / 100).toFloat(), Modifier.width(88.dp).height(250.dp))
@@ -314,7 +315,7 @@ internal fun MetricsList(list: List<BodyMetricView>, openAll: Boolean = false, t
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Glyph(icons[v.key] ?: "ui:stats", 20.dp)
-                    Text("  " + v.title + if (v.unit.isNotBlank()) " (${v.unit})" else "", Modifier.weight(1f), fontSize = 14.sp)
+                    Text(btnLabel("  ") + v.title + if (v.unit.isNotBlank()) " (${v.unit})" else "", Modifier.weight(1f), fontSize = 14.sp)
                     Column(horizontalAlignment = Alignment.End) {
                         Text(v.text(), fontWeight = FontWeight.SemiBold, color = if (v.value == null) extra.dim else MaterialTheme.colorScheme.onSurface)
                         v.label?.let { Text(it, fontSize = 11.sp, color = toneColor(v.tone)) }
@@ -385,10 +386,10 @@ internal fun TrendSection(readings: List<BodyMetric>, profile: BodyProfile) {
             Gap(8.dp)
             Text("За период ${Dates.short(range.first)} — ${Dates.short(range.last)} · ${t.count} изм.", fontSize = 12.sp, color = extra.dim)
             Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                Column(Modifier.weight(1f)) { Text(fmt(t.avg), style = MaterialTheme.typography.titleLarge); Text("Среднее", fontSize = 12.sp, color = extra.dim) }
+                Column(Modifier.weight(1f)) { Text(fmt(t.avg), style = MaterialTheme.typography.titleLarge); Text(btnLabel("Среднее"), fontSize = 12.sp, color = extra.dim) }
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                     Text((if (t.change < 0) "↓ " else if (t.change > 0) "↑ " else "") + fmt(abs(t.change)), style = MaterialTheme.typography.titleLarge, color = if (t.change <= 0) extra.ok else extra.warn)
-                    Text("Изменение", fontSize = 12.sp, color = extra.dim)
+                    Text(btnLabel("Изменение"), fontSize = 12.sp, color = extra.dim)
                 }
             }
             Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
@@ -433,7 +434,7 @@ internal fun BodyDialog(m0: BodyMetric, onDismiss: () -> Unit) {
                 Gap(6.dp)
                 NumberField(weight, { weight = it }, "Вес", suffix = "кг")
                 Text("Рост, пол, возраст и обхваты вводятся один раз во вкладке «Замеры».", fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(vertical = 6.dp))
-                Text("Остальное — по желанию, с экрана весов:", fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(vertical = 6.dp))
+                Text(btnLabel("Остальное — по желанию, с экрана весов:"), fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(vertical = 6.dp))
                 MetricField(f, "fat", "Жир", "%")
                 MetricField(f, "musclePct", "Скелетная мускулатура", "%")
                 MetricField(f, "muscleKg", "Мышечная масса", "кг")
@@ -459,15 +460,15 @@ internal fun BodyDialog(m0: BodyMetric, onDismiss: () -> Unit) {
                 )
                 io { Body.save(out) }
                 onDismiss()
-            }) { Text("Сохранить") }
+            }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
             Row {
                 if (!isNew || m0.source == LEGACY) TextButton(onClick = {
                     io { if (m0.source == LEGACY) Graph.dao.deleteWeightOfDay(m0.day) else Body.delete(m0) }
                     onDismiss()
-                }) { Text("Удалить", color = LocalExtra.current.danger) }
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                }) { Text(btnLabel("Удалить"), color = LocalExtra.current.danger) }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
         },
     )

@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.recipes
 
 import androidx.compose.foundation.Image
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.Glyph
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,7 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -245,11 +246,11 @@ fun RecipePickerDialog(book: RecipeBook, title: String = "Выберите бл�
                             }
                         }
                     }
-                    if (list.isEmpty()) item { Text("Ничего не нашлось", color = extra.dim, modifier = Modifier.padding(12.dp)) }
+                    if (list.isEmpty()) item { Text(btnLabel("Ничего не нашлось"), color = extra.dim, modifier = Modifier.padding(12.dp)) }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Закрыть") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Закрыть")) } },
     )
 }
 

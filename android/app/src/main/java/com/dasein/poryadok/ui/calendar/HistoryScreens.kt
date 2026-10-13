@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.calendar
 
 import android.content.Intent
+import com.dasein.poryadok.ui.common.btnLabel
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,9 +16,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -66,14 +67,14 @@ fun HistoryTab(selectedDay: Long) {
     }
     Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
-            Text("‹", fontSize = 26.sp, modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { day -= 1 }.padding(horizontal = 14.dp))
+            Text(btnLabel("‹"), fontSize = 26.sp, modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { day -= 1 }.padding(horizontal = 14.dp))
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(date.format(DAY_FMT), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                Text("В этот день в истории", fontSize = 12.sp, color = extra.dim)
+                Text(btnLabel("В этот день в истории"), fontSize = 12.sp, color = extra.dim)
             }
-            Text("›", fontSize = 26.sp, modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { day += 1 }.padding(horizontal = 14.dp))
+            Text(btnLabel("›"), fontSize = 26.sp, modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { day += 1 }.padding(horizontal = 14.dp))
         }
-        if (day != Dates.today()) TextButton(onClick = { day = Dates.today() }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("К сегодняшнему дню") }
+        if (day != Dates.today()) TextButton(onClick = { day = Dates.today() }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text(btnLabel("К сегодняшнему дню")) }
         val list = events
         when {
             list == null -> Box(Modifier.fillMaxWidth().padding(30.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -116,10 +117,10 @@ fun EventCard(e: HistoryDay.Event, startOpen: Boolean, date: LocalDate? = null) 
         if (body.isNotBlank()) Text(body, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 6.dp))
         if (e.context.isNotBlank()) {
             if (open) {
-                Text("Контекст" + if (e.source != "DASEIN" && e.title.isNotBlank()) " · ${e.title}" else "", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
+                Text(btnLabel("Контекст") + if (e.source != "DASEIN" && e.title.isNotBlank()) " · ${e.title}" else "", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
                 Text(e.context, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 2.dp))
-                if (e.url.isNotBlank()) TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(e.url))) } }) { Text("Читать полностью в Википедии") }
-            } else Text("Подробнее ▾", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 6.dp))
+                if (e.url.isNotBlank()) TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(e.url))) } }) { Text(btnLabel("Читать полностью в Википедии")) }
+            } else Text(btnLabel("Подробнее ▾"), fontSize = 13.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 6.dp))
         }
     }
 }
@@ -158,7 +159,7 @@ fun HomeHistoryCard(nav: NavHostController) {
     Tile(onClick = { nav.navigate(Routes.calendar(3)) }, color = com.dasein.poryadok.ui.common.likedColor(liked)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Glyph("cal/23", 22.dp, badge = false)
-            Text("  В этот день в истории", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text(btnLabel("  В этот день в истории"), fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             Text(today.format(DAY_FMT), fontSize = 12.sp, color = extra.dim)
         }
         Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.Top) {
@@ -173,7 +174,7 @@ fun HomeHistoryCard(nav: NavHostController) {
         Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             PrevNext(i, list.size, { pos.value = i - 1 }, { pos.value = i + 1 })
             Box(Modifier.weight(1f))
-            TextButton(onClick = { nav.navigate(Routes.calendar(3)) }) { Text("Все →") }
+            TextButton(onClick = { nav.navigate(Routes.calendar(3)) }) { Text(btnLabel("Все →")) }
         }
     }
 }

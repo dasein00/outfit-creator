@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.recipes
 
 import com.dasein.poryadok.ui.common.HowTo
+import com.dasein.poryadok.ui.common.btnLabel
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -23,13 +24,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -208,10 +209,10 @@ private fun StepBasics(d: RecipeDraft) {
         }
         Column {
             OutlinedButton(onClick = { pickPhoto() }) { Text(if (r.photo.isBlank() || r.photo.startsWith("dish/")) "Своё фото" else "Заменить фото") }
-            if (r.photo.startsWith("/")) OutlinedButton(onClick = { recrop = true }) { Text("Кадр превью") }
-            OutlinedButton(onClick = { pickIllustration = true }) { Text("Иллюстрация") }
+            if (r.photo.startsWith("/")) OutlinedButton(onClick = { recrop = true }) { Text(btnLabel("Кадр превью")) }
+            OutlinedButton(onClick = { pickIllustration = true }) { Text(btnLabel("Иллюстрация")) }
         }
-        if (r.photo.isNotBlank()) TextButton(onClick = { d.recipe = r.copy(photo = "") }) { Text("Убрать") }
+        if (r.photo.isNotBlank()) TextButton(onClick = { d.recipe = r.copy(photo = "") }) { Text(btnLabel("Убрать")) }
     }
     if (recrop) com.dasein.poryadok.ui.common.CropDialog(com.dasein.poryadok.ui.common.Crop.sourceFor(r.photo), 1f, "recipes", onDismiss = { recrop = false }) {
         recrop = false; d.recipe = d.recipe.copy(photo = it)
@@ -246,9 +247,9 @@ private fun StepIngredients(d: RecipeDraft) {
     Text("Выберите продукты из базы или добавьте свой — КБЖУ посчитается автоматически.", color = extra.dim, fontSize = 13.sp)
     Gap(8.dp)
     Row {
-        Button(onClick = { pickProduct = true }, Modifier.weight(1f)) { Text("+ Из базы") }
+        Button(onClick = { pickProduct = true }, Modifier.weight(1f)) { Text(btnLabel("+ Из базы")) }
         HGap(8.dp)
-        OutlinedButton(onClick = { edit = -1 to RecipeIngredient(recipeId = 0, name = "", amount = 100.0, unit = "г", grams = 100.0) }, Modifier.weight(1f)) { Text("+ Свой") }
+        OutlinedButton(onClick = { edit = -1 to RecipeIngredient(recipeId = 0, name = "", amount = 100.0, unit = "г", grams = 100.0) }, Modifier.weight(1f)) { Text(btnLabel("+ Свой")) }
     }
     Gap(8.dp)
     d.ingredients.forEachIndexed { i, ing ->
@@ -259,11 +260,11 @@ private fun StepIngredients(d: RecipeDraft) {
                     val m = Cooking.macrosOf(ing.toIngrSafe())
                     Text("${Cooking.label(ing.toIngrSafe())} · ${m.kcal.roundToInt()} ккал · Б ${m.protein.roundToInt()} г", fontSize = 12.sp, color = extra.dim)
                 }
-                Text("✕", color = extra.dim, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { d.ingredients.removeAt(i) }.padding(8.dp))
+                Text(btnLabel("✕"), color = extra.dim, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { d.ingredients.removeAt(i) }.padding(8.dp))
             }
         }
     }
-    if (d.ingredients.isEmpty()) Text("Ингредиентов пока нет", color = extra.dim, modifier = Modifier.padding(8.dp))
+    if (d.ingredients.isEmpty()) Text(btnLabel("Ингредиентов пока нет"), color = extra.dim, modifier = Modifier.padding(8.dp))
     else {
         val list = d.ingredients.map { it.toIngrSafe() }
         val r = d.recipe
@@ -326,7 +327,7 @@ private fun IngredientDialog(ing: RecipeIngredient, onDismiss: () -> Unit, onSav
                 Gap(6.dp)
                 NumberField(gramsManual, { gramsManual = it }, "Вес для расчёта: ${Cooking.amount(autoGrams)} г", suffix = "г")
                 Gap(10.dp)
-                Text("КБЖУ на 100 г", fontSize = 13.sp, color = LocalExtra.current.dim)
+                Text(btnLabel("КБЖУ на 100 г"), fontSize = 13.sp, color = LocalExtra.current.dim)
                 Row {
                     NumberField(kc, { kc = it }, "Ккал", Modifier.weight(1f)); HGap(4.dp)
                     NumberField(p, { p = it }, "Б", Modifier.weight(1f))
@@ -336,7 +337,7 @@ private fun IngredientDialog(ing: RecipeIngredient, onDismiss: () -> Unit, onSav
                     NumberField(c, { c = it }, "У", Modifier.weight(1f))
                 }
                 Gap(6.dp)
-                Text("Отдел в магазине", fontSize = 13.sp, color = LocalExtra.current.dim)
+                Text(btnLabel("Отдел в магазине"), fontSize = 13.sp, color = LocalExtra.current.dim)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     SHOP_CATEGORIES.forEach { s -> Pill(s, s == shop) { shop = s } }
                 }
@@ -351,9 +352,9 @@ private fun IngredientDialog(ing: RecipeIngredient, onDismiss: () -> Unit, onSav
                         kcal100 = kc.num() ?: 0.0, protein100 = p.num() ?: 0.0, fat100 = f.num() ?: 0.0, carbs100 = c.num() ?: 0.0, shopCategory = shop,
                     )
                 )
-            }) { Text("Готово") }
+            }) { Text(btnLabel("Готово")) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
 }
 
@@ -371,11 +372,11 @@ fun ProductPickerDialog(onDismiss: () -> Unit, onPick: (FoodProduct) -> Unit) {
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("База продуктов") },
+        title = { Text(btnLabel("База продуктов")) },
         text = {
             Column {
                 TextInput(q, { q = it }, "Поиск продукта")
-                TextButton(onClick = { creating = true }) { Text("+ Создать продукт" + if (q.isNotBlank()) " «$q»" else "") }
+                TextButton(onClick = { creating = true }) { Text(btnLabel("+ Создать продукт") + if (q.isNotBlank()) " «$q»" else "") }
                 LazyColumn(Modifier.heightIn(max = 380.dp)) {
                     items(list, key = { it.id }) { p ->
                         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { onPick(p) }.padding(vertical = 8.dp, horizontal = 4.dp)) {
@@ -388,7 +389,7 @@ fun ProductPickerDialog(onDismiss: () -> Unit, onPick: (FoodProduct) -> Unit) {
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Закрыть") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Закрыть")) } },
     )
 }
 
@@ -404,11 +405,11 @@ private fun NewProductDialog(initialName: String, onDismiss: () -> Unit, onCreat
     var cat by remember { mutableStateOf("Другое") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Новый продукт") },
+        title = { Text(btnLabel("Новый продукт")) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 TextInput(name, { name = it }, "Название")
-                Text("На 100 г", fontSize = 13.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 8.dp))
+                Text(btnLabel("На 100 г"), fontSize = 13.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 8.dp))
                 Row { NumberField(kc, { kc = it }, "Ккал", Modifier.weight(1f)); HGap(4.dp); NumberField(p, { p = it }, "Белки", Modifier.weight(1f)) }
                 Row { NumberField(f, { f = it }, "Жиры", Modifier.weight(1f)); HGap(4.dp); NumberField(c, { c = it }, "Углеводы", Modifier.weight(1f)) }
                 NumberField(gpu, { gpu = it }, "Вес 1 шт (если считаете штуками)", suffix = "г")
@@ -433,9 +434,9 @@ private fun NewProductDialog(initialName: String, onDismiss: () -> Unit, onCreat
                     val id = Graph.extra.upsertProduct(prod)
                     onCreated(prod.copy(id = id))
                 }
-            }) { Text("Создать") }
+            }) { Text(btnLabel("Создать")) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
 }
 
@@ -452,12 +453,12 @@ private fun StepSteps(d: RecipeDraft) {
                 label = { Text("Шаг ${i + 1}") },
             )
             Column {
-                if (i > 0) Text("↑", Modifier.clip(RoundedCornerShape(8.dp)).clickable { val t = d.steps[i]; d.steps[i] = d.steps[i - 1]; d.steps[i - 1] = t }.padding(8.dp))
-                Text("✕", Modifier.clip(RoundedCornerShape(8.dp)).clickable { d.steps.removeAt(i); if (d.steps.isEmpty()) d.steps.add("") }.padding(8.dp), color = extra.dim)
+                if (i > 0) Text(btnLabel("↑"), Modifier.clip(RoundedCornerShape(8.dp)).clickable { val t = d.steps[i]; d.steps[i] = d.steps[i - 1]; d.steps[i - 1] = t }.padding(8.dp))
+                Text(btnLabel("✕"), Modifier.clip(RoundedCornerShape(8.dp)).clickable { d.steps.removeAt(i); if (d.steps.isEmpty()) d.steps.add("") }.padding(8.dp), color = extra.dim)
             }
         }
     }
-    OutlinedButton(onClick = { d.steps.add("") }, Modifier.fillMaxWidth()) { Text("+ Добавить шаг") }
+    OutlinedButton(onClick = { d.steps.add("") }, Modifier.fillMaxWidth()) { Text(btnLabel("+ Добавить шаг")) }
 }
 
 @Composable
@@ -472,9 +473,9 @@ private fun StepParams(d: RecipeDraft) {
     }
     Gap(10.dp)
     if (r.portionGrams <= 0) Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("Порций", Modifier.weight(1f))
+        Text(btnLabel("Порций"), Modifier.weight(1f))
         Stepper(r.servings) { d.recipe = d.recipe.copy(servings = it.coerceIn(1, 40)) }
-    } else Text("Порций: считаются по весу порции ниже", color = LocalExtra.current.dim, fontSize = 13.sp)
+    } else Text(btnLabel("Порций: считаются по весу порции ниже"), color = LocalExtra.current.dim, fontSize = 13.sp)
     SectionTitle("Сложность")
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         DIFFICULTY.forEachIndexed { i, t -> Pill(t, r.difficulty == i + 1) { d.recipe = d.recipe.copy(difficulty = i + 1) } }
@@ -525,7 +526,7 @@ private fun StepParams(d: RecipeDraft) {
         Text(if (r.portionGrams > 0) "На порцию (${Cooking.amount(r.portionGrams)} г)" else "На порцию", fontSize = 13.sp, color = LocalExtra.current.dim)
         MacroLine(RecipeRepo.macros(d.ingredients, r), showFiber = true)
         Gap(8.dp)
-        Text("На 100 г готового блюда", fontSize = 13.sp, color = LocalExtra.current.dim)
+        Text(btnLabel("На 100 г готового блюда"), fontSize = 13.sp, color = LocalExtra.current.dim)
         MacroLine(Cooking.per100(ingrs, r.dishGrams))
         Gap(8.dp)
         val dishW = if (r.dishGrams > 0) r.dishGrams else raw
@@ -551,7 +552,7 @@ private fun StepFinish(d: RecipeDraft) {
         Text("${d.ingredients.size} ингредиентов · ${d.steps.count { it.isNotBlank() }} шагов", color = extra.dim, fontSize = 13.sp)
         Gap(6.dp)
         MacroLine(RecipeRepo.macros(d.ingredients, r))
-        if (d.ingredients.isEmpty()) Text("Без ингредиентов КБЖУ будет нулевым.", color = extra.warn, fontSize = 12.sp)
+        if (d.ingredients.isEmpty()) Text(btnLabel("Без ингредиентов КБЖУ будет нулевым."), color = extra.warn, fontSize = 12.sp)
     }
     SectionTitle("Съели сейчас?")
     Tile {

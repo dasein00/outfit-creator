@@ -24,7 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,7 +63,7 @@ fun PageBar(page: Int, pages: Int, onPage: (Int) -> Unit, modifier: Modifier = M
     ) {
         PageCell("‹", false, enabled = page > 0) { onPage(page - 1) }
         Paging.window(page, pages).forEach { n ->
-            if (n < 0) Text("…", Modifier.padding(horizontal = 4.dp, vertical = 8.dp), color = extra.dim)
+            if (n < 0) Text(btnLabel("…"), Modifier.padding(horizontal = 4.dp, vertical = 8.dp), color = extra.dim)
             else PageCell("${n + 1}", n == page) { onPage(n) }
         }
         PageCell("›", false, enabled = page < pages - 1) { onPage(page + 1) }
@@ -72,7 +71,7 @@ fun PageBar(page: Int, pages: Int, onPage: (Int) -> Unit, modifier: Modifier = M
             onClick = { ask = true }, shape = RoundedCornerShape(10.dp), color = Color.Transparent,
             border = BorderStroke(1.dp, scheme.primary),
         ) {
-            Text("Стр. №", Modifier.padding(horizontal = 10.dp, vertical = 8.dp), fontSize = 13.sp, color = scheme.primary)
+            Text(btnLabel("Стр. №"), Modifier.padding(horizontal = 10.dp, vertical = 8.dp), fontSize = 13.sp, color = scheme.primary)
         }
     }
 }
@@ -104,7 +103,7 @@ fun GoToPageDialog(page: Int, pages: Int, onDismiss: () -> Unit, onGo: (Int) -> 
     val ok = n != null && n in 1..pages
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Перейти на страницу") },
+        title = { Text(btnLabel("Перейти на страницу")) },
         text = {
             Column {
                 OutlinedTextField(
@@ -121,8 +120,8 @@ fun GoToPageDialog(page: Int, pages: Int, onDismiss: () -> Unit, onGo: (Int) -> 
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { if (ok) onGo(n!! - 1) }, enabled = ok) { Text("Перейти") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        confirmButton = { TextButton(onClick = { if (ok) onGo(n!! - 1) }, enabled = ok) { Text(btnLabel("Перейти")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
 }
 
@@ -135,7 +134,7 @@ fun PageInfo(total: Int, page: Int, size: Int, onSize: (Int) -> Unit, noun: Stri
         val from = if (total == 0) 0 else page * size + 1
         val to = minOf(total, (page + 1) * size)
         Text("$from–$to из $total $noun · стр. ${page + 1} из $pages", Modifier.weight(1f), fontSize = 12.sp, color = extra.dim)
-        Text("по", fontSize = 12.sp, color = extra.dim)
+        Text(btnLabel("по"), fontSize = 12.sp, color = extra.dim)
         PAGE_SIZES.forEach { s ->
             Text(
                 "$s", fontSize = 12.sp, fontWeight = if (s == size) FontWeight.Bold else FontWeight.Normal,

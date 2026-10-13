@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.productivity
 
 import androidx.activity.compose.BackHandler
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.Glyphs
 import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.IconAction
@@ -139,7 +140,7 @@ fun TaskEditScreen(nav: NavHostController, id: Long, day: Long, goal: Long) {
                 })
                 TextField(
                     value = t.title, onValueChange = { t = t.copy(title = it) },
-                    placeholder = { Text("Название задачи") },
+                    placeholder = { Text(btnLabel("Название задачи")) },
                     textStyle = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.weight(1f),
                     colors = TextFieldDefaults.colors(
@@ -149,7 +150,7 @@ fun TaskEditScreen(nav: NavHostController, id: Long, day: Long, goal: Long) {
                 )
             }
             OutlinedTextField(
-                value = t.note, onValueChange = { t = t.copy(note = it) }, label = { Text("Заметка") },
+                value = t.note, onValueChange = { t = t.copy(note = it) }, label = { Text(btnLabel("Заметка")) },
                 modifier = Modifier.fillMaxWidth(), minLines = 2, shape = RoundedCornerShape(14.dp),
             )
 
@@ -167,7 +168,7 @@ fun TaskEditScreen(nav: NavHostController, id: Long, day: Long, goal: Long) {
             }
             Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Напомнить")
+                    Text(btnLabel("Напомнить"))
                     Text(
                         if (t.dueDay == null) "Нужна дата" else "В ${Dates.time(t.dueMin ?: 540)} в день задачи",
                         fontSize = 12.sp, color = extra.dim,
@@ -196,7 +197,7 @@ fun TaskEditScreen(nav: NavHostController, id: Long, day: Long, goal: Long) {
                     val p = projects.firstOrNull { it.id == t.projectId }
                     FieldButton("Список", p?.name ?: "Входящие", Modifier.fillMaxWidth(), glyph = p?.emoji ?: Glyphs.INBOX) { projectMenu = true }
                     DropdownMenu(expanded = projectMenu, onDismissRequest = { projectMenu = false }) {
-                        DropdownMenuItem(text = { Text("Входящие") }, leadingIcon = { Glyph(Glyphs.INBOX, 20.dp) }, onClick = { t = t.copy(projectId = null); projectMenu = false })
+                        DropdownMenuItem(text = { Text(btnLabel("Входящие")) }, leadingIcon = { Glyph(Glyphs.INBOX, 20.dp) }, onClick = { t = t.copy(projectId = null); projectMenu = false })
                         projects.forEach { pr ->
                             DropdownMenuItem(text = { Text(pr.name) }, leadingIcon = { Glyph(pr.emoji, 20.dp) }, onClick = { t = t.copy(projectId = pr.id); projectMenu = false })
                         }
@@ -206,7 +207,7 @@ fun TaskEditScreen(nav: NavHostController, id: Long, day: Long, goal: Long) {
                     val g = goals.firstOrNull { it.id == t.goalId }
                     FieldButton("Цель", g?.title ?: "—", Modifier.fillMaxWidth(), glyph = g?.emoji) { goalMenu = true }
                     DropdownMenu(expanded = goalMenu, onDismissRequest = { goalMenu = false }) {
-                        DropdownMenuItem(text = { Text("Без цели") }, onClick = { t = t.copy(goalId = null); goalMenu = false })
+                        DropdownMenuItem(text = { Text(btnLabel("Без цели")) }, onClick = { t = t.copy(goalId = null); goalMenu = false })
                         goals.filter { !it.done }.forEach { gl ->
                             DropdownMenuItem(text = { Text(gl.title) }, leadingIcon = { Glyph(gl.emoji, 20.dp) }, onClick = { t = t.copy(goalId = gl.id); goalMenu = false })
                         }
@@ -216,7 +217,7 @@ fun TaskEditScreen(nav: NavHostController, id: Long, day: Long, goal: Long) {
             Gap(10.dp)
             OutlinedTextField(
                 value = t.tags, onValueChange = { t = t.copy(tags = it.replace(" ", ",").replace(",,", ",")) },
-                label = { Text("Теги через запятую") }, singleLine = true,
+                label = { Text(btnLabel("Теги через запятую")) }, singleLine = true,
                 modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
             )
 
@@ -239,7 +240,7 @@ fun TaskEditScreen(nav: NavHostController, id: Long, day: Long, goal: Long) {
             }
             OutlinedTextField(
                 value = newSub, onValueChange = { newSub = it },
-                placeholder = { Text("+ Добавить подзадачу") }, singleLine = true,
+                placeholder = { Text(btnLabel("+ Добавить подзадачу")) }, singleLine = true,
                 modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
                 textStyle = TextStyle(fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),

@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.finance
 
 import com.dasein.poryadok.ui.common.FitText
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.clickable
 import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.GlyphRow
@@ -38,7 +39,7 @@ import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -165,7 +166,7 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
                 val undated = monthNotes.filter { it.kind == NoteKind.UNDATED_EXPENSE }
                 val written = monthNotes.filter { it.kind == NoteKind.WRITTEN_TOTAL }
                 Tile(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), onClick = { nav.navigate(Routes.FIN_NOTEBOOK) }, padding = 10.dp) {
-                    Text("Тетрадь за месяц", fontSize = 12.sp, color = LocalExtra.current.dim)
+                    Text(btnLabel("Тетрадь за месяц"), fontSize = 12.sp, color = LocalExtra.current.dim)
                     Text(
                         (if (undated.isNotEmpty()) "Расходы без даты: ${Money.format(undated.sumOf { it.amount ?: 0.0 }, cur)} (${undated.size})" else "") +
                             (if (written.isNotEmpty()) (if (undated.isNotEmpty()) " · " else "") + written.joinToString { "${it.label} ${Money.format(it.amount ?: 0.0, cur)}" } else ""),
@@ -213,7 +214,7 @@ private fun Operations(nav: NavHostController, month: List<Txn>, cats: List<Cate
                 val dayExp = list.filter { it.type == TxnType.EXPENSE }.sumOf { it.amount }
                 Row(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 6.dp)) {
                     Text("${Dates.label(day)}, ${Dates.weekdayShort(day)}", Modifier.weight(1f), color = extra.dim, fontSize = 13.sp)
-                    if (dayExp > 0) Text("−" + Money.format(dayExp, cur), color = extra.dim, fontSize = 13.sp)
+                    if (dayExp > 0) Text(btnLabel("−") + Money.format(dayExp, cur), color = extra.dim, fontSize = 13.sp)
                 }
             }
             items(list, key = { it.id }) { t -> TxnRow(t, cats, accounts, cur) { nav.navigate(Routes.txn(t.id)) } }
@@ -272,7 +273,7 @@ private fun Overview(all: List<Txn>, month: List<Txn>, cats: List<Category>, ym:
                 Donut(byCat.mapIndexed { i, (c, v) -> v.toFloat() to Palette.item(c?.color ?: i) }, size = 150.dp) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(Money.format(total, cur), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                        Text("расходы", fontSize = 11.sp, color = extra.dim)
+                        Text(btnLabel("расходы"), fontSize = 11.sp, color = extra.dim)
                     }
                 }
                 Column(Modifier.padding(start = 12.dp)) {
@@ -288,7 +289,7 @@ private fun Overview(all: List<Txn>, month: List<Txn>, cats: List<Category>, ym:
         }
         SectionTitle("Расходы по категориям")
         Tile {
-            if (byCat.isEmpty()) Text("Нет расходов за этот месяц", color = extra.dim)
+            if (byCat.isEmpty()) Text(btnLabel("Нет расходов за этот месяц"), color = extra.dim)
             byCat.forEachIndexed { i, (c, v) ->
                 Column(Modifier.padding(vertical = 6.dp).clickable(enabled = c != null) { c?.let(onCategory) }) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -351,7 +352,7 @@ private fun Budgets(month: List<Txn>, cats: List<Category>, budgets: List<Budget
             Tile(Modifier.padding(bottom = 10.dp), onClick = { onEdit(b) }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Glyph(if (b.categoryId == 0L) "ui:wallet" else c?.emoji ?: "ui:grid", 18.dp)
-                    Text("  " + if (b.categoryId == 0L) "Общий бюджет" else c?.name ?: "?", Modifier.weight(1f), fontWeight = FontWeight.Medium)
+                    Text(btnLabel("  ") + if (b.categoryId == 0L) "Общий бюджет" else c?.name ?: "?", Modifier.weight(1f), fontWeight = FontWeight.Medium)
                     Text("${Money.format(spent, cur)} из ${Money.format(b.monthly, cur)}", fontSize = 13.sp, color = extra.dim)
                 }
                 Bar((spent / b.monthly).toFloat(), color, Modifier.padding(vertical = 8.dp))
@@ -378,7 +379,7 @@ private fun RecurringList(list: List<Recurring>, cats: List<Category>, accounts:
     LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 96.dp)) {
         item {
             Tile {
-                Text("Подписки и регулярные платежи", color = extra.dim, fontSize = 13.sp)
+                Text(btnLabel("Подписки и регулярные платежи"), color = extra.dim, fontSize = 13.sp)
                 FitText("≈ ${Money.format(monthlyOut, cur)} в месяц", style = MaterialTheme.typography.titleLarge)
                 Text("Операции добавляются автоматически в день платежа, накануне придёт напоминание.", fontSize = 12.sp, color = extra.dim)
             }
@@ -414,7 +415,7 @@ private fun Accounts(accounts: List<Account>, txns: List<Txn>, cur: String, onEd
     LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 96.dp)) {
         item {
             Tile {
-                Text("Всего на счетах", color = extra.dim, fontSize = 13.sp)
+                Text(btnLabel("Всего на счетах"), color = extra.dim, fontSize = 13.sp)
                 FitText(Money.format(total, cur), style = MaterialTheme.typography.headlineMedium)
             }
             Gap()
@@ -455,12 +456,12 @@ private fun AccountDialog(a: Account, onDismiss: () -> Unit) {
             TextButton(onClick = {
                 if (name.isNotBlank()) io { Graph.dao.upsertAccount(a.copy(name = name.trim(), emoji = emoji, initial = initial.num() ?: 0.0)) }
                 onDismiss()
-            }) { Text("Сохранить") }
+            }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
             Row {
-                if (a.id != 0L) TextButton(onClick = { confirm = true }) { Text("Удалить", color = LocalExtra.current.danger) }
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                if (a.id != 0L) TextButton(onClick = { confirm = true }) { Text(btnLabel("Удалить"), color = LocalExtra.current.danger) }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
         },
     )
@@ -479,7 +480,7 @@ private fun BudgetDialog(b: Budget, cats: List<Category>, cur: String, onDismiss
     var menu by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Бюджет на месяц") },
+        title = { Text(btnLabel("Бюджет на месяц")) },
         text = {
             Column {
                 Box {
@@ -488,7 +489,7 @@ private fun BudgetDialog(b: Budget, cats: List<Category>, cur: String, onDismiss
                         if (b.categoryId < 0) menu = true
                     }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                        DropdownMenuItem(text = { Text("Все расходы") }, leadingIcon = { Glyph("ui:wallet", 20.dp) }, onClick = { catId = 0; menu = false })
+                        DropdownMenuItem(text = { Text(btnLabel("Все расходы")) }, leadingIcon = { Glyph("ui:wallet", 20.dp) }, onClick = { catId = 0; menu = false })
                         cats.forEach { cat -> DropdownMenuItem(text = { Text(cat.name) }, leadingIcon = { Glyph(cat.emoji, 20.dp) }, onClick = { catId = cat.id; menu = false }) }
                     }
                 }
@@ -501,14 +502,14 @@ private fun BudgetDialog(b: Budget, cats: List<Category>, cur: String, onDismiss
                 val v = amount.num()
                 if (v != null && v > 0) io { Graph.dao.upsertBudget(Budget(catId, v)) }
                 onDismiss()
-            }) { Text("Сохранить") }
+            }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
             Row {
                 if (b.categoryId >= 0) TextButton(onClick = { io { Graph.dao.deleteBudget(b.categoryId) }; onDismiss() }) {
-                    Text("Удалить", color = LocalExtra.current.danger)
+                    Text(btnLabel("Удалить"), color = LocalExtra.current.danger)
                 }
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
         },
     )
@@ -559,13 +560,13 @@ private fun RecurringDialog(r0: Recurring, cats: List<Category>, accounts: List<
                     }
                 }
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Добавлять операцию сама", Modifier.weight(1f)); Switch(r.autoAdd, { r = r.copy(autoAdd = it) })
+                    Text(btnLabel("Добавлять операцию сама"), Modifier.weight(1f)); Switch(r.autoAdd, { r = r.copy(autoAdd = it) })
                 }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Напоминать", Modifier.weight(1f)); Switch(r.remind, { r = r.copy(remind = it) })
+                    Text(btnLabel("Напоминать"), Modifier.weight(1f)); Switch(r.remind, { r = r.copy(remind = it) })
                 }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Активен", Modifier.weight(1f)); Switch(r.active, { r = r.copy(active = it) })
+                    Text(btnLabel("Активен"), Modifier.weight(1f)); Switch(r.active, { r = r.copy(active = it) })
                 }
             }
         },
@@ -577,14 +578,14 @@ private fun RecurringDialog(r0: Recurring, cats: List<Category>, accounts: List<
                     io { Graph.dao.upsertRecurring(cur2); com.dasein.poryadok.Repo.processRecurring() }
                 }
                 onDismiss()
-            }) { Text("Сохранить") }
+            }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
             Row {
                 if (r0.id != 0L) TextButton(onClick = { io { Graph.dao.deleteRecurring(r0) }; onDismiss() }) {
-                    Text("Удалить", color = LocalExtra.current.danger)
+                    Text(btnLabel("Удалить"), color = LocalExtra.current.danger)
                 }
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
         },
     )
@@ -618,15 +619,15 @@ private fun CategoryDialog(c: Category, onDismiss: () -> Unit) {
             TextButton(onClick = {
                 if (name.isNotBlank()) io { Graph.dao.upsertCategory(c.copy(name = name.trim(), emoji = emoji, color = color, income = income)) }
                 onDismiss()
-            }) { Text("Сохранить") }
+            }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
             Row {
                 if (c.id != 0L) TextButton(onClick = {
                     io { Graph.dao.detachCategory(c.id); Graph.dao.deleteBudget(c.id); Graph.dao.deleteCategory(c) }
                     onDismiss()
-                }) { Text("Удалить", color = LocalExtra.current.danger) }
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                }) { Text(btnLabel("Удалить"), color = LocalExtra.current.danger) }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
         },
     )

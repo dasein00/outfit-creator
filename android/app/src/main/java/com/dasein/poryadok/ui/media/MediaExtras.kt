@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.media
 
 import androidx.compose.foundation.background
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,9 +25,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -95,7 +96,7 @@ fun stepProgress(m: MediaItem, delta: Int): MediaItem {
 fun ContinueShelf(items: List<MediaItem>, onOpen: (MediaItem) -> Unit) {
     if (items.isEmpty()) return
     val extra = LocalExtra.current
-    Text("Продолжить", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))
+    Text(btnLabel("Продолжить"), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))
     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         items(items, key = { it.id }) { m ->
             Column(Modifier.width(118.dp).clip(RoundedCornerShape(12.dp)).clickable { onOpen(m) }) {
@@ -130,8 +131,8 @@ fun MediaRow(m: MediaItem, onLong: (() -> Unit)? = null, onOpen: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
                 if (m.myRating > 0) Text("★ ${m.myRating}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 m.externalRating?.let { Text("  ${m.source}: %.1f".format(it), fontSize = 12.sp, color = extra.dim) }
-                Text("  " + MediaStatus.names(m.kind)[m.status], fontSize = 12.sp, color = extra.dim, maxLines = 1)
-                if (m.favorite) Text("  ♥", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                Text(btnLabel("  ") + MediaStatus.names(m.kind)[m.status], fontSize = 12.sp, color = extra.dim, maxLines = 1)
+                if (m.favorite) Text(btnLabel("  ♥"), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
             }
             MediaCatalog.progressText(m)?.let { t ->
                 Text(t, fontSize = 11.sp, color = extra.dim)
@@ -163,11 +164,11 @@ fun RandomPickDialog(kind: Int, candidates: List<MediaItem>, source: String = ""
                 }
             }
         },
-        confirmButton = { pick?.let { m -> TextButton(onClick = { onOpen(m) }) { Text("Открыть") } } },
+        confirmButton = { pick?.let { m -> TextButton(onClick = { onOpen(m) }) { Text(btnLabel("Открыть")) } } },
         dismissButton = {
             Row {
-                if (candidates.size > 1) TextButton(onClick = { pick = (candidates - setOfNotNull(pick)).randomOrNull() ?: pick }) { Text("Другой") }
-                TextButton(onClick = onDismiss) { Text("Закрыть") }
+                if (candidates.size > 1) TextButton(onClick = { pick = (candidates - setOfNotNull(pick)).randomOrNull() ?: pick }) { Text(btnLabel("Другой")) }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Закрыть")) }
             }
         },
     )
@@ -265,7 +266,7 @@ fun ProgressEditor(m: MediaItem, onChange: (MediaItem) -> Unit) {
         val auto = MediaCatalog.count(m.length, m.kind)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(if (book) "Прочитано страниц" else "Просмотрено серий", Modifier.weight(1f), fontSize = 14.sp)
-            OutlinedButton(onClick = { onChange(stepProgress(m, -1)) }) { Text("−1") }
+            OutlinedButton(onClick = { onChange(stepProgress(m, -1)) }) { Text(btnLabel("−1")) }
             Text("${m.progress}", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 12.dp))
             OutlinedButton(onClick = { onChange(stepProgress(m, if (book) 10 else 1)) }) { Text(if (book) "+10" else "+1") }
         }
@@ -283,9 +284,9 @@ fun ProgressEditor(m: MediaItem, onChange: (MediaItem) -> Unit) {
     }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(if (book) "Перечитывал" else "Пересматривал", Modifier.weight(1f), fontSize = 14.sp)
-        OutlinedButton(onClick = { onChange(m.copy(rewatch = (m.rewatch - 1).coerceAtLeast(0))) }) { Text("−") }
+        OutlinedButton(onClick = { onChange(m.copy(rewatch = (m.rewatch - 1).coerceAtLeast(0))) }) { Text(btnLabel("−")) }
         Text("${m.rewatch} раз", fontSize = 15.sp, modifier = Modifier.padding(horizontal = 10.dp))
-        OutlinedButton(onClick = { onChange(m.copy(rewatch = m.rewatch + 1)) }) { Text("+") }
+        OutlinedButton(onClick = { onChange(m.copy(rewatch = m.rewatch + 1)) }) { Text(btnLabel("+")) }
     }
     m.startedDay?.let { Text("Начато: ${Dates.full(it)}", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp)) }
 }

@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.notes
 
 import androidx.compose.foundation.clickable
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,7 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -102,12 +103,12 @@ fun PagesHome(nav: NavHostController, embedded: Boolean = false) {
     Screen(
         title = if (embedded) "Заметки" else "Заметки",
         onBack = if (embedded) null else ({ nav.popBackStack(); Unit }),
-        fab = { ExtendedFloatingActionButton(onClick = { create() }, icon = { Icon(Icons.Default.Add, null) }, text = { Text("Страница") }) },
+        fab = { ExtendedFloatingActionButton(onClick = { create() }, icon = { Icon(Icons.Default.Add, null) }, text = { Text(btnLabel("Страница")) }) },
     ) { pad ->
         LazyColumn(Modifier.padding(pad).fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
             item {
                 OutlinedTextField(
-                    query, { query = it }, placeholder = { Text("Поиск по заголовкам и тексту") }, singleLine = true,
+                    query, { query = it }, placeholder = { Text(btnLabel("Поиск по заголовкам и тексту")) }, singleLine = true,
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
                 )
             }
@@ -200,8 +201,8 @@ fun PagesHome(nav: NavHostController, embedded: Boolean = false) {
                 if (showTrash) items(trash, key = { "x" + it.id }) { p ->
                     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(p.title.ifBlank { "Без названия" }, Modifier.weight(1f), color = extra.dim)
-                        TextButton(onClick = { io { PagesRepo.archive(p.id, false) } }) { Text("Вернуть") }
-                        TextButton(onClick = { purge = p }) { Text("Удалить", color = extra.danger) }
+                        TextButton(onClick = { io { PagesRepo.archive(p.id, false) } }) { Text(btnLabel("Вернуть")) }
+                        TextButton(onClick = { purge = p }) { Text(btnLabel("Удалить"), color = extra.danger) }
                     }
                 }
             }
@@ -247,9 +248,9 @@ private fun TreeRow(
         }
         DropdownMenu(menu, { menu = false }) {
             DropdownMenuItem({ Text(if (p.favorite) "Убрать из избранного" else "В избранное") }, { menu = false; onFavorite() })
-            DropdownMenuItem({ Text("Добавить подстраницу") }, { menu = false; onSub() })
-            DropdownMenuItem({ Text("Дублировать") }, { menu = false; onDuplicate() })
-            DropdownMenuItem({ Text("В корзину", color = extra.danger) }, { menu = false; onTrash() })
+            DropdownMenuItem({ Text(btnLabel("Добавить подстраницу")) }, { menu = false; onSub() })
+            DropdownMenuItem({ Text(btnLabel("Дублировать")) }, { menu = false; onDuplicate() })
+            DropdownMenuItem({ Text(btnLabel("В корзину"), color = extra.danger) }, { menu = false; onTrash() })
         }
     }
 }

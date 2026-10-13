@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.productivity
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import androidx.activity.compose.BackHandler
 import com.dasein.poryadok.ui.common.Glyph
@@ -154,7 +155,7 @@ fun HabitsScreen(nav: NavHostController) {
                             Text("$doneCount/${todays.size}", fontSize = 13.sp)
                         }
                         Column(Modifier.padding(start = 14.dp)) {
-                            Text("Сегодня", style = MaterialTheme.typography.titleMedium)
+                            Text(btnLabel("Сегодня"), style = MaterialTheme.typography.titleMedium)
                             Text(
                                 if (doneCount == todays.size && todays.isNotEmpty()) "Все привычки выполнены — отличный день!"
                                 else "Нажимайте на кружки дней, чтобы отметить",
@@ -210,7 +211,7 @@ fun HabitsScreen(nav: NavHostController) {
                                 contentAlignment = Alignment.Center,
                             ) {
                                 if (h.target > 1 && v in 1 until h.target) Text("$v", fontSize = 11.sp)
-                                else if (done) Text("✓", fontSize = 14.sp, color = Color(0xFF1B1812), fontWeight = FontWeight.Bold)
+                                else if (done) Text(btnLabel("✓"), fontSize = 14.sp, color = Color(0xFF1B1812), fontWeight = FontWeight.Bold)
                             }
                         }
                     }

@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.recipes
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import android.widget.Toast
 import androidx.compose.foundation.clickable
@@ -20,12 +21,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -102,7 +103,7 @@ fun PresetsScreen(nav: NavHostController) {
             item {
                 Hint("presets_about", "Шаблон — готовый день или неделя меню. Применяйте к любому периоду.", title = "Что такое шаблон")
                 Gap(8.dp)
-                Button(onClick = { newPreset = true }, Modifier.fillMaxWidth()) { Text("+ Новый шаблон") }
+                Button(onClick = { newPreset = true }, Modifier.fillMaxWidth()) { Text(btnLabel("+ Новый шаблон")) }
             }
             if (presets.isEmpty()) item { Empty(Ic.folder, "Шаблонов нет", "Сохраните день или неделю из меню как шаблон — или создайте пустой и наполните.") }
             items(presets, key = { "p${it.id}" }) { p ->
@@ -118,11 +119,11 @@ fun PresetsScreen(nav: NavHostController) {
                         }
                     }
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                        TextButton(onClick = { apply = p }) { Text("Применить") }
-                        TextButton(onClick = { nav.navigate(Routes.preset(p.id)) }) { Text("Изменить") }
-                        TextButton(onClick = { rename = p }) { Text("Переименовать") }
-                        TextButton(onClick = { io { RecipeRepo.duplicatePreset(p) } }) { Text("Дублировать") }
-                        TextButton(onClick = { delete = p }) { Text("Удалить", color = extra.danger) }
+                        TextButton(onClick = { apply = p }) { Text(btnLabel("Применить")) }
+                        TextButton(onClick = { nav.navigate(Routes.preset(p.id)) }) { Text(btnLabel("Изменить")) }
+                        TextButton(onClick = { rename = p }) { Text(btnLabel("Переименовать")) }
+                        TextButton(onClick = { io { RecipeRepo.duplicatePreset(p) } }) { Text(btnLabel("Дублировать")) }
+                        TextButton(onClick = { delete = p }) { Text(btnLabel("Удалить"), color = extra.danger) }
                     }
                 }
             }
@@ -164,7 +165,7 @@ private fun NewPresetDialog(onDismiss: () -> Unit, onCreate: (String, Int) -> Un
     var week by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Новый шаблон") },
+        title = { Text(btnLabel("Новый шаблон")) },
         text = {
             Column {
                 TextInput(name, { name = it }, "Название")
@@ -172,8 +173,8 @@ private fun NewPresetDialog(onDismiss: () -> Unit, onCreate: (String, Int) -> Un
                 Row { Pill("День", !week) { week = false }; HGap(6.dp); Pill("Неделя", week) { week = true } }
             }
         },
-        confirmButton = { TextButton(onClick = { if (name.isNotBlank()) { onCreate(name.trim(), if (week) 7 else 1); onDismiss() } }) { Text("Создать") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        confirmButton = { TextButton(onClick = { if (name.isNotBlank()) { onCreate(name.trim(), if (week) 7 else 1); onDismiss() } }) { Text(btnLabel("Создать")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
 }
 
@@ -196,10 +197,10 @@ private fun ApplyPresetDialog(p: MealPreset, onDismiss: () -> Unit, onDone: () -
                     FieldButton("По", Dates.label(to), Modifier.weight(1f)) { pick = 2 }
                 }
                 if (p.days == 1) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-                    Text("Только будни (Пн–Пт)", Modifier.weight(1f)); Switch(weekdaysOnly, { weekdaysOnly = it })
+                    Text(btnLabel("Только будни (Пн–Пт)"), Modifier.weight(1f)); Switch(weekdaysOnly, { weekdaysOnly = it })
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-                    Text("Заменить запланированное", Modifier.weight(1f)); Switch(replace, { replace = it })
+                    Text(btnLabel("Заменить запланированное"), Modifier.weight(1f)); Switch(replace, { replace = it })
                 }
             }
         },
@@ -215,9 +216,9 @@ private fun ApplyPresetDialog(p: MealPreset, onDismiss: () -> Unit, onDone: () -
                     } else RecipeRepo.applyPreset(p.id, from, maxOf(from, to), replace)
                     onDone(); onDismiss()
                 }
-            }) { Text("Применить") }
+            }) { Text(btnLabel("Применить")) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
     if (pick == 1) DatePickDialog(from, { pick = 0 }, { it?.let { d -> from = d; if (to < d) to = d } }, allowClear = false)
     if (pick == 2) DatePickDialog(to, { pick = 0 }, { it?.let { d -> to = d } }, allowClear = false)
@@ -257,12 +258,12 @@ private fun RepeatDialog(r0: MealRepeat, book: RecipeBook, onDismiss: () -> Unit
                 if (r.recipeId == 0L || r.daysMask == 0) return@TextButton
                 io { RecipeRepo.saveRepeat(r.copy(servings = servings.num()?.takeIf { it > 0 } ?: 1.0)) }
                 onDismiss()
-            }) { Text("Сохранить") }
+            }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
             Row {
-                if (r0.id != 0L) TextButton(onClick = { confirm = true }) { Text("Удалить", color = LocalExtra.current.danger) }
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                if (r0.id != 0L) TextButton(onClick = { confirm = true }) { Text(btnLabel("Удалить"), color = LocalExtra.current.danger) }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
         },
     )
@@ -285,7 +286,7 @@ fun PresetEditScreen(nav: NavHostController, id: Long) {
     val items = allItems.filter { it.presetId == id }
     var addFor by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     Screen(p?.name ?: "Шаблон", onBack = { nav.popBackStack() }) { pad ->
-        if (p == null) { Text("Шаблон не найден", Modifier.padding(pad).padding(16.dp), color = extra.dim); return@Screen }
+        if (p == null) { Text(btnLabel("Шаблон не найден"), Modifier.padding(pad).padding(16.dp), color = extra.dim); return@Screen }
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             val days = if (p.days == 7) (0 until 7).toList() else listOf(0)
             days.forEach { di ->
@@ -296,7 +297,7 @@ fun PresetEditScreen(nav: NavHostController, id: Long) {
                     val ms = dayItems.filter { it.meal == m }
                     Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(MealType.name(m), Modifier.weight(1f), color = extra.dim, fontSize = 13.sp)
-                        Text("+", Modifier.clip(RoundedCornerShape(8.dp)).clickable { addFor = di to m }.padding(horizontal = 10.dp, vertical = 2.dp), color = MaterialTheme.colorScheme.primary, fontSize = 18.sp)
+                        Text(btnLabel("+"), Modifier.clip(RoundedCornerShape(8.dp)).clickable { addFor = di to m }.padding(horizontal = 10.dp, vertical = 2.dp), color = MaterialTheme.colorScheme.primary, fontSize = 18.sp)
                     }
                     ms.forEach { it2 -> PresetItemRow(it2, book) }
                 }
@@ -317,7 +318,7 @@ private fun PresetItemRow(item: MealPresetItem, book: RecipeBook) {
     Row(Modifier.fillMaxWidth().padding(start = 8.dp, top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(book.byId(item.recipeId)?.name ?: "Рецепт удалён", Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text("${Cooking.amount(item.servings)} порц.", fontSize = 12.sp, color = extra.dim)
-        Text("✕", Modifier.clip(RoundedCornerShape(8.dp)).clickable { io { Graph.extra.deletePresetItem(item) } }.padding(8.dp), color = extra.dim)
+        Text(btnLabel("✕"), Modifier.clip(RoundedCornerShape(8.dp)).clickable { io { Graph.extra.deletePresetItem(item) } }.padding(8.dp), color = extra.dim)
     }
 }
 
@@ -342,9 +343,9 @@ fun ShoppingScreen(nav: NavHostController) {
         LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 40.dp)) {
             item {
                 Row {
-                    Button(onClick = { generate = true }, Modifier.weight(1f)) { Text("Из меню") }
+                    Button(onClick = { generate = true }, Modifier.weight(1f)) { Text(btnLabel("Из меню")) }
                     HGap(8.dp)
-                    OutlinedButton(onClick = { add = true }, Modifier.weight(1f)) { Text("+ Добавить") }
+                    OutlinedButton(onClick = { add = true }, Modifier.weight(1f)) { Text(btnLabel("+ Добавить")) }
                 }
                 Gap(6.dp)
                 if (list != null && list.isNotEmpty()) Text("Куплено ${list.count { it.bought }} из ${list.size}", fontSize = 12.sp, color = extra.dim)
@@ -388,7 +389,7 @@ private fun GenerateShoppingDialog(onDismiss: () -> Unit, onGo: (Long, Long) -> 
     var pick by remember { mutableStateOf(0) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Покупки по меню") },
+        title = { Text(btnLabel("Покупки по меню")) },
         text = {
             Column {
                 Hint("shopping_about", "Ингредиенты блюд, которые ещё не съедены, сложатся по продуктам. Ручные позиции и отметки «куплено» сохранятся.", title = "Как собирается список")
@@ -400,8 +401,8 @@ private fun GenerateShoppingDialog(onDismiss: () -> Unit, onGo: (Long, Long) -> 
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { onGo(from, maxOf(from, to)); onDismiss() }) { Text("Собрать") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        confirmButton = { TextButton(onClick = { onGo(from, maxOf(from, to)); onDismiss() }) { Text(btnLabel("Собрать")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
     if (pick == 1) DatePickDialog(from, { pick = 0 }, { it?.let { d -> from = d; if (to < d) to = d } }, allowClear = false)
     if (pick == 2) DatePickDialog(to, { pick = 0 }, { it?.let { d -> to = d } }, allowClear = false)
@@ -434,12 +435,12 @@ private fun ShoppingItemDialog(s0: ShoppingItem, onDismiss: () -> Unit) {
                 if (s.name.isBlank()) return@TextButton
                 io { Graph.extra.upsertShopping(s.copy(name = s.name.trim(), amount = amount.num() ?: 0.0, key = Cooking.key(s.name, s.unit))) }
                 onDismiss()
-            }) { Text("Сохранить") }
+            }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
             Row {
-                if (s0.id != 0L) TextButton(onClick = { io { Graph.extra.deleteShopping(s0) }; onDismiss() }) { Text("Удалить", color = LocalExtra.current.danger) }
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                if (s0.id != 0L) TextButton(onClick = { io { Graph.extra.deleteShopping(s0) }; onDismiss() }) { Text(btnLabel("Удалить"), color = LocalExtra.current.danger) }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
         },
     )
@@ -487,9 +488,9 @@ fun CookHistoryScreen(nav: NavHostController) {
                                 fontSize = 12.sp, color = extra.dim,
                             )
                         }
-                        if (h.foodEntryId == null && h.eaten > 0) TextButton(onClick = { io { RecipeRepo.historyToFood(h) } }) { Text("В питание") }
-                        else if (h.foodEntryId != null) Text("в питании ✓", fontSize = 12.sp, color = extra.ok)
-                        Text("✕", Modifier.clip(RoundedCornerShape(8.dp)).clickable { delete = h }.padding(8.dp), color = extra.dim)
+                        if (h.foodEntryId == null && h.eaten > 0) TextButton(onClick = { io { RecipeRepo.historyToFood(h) } }) { Text(btnLabel("В питание")) }
+                        else if (h.foodEntryId != null) Text(btnLabel("в питании ✓"), fontSize = 12.sp, color = extra.ok)
+                        Text(btnLabel("✕"), Modifier.clip(RoundedCornerShape(8.dp)).clickable { delete = h }.padding(8.dp), color = extra.dim)
                     }
                 }
             }

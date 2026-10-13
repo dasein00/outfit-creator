@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.today
 
 import com.dasein.poryadok.ui.common.FitText
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -95,7 +96,7 @@ fun HomePressureCard(nav: NavHostController, size: Int) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Glyph("pressure/00", 36.dp, badge = false)
                 Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                    Text("Давление и пульс", fontWeight = FontWeight.SemiBold)
+                    Text(btnLabel("Давление и пульс"), fontWeight = FontWeight.SemiBold)
                     Text("Дневник для вас и близких: норма по возрасту и вывод после каждого замера", fontSize = 12.sp, color = extra.dim)
                 }
             }
@@ -113,7 +114,7 @@ fun HomePressureCard(nav: NavHostController, size: Int) {
             Glyph(p.glyph, if (size == 0) 28.dp else 34.dp, badge = false)
             Column(Modifier.weight(1f).padding(start = 10.dp)) {
                 Text(if (size == 0) p.name else "Давление · ${p.name}", fontSize = 12.sp, color = extra.dim, maxLines = 1)
-                if (last == null) Text("Нет замеров", fontWeight = FontWeight.SemiBold)
+                if (last == null) Text(btnLabel("Нет замеров"), fontWeight = FontWeight.SemiBold)
                 else Row(verticalAlignment = Alignment.Bottom) {
                     Text("${last.sys}/${last.dia}", fontSize = if (size == 0) 20.sp else 28.sp, fontWeight = FontWeight.Bold, color = col)
                     last.pulse?.let { Text("  ♥ $it", fontSize = 14.sp, modifier = Modifier.padding(bottom = 3.dp)) }
@@ -167,7 +168,7 @@ fun HomePressureCard(nav: NavHostController, size: Int) {
             }
             Row {
                 Text("${byDay.firstKey().dayOfMonth}.${"%02d".format(byDay.firstKey().monthValue)}", fontSize = 10.sp, color = extra.dim, modifier = Modifier.weight(1f))
-                Text("среднее за день · зелёное — норма", fontSize = 10.sp, color = extra.dim)
+                Text(btnLabel("среднее за день · зелёное — норма"), fontSize = 10.sp, color = extra.dim)
                 Text("  ${byDay.lastKey().dayOfMonth}.${"%02d".format(byDay.lastKey().monthValue)}", fontSize = 10.sp, color = extra.dim)
             }
         }
@@ -199,7 +200,7 @@ fun HomePressureCard(nav: NavHostController, size: Int) {
             )
         }
         if (size >= 2 && d.people.size > 1) {
-            Text("Семья", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 10.dp, bottom = 2.dp))
+            Text(btnLabel("Семья"), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 10.dp, bottom = 2.dp))
             d.people.sortedBy { it.createdAt }.forEach { o ->
                 val lr = d.readings.filter { it.personId == o.id }.maxByOrNull { it.time }
                 val lv = lr?.let { Pressure.verdict(o, it.sys, it.dia, it.pulse, it.symptoms, it.irregular).level }
@@ -285,7 +286,7 @@ fun HomeHealthCard(nav: NavHostController, size: Int) {
     Tile(onClick = { nav.navigate(Routes.HEALTH_HUB) }) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Glyph("pressure/01", 22.dp, badge = false)
-            Text("  Здоровье сегодня", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text(btnLabel("  Здоровье сегодня"), fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             Text(Dates.label(today), fontSize = 12.sp, color = extra.dim)
         }
         if (size == 0) {
@@ -336,7 +337,7 @@ fun HomeHealthCard(nav: NavHostController, size: Int) {
         }
         if (size >= 2) {
             val days = (6 downTo 0).map { today - it }
-            Text("Неделя", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 10.dp))
+            Text(btnLabel("Неделя"), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 10.dp))
             WeekBars("Шаги", days.map { day -> (dayLogs.firstOrNull { it.day == day }?.steps ?: 0).toFloat() }, stepsGoal.toFloat(), extra.ok)
             WeekBars("Сон", days.map { day -> (sleep.firstOrNull { it.day == day }?.let { sleepMinutes(it) } ?: 0).toFloat() }, sleepGoal.toFloat(), Color(0xFF7A6BD1))
             if (bp.isNotEmpty()) WeekBars(

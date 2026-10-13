@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.recipes
 
 import androidx.compose.foundation.layout.Arrangement
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -17,11 +18,11 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import android.widget.Toast
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -310,9 +311,9 @@ private fun Catalog(nav: NavHostController, book: RecipeBook) {
             SearchField(q, { q = it }, "Блюдо, ингредиенты, тег: «курица рис -грибы»")
             Gap(8.dp)
             Row {
-                Button(onClick = { nav.navigate(Routes.recipeEdit(0)) }, Modifier.weight(1f)) { Text("+ Свой рецепт", maxLines = 1, softWrap = false) }
+                Button(onClick = { nav.navigate(Routes.recipeEdit(0)) }, Modifier.weight(1f)) { Text(btnLabel("+ Свой рецепт"), maxLines = 1, softWrap = false) }
                 HGap(8.dp)
-                OutlinedButton(onClick = { nav.navigate(Routes.MENU_CREATE) }, Modifier.weight(1f)) { Text("Создать меню", maxLines = 1, softWrap = false) }
+                OutlinedButton(onClick = { nav.navigate(Routes.MENU_CREATE) }, Modifier.weight(1f)) { Text(btnLabel("Создать меню"), maxLines = 1, softWrap = false) }
             }
             Gap(4.dp)
         }
@@ -379,16 +380,16 @@ private fun Archive(nav: NavHostController, book: RecipeBook) {
     val list = book.archived.filter { searchMatch(query, it, book.ingredients[it.id].orEmpty()) }.sortedBy { it.name }
     if (confirmAll) AlertDialog(
         onDismissRequest = { confirmAll = false },
-        title = { Text("Вернуть все рецепты?") },
+        title = { Text(btnLabel("Вернуть все рецепты?")) },
         text = { Text("Все ${book.archived.size} рецептов из архива снова появятся в каталоге и подборе меню.") },
         confirmButton = {
             TextButton(onClick = {
                 val ids = book.archived.map { it.id }
                 io { ids.forEach { Graph.extra.setArchived(it, false) } }
                 confirmAll = false
-            }) { Text("Вернуть") }
+            }) { Text(btnLabel("Вернуть")) }
         },
-        dismissButton = { TextButton(onClick = { confirmAll = false }) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = { confirmAll = false }) { Text(btnLabel("Отмена")) } },
     )
     LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp)) {
         item {
@@ -402,7 +403,7 @@ private fun Archive(nav: NavHostController, book: RecipeBook) {
                 SearchField(q, { q = it }, "Поиск в архиве")
                 Gap(8.dp)
             }
-            if (book.archived.size > 1) OutlinedButton(onClick = { confirmAll = true }, Modifier.fillMaxWidth()) { Text("Вернуть все в каталог") }
+            if (book.archived.size > 1) OutlinedButton(onClick = { confirmAll = true }, Modifier.fillMaxWidth()) { Text(btnLabel("Вернуть все в каталог")) }
             Gap(8.dp)
         }
         if (book.archived.isEmpty()) item {
@@ -413,7 +414,7 @@ private fun Archive(nav: NavHostController, book: RecipeBook) {
             TextButton(onClick = {
                 io { Graph.extra.setArchived(r.id, false) }
                 Toast.makeText(ctx, "«${r.name}» снова в каталоге", Toast.LENGTH_SHORT).show()
-            }) { Text("Вернуть в каталог") }
+            }) { Text(btnLabel("Вернуть в каталог")) }
         }
         item { HowTo("recipes") }
     }
@@ -465,7 +466,7 @@ private fun Mine(nav: NavHostController, book: RecipeBook) {
     val list = book.recipes.filter { it.custom }.sortedByDescending { it.createdAt }
     LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp)) {
         item {
-            Button(onClick = { nav.navigate(Routes.recipeEdit(0)) }, Modifier.fillMaxWidth()) { Text("+ Добавить рецепт") }
+            Button(onClick = { nav.navigate(Routes.recipeEdit(0)) }, Modifier.fillMaxWidth()) { Text(btnLabel("+ Добавить рецепт")) }
             Gap(8.dp)
             RecipeShareButtons(list)
             Gap(10.dp)
@@ -498,8 +499,8 @@ private fun RecipeQuickMenu(nav: NavHostController, r: Recipe, onDismiss: () -> 
         title = { Text(r.name) },
         text = {
             Column {
-                TextButton(onClick = { onDismiss(); nav.navigate(Routes.recipe(r.id)) }, Modifier.fillMaxWidth()) { Text("Открыть рецепт") }
-                TextButton(onClick = { share = true }, Modifier.fillMaxWidth()) { Text("Поделиться рецептом (файл)") }
+                TextButton(onClick = { onDismiss(); nav.navigate(Routes.recipe(r.id)) }, Modifier.fillMaxWidth()) { Text(btnLabel("Открыть рецепт")) }
+                TextButton(onClick = { share = true }, Modifier.fillMaxWidth()) { Text(btnLabel("Поделиться рецептом (файл)")) }
                 TextButton(onClick = { io { Graph.extra.setFavorite(r.id, !r.favorite) }; onDismiss() }, Modifier.fillMaxWidth()) {
                     Text(if (r.favorite) "Убрать из избранного" else "В избранное")
                 }
@@ -510,6 +511,6 @@ private fun RecipeQuickMenu(nav: NavHostController, r: Recipe, onDismiss: () -> 
                 }, Modifier.fillMaxWidth()) { Text(if (r.archived) "Вернуть из архива" else "Убрать в архив") }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Закрыть") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Закрыть")) } },
     )
 }

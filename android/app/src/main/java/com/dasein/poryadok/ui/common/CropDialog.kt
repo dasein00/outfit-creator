@@ -21,9 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -118,7 +116,7 @@ fun CropDialog(
     var ox by remember { mutableFloatStateOf(0f) }
     var oy by remember { mutableFloatStateOf(0f) }
     var saving by remember { mutableStateOf(false) }
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Column(Modifier.fillMaxSize().background(Color(0xF0101010)).systemBarsPadding().navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 32.dp)) {
             Text(title, color = Color.White, fontSize = 18.sp)
             Text("Двигайте и увеличивайте картинку двумя пальцами — в превью попадёт то, что внутри рамки.", color = Color(0xFFBBBBBB), fontSize = 12.sp)
@@ -182,8 +180,8 @@ fun CropDialog(
                         }
                     }
                     Row(Modifier.align(Alignment.TopCenter).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = onDismiss, Modifier.weight(1f)) { Text("Отмена", color = Color.White) }
-                        OutlinedButton(onClick = { center() }, Modifier.weight(1f)) { Text("По центру", color = Color.White) }
+                        OutlinedButton(onClick = onDismiss, Modifier.weight(1f)) { Text(btnLabel("Отмена"), color = Color.White) }
+                        OutlinedButton(onClick = { center() }, Modifier.weight(1f)) { Text(btnLabel("По центру"), color = Color.White) }
                         Button(
                             onClick = {
                                 if (saving) return@Button

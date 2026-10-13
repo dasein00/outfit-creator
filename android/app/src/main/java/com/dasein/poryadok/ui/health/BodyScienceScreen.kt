@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.health
 
 import androidx.compose.foundation.clickable
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.layout.Column
 import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.layout.Row
@@ -9,7 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -107,7 +108,7 @@ private fun EvidenceCard(e: Evidence) {
         if (e.value != null) {
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(fmt(e.value, e.decimals), fontSize = 30.sp, fontWeight = FontWeight.Bold, color = toneColor(e.tone).takeIf { e.tone != null } ?: MaterialTheme.colorScheme.onSurface)
-                if (e.unit.isNotBlank()) Text(" " + e.unit, color = extra.dim, modifier = Modifier.padding(bottom = 5.dp))
+                if (e.unit.isNotBlank()) Text(btnLabel(" ") + e.unit, color = extra.dim, modifier = Modifier.padding(bottom = 5.dp))
             }
         }
         if (e.needs != null && e.value == null) Text(e.needs, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
@@ -117,8 +118,8 @@ private fun EvidenceCard(e: Evidence) {
         Gap(6.dp)
         InfoBox("science_${e.key}", "Формула и источник", glyph = "ui:book") {
             Text(e.about, fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp)
-            Text("Формула: " + e.formula, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
-            Text("Источник: " + e.source, fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp), lineHeight = 16.sp)
+            Text(btnLabel("Формула: ") + e.formula, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+            Text(btnLabel("Источник: ") + e.source, fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp), lineHeight = 16.sp)
         }
     }
 }

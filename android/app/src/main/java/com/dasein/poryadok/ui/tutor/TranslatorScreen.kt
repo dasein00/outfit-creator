@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.tutor
 
 import android.content.ClipData
+import com.dasein.poryadok.ui.common.btnLabel
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
@@ -20,15 +21,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -79,8 +80,8 @@ fun TranslatorScreen(nav: NavHostController, initialTab: Int) {
     Screen("Переводчик", onBack = { nav.popBackStack() }) { pad ->
         Column(Modifier.padding(pad)) {
             TabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.background) {
-                Tab(tab == 0, onClick = { tab = 0 }, text = { Text("Перевод") })
-                Tab(tab == 1, onClick = { tab = 1 }, text = { Text("Идиомы и фразы") })
+                Tab(tab == 0, onClick = { tab = 0 }, text = { Text(btnLabel("Перевод")) })
+                Tab(tab == 1, onClick = { tab = 1 }, text = { Text(btnLabel("Идиомы и фразы")) })
             }
             if (tab == 0) TranslateTab(sp) else PhrasesTab(sp)
         }
@@ -143,7 +144,7 @@ private fun TranslateTab(sp: Speaker) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(if (q.isEmpty()) "Английский ⇄ русский" else if (ruToEn) "Русский → английский" else "Английский → русский", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                if (text.isNotEmpty()) TextButton(onClick = { text = ""; picked = null }) { Text("Очистить") }
+                if (text.isNotEmpty()) TextButton(onClick = { text = ""; picked = null }) { Text(btnLabel("Очистить")) }
             }
             OutlinedTextField(
                 text, { text = it; picked = null }, Modifier.fillMaxWidth(), minLines = 2, maxLines = 6,
@@ -160,13 +161,13 @@ private fun TranslateTab(sp: Speaker) {
         }
         if (ready == false) item {
             Tile(color = extra.warn.copy(alpha = .14f)) {
-                Text("Перевод фраз и предложений без интернета", fontWeight = FontWeight.SemiBold)
+                Text(btnLabel("Перевод фраз и предложений без интернета"), fontWeight = FontWeight.SemiBold)
                 Text(
                     "Слова переводятся встроенным словарём уже сейчас. Чтобы переводить целые фразы и предложения, скачайте модель Google (английский и русский, около 60 МБ) — один раз, дальше всё работает офлайн.",
                     fontSize = 13.sp, color = extra.dim,
                 )
                 if (downloading) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Text("  Скачиваю…", fontSize = 13.sp)
+                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Text(btnLabel("  Скачиваю…"), fontSize = 13.sp)
                 } else Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
                     Button(onClick = {
                         downloading = true
@@ -176,7 +177,7 @@ private fun TranslateTab(sp: Speaker) {
                             ready = r.isSuccess && OfflineTranslator.ready()
                             Toast.makeText(ctx, if (ready == true) "Переводчик готов и работает без интернета" else "Не удалось скачать. Проверьте интернет и сервисы Google", Toast.LENGTH_LONG).show()
                         }
-                    }) { Text("Скачать") }
+                    }) { Text(btnLabel("Скачать")) }
                     OutlinedButton(onClick = {
                         downloading = true
                         scope.launch {
@@ -184,7 +185,7 @@ private fun TranslateTab(sp: Speaker) {
                             downloading = false
                             ready = r.isSuccess && OfflineTranslator.ready()
                         }
-                    }) { Text("Только по Wi-Fi") }
+                    }) { Text(btnLabel("Только по Wi-Fi")) }
                 }
             }
         }
@@ -194,7 +195,7 @@ private fun TranslateTab(sp: Speaker) {
                 Text((if (ruToEn) "По-английски" else "По-русски") + if (via.isNotEmpty()) " · $via" else "", fontSize = 12.sp, color = extra.dim)
                 when {
                     translating && result == null -> Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
-                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp); Text("  Перевожу…", fontSize = 13.sp, color = extra.dim)
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp); Text(btnLabel("  Перевожу…"), fontSize = 13.sp, color = extra.dim)
                     }
                     result != null -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -202,7 +203,7 @@ private fun TranslateTab(sp: Speaker) {
                             SpeakButton(sp, if (ruToEn) result.orEmpty() else q)
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            TextButton(onClick = { copy(ctx, result.orEmpty()) }) { Text("Копировать") }
+                            TextButton(onClick = { copy(ctx, result.orEmpty()) }) { Text(btnLabel("Копировать")) }
                             val en = if (ruToEn) result.orEmpty() else q
                             val ru = if (ruToEn) q else result.orEmpty()
                             if (en.split(' ').size <= 6 && en.lowercase() !in mine) TextButton(onClick = {
@@ -212,7 +213,7 @@ private fun TranslateTab(sp: Speaker) {
                                     TutorStore.startLearning(ctx, Tutor.Word(w.en, w.ru, "", "", "B1", 1, "my", true), Dates.today())
                                     Toast.makeText(ctx, "Добавлено в «Мои слова»", Toast.LENGTH_SHORT).show()
                                 }
-                            }) { Text("+ В мои слова") }
+                            }) { Text(btnLabel("+ В мои слова")) }
                         }
                     }
                     ready == true -> Text("Перевод появится через секунду после набора", fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
@@ -249,8 +250,8 @@ private fun TranslateTab(sp: Speaker) {
         if (q.isEmpty() && hist.isNotEmpty()) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-                    Text("Недавние переводы", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { scope.launch { TutorStore.clearTranslations(ctx) } }) { Text("Очистить") }
+                    Text(btnLabel("Недавние переводы"), fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { scope.launch { TutorStore.clearTranslations(ctx) } }) { Text(btnLabel("Очистить")) }
                 }
             }
             items(hist, key = { "h_" + it.src + it.at }) { h ->
@@ -310,7 +311,7 @@ private fun PhrasesTab(sp: Speaker) {
                 ) { Text(if (due > 0) "Повторить и выучить новые (10)" else "Учить 10 выражений") }
                 Text("Покажем фразу и пример — выберите правильное значение. Верные ответы возвращаются через 1, 2, 4, 7, 15, 30 дней.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
             }
-            OutlinedTextField(q, { q = it }, Modifier.fillMaxWidth().padding(top = 8.dp), singleLine = true, placeholder = { Text("Поиск по-английски или по-русски") }, shape = RoundedCornerShape(14.dp))
+            OutlinedTextField(q, { q = it }, Modifier.fillMaxWidth().padding(top = 8.dp), singleLine = true, placeholder = { Text(btnLabel("Поиск по-английски или по-русски")) }, shape = RoundedCornerShape(14.dp))
         }
         items(shown, key = { it.key }) { p ->
             val box = progress[p.key]?.box
@@ -327,7 +328,7 @@ private fun PhrasesTab(sp: Speaker) {
                 if (p.ex.isNotBlank()) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
                         Text("“${p.ex}”", fontSize = 13.sp, modifier = Modifier.weight(1f))
-                        Text("🔊", fontSize = 14.sp, modifier = Modifier.clip(CircleShape).clickable { sp.say(p.ex) }.padding(6.dp))
+                        Text(btnLabel("🔊"), fontSize = 14.sp, modifier = Modifier.clip(CircleShape).clickable { sp.say(p.ex) }.padding(6.dp))
                     }
                     Text(p.exRu, fontSize = 12.sp, color = extra.dim)
                 }
@@ -347,9 +348,9 @@ private fun PhraseQuiz(list: List<Phrases.Phrase>, all: List<Phrases.Phrase>, sp
     val today = Dates.today()
     if (i >= list.size) {
         Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Готово!", fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            Text(btnLabel("Готово!"), fontSize = 26.sp, fontWeight = FontWeight.Bold)
             Text("Верно: $right из ${list.size}", fontSize = 16.sp, modifier = Modifier.padding(top = 8.dp))
-            Button(onClick = onDone, modifier = Modifier.padding(top = 16.dp)) { Text("К списку") }
+            Button(onClick = onDone, modifier = Modifier.padding(top = 16.dp)) { Text(btnLabel("К списку")) }
         }
         return
     }
@@ -359,7 +360,7 @@ private fun PhraseQuiz(list: List<Phrases.Phrase>, all: List<Phrases.Phrase>, sp
     Column(Modifier.fillMaxWidth().padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("${i + 1} / ${list.size}", fontSize = 13.sp, color = extra.dim, modifier = Modifier.weight(1f))
-            TextButton(onClick = onDone) { Text("Закончить") }
+            TextButton(onClick = onDone) { Text(btnLabel("Закончить")) }
         }
         Tile {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -368,7 +369,7 @@ private fun PhraseQuiz(list: List<Phrases.Phrase>, all: List<Phrases.Phrase>, sp
             }
             if (p.ex.isNotBlank()) Text("“${p.ex}”", fontSize = 14.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
         }
-        Text("Что это значит?", fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(vertical = 8.dp))
+        Text(btnLabel("Что это значит?"), fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(vertical = 8.dp))
         opts.forEach { o ->
             val c = chosen
             val bg = when {

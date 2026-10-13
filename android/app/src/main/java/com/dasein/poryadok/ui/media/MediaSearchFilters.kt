@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.media
 
 import androidx.compose.foundation.clickable
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,7 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -86,14 +87,14 @@ fun MediaFilterPanel(kind: Int, f: MediaDiscover.Filter, onChange: (MediaDiscove
 
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp).clickable { onChange(f.copy(hideOwned = !f.hideOwned)) }) {
             Checkbox(f.hideOwned, { onChange(f.copy(hideOwned = it)) })
-            Text("Скрыть то, что уже есть в коллекции", fontSize = 14.sp)
+            Text(btnLabel("Скрыть то, что уже есть в коллекции"), fontSize = 14.sp)
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 if (f.count == 0) "Фильтры не выбраны" else "Выбрано фильтров: ${f.count}",
                 fontSize = 12.sp, color = extra.dim, modifier = Modifier.weight(1f),
             )
-            if (f.count > 0 || f.sort != MediaDiscover.Sort.RELEVANCE) TextButton(onClick = { onChange(MediaDiscover.Filter()) }) { Text("Сбросить") }
+            if (f.count > 0 || f.sort != MediaDiscover.Sort.RELEVANCE) TextButton(onClick = { onChange(MediaDiscover.Filter()) }) { Text(btnLabel("Сбросить")) }
         }
     }
 }
@@ -104,7 +105,7 @@ fun MediaFilterPanel(kind: Int, f: MediaDiscover.Filter, onChange: (MediaDiscove
 fun MediaFacets(countries: List<Pair<String, Int>>, genres: List<Pair<String, Int>>, f: MediaDiscover.Filter, onChange: (MediaDiscover.Filter) -> Unit) {
     if (countries.size < 2 && genres.size < 2) return
     Column(Modifier.padding(top = 6.dp)) {
-        Text("Уточнить", fontSize = 12.sp, color = LocalExtra.current.dim)
+        Text(btnLabel("Уточнить"), fontSize = 12.sp, color = LocalExtra.current.dim)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
             if (countries.size >= 2) countries.take(5).forEach { (c, n) -> Pill("$c · $n", f.country == c) { onChange(f.copy(country = if (f.country == c) null else c)) } }
             if (genres.size >= 2) genres.take(6).forEach { (g, n) -> Pill("$g · $n", f.genre == g) { onChange(f.copy(genre = if (f.genre == g) null else g)) } }

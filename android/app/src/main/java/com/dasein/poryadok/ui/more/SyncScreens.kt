@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.more
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import android.Manifest
 import android.content.ActivityNotFoundException
@@ -23,9 +24,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -149,7 +150,7 @@ fun StepsScreen(nav: NavHostController, settings: AppSettings) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     ring?.let { androidx.compose.foundation.Image(it.asImageBitmap(), "Виджет", Modifier.size(132.dp)) }
                     Column(Modifier.padding(start = 14.dp).weight(1f)) {
-                        Text("Виджет «Сегодня»", color = androidx.compose.ui.graphics.Color(0xFFF0ECE3), fontWeight = FontWeight.SemiBold)
+                        Text(btnLabel("Виджет «Сегодня»"), color = androidx.compose.ui.graphics.Color(0xFFF0ECE3), fontWeight = FontWeight.SemiBold)
                         Text(
                             "Кольцо заполняется по мере выполнения плана шагов и зеленеет, когда цель достигнута. Добавьте виджет: долгое нажатие на рабочий стол → «Виджеты» → DASEIN.",
                             color = androidx.compose.ui.graphics.Color(0xFFA79E90), fontSize = 12.sp,
@@ -187,9 +188,9 @@ fun StepsScreen(nav: NavHostController, settings: AppSettings) {
                 Gap(6.dp)
                 when {
                     hcStatus == Steps.HcStatus.AVAILABLE && !hcGranted ->
-                        Button(onClick = { hcLauncher.launch(Steps.HC_PERMISSIONS) }, Modifier.fillMaxWidth()) { Text("Разрешить чтение шагов") }
+                        Button(onClick = { hcLauncher.launch(Steps.HC_PERMISSIONS) }, Modifier.fillMaxWidth()) { Text(btnLabel("Разрешить чтение шагов")) }
                     hcStatus != Steps.HcStatus.AVAILABLE ->
-                        OutlinedButton(onClick = { openStore(ctx, "com.google.android.apps.healthdata") }, Modifier.fillMaxWidth()) { Text("Установить Health Connect") }
+                        OutlinedButton(onClick = { openStore(ctx, "com.google.android.apps.healthdata") }, Modifier.fillMaxWidth()) { Text(btnLabel("Установить Health Connect")) }
                 }
                 Hint("steps_hc_howto", "Как включить в Mi Fitness: Профиль → значок настроек → «Health Connect» (или «Сторонние сервисы») → разрешить запись шагов. " +
                         "В Google Fit: Профиль → Настройки → Health Connect.", Modifier.padding(top = 8.dp), title = "Как включить в Mi Fitness и Google Fit")
@@ -204,7 +205,7 @@ fun StepsScreen(nav: NavHostController, settings: AppSettings) {
                     fontSize = 13.sp,
                 )
                 if (hasSensor) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
-                    Text("Считать шаги датчиком", Modifier.weight(1f))
+                    Text(btnLabel("Считать шаги датчиком"), Modifier.weight(1f))
                     Switch(settings.stepsSensor && sensorOk, { on ->
                         if (on && !sensorOk && Build.VERSION.SDK_INT >= 29) activityLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
                         else io { Graph.prefs.update { it.copy(stepsSensor = on) }; Steps.ensureScheduled(ctx); if (on) Steps.sync(ctx) }
@@ -267,7 +268,7 @@ fun SberScreen(nav: NavHostController, settings: AppSettings) {
                     try { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) } catch (_: ActivityNotFoundException) {
                         ctx.startActivity(Intent(Settings.ACTION_SETTINGS))
                     }
-                }, Modifier.fillMaxWidth()) { Text("Открыть настройки доступа") }
+                }, Modifier.fillMaxWidth()) { Text(btnLabel("Открыть настройки доступа")) }
                 if (!listener) {
                     Gap(6.dp)
                     com.dasein.poryadok.ui.common.RestrictedSettingsHelp("Доступ к уведомлениям") {
@@ -275,7 +276,7 @@ fun SberScreen(nav: NavHostController, settings: AppSettings) {
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Записывать операции автоматически", Modifier.weight(1f))
+                    Text(btnLabel("Записывать операции автоматически"), Modifier.weight(1f))
                     Switch(settings.sberOn, { on -> io { Graph.prefs.update { it.copy(sberOn = on) } } }, enabled = listener)
                 }
                 Hint("sber_xiaomi", "На Xiaomi/Poco: разрешите DASEIN автозапуск и отключите для него экономию батареи — иначе система может выгружать службу.", title = "Если операции перестали приходить")
@@ -284,7 +285,7 @@ fun SberScreen(nav: NavHostController, settings: AppSettings) {
             Tile {
                 Text("Загрузить операции из уже полученных SMS от 900. Повторный запуск дублей не создаёт, а неверно распознанные раньше суммы и зарплаты исправит.", fontSize = 13.sp)
                 Gap(6.dp)
-                if (!sms) OutlinedButton(onClick = { smsLauncher.launch(Manifest.permission.READ_SMS) }, Modifier.fillMaxWidth()) { Text("Разрешить чтение SMS") }
+                if (!sms) OutlinedButton(onClick = { smsLauncher.launch(Manifest.permission.READ_SMS) }, Modifier.fillMaxWidth()) { Text(btnLabel("Разрешить чтение SMS")) }
                 else {
                     fun run(days: Int) {
                         importing = true
@@ -295,13 +296,13 @@ fun SberScreen(nav: NavHostController, settings: AppSettings) {
                         }
                     }
                     Button(onClick = { run(90) }, enabled = !importing, modifier = Modifier.fillMaxWidth()) { Text(if (importing) "Загружаю…" else "Загрузить за 90 дней") }
-                    OutlinedButton(onClick = { run(0) }, enabled = !importing, modifier = Modifier.fillMaxWidth()) { Text("Перечитать все SMS 900 (за всё время)") }
+                    OutlinedButton(onClick = { run(0) }, enabled = !importing, modifier = Modifier.fillMaxWidth()) { Text(btnLabel("Перечитать все SMS 900 (за всё время)")) }
                 }
             }
             SectionTitle("Последние операции «Сбер»")
             Text("Всего записано: ${settings.sberImported}. Последняя: ${ago(settings.sberLastAt)}", fontSize = 12.sp, color = extra.dim)
             Gap(6.dp)
-            if (sberTxns.isEmpty()) Text("Пока нет операций.", color = extra.dim)
+            if (sberTxns.isEmpty()) Text(btnLabel("Пока нет операций."), color = extra.dim)
             sberTxns.forEach { t ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("${Dates.short(t.day)}  ${t.note.removePrefix("Сбер: ")}", Modifier.weight(1f), fontSize = 13.sp, maxLines = 1)
@@ -341,7 +342,7 @@ private fun StepsByHour(today: Long, todayTotal: Int, heightCm: Double?, weightK
             IconButton(onClick = { day += 1 }, enabled = day < today) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Следующий день") }
         }
         val h = hours
-        if (h == null) Text("Загружаю…", color = extra.dim, fontSize = 13.sp)
+        if (h == null) Text(btnLabel("Загружаю…"), color = extra.dim, fontSize = 13.sp)
         else if (h.sum() == 0) Text(
             "За этот день нет разбивки по часам. Она приходит из Health Connect, а с датчика телефона копится с этой версии приложения.",
             color = extra.dim, fontSize = 13.sp, modifier = Modifier.padding(vertical = 12.dp),
@@ -393,7 +394,7 @@ private fun WalkPaceBlock(minutes: IntArray?, weightKg: Double, heightCm: Double
                 HourStat("${day.brisk} мин", "бодро\n> 5,6 км/ч", Modifier.weight(1f))
             }
         }
-        Text("Обычный темп ходьбы", fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
+        Text(btnLabel("Обычный темп ходьбы"), fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Pill("Авто", settings.walkPaceAuto) { io { Graph.prefs.update { it.copy(walkPaceAuto = true) } } }
             w.PACES.forEach { (kmh, name) ->

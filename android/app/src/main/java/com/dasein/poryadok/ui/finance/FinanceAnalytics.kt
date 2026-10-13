@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.finance
 
 import com.dasein.poryadok.ui.common.FitText
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -102,11 +103,11 @@ fun FinanceAnalytics(all: List<Txn>, cats: List<Category>, accounts: List<Accoun
                 Donut(listOf(health.score.toFloat() to c, (100 - health.score).toFloat() to extra.line), size = 110.dp) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("${health.score}", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = c)
-                        Text("из 100", fontSize = 11.sp, color = extra.dim)
+                        Text(btnLabel("из 100"), fontSize = 11.sp, color = extra.dim)
                     }
                 }
                 Column(Modifier.padding(start = 14.dp).weight(1f)) {
-                    Text("Финансовое здоровье", fontWeight = FontWeight.SemiBold)
+                    Text(btnLabel("Финансовое здоровье"), fontWeight = FontWeight.SemiBold)
                     Text(
                         when { health.score >= 70 -> "Всё под контролем"; health.score >= 40 -> "Есть что улучшить"; else -> "Нужно внимание" },
                         fontSize = 12.sp, color = extra.dim,
@@ -133,7 +134,7 @@ fun FinanceAnalytics(all: List<Txn>, cats: List<Category>, accounts: List<Accoun
             Stat(rub(if (passed > 0) m.expense / passed else 0.0, cur), "в день", Modifier.weight(1f))
         }
         if (ym == YearMonth.now() && passed in 1 until days) Tile(Modifier.padding(top = 8.dp)) {
-            Text("Прогноз на конец месяца", fontSize = 12.sp, color = extra.dim)
+            Text(btnLabel("Прогноз на конец месяца"), fontSize = 12.sp, color = extra.dim)
             FitText(rub(forecast, cur), style = MaterialTheme.typography.titleLarge)
             val diff = if (m.income > 0) avg.income.coerceAtLeast(m.income) - forecast else null
             if (totalBudget != null) {
@@ -174,8 +175,8 @@ fun FinanceAnalytics(all: List<Txn>, cats: List<Category>, accounts: List<Accoun
                     format = { rub(it.toDouble(), cur) },
                 )
                 Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Dot(extra.danger, 8.dp); Text(" этот месяц   ", fontSize = 11.sp, color = extra.dim)
-                    Dot(extra.dim, 8.dp); Text(" прошлый", fontSize = 11.sp, color = extra.dim)
+                    Dot(extra.danger, 8.dp); Text(btnLabel(" этот месяц   "), fontSize = 11.sp, color = extra.dim)
+                    Dot(extra.dim, 8.dp); Text(btnLabel(" прошлый"), fontSize = 11.sp, color = extra.dim)
                 }
             }
         }
@@ -215,11 +216,11 @@ fun FinanceAnalytics(all: List<Txn>, cats: List<Category>, accounts: List<Accoun
         Tile {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("На счетах", fontSize = 12.sp, color = extra.dim)
+                    Text(btnLabel("На счетах"), fontSize = 12.sp, color = extra.dim)
                     FitText(rub(balance, cur), style = MaterialTheme.typography.titleLarge)
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text("хватит на", fontSize = 12.sp, color = extra.dim)
+                    Text(btnLabel("хватит на"), fontSize = 12.sp, color = extra.dim)
                     Text(runway?.let { "%.1f мес.".format(it).replace('.', ',') } ?: "—", style = MaterialTheme.typography.titleLarge,
                         color = when { runway == null -> MaterialTheme.colorScheme.onSurface; runway >= 6 -> extra.ok; runway >= 3 -> extra.warn; else -> extra.danger })
                 }
@@ -266,11 +267,11 @@ fun FinanceAnalytics(all: List<Txn>, cats: List<Category>, accounts: List<Accoun
                 val withData = year.filter { it.income > 0 || it.expense > 0 }
                 Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Column(Modifier.weight(1f)) {
-                        Text("Сбережено за год", fontSize = 11.sp, color = extra.dim)
+                        Text(btnLabel("Сбережено за год"), fontSize = 11.sp, color = extra.dim)
                         Text(rub(year.sumOf { it.net }, cur), fontWeight = FontWeight.SemiBold, color = if (year.sumOf { it.net } >= 0) extra.ok else extra.danger)
                     }
                     Column(Modifier.weight(1f)) {
-                        Text("Средний расход", fontSize = 11.sp, color = extra.dim)
+                        Text(btnLabel("Средний расход"), fontSize = 11.sp, color = extra.dim)
                         Text(rub(withData.sumOf { it.expense } / withData.size.coerceAtLeast(1), cur), fontWeight = FontWeight.SemiBold)
                     }
                 }

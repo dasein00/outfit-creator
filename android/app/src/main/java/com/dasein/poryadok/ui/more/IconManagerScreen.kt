@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.more
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -23,11 +24,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -142,24 +143,24 @@ fun IconManagerScreen(nav: NavHostController) {
             Column(Modifier.padding(pad).fillMaxSize().padding(horizontal = 16.dp)) {
                 IconLibraryTabs(level, mineCount, setsCount) { level = it; open = null }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
-                    OutlinedButton(onClick = { dialog = "import" }, modifier = Modifier.weight(1f)) { Text("+ Набор", fontSize = 13.sp) }
-                    OutlinedButton(onClick = { pickOwn() }, modifier = Modifier.weight(1f)) { Text("+ Из галереи", fontSize = 13.sp) }
-                    if (folder != null) OutlinedButton(onClick = { dialog = "builtin" }, modifier = Modifier.weight(1f)) { Text("+ Встроенная", fontSize = 13.sp) }
-                    else if (level == IconLibrary.SETS) OutlinedButton(onClick = { name = ""; dialog = "new" }, modifier = Modifier.weight(1f)) { Text("+ Папка", fontSize = 13.sp) }
+                    OutlinedButton(onClick = { dialog = "import" }, modifier = Modifier.weight(1f)) { Text(btnLabel("+ Набор"), fontSize = 13.sp) }
+                    OutlinedButton(onClick = { pickOwn() }, modifier = Modifier.weight(1f)) { Text(btnLabel("+ Из галереи"), fontSize = 13.sp) }
+                    if (folder != null) OutlinedButton(onClick = { dialog = "builtin" }, modifier = Modifier.weight(1f)) { Text(btnLabel("+ Встроенная"), fontSize = 13.sp) }
+                    else if (level == IconLibrary.SETS) OutlinedButton(onClick = { name = ""; dialog = "new" }, modifier = Modifier.weight(1f)) { Text(btnLabel("+ Папка"), fontSize = 13.sp) }
                 }
                 if (folder != null) Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.weight(1f))
-                    TextButton(onClick = { IconSets.moveFolder(ctx, folder.id, -1) }) { Text("↑") }
-                    TextButton(onClick = { IconSets.moveFolder(ctx, folder.id, 1) }) { Text("↓") }
-                    TextButton(onClick = { name = folder.title; dialog = "rename" }) { Text("Имя") }
-                    TextButton(onClick = { dialog = "delete" }) { Text("Удалить", color = extra.danger) }
+                    TextButton(onClick = { IconSets.moveFolder(ctx, folder.id, -1) }) { Text(btnLabel("↑")) }
+                    TextButton(onClick = { IconSets.moveFolder(ctx, folder.id, 1) }) { Text(btnLabel("↓")) }
+                    TextButton(onClick = { name = folder.title; dialog = "rename" }) { Text(btnLabel("Имя")) }
+                    TextButton(onClick = { dialog = "delete" }) { Text(btnLabel("Удалить"), color = extra.danger) }
                 }
                 if (group != null) Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.weight(1f))
-                    TextButton(onClick = { IconLibrary.moveGroup(ctx, group.id, -1) }) { Text("↑") }
-                    TextButton(onClick = { IconLibrary.moveGroup(ctx, group.id, 1) }) { Text("↓") }
-                    if (IconLibrary.layout(ctx).keys.containsKey(group.id)) TextButton(onClick = { IconLibrary.resetGroup(ctx, group.id) }) { Text("Как было") }
-                    TextButton(onClick = { dialog = "deleteGroup" }) { Text("Удалить", color = extra.danger) }
+                    TextButton(onClick = { IconLibrary.moveGroup(ctx, group.id, -1) }) { Text(btnLabel("↑")) }
+                    TextButton(onClick = { IconLibrary.moveGroup(ctx, group.id, 1) }) { Text(btnLabel("↓")) }
+                    if (IconLibrary.layout(ctx).keys.containsKey(group.id)) TextButton(onClick = { IconLibrary.resetGroup(ctx, group.id) }) { Text(btnLabel("Как было")) }
+                    TextButton(onClick = { dialog = "deleteGroup" }) { Text(btnLabel("Удалить"), color = extra.danger) }
                 }
                 when {
                     level == IconLibrary.SETS && open == null -> {
@@ -171,8 +172,8 @@ fun IconManagerScreen(nav: NavHostController) {
                         IconGroupList(
                             builtin.map { it.id to it.title }, { IconLibrary.builtinKeys(ctx, it) }, Modifier.weight(1f).padding(top = 6.dp),
                             trailing = { id ->
-                                TextButton(onClick = { IconLibrary.moveGroup(ctx, id, -1) }) { Text("↑") }
-                                TextButton(onClick = { IconLibrary.moveGroup(ctx, id, 1) }) { Text("↓") }
+                                TextButton(onClick = { IconLibrary.moveGroup(ctx, id, -1) }) { Text(btnLabel("↑")) }
+                                TextButton(onClick = { IconLibrary.moveGroup(ctx, id, 1) }) { Text(btnLabel("↓")) }
                             },
                         ) { open = it }
                         if (hidden.isNotEmpty()) TextButton(onClick = { IconLibrary.restoreGroups(ctx) }, modifier = Modifier.fillMaxWidth()) {
@@ -202,8 +203,8 @@ fun IconManagerScreen(nav: NavHostController) {
                                 contentAlignment = Alignment.Center,
                             ) {
                                 IconCell(k, 32.dp)
-                                if (on) Text("✓", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.align(Alignment.TopEnd).padding(5.dp))
-                                if (IconSets.isEdited(ctx, k)) Text("✎", fontSize = 11.sp, color = extra.dim, modifier = Modifier.align(Alignment.TopStart).padding(5.dp))
+                                if (on) Text(btnLabel("✓"), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.align(Alignment.TopEnd).padding(5.dp))
+                                if (IconSets.isEdited(ctx, k)) Text(btnLabel("✎"), fontSize = 11.sp, color = extra.dim, modifier = Modifier.align(Alignment.TopStart).padding(5.dp))
                             }
                         }
                     }
@@ -214,21 +215,21 @@ fun IconManagerScreen(nav: NavHostController) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
                         if (selected.size == 1 && IconSets.canEdit(selected.first())) {
                             val k = selected.first()
-                            Button(onClick = { editIcon = k }) { Text("Редактировать") }
+                            Button(onClick = { editIcon = k }) { Text(btnLabel("Редактировать")) }
                         }
-                        if (folder != null || group != null) OutlinedButton(onClick = { dialog = "move" }) { Text("Переместить") }
+                        if (folder != null || group != null) OutlinedButton(onClick = { dialog = "move" }) { Text(btnLabel("Переместить")) }
                         OutlinedButton(onClick = { dialog = "copy" }) { Text(if (folder != null || group != null) "Копировать" else "В папку") }
                         if (selected.size == 1 && reorderable) {
                             val k = selected.first()
-                            OutlinedButton(onClick = { shift(k, -1) }) { Text("←") }
-                            OutlinedButton(onClick = { shift(k, 1) }) { Text("→") }
+                            OutlinedButton(onClick = { shift(k, -1) }) { Text(btnLabel("←")) }
+                            OutlinedButton(onClick = { shift(k, 1) }) { Text(btnLabel("→")) }
                         }
                         val edited = selected.filter { IconSets.isEdited(ctx, it) }
                         if (edited.isNotEmpty()) OutlinedButton(onClick = {
                             Graph.scope.launch { edited.forEach { IconSets.revert(ctx, it) } }
-                        }) { Text("Вернуть исходный вид") }
-                        if (folder != null) OutlinedButton(onClick = { IconSets.removeKeys(ctx, folder.id, selected); selected = emptySet() }) { Text("Убрать из папки") }
-                        if (level != IconLibrary.BUILTIN) OutlinedButton(onClick = { dialog = "deleteIcons" }) { Text("Удалить", color = extra.danger) }
+                        }) { Text(btnLabel("Вернуть исходный вид")) }
+                        if (folder != null) OutlinedButton(onClick = { IconSets.removeKeys(ctx, folder.id, selected); selected = emptySet() }) { Text(btnLabel("Убрать из папки")) }
+                        if (level != IconLibrary.BUILTIN) OutlinedButton(onClick = { dialog = "deleteIcons" }) { Text(btnLabel("Удалить"), color = extra.danger) }
                         TextButton(onClick = { selected = if (selected.size == keys.size) emptySet() else keys.toSet() }) {
                             Text(if (selected.size == keys.size) "Снять все" else "Выбрать все")
                         }
@@ -249,16 +250,16 @@ fun IconManagerScreen(nav: NavHostController) {
                 TextButton(onClick = {
                     if (dialog == "new") { level = IconLibrary.SETS; open = IconSets.createFolder(ctx, name) } else folder?.let { IconSets.renameFolder(ctx, it.id, name) }
                     dialog = null
-                }) { Text("Готово") }
+                }) { Text(btnLabel("Готово")) }
             },
-            dismissButton = { TextButton(onClick = { dialog = null }) { Text("Отмена") } },
+            dismissButton = { TextButton(onClick = { dialog = null }) { Text(btnLabel("Отмена")) } },
         )
         "delete" -> AlertDialog(
             onDismissRequest = { dialog = null },
             title = { Text("Удалить папку «${folder?.title.orEmpty()}»?") },
             text = { Text("Иконки из неё не пропадут — они перейдут в «Мои иконки».") },
-            confirmButton = { TextButton(onClick = { folder?.let { IconSets.deleteFolder(ctx, it.id) }; open = null; dialog = null }) { Text("Удалить", color = extra.danger) } },
-            dismissButton = { TextButton(onClick = { dialog = null }) { Text("Отмена") } },
+            confirmButton = { TextButton(onClick = { folder?.let { IconSets.deleteFolder(ctx, it.id) }; open = null; dialog = null }) { Text(btnLabel("Удалить"), color = extra.danger) } },
+            dismissButton = { TextButton(onClick = { dialog = null }) { Text(btnLabel("Отмена")) } },
         )
         "move", "copy" -> AlertDialog(
             onDismissRequest = { dialog = null },
@@ -266,38 +267,38 @@ fun IconManagerScreen(nav: NavHostController) {
             text = {
                 val move = dialog == "move"
                 Column(Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState())) {
-                    Text("Мои наборы", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                    Text(btnLabel("Мои наборы"), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                     allFolders.filter { it.id != folder?.id }.forEach { f ->
                         TextButton(onClick = { sendTo(f.id, null, move); dialog = null }, modifier = Modifier.fillMaxWidth()) { Text("${f.title} · ${f.keys.size}") }
                     }
-                    TextButton(onClick = { name = ""; dialog = "newMove" }, modifier = Modifier.fillMaxWidth()) { Text("+ В новую папку…") }
-                    Text("Исходные наборы", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                    TextButton(onClick = { name = ""; dialog = "newMove" }, modifier = Modifier.fillMaxWidth()) { Text(btnLabel("+ В новую папку…")) }
+                    Text(btnLabel("Исходные наборы"), fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
                     builtin.filter { it.id != group?.id }.forEach { g ->
                         TextButton(onClick = { sendTo(null, g.id, move); dialog = null }, modifier = Modifier.fillMaxWidth()) { Text(g.title) }
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { dialog = null }) { Text("Отмена") } },
+            confirmButton = { TextButton(onClick = { dialog = null }) { Text(btnLabel("Отмена")) } },
         )
         "newMove" -> AlertDialog(
             onDismissRequest = { dialog = null },
-            title = { Text("Новая папка") },
+            title = { Text(btnLabel("Новая папка")) },
             text = { TextInput(name, { name = it }, "Название") },
             confirmButton = {
                 TextButton(onClick = {
                     val id = IconSets.createFolder(ctx, name)
                     sendTo(id, null, folder != null || group != null)
                     level = IconLibrary.SETS; open = id; dialog = null
-                }) { Text("Переместить") }
+                }) { Text(btnLabel("Переместить")) }
             },
-            dismissButton = { TextButton(onClick = { dialog = null }) { Text("Отмена") } },
+            dismissButton = { TextButton(onClick = { dialog = null }) { Text(btnLabel("Отмена")) } },
         )
         "deleteIcons" -> AlertDialog(
             onDismissRequest = { dialog = null },
             title = { Text("Удалить ${selected.size} иконок?") },
             text = { Text("Свои иконки удалятся совсем; встроенные просто уберутся из ваших папок. Там, где удалённая иконка стояла вместо другой, вернётся исходная.") },
-            confirmButton = { TextButton(onClick = { IconSets.deleteKeys(ctx, selected); selected = emptySet(); dialog = null }) { Text("Удалить", color = extra.danger) } },
-            dismissButton = { TextButton(onClick = { dialog = null }) { Text("Отмена") } },
+            confirmButton = { TextButton(onClick = { IconSets.deleteKeys(ctx, selected); selected = emptySet(); dialog = null }) { Text(btnLabel("Удалить"), color = extra.danger) } },
+            dismissButton = { TextButton(onClick = { dialog = null }) { Text(btnLabel("Отмена")) } },
         )
         "import" -> IconSetImportDialog(onDismiss = { dialog = null }) { first ->
             dialog = null
@@ -319,7 +320,7 @@ fun IconManagerScreen(nav: NavHostController) {
                     Column(Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState())) {
                         val u = used
                         when {
-                            u == null -> Text("Проверяю, где стоят иконки этого набора…", color = extra.dim)
+                            u == null -> Text(btnLabel("Проверяю, где стоят иконки этого набора…"), color = extra.dim)
                             u.isEmpty() -> Text("Ни одна иконка из набора не используется. Набор пропадёт из списка; вернуть его можно кнопкой «Вернуть удалённые наборы».")
                             else -> {
                                 Text("Нельзя удалить: ${u.size} иконок из набора стоят в приложении (в разделах, записях, настройках или заменах). Перенесите их в другой набор или замените — тогда набор можно будет удалить.")
@@ -328,21 +329,21 @@ fun IconManagerScreen(nav: NavHostController) {
                                         Box(Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(Palette.Ink2), contentAlignment = Alignment.Center) { IconCell(k, 24.dp) }
                                     }
                                 }
-                                TextButton(onClick = { selected = u.toSet(); dialog = null }) { Text("Выбрать их в наборе") }
+                                TextButton(onClick = { selected = u.toSet(); dialog = null }) { Text(btnLabel("Выбрать их в наборе")) }
                             }
                         }
                     }
                 },
                 confirmButton = {
-                    if (used?.isEmpty() == true) TextButton(onClick = { IconLibrary.hideGroup(ctx, g.id); open = null; dialog = null }) { Text("Удалить", color = extra.danger) }
-                    else TextButton(onClick = { dialog = null }) { Text("Закрыть") }
+                    if (used?.isEmpty() == true) TextButton(onClick = { IconLibrary.hideGroup(ctx, g.id); open = null; dialog = null }) { Text(btnLabel("Удалить"), color = extra.danger) }
+                    else TextButton(onClick = { dialog = null }) { Text(btnLabel("Закрыть")) }
                 },
-                dismissButton = { if (used?.isEmpty() == true) TextButton(onClick = { dialog = null }) { Text("Отмена") } },
+                dismissButton = { if (used?.isEmpty() == true) TextButton(onClick = { dialog = null }) { Text(btnLabel("Отмена")) } },
             )
         }
         "overrides" -> AlertDialog(
             onDismissRequest = { dialog = null },
-            title = { Text("Заменённые иконки") },
+            title = { Text(btnLabel("Заменённые иконки")) },
             text = {
                 val list = IconSets.overrides.value.toList()
                 Column(Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState())) {
@@ -350,15 +351,15 @@ fun IconManagerScreen(nav: NavHostController) {
                     list.forEach { (from, to) ->
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
                             Box(Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(Palette.Ink2), contentAlignment = Alignment.Center) { GlyphRaw(from, null, 26.dp) }
-                            Text("  →  ", color = extra.dim)
+                            Text(btnLabel("  →  "), color = extra.dim)
                             Box(Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(Palette.Ink2), contentAlignment = Alignment.Center) { GlyphRaw(to, null, 26.dp) }
                             Box(Modifier.weight(1f))
-                            TextButton(onClick = { IconSets.setOverride(ctx, from, null) }) { Text("Вернуть") }
+                            TextButton(onClick = { IconSets.setOverride(ctx, from, null) }) { Text(btnLabel("Вернуть")) }
                         }
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { dialog = null }) { Text("Закрыть") } },
+            confirmButton = { TextButton(onClick = { dialog = null }) { Text(btnLabel("Закрыть")) } },
         )
     }
     editIcon?.let { k -> IconEditorDialog(k) { editIcon = null } }

@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.finance
 
 import com.dasein.poryadok.ui.common.FitText
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -71,11 +72,11 @@ fun HomeMoneyCard(nav: NavHostController, cur: String) {
         // Всего денег и итог месяца
         Row(verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
-                Text("Всего на счетах", fontSize = 12.sp, color = extra.dim)
+                Text(btnLabel("Всего на счетах"), fontSize = 12.sp, color = extra.dim)
                 FitText(rub(balance, cur), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("Сегодня", fontSize = 12.sp, color = extra.dim)
+                Text(btnLabel("Сегодня"), fontSize = 12.sp, color = extra.dim)
                 FitText(if (spentToday > 0) "−" + rub(spentToday, cur) else "0 $cur", style = MaterialTheme.typography.titleMedium)
             }
         }

@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.health
 
 import androidx.compose.foundation.Canvas
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -97,7 +98,7 @@ internal fun BodyCharts(readings: List<BodyMetric>, heightCm: Double) {
             AreaChart(pts, c.digits, color, extra.dim, extra.line, Modifier.padding(top = 2.dp))
         }
     }
-    if (!any) Text("Пока нет взвешиваний за этот период.", color = extra.dim, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+    if (!any) Text(btnLabel("Пока нет взвешиваний за этот период."), color = extra.dim, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
 }
 
 /** Плавная кривая с градиентной заливкой: подписи минимума и максимума слева, дат — снизу. */

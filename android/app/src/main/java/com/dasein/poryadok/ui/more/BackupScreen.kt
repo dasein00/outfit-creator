@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.more
 
 import android.net.Uri
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -14,13 +15,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -104,8 +105,8 @@ fun BackupScreen(nav: NavHostController) {
             SectionTitle("Что сохранить")
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Отмечено ${picked.size} из ${BackupSection.entries.size}", Modifier.weight(1f), fontSize = 13.sp, color = extra.dim)
-                TextButton(onClick = { picked = BackupSection.entries.toSet() }) { Text("Все") }
-                TextButton(onClick = { picked = emptySet() }) { Text("Снять") }
+                TextButton(onClick = { picked = BackupSection.entries.toSet() }) { Text(btnLabel("Все")) }
+                TextButton(onClick = { picked = emptySet() }) { Text(btnLabel("Снять")) }
             }
             BackupSection.entries.forEach { s ->
                 val counts = summary?.get(s)
@@ -137,7 +138,7 @@ fun BackupScreen(nav: NavHostController) {
             OutlinedButton(
                 onClick = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) }, enabled = busy == null,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
-            ) { Text("Загрузить копию из файла") }
+            ) { Text(btnLabel("Загрузить копию из файла")) }
 
             busy?.let {
                 Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -190,21 +191,21 @@ private fun ImportPicker(m: BackupManifest, onDismiss: () -> Unit, onImport: (Se
     if (confirm) {
         AlertDialog(
             onDismissRequest = { confirm = false },
-            title = { Text("Заменить выбранные разделы?") },
+            title = { Text(btnLabel("Заменить выбранные разделы?")) },
             text = {
                 Text(
                     "На этом телефоне заменятся: " + chosen.joinToString(", ") { it.title.lowercase() } +
                         ". Остальные разделы не изменятся. Если сомневаетесь — сначала сохраните копию текущих данных.",
                 )
             },
-            confirmButton = { TextButton(onClick = { confirm = false; onImport(chosen) }) { Text("Загрузить") } },
-            dismissButton = { TextButton(onClick = { confirm = false }) { Text("Отмена") } },
+            confirmButton = { TextButton(onClick = { confirm = false; onImport(chosen) }) { Text(btnLabel("Загрузить")) } },
+            dismissButton = { TextButton(onClick = { confirm = false }) { Text(btnLabel("Отмена")) } },
         )
         return
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Что загрузить из копии") },
+        title = { Text(btnLabel("Что загрузить из копии")) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(
@@ -212,8 +213,8 @@ private fun ImportPicker(m: BackupManifest, onDismiss: () -> Unit, onImport: (Se
                     fontSize = 13.sp, color = extra.dim,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { chosen = inFile.toSet() }) { Text("Все") }
-                    TextButton(onClick = { chosen = emptySet() }) { Text("Снять") }
+                    TextButton(onClick = { chosen = inFile.toSet() }) { Text(btnLabel("Все")) }
+                    TextButton(onClick = { chosen = emptySet() }) { Text(btnLabel("Снять")) }
                 }
                 if (inFile.isEmpty()) Text("В файле нет разделов, которые можно загрузить.")
                 inFile.forEach { s ->
@@ -229,7 +230,7 @@ private fun ImportPicker(m: BackupManifest, onDismiss: () -> Unit, onImport: (Se
             }
         },
         confirmButton = { TextButton(onClick = { confirm = true }, enabled = chosen.isNotEmpty()) { Text(if (chosen.size == inFile.size) "Загрузить всё" else "Загрузить (${chosen.size})") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
 }
 

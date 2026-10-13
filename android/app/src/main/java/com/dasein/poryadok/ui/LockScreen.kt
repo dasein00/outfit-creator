@@ -5,6 +5,7 @@ import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -78,7 +79,7 @@ fun PinPad(
     var pin by remember { mutableStateOf("") }
     LaunchedEffect(resetKey) { pin = "" }
     Column(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(24.dp),
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

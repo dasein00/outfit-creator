@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.health
 
 import com.dasein.poryadok.ui.common.HowTo
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.Hint
 import androidx.compose.foundation.background
 import kotlinx.coroutines.launch
@@ -36,15 +37,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -118,7 +119,7 @@ private fun MoodTab() {
     val today = Dates.today()
     Gap(10.dp)
     Tile {
-        Text("Как вы сейчас?", style = MaterialTheme.typography.titleMedium)
+        Text(btnLabel("Как вы сейчас?"), style = MaterialTheme.typography.titleMedium)
         Gap(8.dp)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             MOODS.forEachIndexed { i, l ->
@@ -215,7 +216,7 @@ private fun MoodDialog(m0: MoodEntry, onDismiss: () -> Unit) {
                     }
                 }
                 Gap(10.dp)
-                Text("Что было?", fontSize = 13.sp, color = LocalExtra.current.dim)
+                Text(btnLabel("Что было?"), fontSize = 13.sp, color = LocalExtra.current.dim)
                 Gap(6.dp)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     MOOD_TAGS.forEach { t ->
@@ -229,11 +230,11 @@ private fun MoodDialog(m0: MoodEntry, onDismiss: () -> Unit) {
                 TextInput(m.note, { m = m.copy(note = it) }, "Пара слов о дне", singleLine = false, minLines = 2)
             }
         },
-        confirmButton = { TextButton(onClick = { val cur = m; io { Graph.dao.upsertMood(cur) }; onDismiss() }) { Text("Сохранить") } },
+        confirmButton = { TextButton(onClick = { val cur = m; io { Graph.dao.upsertMood(cur) }; onDismiss() }) { Text(btnLabel("Сохранить")) } },
         dismissButton = {
             Row {
-                if (m0.id != 0L) TextButton(onClick = { io { Graph.dao.deleteMood(m0) }; onDismiss() }) { Text("Удалить", color = LocalExtra.current.danger) }
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                if (m0.id != 0L) TextButton(onClick = { io { Graph.dao.deleteMood(m0) }; onDismiss() }) { Text(btnLabel("Удалить"), color = LocalExtra.current.danger) }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
         },
     )
@@ -259,7 +260,7 @@ private fun SleepTab() {
     SleepAutoCard()
     Gap(8.dp)
     Button(onClick = { edit = list.firstOrNull { it.day == today } ?: SleepEntry(today, 23 * 60, 7 * 60) }, modifier = Modifier.fillMaxWidth()) {
-        Text("Записать или исправить сон")
+        Text(btnLabel("Записать или исправить сон"))
     }
     if (list.isEmpty()) { Empty(Ic.moon, "Сон пока не записан", "Отмечайте, во сколько легли и встали — увидите среднюю длительность и режим."); edit?.let { SleepDialog(it) { edit = null } }; return }
     val last14 = list.filter { it.day > today - 14 }
@@ -295,7 +296,7 @@ private fun SleepTab() {
                     fontSize = 12.sp, color = extra.dim,
                 )
             }
-            Text("★".repeat(s.quality), color = MaterialTheme.colorScheme.primary)
+            Text(btnLabel("★").repeat(s.quality), color = MaterialTheme.colorScheme.primary)
         }
     }
     edit?.let { SleepDialog(it) { edit = null } }
@@ -309,7 +310,7 @@ private fun SleepDialog(s0: SleepEntry, onDismiss: () -> Unit) {
     var pickDay by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Сон") },
+        title = { Text(btnLabel("Сон")) },
         text = {
             Column {
                 FieldButton("Утро дня", Dates.label(s.day), Modifier.fillMaxWidth()) { pickDay = true }
@@ -320,7 +321,7 @@ private fun SleepDialog(s0: SleepEntry, onDismiss: () -> Unit) {
                 }
                 val m = sleepMinutes(s)
                 Text("Длительность: ${m / 60} ч ${m % 60} мин", color = LocalExtra.current.dim, modifier = Modifier.padding(vertical = 8.dp))
-                Text("Качество")
+                Text(btnLabel("Качество"))
                 Row { (1..5).forEach { q -> Text(if (q <= s.quality) "★" else "☆", fontSize = 30.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable { s = s.copy(quality = q) }.padding(4.dp)) } }
                 TextInput(s.note, { s = s.copy(note = it) }, "Заметка (сны, пробуждения…)")
             }
@@ -334,12 +335,12 @@ private fun SleepDialog(s0: SleepEntry, onDismiss: () -> Unit) {
                     SleepTracker.onUserEdit(cur.day, cur.bedMin, cur.wakeMin)
                 }
                 onDismiss()
-            }) { Text("Сохранить") }
+            }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
             Row {
-                TextButton(onClick = { io { Graph.dao.deleteSleep(s0) }; onDismiss() }) { Text("Удалить", color = LocalExtra.current.danger) }
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                TextButton(onClick = { io { Graph.dao.deleteSleep(s0) }; onDismiss() }) { Text(btnLabel("Удалить"), color = LocalExtra.current.danger) }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
         },
     )
@@ -376,8 +377,8 @@ private fun WaterTab() {
         listOf(150, 250, 330, 500).forEach { v -> Button(onClick = { add(v) }, modifier = Modifier.weight(1f)) { Text("+$v") } }
     }
     Gap(6.dp)
-    OutlinedButton(onClick = { add(-250) }, modifier = Modifier.fillMaxWidth()) { Text("Отменить 250 мл") }
-    if (ml >= goal) Text("Норма на сегодня выполнена", color = extra.ok, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(8.dp))
+    OutlinedButton(onClick = { add(-250) }, modifier = Modifier.fillMaxWidth()) { Text(btnLabel("Отменить 250 мл")) }
+    if (ml >= goal) Text(btnLabel("Норма на сегодня выполнена"), color = extra.ok, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(8.dp))
     SectionTitle("2 недели")
     Tile {
         val days = (13 downTo 0).map { today - it }
@@ -425,7 +426,7 @@ private fun SleepAutoCard() {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Glyph(Glyphs.PHONE_OFF, 24.dp)
             Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                Text("Автоопределение сна", fontWeight = FontWeight.SemiBold)
+                Text(btnLabel("Автоопределение сна"), fontWeight = FontWeight.SemiBold)
                 Text("По тому, когда вы перестаёте и начинаете пользоваться телефоном", fontSize = 12.sp, color = extra.dim)
             }
             Switch(on && access, { v ->

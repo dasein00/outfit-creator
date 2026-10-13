@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.health
 
 import android.content.Intent
+import com.dasein.poryadok.ui.common.btnLabel
 import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -27,16 +28,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -136,7 +137,7 @@ fun PressureHomeScreen(nav: NavHostController) {
             if (person != null) ExtendedFloatingActionButton(
                 onClick = { nav.navigate(PressureRoutes.add(person.id)) },
                 containerColor = MaterialTheme.colorScheme.primary,
-                icon = { Icon(Icons.Default.Add, null) }, text = { Text("Замер") },
+                icon = { Icon(Icons.Default.Add, null) }, text = { Text(btnLabel("Замер")) },
             )
         },
     ) { pad ->
@@ -154,16 +155,16 @@ fun PressureHomeScreen(nav: NavHostController) {
             if (person == null) {
                 Gap(12.dp)
                 Tile {
-                    Text("Дневник давления для вас и близких", fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
+                    Text(btnLabel("Дневник давления для вас и близких"), fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
                     Text(
                         "Добавьте себя, маму, бабушку или дедушку: возраст, рост, вес и болезни. Приложение рассчитает, какое давление для каждого — норма " +
                             "(по рекомендациям Минздрава РФ и Европейского общества кардиологов), а после каждого замера подскажет: всё в порядке, понаблюдать, " +
                             "к врачу или срочно 103.",
                         fontSize = 14.sp, color = extra.dim, lineHeight = 20.sp, modifier = Modifier.padding(top = 6.dp),
                     )
-                    Button(onClick = { nav.navigate(PressureRoutes.person(0)) }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) { Text("Добавить человека") }
+                    Button(onClick = { nav.navigate(PressureRoutes.person(0)) }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) { Text(btnLabel("Добавить человека")) }
                     OutlinedButton(onClick = { importer.launch(arrayOf("text/*", "application/vnd.ms-excel", "application/octet-stream", "*/*")) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                        Text("Загрузить замеры из файла")
+                        Text(btnLabel("Загрузить замеры из файла"))
                     }
                 }
                 HowTo("pressure")
@@ -180,7 +181,7 @@ fun PressureHomeScreen(nav: NavHostController) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Pill("Просто", !doctor) { doctor = false }
                 Pill("Для врача", doctor) { doctor = true }
-                Text("  режим оценки", fontSize = 12.sp, color = LocalExtra.current.dim)
+                Text(btnLabel("  режим оценки"), fontSize = 12.sp, color = LocalExtra.current.dim)
             }
             Gap(10.dp)
             when (tab) {
@@ -207,7 +208,7 @@ private fun LatestCard(p: Pressure.Person, last: Pressure.Reading?, t: Pressure.
     val extra = LocalExtra.current
     Tile(onClick = last?.let { { onOpen(it) } }) {
         if (last == null) {
-            Text("Замеров пока нет", fontWeight = FontWeight.SemiBold)
+            Text(btnLabel("Замеров пока нет"), fontWeight = FontWeight.SemiBold)
             Text("Норма для ${p.name}: ${t.label}", fontSize = 13.sp, color = extra.dim)
             Text(t.why, fontSize = 12.sp, color = extra.dim)
             return@Tile
@@ -219,7 +220,7 @@ private fun LatestCard(p: Pressure.Person, last: Pressure.Reading?, t: Pressure.
                 Text(fmtTime(last.time), fontSize = 12.sp, color = extra.dim)
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text("${last.sys}/${last.dia}", fontSize = 40.sp, fontWeight = FontWeight.Bold, color = c(Pressure.color(cat)))
-                    Text(" мм рт. ст.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(bottom = 8.dp))
+                    Text(btnLabel(" мм рт. ст."), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(bottom = 8.dp))
                 }
                 Text(cat.title, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = c(Pressure.color(cat)))
             }
@@ -244,7 +245,7 @@ private fun CategoryScale(sys: Int, dia: Int) {
         cats.forEach { k ->
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.fillMaxWidth().height(if (k == cur) 10.dp else 6.dp).clip(RoundedCornerShape(3.dp)).background(c(Pressure.color(k)).copy(alpha = if (k == cur) 1f else .45f)))
-                if (k == cur) Text("▲", fontSize = 10.sp, color = c(Pressure.color(k)))
+                if (k == cur) Text(btnLabel("▲"), fontSize = 10.sp, color = c(Pressure.color(k)))
             }
         }
     }
@@ -264,7 +265,7 @@ private fun VerdictBox(v: Pressure.Verdict) {
                 onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:103"))) } },
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = col),
-            ) { Text("Позвонить 103", color = Color.White, fontWeight = FontWeight.Bold) }
+            ) { Text(btnLabel("Позвонить 103"), color = Color.White, fontWeight = FontWeight.Bold) }
         }
     }
 }
@@ -347,7 +348,7 @@ private fun AvgTile(label: String, a: Pressure.Avg?, t: Pressure.Target, modifie
 @Composable
 private fun TrendChart(rs: List<Pressure.Reading>, t: Pressure.Target) {
     val extra = LocalExtra.current
-    if (rs.size < 2) { Text("Нужно хотя бы 2 замера", fontSize = 12.sp, color = extra.dim); return }
+    if (rs.size < 2) { Text(btnLabel("Нужно хотя бы 2 замера"), fontSize = 12.sp, color = extra.dim); return }
     val lo = minOf(rs.minOf { it.dia }, t.diaLow) - 10
     val hi = maxOf(rs.maxOf { it.sys }, t.sysHigh, 150) + 10
     val t0 = rs.first().time; val t1 = rs.last().time.coerceAtLeast(t0 + 1)
@@ -365,7 +366,7 @@ private fun TrendChart(rs: List<Pressure.Reading>, t: Pressure.Target) {
             pts.forEach { (tm, v) -> drawCircle(col, 6f, Offset(x(tm), y(v))) }
         }
     }
-    Row { Text("${hi}", fontSize = 10.sp, color = extra.dim, modifier = Modifier.weight(1f)); Text("пунктир — 140 и 90", fontSize = 10.sp, color = extra.dim) }
+    Row { Text("${hi}", fontSize = 10.sp, color = extra.dim, modifier = Modifier.weight(1f)); Text(btnLabel("пунктир — 140 и 90"), fontSize = 10.sp, color = extra.dim) }
 }
 
 @Composable
@@ -386,7 +387,7 @@ private fun PulseChart(rs: List<Pressure.Reading>) {
 @Composable
 private fun Journal(rs: List<Pressure.Reading>, onEdit: (Pressure.Reading) -> Unit, onDelete: (Pressure.Reading) -> Unit) {
     val extra = LocalExtra.current
-    if (rs.isEmpty()) { Text("Здесь будут все замеры. Нажмите «Замер».", color = extra.dim); return }
+    if (rs.isEmpty()) { Text(btnLabel("Здесь будут все замеры. Нажмите «Замер»."), color = extra.dim); return }
     rs.groupBy { Pressure.day(it) }.forEach { (day, list) ->
         val a = Pressure.avg(list)!!
         Row(Modifier.padding(top = 10.dp, bottom = 4.dp)) {
@@ -502,7 +503,7 @@ private fun Analytics(p: Pressure.Person, rs: List<Pressure.Reading>, t: Pressur
         Tile(padding = 10.dp) {
             PulseChart(rs.filter { it.time > now - 30 * 86_400_000L })
             val irr = rs.count { it.irregular }
-            Text("Зелёная полоса — 60–100 уд/мин. " + if (irr > 0) "Неровный ритм отмечен $irr раз — покажите врачу, сделайте ЭКГ." else "Неровного ритма не было.", fontSize = 12.sp, color = if (irr > 0) extra.warn else extra.dim)
+            Text(btnLabel("Зелёная полоса — 60–100 уд/мин. ") + if (irr > 0) "Неровный ритм отмечен $irr раз — покажите врачу, сделайте ЭКГ." else "Неровного ритма не было.", fontSize = 12.sp, color = if (irr > 0) extra.warn else extra.dim)
         }
     }
     Pressure.armDifference(rs)?.let { dArm ->
@@ -516,7 +517,7 @@ private fun Analytics(p: Pressure.Person, rs: List<Pressure.Reading>, t: Pressur
         Button(onClick = {
             val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, Pressure.report(p, rs, now))
             runCatching { ctx.startActivity(Intent.createChooser(send, "Отчёт для врача")) }
-        }, modifier = Modifier.weight(1f)) { Text("Отчёт") }
+        }, modifier = Modifier.weight(1f)) { Text(btnLabel("Отчёт")) }
         OutlinedButton(onClick = {
             runCatching {
                 val dir = java.io.File(ctx.cacheDir, "share").apply { mkdirs() }
@@ -524,7 +525,7 @@ private fun Analytics(p: Pressure.Person, rs: List<Pressure.Reading>, t: Pressur
                 val uri = androidx.core.content.FileProvider.getUriForFile(ctx, ctx.packageName + ".files", f)
                 ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/csv").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "Таблица замеров"))
             }.onFailure { Toast.makeText(ctx, "Не удалось: ${it.message}", Toast.LENGTH_SHORT).show() }
-        }, modifier = Modifier.weight(1f)) { Text("Таблица CSV") }
+        }, modifier = Modifier.weight(1f)) { Text(btnLabel("Таблица CSV")) }
     }
 }
 
@@ -548,7 +549,7 @@ private fun Protocols(p: Pressure.Person, rs: List<Pressure.Reading>, onOrtho: (
             "Падает ли давление, когда человек встаёт. Особенно важно для пожилых и тех, кто принимает лекарства от давления: резкое падение — частая причина головокружений и падений.",
             fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
         )
-        OutlinedButton(onClick = onOrtho, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Пройти пробу") }
+        OutlinedButton(onClick = onOrtho, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text(btnLabel("Пройти пробу")) }
     }
     SectionTitle("Когда звонить 103 / 112")
     Tile {
@@ -615,7 +616,7 @@ private fun OrthostaticDialog(p: Pressure.Person, onDismiss: () -> Unit) {
                 res?.let { r -> Text(r.text, fontWeight = FontWeight.Medium, color = if (r.positive) LocalExtra.current.danger else LocalExtra.current.ok, modifier = Modifier.padding(top = 10.dp)) }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Готово") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Готово")) } },
     )
 }
 
@@ -627,7 +628,7 @@ fun PressureAddScreen(nav: NavHostController, personId: Long, id: Long) {
     val extra = LocalExtra.current
     val scope = rememberCoroutineScope()
     val d = PressureStore.now(ctx)
-    val person = d.people.firstOrNull { it.id == personId } ?: run { Screen("Замер", onBack = { nav.popBackStack() }) { Text("Человек не найден", Modifier.padding(it).padding(16.dp)) }; return }
+    val person = d.people.firstOrNull { it.id == personId } ?: run { Screen("Замер", onBack = { nav.popBackStack() }) { Text(btnLabel("Человек не найден"), Modifier.padding(it).padding(16.dp)) }; return }
     val old = d.readings.firstOrNull { it.id == id }
     var sys by remember { mutableStateOf(old?.sys?.toString().orEmpty()) }
     var dia by remember { mutableStateOf(old?.dia?.toString().orEmpty()) }
@@ -668,7 +669,7 @@ fun PressureAddScreen(nav: NavHostController, personId: Long, id: Long) {
         Column(Modifier.padding(pad).imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             OutlinedTextField(
                 quick, { v -> quick = v; Pressure.parse(v)?.let { (a, b, pl) -> sys = a.toString(); dia = b.toString(); pl?.let { pulse = it.toString() } } },
-                label = { Text("Быстро: 135 85 72") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                label = { Text(btnLabel("Быстро: 135 85 72")) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             )
             Gap(8.dp)
@@ -689,13 +690,13 @@ fun PressureAddScreen(nav: NavHostController, personId: Long, id: Long) {
                 OutlinedButton(onClick = { pickDate = true }, modifier = Modifier.weight(1f)) { Text(dt.format(DateTimeFormatter.ofPattern("d MMM yyyy"))) }
                 OutlinedButton(onClick = { pickTime = true }, modifier = Modifier.weight(1f)) { Text(dt.format(DateTimeFormatter.ofPattern("HH:mm"))) }
             }
-            Text("Рука", fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
+            Text(btnLabel("Рука"), fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
             Segments(listOf(0 to "Левая", 1 to "Правая"), arm, { arm = it })
-            Text("Положение", fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+            Text(btnLabel("Положение"), fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
             Segments(listOf(0 to "Сидя", 1 to "Лёжа", 2 to "Стоя"), position, { position = it })
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
                 Column(Modifier.weight(1f)) {
-                    Text("Неровный ритм", fontSize = 14.sp)
+                    Text(btnLabel("Неровный ритм"), fontSize = 14.sp)
                     Text("Значок аритмии на тонометре или пульс «скачет»", fontSize = 12.sp, color = extra.dim)
                 }
                 Switch(irregular, { irregular = it })
@@ -708,13 +709,13 @@ fun PressureAddScreen(nav: NavHostController, personId: Long, id: Long) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Pressure.MILD_SYMPTOMS.forEach { t -> Pill(t, t in symptoms) { symptoms = if (t in symptoms) symptoms - t else symptoms + t } }
             }
-            Text("Тревожные симптомы", fontSize = 13.sp, color = extra.danger, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+            Text(btnLabel("Тревожные симптомы"), fontSize = 13.sp, color = extra.danger, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Pressure.DANGER_SYMPTOMS.forEach { t -> Pill(t, t in symptoms) { symptoms = if (t in symptoms) symptoms - t else symptoms + t } }
             }
             Gap(8.dp)
             TextInput(note, { note = it }, "Заметка", singleLine = false)
-            Button(onClick = { save() }, enabled = valid, modifier = Modifier.fillMaxWidth().padding(top = 12.dp).height(52.dp)) { Text("Сохранить", fontSize = 17.sp) }
+            Button(onClick = { save() }, enabled = valid, modifier = Modifier.fillMaxWidth().padding(top = 12.dp).height(52.dp)) { Text(btnLabel("Сохранить"), fontSize = 17.sp) }
             Gap(60.dp)
         }
     }
@@ -842,7 +843,7 @@ fun PressurePersonScreen(nav: NavHostController, id: Long) {
             }
             Gap(6.dp)
             TextInput(p.note, { p = p.copy(note = it) }, "Заметка", singleLine = false)
-            Button(onClick = { save() }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp).height(50.dp)) { Text("Сохранить") }
+            Button(onClick = { save() }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp).height(50.dp)) { Text(btnLabel("Сохранить")) }
             Gap(60.dp)
         }
     }
@@ -868,7 +869,7 @@ private fun ImportDialog(im: Pressure.Imported, people: List<Pressure.Person>, c
     val a = Pressure.avg(rs)
     AlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
-        title = { Text("Загрузить замеры") },
+        title = { Text(btnLabel("Загрузить замеры")) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text("${rs.size} замеров · ${Instant.ofEpochMilli(rs.first().time).atZone(zone).format(df)} — ${Instant.ofEpochMilli(rs.last().time).atZone(zone).format(df)}", fontWeight = FontWeight.SemiBold)
@@ -876,7 +877,7 @@ private fun ImportDialog(im: Pressure.Imported, people: List<Pressure.Person>, c
                 val arms = rs.count { it.arm == 1 }
                 if (arms > 0) Text("Правая рука: $arms, левая: ${rs.size - arms}", fontSize = 13.sp, color = extra.dim)
                 if (im.skipped > 0) Text("Пропущено строк без цифр или даты: ${im.skipped}", fontSize = 12.sp, color = extra.warn)
-                Text("Чьи замеры", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
+                Text(btnLabel("Чьи замеры"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     people.forEach { p -> Pill(p.name, target == p.id, glyph = p.glyph) { target = p.id } }
                     Pill("+ Новый человек", target == 0L) { target = 0L }
@@ -901,6 +902,6 @@ private fun ImportDialog(im: Pressure.Imported, people: List<Pressure.Person>, c
                 }
             }) { Text(if (busy) "…" else "Загрузить") }
         },
-        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text(btnLabel("Отмена")) } },
     )
 }

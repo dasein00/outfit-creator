@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.today
 
 import android.content.Context
+import com.dasein.poryadok.ui.common.btnLabel
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -29,7 +30,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.dasein.poryadok.ui.common.SectionTitle
@@ -126,7 +127,7 @@ fun FactsCard() {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Glyph(FactsRepo.glyph(fact.tag), 22.dp)
             Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                Text("Интересный факт", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(btnLabel("Интересный факт"), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 Text(fact.tag, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
             }
             Text(
@@ -182,10 +183,10 @@ private fun MetricsEditor(all: List<Pair<String, String>>, chosen0: List<String>
     val names = all.toMap()
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Метрики на главной") },
+        title = { Text(btnLabel("Метрики на главной")) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                Text("Отметьте нужные и расставьте стрелками.", fontSize = 12.sp, color = extra.dim)
+                Text(btnLabel("Отметьте нужные и расставьте стрелками."), fontSize = 12.sp, color = extra.dim)
                 order.forEachIndexed { i, id ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(id in chosen, { on -> chosen = if (on) chosen + id else chosen - id })
@@ -200,11 +201,11 @@ private fun MetricsEditor(all: List<Pair<String, String>>, chosen0: List<String>
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(order.filter { it in chosen }) }) { Text("Готово") } },
+        confirmButton = { TextButton(onClick = { onSave(order.filter { it in chosen }) }) { Text(btnLabel("Готово")) } },
         dismissButton = {
             Row {
-                TextButton(onClick = { order = DEFAULT_METRICS.split(','); chosen = order.toSet() }) { Text("Как было") }
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                TextButton(onClick = { order = DEFAULT_METRICS.split(','); chosen = order.toSet() }) { Text(btnLabel("Как было")) }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
         },
     )
@@ -365,7 +366,7 @@ private fun MetricTile(m: Metric, modifier: Modifier) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(20.dp).clip(CircleShape), contentAlignment = Alignment.Center) { Glyph(m.glyph, 18.dp, badge = false) }
-            Text(" " + m.label, fontSize = 11.sp, color = extra.dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(btnLabel(" ") + m.label, fontSize = 11.sp, color = extra.dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Text(
             m.value, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,

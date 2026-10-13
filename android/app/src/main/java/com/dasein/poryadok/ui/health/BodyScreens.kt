@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.health
 
 import android.graphics.BitmapFactory
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -37,13 +38,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -158,7 +159,7 @@ internal fun BodyHeaderCard(last: BodyMetric, readings: List<BodyMetric>, profil
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(fmt(last.weight, 2), style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.SemiBold)
-                    Text(" кг", color = extra.dim, modifier = Modifier.padding(bottom = 10.dp))
+                    Text(btnLabel(" кг"), color = extra.dim, modifier = Modifier.padding(bottom = 10.dp))
                 }
             }
             StatusChip(ws.labels[zone], ws.tones[zone])
@@ -172,14 +173,14 @@ internal fun BodyHeaderCard(last: BodyMetric, readings: List<BodyMetric>, profil
         Row(Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
                 Text(prev?.let { signed(last.weight - it.weight) } ?: "—", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                Text("Чем в прошлый раз", fontSize = 12.sp, color = extra.dim)
+                Text(btnLabel("Чем в прошлый раз"), fontSize = 12.sp, color = extra.dim)
             }
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                 Text(best?.let { fmt(it.weight) } ?: "—", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                Text("Лучшее за 30 дней", fontSize = 12.sp, color = extra.dim)
+                Text(btnLabel("Лучшее за 30 дней"), fontSize = 12.sp, color = extra.dim)
             }
         }
-        Text("Нажмите, чтобы открыть все показатели →", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 8.dp))
+        Text(btnLabel("Нажмите, чтобы открыть все показатели →"), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 8.dp))
     }
 }
 
@@ -194,16 +195,16 @@ fun WeightTrendCard(readings: List<BodyMetric>, onClick: () -> Unit, modifier: M
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Glyph("ui:stats", 22.dp)
-                    Text("  Тренд веса", fontWeight = FontWeight.SemiBold)
+                    Text(btnLabel("  Тренд веса"), fontWeight = FontWeight.SemiBold)
                 }
                 if (pts.size >= 2) {
                     val change = pts.last().weight - pts.first().weight
                     Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = 6.dp)) {
                         Text(signed(change), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = if (change > 0) extra.warn else extra.ok)
-                        Text(" кг", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(bottom = 3.dp))
+                        Text(btnLabel(" кг"), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(bottom = 3.dp))
                     }
                     Text("с ${Dates.short(pts.first().day)} · сейчас ${fmt(pts.last().weight)} кг", fontSize = 11.sp, color = extra.dim)
-                } else Text("Нужно хотя бы два взвешивания", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
+                } else Text(btnLabel("Нужно хотя бы два взвешивания"), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
             }
             if (pts.size >= 2) Sparkline(pts.map { it.weight.toFloat() }, Modifier.width(140.dp).height(56.dp))
         }
@@ -309,12 +310,12 @@ fun BodyDetailScreen(nav: NavHostController, at: Long, initialTab: Int = 0) {
     Screen(
         "Детали", onBack = { nav.popBackStack() },
         actions = {
-            if (m != null) TextButton(onClick = { edit = m }) { Text("Изменить") }
-            TextButton(onClick = { nav.navigate(Routes.BODY_COMPARE) }) { Text("Сравнить") }
+            if (m != null) TextButton(onClick = { edit = m }) { Text(btnLabel("Изменить")) }
+            TextButton(onClick = { nav.navigate(Routes.BODY_COMPARE) }) { Text(btnLabel("Сравнить")) }
         },
     ) { pad ->
         if (m == null) {
-            Box(Modifier.padding(pad).fillMaxSize(), contentAlignment = Alignment.Center) { Text("Взвешиваний пока нет", color = extra.dim) }
+            Box(Modifier.padding(pad).fillMaxSize(), contentAlignment = Alignment.Center) { Text(btnLabel("Взвешиваний пока нет"), color = extra.dim) }
             return@Screen
         }
         val r = m.reading()
@@ -329,7 +330,7 @@ fun BodyDetailScreen(nav: NavHostController, at: Long, initialTab: Int = 0) {
                     StatusChip(ws.labels[zone], ws.tones[zone])
                     Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = 6.dp)) {
                         Text(fmt(m.weight, 2), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.SemiBold)
-                        Text(" кг", color = extra.dim, modifier = Modifier.padding(bottom = 6.dp))
+                        Text(btnLabel(" кг"), color = extra.dim, modifier = Modifier.padding(bottom = 6.dp))
                     }
                     Text(TIME.format(Date(m.at)) + " · " + m.source, fontSize = 12.sp, color = extra.dim)
                     Gap(10.dp)
@@ -339,12 +340,12 @@ fun BodyDetailScreen(nav: NavHostController, at: Long, initialTab: Int = 0) {
                 Tile {
                     val prev = data.readings.lastOrNull { it.at < m.at }
                     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                        Text("По сравнению с прошлым разом" + (prev?.let { " (${Dates.short(it.day)})" } ?: ""), Modifier.weight(1f), fontSize = 14.sp)
+                        Text(btnLabel("По сравнению с прошлым разом") + (prev?.let { " (${Dates.short(it.day)})" } ?: ""), Modifier.weight(1f), fontSize = 14.sp)
                         Text(prev?.let { signed(m.weight - it.weight) } ?: "—", fontWeight = FontWeight.SemiBold)
                     }
                     val month = data.readings.filter { it.day in (m.day - 29)..m.day }
                     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                        Text("Лучший вес за 30 дней", Modifier.weight(1f), fontSize = 14.sp)
+                        Text(btnLabel("Лучший вес за 30 дней"), Modifier.weight(1f), fontSize = 14.sp)
                         Text(month.minByOrNull { it.weight }?.let { fmt(it.weight) } ?: "—", fontWeight = FontWeight.SemiBold)
                     }
                 }
@@ -477,10 +478,10 @@ fun WeightTrendScreen(nav: NavHostController) {
                 Tile {
                     Text("За ${range.last - range.first + 1} дн. · ${t.count} измерений", fontSize = 12.sp, color = extra.dim)
                     Row(Modifier.fillMaxWidth().padding(top = 10.dp)) {
-                        Column(Modifier.weight(1f)) { Text(fmt(t.avg), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold); Text("Среднее", fontSize = 12.sp, color = extra.dim) }
+                        Column(Modifier.weight(1f)) { Text(fmt(t.avg), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold); Text(btnLabel("Среднее"), fontSize = 12.sp, color = extra.dim) }
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                             Text((if (t.change < 0) "↓ " else if (t.change > 0) "↑ " else "") + fmt(abs(t.change)), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, color = if (t.change > 0 && metric != "muscle") extra.warn else extra.ok)
-                            Text("Изменение", fontSize = 12.sp, color = extra.dim)
+                            Text(btnLabel("Изменение"), fontSize = 12.sp, color = extra.dim)
                         }
                     }
                     Row(Modifier.fillMaxWidth().padding(top = 12.dp)) {
@@ -672,7 +673,7 @@ fun BodyCompareScreen(nav: NavHostController) {
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { picking = 0 }) { Text("Закрыть") } },
+        confirmButton = { TextButton(onClick = { picking = 0 }) { Text(btnLabel("Закрыть")) } },
     )
 }
 
@@ -691,7 +692,7 @@ internal fun WeightRulerDialog(initial: Double, onDismiss: () -> Unit, onMore: (
     fun metric() = BodyMetric(at = at, day = Dates.dayOf(at), weight = snapped(), source = "вручную")
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Добавить вес", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+        title = { Text(btnLabel("Добавить вес"), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row {
@@ -701,7 +702,7 @@ internal fun WeightRulerDialog(initial: Double, onDismiss: () -> Unit, onMore: (
                 }
                 Gap(8.dp)
                 Text(fmt(snapped()), fontSize = 56.sp, fontWeight = FontWeight.Bold, color = color)
-                Text("кг", color = color, fontWeight = FontWeight.SemiBold)
+                Text(btnLabel("кг"), color = color, fontWeight = FontWeight.SemiBold)
                 Gap(8.dp)
                 Canvas(
                     Modifier.fillMaxWidth().height(90.dp).clipToBounds().pointerInput(Unit) {
@@ -732,7 +733,7 @@ internal fun WeightRulerDialog(initial: Double, onDismiss: () -> Unit, onMore: (
                     val arrow = Path().apply { moveTo(cx - 9.dp.toPx(), 14.dp.toPx()); lineTo(cx, 0f); lineTo(cx + 9.dp.toPx(), 14.dp.toPx()); close() }
                     drawPath(arrow, color)
                 }
-                Text("Двигайте линейку влево и вправо", fontSize = 12.sp, color = extra.dim)
+                Text(btnLabel("Двигайте линейку влево и вправо"), fontSize = 12.sp, color = extra.dim)
                 Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(-1.0f, -0.1f, 0.1f, 1.0f).forEach { d ->
                         OutlinedButton(
@@ -747,12 +748,12 @@ internal fun WeightRulerDialog(initial: Double, onDismiss: () -> Unit, onMore: (
             }
         },
         confirmButton = {
-            Button(onClick = { val m = metric(); io { Body.save(m) }; onDismiss() }) { Text("Подтвердить") }
+            Button(onClick = { val m = metric(); io { Body.save(m) }; onDismiss() }) { Text(btnLabel("Подтвердить")) }
         },
         dismissButton = {
             Row {
-                TextButton(onClick = { onMore(metric()) }) { Text("Подробнее…") }
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                TextButton(onClick = { onMore(metric()) }) { Text(btnLabel("Подробнее…")) }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
         },
     )

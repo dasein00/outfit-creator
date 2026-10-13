@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.tutor
 
 import androidx.compose.foundation.background
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,9 +14,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -73,12 +74,12 @@ fun TutorDictScreen(nav: NavHostController) {
             item {
                 SearchField(q, { q = it }, "Слово по-английски или по-русски")
                 if (offline == false) Tile(Modifier.padding(top = 8.dp), color = extra.warn.copy(alpha = .15f)) {
-                    Text("Озвучка без интернета", fontWeight = FontWeight.SemiBold)
+                    Text(btnLabel("Озвучка без интернета"), fontWeight = FontWeight.SemiBold)
                     Text(
                         "На телефоне нет английского голоса — без интернета произношение может не работать. Установите голос «Английский (США)» в синтезе речи Google: он весит около 30–50 МБ и дальше работает офлайн.",
                         fontSize = 13.sp, color = extra.dim,
                     )
-                    TextButton(onClick = { Speaker.installVoice(ctx) }) { Text("Установить голос") }
+                    TextButton(onClick = { Speaker.installVoice(ctx) }) { Text(btnLabel("Установить голос")) }
                 }
                 Text(
                     when {
@@ -139,8 +140,8 @@ internal fun DictCard(e: EnDict.Entry, sp: Speaker, startOpen: Boolean, added: B
                     if (s.gloss.isNotBlank()) Text(s.gloss, fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp)
                 }
             }
-            if (added) Text("✓ В моих словах", fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
-            else OutlinedButton(onClick = onAdd, modifier = Modifier.padding(top = 8.dp)) { Text("+ В мои слова и учить") }
+            if (added) Text(btnLabel("✓ В моих словах"), fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
+            else OutlinedButton(onClick = onAdd, modifier = Modifier.padding(top = 8.dp)) { Text(btnLabel("+ В мои слова и учить")) }
         }
     }
 }

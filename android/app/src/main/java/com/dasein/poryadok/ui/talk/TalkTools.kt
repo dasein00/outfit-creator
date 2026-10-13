@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.talk
 
 import android.widget.Toast
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,13 +20,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -173,7 +174,7 @@ internal fun LazyListScope.trainerTab(data: TalkRepo.Data, s: AppSettings) {
 private fun ExerciseOfDay(data: TalkRepo.Data) {
     val ex = remember(data) { SmallTalk.ofDay(data.exercises, LocalDate.now().toEpochDay()) } ?: return
     Tile(color = MaterialTheme.colorScheme.primary.copy(alpha = .14f)) {
-        Text("Упражнение дня", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+        Text(btnLabel("Упражнение дня"), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
         Text(ex.title, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, modifier = Modifier.padding(top = 4.dp))
         Text(ex.text, fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.padding(top = 6.dp))
     }
@@ -213,7 +214,7 @@ private fun TrafficLight() {
                 )
                 Row(Modifier.padding(top = 6.dp)) {
                     Button(onClick = { if (running) running = false else { seconds = 0; running = true } }) { Text(if (running) "Стоп" else "Старт") }
-                    if (!running && seconds > 0) OutlinedButton(onClick = { seconds = 0 }, Modifier.padding(start = 8.dp)) { Text("Сброс") }
+                    if (!running && seconds > 0) OutlinedButton(onClick = { seconds = 0 }, Modifier.padding(start = 8.dp)) { Text(btnLabel("Сброс")) }
                 }
             }
         }
@@ -247,7 +248,7 @@ private fun OpinionTrainer(data: TalkRepo.Data) {
                 },
                 Modifier.weight(1f), fontSize = 16.sp, color = if (started && left == 0) MaterialTheme.colorScheme.primary else extra.dim,
             )
-            if (!started) Button(onClick = { started = true }) { Text("Старт") }
+            if (!started) Button(onClick = { started = true }) { Text(btnLabel("Старт")) }
             else FilledIconButton(
                 onClick = { var n: Int; do { n = Random.nextInt(data.opinions.size) } while (n == index && data.opinions.size > 1); index = n },
                 colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary),
@@ -321,10 +322,10 @@ private fun StoryBuilder(s: AppSettings) {
     SectionTitle("Конструктор истории")
     Tile {
         Text("Любой случай становится историей в три шага: как было → что пошло не так → чем кончилось. Соберите свои истории, чтобы они были под рукой.", fontSize = 13.sp, color = extra.dim)
-        OutlinedTextField(title, { title = it }, Modifier.fillMaxWidth().padding(top = 8.dp), singleLine = true, label = { Text("Название") })
-        OutlinedTextField(start, { start = it }, Modifier.fillMaxWidth().padding(top = 6.dp), label = { Text("1. Как было (статус-кво)") })
-        OutlinedTextField(conflict, { conflict = it }, Modifier.fillMaxWidth().padding(top = 6.dp), label = { Text("2. Но тут… (конфликт)") })
-        OutlinedTextField(end, { end = it }, Modifier.fillMaxWidth().padding(top = 6.dp), label = { Text("3. И в итоге… (развязка)") })
+        OutlinedTextField(title, { title = it }, Modifier.fillMaxWidth().padding(top = 8.dp), singleLine = true, label = { Text(btnLabel("Название")) })
+        OutlinedTextField(start, { start = it }, Modifier.fillMaxWidth().padding(top = 6.dp), label = { Text(btnLabel("1. Как было (статус-кво)")) })
+        OutlinedTextField(conflict, { conflict = it }, Modifier.fillMaxWidth().padding(top = 6.dp), label = { Text(btnLabel("2. Но тут… (конфликт)")) })
+        OutlinedTextField(end, { end = it }, Modifier.fillMaxWidth().padding(top = 6.dp), label = { Text(btnLabel("3. И в итоге… (развязка)")) })
         Button(
             onClick = {
                 save(listOf(SmallTalk.MyStory(title.ifBlank { "История" }, start, conflict, end)) + stories)
@@ -333,7 +334,7 @@ private fun StoryBuilder(s: AppSettings) {
             },
             enabled = start.isNotBlank() && conflict.isNotBlank() && end.isNotBlank(),
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-        ) { Text("Сохранить историю") }
+        ) { Text(btnLabel("Сохранить историю")) }
         if (conflict.isBlank() && start.isNotBlank()) Text("Без конфликта история звучит как «ну и что?» — что пошло не по плану?", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
     }
     stories.forEachIndexed { i, st ->

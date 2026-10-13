@@ -20,7 +20,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterAlt
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -31,7 +30,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -70,7 +68,7 @@ fun FilterButton(title: String, value: String?, onClick: () -> Unit) {
                 fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
             )
             Spacer(Modifier.width(4.dp))
-            Text("▾", fontSize = 13.sp, color = if (active) scheme.onPrimary else LocalExtra.current.dim)
+            Text(btnLabel("▾"), fontSize = 13.sp, color = if (active) scheme.onPrimary else LocalExtra.current.dim)
         }
     }
 }
@@ -140,7 +138,7 @@ fun OptionSheet(
 fun SheetHeader(title: String, onClose: () -> Unit, onReset: (() -> Unit)? = null) {
     Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(title, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-        if (onReset != null) TextButton(onClick = onReset) { Text("Сбросить") }
+        if (onReset != null) TextButton(onClick = onReset) { Text(btnLabel("Сбросить")) }
         IconButton(onClick = onClose) { Icon(Icons.Default.Close, "Закрыть") }
     }
 }
@@ -198,7 +196,7 @@ fun FilterRow(title: String, value: String?, onClick: () -> Unit) {
             color = if (value != null) MaterialTheme.colorScheme.primary else LocalExtra.current.dim,
             modifier = Modifier.padding(start = 12.dp).weight(1f, fill = false),
         )
-        Text("  ›", fontSize = 18.sp, color = LocalExtra.current.dim)
+        Text(btnLabel("  ›"), fontSize = 18.sp, color = LocalExtra.current.dim)
     }
     androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = .25f))
 }
@@ -242,7 +240,7 @@ fun <T> SortButton(options: List<T>, selected: T, label: (T) -> String, onSelect
         Icon(Icons.AutoMirrored.Filled.Sort, null, tint = scheme.primary)
         Spacer(Modifier.width(8.dp))
         Text(label(selected), fontSize = 15.sp, maxLines = 1, softWrap = false)
-        Text(" ▾", fontSize = 13.sp, color = LocalExtra.current.dim)
+        Text(btnLabel(" ▾"), fontSize = 13.sp, color = LocalExtra.current.dim)
     }
     if (open) OptionSheet(
         "Сортировка", options.mapIndexed { i, o -> FilterOption("$i", label(o)) }, setOf("${options.indexOf(selected)}"),

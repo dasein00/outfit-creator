@@ -7,9 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -68,7 +66,7 @@ fun SectionEditDialog(key: String, defName: String, defIcon: String, onDismiss: 
     var pick by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Изменить раздел") },
+        title = { Text(btnLabel("Изменить раздел")) },
         text = {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -77,12 +75,12 @@ fun SectionEditDialog(key: String, defName: String, defIcon: String, onDismiss: 
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Glyph(icon, 36.dp)
-                        Text("Иконка", fontSize = 11.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 4.dp))
+                        Text(btnLabel("Иконка"), fontSize = 11.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 4.dp))
                     }
                     HGap(12.dp)
                     Column(Modifier.weight(1f)) { TextInput(name, { name = it.take(24) }, "Название") }
                 }
-                OutlinedButton(onClick = { pick = true }, modifier = Modifier.padding(top = 10.dp)) { Text("Выбрать иконку из базы") }
+                OutlinedButton(onClick = { pick = true }, modifier = Modifier.padding(top = 10.dp)) { Text(btnLabel("Выбрать иконку из базы")) }
                 Text(
                     "Было: «$defName». Изменения видны в нижней панели и на плитках разделов.",
                     fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 8.dp),
@@ -90,12 +88,12 @@ fun SectionEditDialog(key: String, defName: String, defIcon: String, onDismiss: 
             }
         },
         confirmButton = {
-            TextButton(onClick = { Sections.save(ctx, key, name.ifBlank { defName }, icon); onDismiss() }) { Text("Сохранить") }
+            TextButton(onClick = { Sections.save(ctx, key, name.ifBlank { defName }, icon); onDismiss() }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
             Row {
-                TextButton(onClick = { Sections.reset(ctx, key); onDismiss() }) { Text("Как было") }
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                TextButton(onClick = { Sections.reset(ctx, key); onDismiss() }) { Text(btnLabel("Как было")) }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
         },
     )

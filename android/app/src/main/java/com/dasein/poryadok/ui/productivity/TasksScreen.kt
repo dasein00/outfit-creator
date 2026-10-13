@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.productivity
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.ExperimentalFoundationApi
 import com.dasein.poryadok.ui.common.Glyphs
@@ -36,7 +37,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -151,7 +152,7 @@ fun TasksScreen(nav: NavHostController, onBack: (() -> Unit)? = null) {
                         onClick = { editProject = Project(id = 0, name = "") },
                         shape = RoundedCornerShape(20.dp), color = Color.Transparent,
                     ) {
-                        Text("+ Список", color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
+                        Text(btnLabel("+ Список"), color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
                     }
                 }
             }
@@ -237,13 +238,13 @@ private fun Matrix(open: List<TaskItem>, today: Long, nav: NavHostController) {
                     val (title, hint, color) = meta
                     Tile(Modifier.weight(1f).height(250.dp), padding = 10.dp) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(color = color, shape = RoundedCornerShape(4.dp), modifier = Modifier.height(14.dp).padding(end = 6.dp)) { Text(" ") }
+                            Surface(color = color, shape = RoundedCornerShape(4.dp), modifier = Modifier.height(14.dp).padding(end = 6.dp)) { Text(btnLabel(" ")) }
                             Text(title, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                         }
                         Text(hint, fontSize = 11.sp, color = extra.dim)
                         Gap(6.dp)
                         Column(Modifier.verticalScroll(rememberScrollState())) {
-                            if (items.isEmpty()) Text("—", color = extra.dim)
+                            if (items.isEmpty()) Text(btnLabel("—"), color = extra.dim)
                             items.forEach { t ->
                                 Text(
                                     "• " + t.title, fontSize = 13.sp, maxLines = 2,
@@ -282,12 +283,12 @@ fun ProjectDialog(p: Project, onDismiss: () -> Unit) {
             TextButton(onClick = {
                 if (name.isNotBlank()) io { Graph.dao.upsertProject(p.copy(name = name.trim(), emoji = emoji, color = color)) }
                 onDismiss()
-            }) { Text("Сохранить") }
+            }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
             Row {
-                if (p.id != 0L) TextButton(onClick = { confirmDelete = true }) { Text("Удалить", color = LocalExtra.current.danger) }
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                if (p.id != 0L) TextButton(onClick = { confirmDelete = true }) { Text(btnLabel("Удалить"), color = LocalExtra.current.danger) }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
         },
     )

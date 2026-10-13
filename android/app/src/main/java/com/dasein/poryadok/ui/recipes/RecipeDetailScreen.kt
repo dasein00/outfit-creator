@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.recipes
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -21,12 +22,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -136,7 +137,7 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
 
     val r = recipe
     if (r == null) {
-        Screen("Рецепт", onBack = { nav.popBackStack() }) { FullCenter { Text("Рецепт не найден или удалён", color = extra.dim) } }
+        Screen("Рецепт", onBack = { nav.popBackStack() }) { FullCenter { Text(btnLabel("Рецепт не найден или удалён"), color = extra.dim) } }
         return
     }
     val serv = if (servings == 0) r.servings else servings
@@ -171,9 +172,9 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
         Column(Modifier.padding(pad).verticalScroll(scroll).padding(horizontal = 16.dp)) {
             if (r.archived) {
                 Tile(color = extra.warn.copy(alpha = .18f)) {
-                    Text("Рецепт в архиве", fontWeight = FontWeight.SemiBold)
+                    Text(btnLabel("Рецепт в архиве"), fontWeight = FontWeight.SemiBold)
                     Text("Он не показывается в каталоге и подборе меню.", fontSize = 13.sp, color = extra.dim)
-                    TextButton(onClick = { io { x.setArchived(r.id, false) } }) { Text("Вернуть из архива") }
+                    TextButton(onClick = { io { x.setArchived(r.id, false) } }) { Text(btnLabel("Вернуть из архива")) }
                 }
                 Gap(10.dp)
             }
@@ -194,7 +195,7 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                         fontSize = 13.sp,
                     )
                     val meals = MealType.parse(r.meals)
-                    if (meals.isNotEmpty()) Text("Подходит: " + meals.joinToString { MealType.name(it).lowercase() }, fontSize = 12.sp, color = extra.dim)
+                    if (meals.isNotEmpty()) Text(btnLabel("Подходит: ") + meals.joinToString { MealType.name(it).lowercase() }, fontSize = 12.sp, color = extra.dim)
                 }
             }
             val videoCount = RecipeVideos.list(r).size
@@ -224,10 +225,10 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                 }
                 Gap(10.dp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Порций", Modifier.weight(1f))
+                    Text(btnLabel("Порций"), Modifier.weight(1f))
                     Stepper(serv) { servings = it.coerceIn(1, 40) }
                 }
-                if (swaps.isNotEmpty()) Text("С учётом замен ингредиентов", fontSize = 12.sp, color = extra.warn, modifier = Modifier.padding(top = 6.dp))
+                if (swaps.isNotEmpty()) Text(btnLabel("С учётом замен ингредиентов"), fontSize = 12.sp, color = extra.warn, modifier = Modifier.padding(top = 6.dp))
             }
 
             SectionTitle("Калькулятор граммовки")
@@ -243,7 +244,7 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                     Gap(6.dp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         NumberField(baseHave, { baseHave = it }, "У меня есть", Modifier.weight(1f), suffix = if (calcBase.unit == "шт") "шт" else if (calcBase.unit == "мл" || calcBase.unit == "л") "мл" else "г")
-                        TextButton(onClick = { baseIdx = -1; baseHave = "" }) { Text("Сброс") }
+                        TextButton(onClick = { baseIdx = -1; baseHave = "" }) { Text(btnLabel("Сброс")) }
                     }
                     Text(
                         "По рецепту: ${Cooking.label(calcBase)}" + if (calcBase.unit != "г" && calcBase.grams > 0) " (${Cooking.amount(calcBase.grams)} г)" else "",
@@ -326,7 +327,7 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                         )
                         else -> Column {
                             Text(detailError ?: "Подробные шаги появятся, когда будет интернет. Пока — подсказки новичку под каждым шагом.", fontSize = 13.sp, color = if (detailError != null) extra.danger else extra.dim)
-                            TextButton(onClick = { makeDetail() }) { Text("Расписать подробно") }
+                            TextButton(onClick = { makeDetail() }) { Text(btnLabel("Расписать подробно")) }
                         }
                     }
                 }
@@ -375,8 +376,8 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
             if (detailed && detail != null) TextButton(onClick = { com.dasein.poryadok.system.RecipeDetail.forget(ctx, id); detail = null; makeDetail() }, enabled = !detailBusy) {
                 Text(if (detailBusy) "Расписываю заново…" else "Расписать заново")
             }
-            if (shown.isNotEmpty() && doneCount == shown.size) Text("Готово! Приятного аппетита 🍽", color = green, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
-            if (steps.isEmpty()) Text("Шаги не добавлены", color = extra.dim)
+            if (shown.isNotEmpty() && doneCount == shown.size) Text(btnLabel("Готово! Приятного аппетита 🍽"), color = green, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
+            if (steps.isEmpty()) Text(btnLabel("Шаги не добавлены"), color = extra.dim)
             Column(Modifier.onGloballyPositioned { videoY = it.positionInParent().y.toInt() }) { RecipeVideosSection(r) }
 
             RecipeRating(r.id)
@@ -395,7 +396,7 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                 MacroLine(total / servD, showFiber = true)
                 if (per100 != null) {
                     Gap(8.dp)
-                    Text("На 100 г", fontSize = 13.sp, color = extra.dim)
+                    Text(btnLabel("На 100 г"), fontSize = 13.sp, color = extra.dim)
                     MacroLine(per100, showFiber = true)
                 }
                 Text("Расчёт по базе продуктов, значения приблизительные.", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
@@ -403,9 +404,9 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
 
             Gap(16.dp)
             Row {
-                Button(onClick = { addToMenu = true }, Modifier.weight(1f)) { Text("В меню") }
+                Button(onClick = { addToMenu = true }, Modifier.weight(1f)) { Text(btnLabel("В меню")) }
                 HGap(8.dp)
-                Button(onClick = { cook = true }, Modifier.weight(1f)) { Text("Приготовить") }
+                Button(onClick = { cook = true }, Modifier.weight(1f)) { Text(btnLabel("Приготовить")) }
             }
             Gap(8.dp)
             OutlinedButton(onClick = {
@@ -413,7 +414,7 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                     RecipeRepo.addToShopping(r.id, factor)
                     Toast.makeText(ctx, "Ингредиенты добавлены в список покупок", Toast.LENGTH_SHORT).show()
                 }
-            }, Modifier.fillMaxWidth()) { Text("Ингредиенты в список покупок") }
+            }, Modifier.fillMaxWidth()) { Text(btnLabel("Ингредиенты в список покупок")) }
             OutlinedButton(onClick = {
                 io { x.setArchived(r.id, !r.archived) }
                 Toast.makeText(ctx, if (r.archived) "Рецепт возвращён в каталог" else "Рецепт в архиве — вернуть можно в каталоге, категория «Архив»", Toast.LENGTH_LONG).show()
@@ -421,7 +422,7 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
             Row {
                 OutlinedButton(onClick = { io { x.setFavorite(r.id, !r.favorite) } }, Modifier.weight(1f)) { Text(if (r.favorite) "В избранном ✓" else "В избранное") }
                 HGap(8.dp)
-                OutlinedButton(onClick = { nav.navigate(Routes.recipeEdit(r.id)) }, Modifier.weight(1f)) { Text("Изменить") }
+                OutlinedButton(onClick = { nav.navigate(Routes.recipeEdit(r.id)) }, Modifier.weight(1f)) { Text(btnLabel("Изменить")) }
             }
             Row {
                 TextButton(onClick = {
@@ -435,8 +436,8 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                         )
                         nav.navigate(Routes.recipe(newId))
                     }
-                }) { Text("Сохранить с заменами") }
-                if (r.custom) TextButton(onClick = { confirmDelete = true }) { Text("Удалить", color = extra.danger) }
+                }) { Text(btnLabel("Сохранить с заменами")) }
+                if (r.custom) TextButton(onClick = { confirmDelete = true }) { Text(btnLabel("Удалить"), color = extra.danger) }
             }
             HowTo("recipe")
             Gap(40.dp)
@@ -459,11 +460,11 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                             Text("${p.kcal.roundToInt()} ккал · Б ${p.protein.plain()}", fontSize = 12.sp, color = extra.dim)
                         }
                     }
-                    if (options.isEmpty()) Text("Для этого продукта нет готовых замен.", color = extra.dim)
+                    if (options.isEmpty()) Text(btnLabel("Для этого продукта нет готовых замен."), color = extra.dim)
                 }
             },
-            confirmButton = { if (swaps.containsKey(i)) TextButton(onClick = { swaps.remove(i); swapFor = null }) { Text("Вернуть исходный") } },
-            dismissButton = { TextButton(onClick = { swapFor = null }) { Text("Закрыть") } },
+            confirmButton = { if (swaps.containsKey(i)) TextButton(onClick = { swaps.remove(i); swapFor = null }) { Text(btnLabel("Вернуть исходный")) } },
+            dismissButton = { TextButton(onClick = { swapFor = null }) { Text(btnLabel("Закрыть")) } },
         )
     }
     if (addToMenu) AddToMenuDialog(r.id, r.meals, onDismiss = { addToMenu = false }) { msg -> Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show() }
@@ -476,9 +477,9 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
 @Composable
 fun Stepper(value: Int, onChange: (Int) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        OutlinedButton(onClick = { onChange(value - 1) }, Modifier.width(48.dp), contentPadding = PaddingValues(0.dp)) { Text("−") }
+        OutlinedButton(onClick = { onChange(value - 1) }, Modifier.width(48.dp), contentPadding = PaddingValues(0.dp)) { Text(btnLabel("−")) }
         Text("$value", Modifier.width(40.dp), fontWeight = FontWeight.SemiBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-        OutlinedButton(onClick = { onChange(value + 1) }, Modifier.width(48.dp), contentPadding = PaddingValues(0.dp)) { Text("+") }
+        OutlinedButton(onClick = { onChange(value + 1) }, Modifier.width(48.dp), contentPadding = PaddingValues(0.dp)) { Text(btnLabel("+")) }
     }
 }
 
@@ -497,7 +498,7 @@ fun AddToMenuDialog(recipeId: Long, mealsCsv: String, onDismiss: () -> Unit, onD
     val scope = rememberCoroutineScope()
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Добавить в меню") },
+        title = { Text(btnLabel("Добавить в меню")) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 FieldButton(if (repeat) "Начиная с" else "День", "${Dates.weekdayShort(day)}, ${Dates.label(day)}", Modifier.fillMaxWidth()) { pickDate = true }
@@ -509,7 +510,7 @@ fun AddToMenuDialog(recipeId: Long, mealsCsv: String, onDismiss: () -> Unit, onD
                 NumberField(servings, { servings = it }, "Порций")
                 Gap(8.dp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Повторять по дням недели", Modifier.weight(1f))
+                    Text(btnLabel("Повторять по дням недели"), Modifier.weight(1f))
                     Switch(repeat, { repeat = it })
                 }
                 if (repeat) WeekdayMask(mask) { mask = it }
@@ -528,9 +529,9 @@ fun AddToMenuDialog(recipeId: Long, mealsCsv: String, onDismiss: () -> Unit, onD
                     }
                     onDismiss()
                 }
-            }) { Text("Добавить") }
+            }) { Text(btnLabel("Добавить")) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
     if (pickDate) DatePickDialog(day, { pickDate = false }, { it?.let { d -> day = d } }, allowClear = false)
 }
@@ -589,10 +590,10 @@ fun CookDialog(recipeId: Long, servings: Int, mealsCsv: String, onDismiss: () ->
     val scaled = factor?.let { Cooking.scale(list, it) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Приготовить") },
+        title = { Text(btnLabel("Приготовить")) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                Text("Основной продукт", fontSize = 12.sp, color = extra.dim)
+                Text(btnLabel("Основной продукт"), fontSize = 12.sp, color = extra.dim)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 6.dp)) {
                     list.forEachIndexed { i, ing ->
                         if (ing.unit != "по вкусу" && ing.grams > 0) Pill(ing.name, i == baseIdx) {
@@ -610,7 +611,7 @@ fun CookDialog(recipeId: Long, servings: Int, mealsCsv: String, onDismiss: () ->
                 }
                 if (scaled != null) {
                     Gap(8.dp)
-                    Text("Сколько положить", fontWeight = FontWeight.SemiBold)
+                    Text(btnLabel("Сколько положить"), fontWeight = FontWeight.SemiBold)
                     scaled.forEachIndexed { i, ing ->
                         Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
                             Text(ing.name, Modifier.weight(1f), fontSize = 14.sp, fontWeight = if (i == baseIdx) FontWeight.SemiBold else FontWeight.Normal)
@@ -641,7 +642,7 @@ fun CookDialog(recipeId: Long, servings: Int, mealsCsv: String, onDismiss: () ->
                     MealType.order.forEach { m -> Pill(MealType.name(m), m == meal) { meal = m } }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-                    Text("Добавить в питание за сегодня", Modifier.weight(1f))
+                    Text(btnLabel("Добавить в питание за сегодня"), Modifier.weight(1f))
                     Switch(toFood, { toFood = it })
                 }
             }
@@ -653,9 +654,9 @@ fun CookDialog(recipeId: Long, servings: Int, mealsCsv: String, onDismiss: () ->
                     onDone(if (toFood) "Записано в историю и в питание" else "Записано в историю готовки")
                     onDismiss()
                 }
-            }) { Text("Сохранить") }
+            }) { Text(btnLabel("Сохранить")) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
 }
 
@@ -677,7 +678,7 @@ private fun RecipeRating(id: Long) {
                 }.padding(horizontal = 4.dp),
             )
         }
-        if (rate > 0) Text("  " + listOf("", "не понравилось", "так себе", "нормально", "вкусно", "шедевр")[rate], fontSize = 13.sp, color = LocalExtra.current.dim)
+        if (rate > 0) Text(btnLabel("  ") + listOf("", "не понравилось", "так себе", "нормально", "вкусно", "шедевр")[rate], fontSize = 13.sp, color = LocalExtra.current.dim)
     }
 }
 

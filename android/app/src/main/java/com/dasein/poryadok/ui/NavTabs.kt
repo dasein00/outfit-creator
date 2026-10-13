@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui
 
 import android.content.Context
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,7 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -119,17 +120,17 @@ internal fun TabMenu(nav: NavHostController, index: Int, tab: Tab, onDismiss: ()
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+            confirmButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
         )
         else -> AlertDialog(
             onDismissRequest = onDismiss,
             title = { Text(tab.label) },
             text = {
                 Column {
-                    if (!NavTabs.fixed(index)) TextButton(onClick = { mode = 1 }, Modifier.fillMaxWidth()) { Text("Заменить на другой раздел") }
-                    TextButton(onClick = { mode = 2 }, Modifier.fillMaxWidth()) { Text("Изменить название и иконку") }
+                    if (!NavTabs.fixed(index)) TextButton(onClick = { mode = 1 }, Modifier.fillMaxWidth()) { Text(btnLabel("Заменить на другой раздел")) }
+                    TextButton(onClick = { mode = 2 }, Modifier.fillMaxWidth()) { Text(btnLabel("Изменить название и иконку")) }
                     if (!NavTabs.isDefault) TextButton(onClick = { NavTabs.reset(); onDismiss() }, Modifier.fillMaxWidth()) {
-                        Text("Вернуть нижнюю панель как было")
+                        Text(btnLabel("Вернуть нижнюю панель как было"))
                     }
                     Text(
                         "«Главное» и «Ещё» всегда на месте, остальные четыре кнопки можно заменить любым разделом.",
@@ -137,7 +138,7 @@ internal fun TabMenu(nav: NavHostController, index: Int, tab: Tab, onDismiss: ()
                     )
                 }
             },
-            confirmButton = { TextButton(onClick = onDismiss) { Text("Закрыть") } },
+            confirmButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Закрыть")) } },
         )
     }
 }

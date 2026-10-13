@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.training
 
 import android.content.Context
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -34,14 +35,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -142,9 +143,9 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
                             withContext(Dispatchers.Main) { nav.navigate(Routes.trainingPlan(id)) }
                         }
                     },
-                    icon = { Icon(Icons.Default.Add, null) }, text = { Text("Программа") },
+                    icon = { Icon(Icons.Default.Add, null) }, text = { Text(btnLabel("Программа")) },
                 )
-                1 -> ExtendedFloatingActionButton(onClick = { nav.navigate(Routes.exercise(0)) }, icon = { Icon(Icons.Default.Add, null) }, text = { Text("Упражнение") })
+                1 -> ExtendedFloatingActionButton(onClick = { nav.navigate(Routes.exercise(0)) }, icon = { Icon(Icons.Default.Add, null) }, text = { Text(btnLabel("Упражнение")) })
                 else -> {}
             }
         },
@@ -158,7 +159,7 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
             active?.let { s ->
                 Tile(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), onClick = { nav.navigate(Routes.session(s.id)) }, color = MaterialTheme.colorScheme.primary.copy(alpha = .15f)) {
                     Text("Идёт тренировка: ${s.title}", fontWeight = FontWeight.SemiBold)
-                    Text("Нажмите, чтобы продолжить", fontSize = 12.sp, color = extra.dim)
+                    Text(btnLabel("Нажмите, чтобы продолжить"), fontSize = 12.sp, color = extra.dim)
                 }
             }
             when (tab) {
@@ -173,7 +174,7 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
                         )
                     }
                     item {
-                        OutlinedButton(onClick = { startPlan(null) }, Modifier.fillMaxWidth()) { Text("Свободная тренировка без программы") }
+                        OutlinedButton(onClick = { startPlan(null) }, Modifier.fillMaxWidth()) { Text(btnLabel("Свободная тренировка без программы")) }
                     }
                     items(plans, key = { it.id }) { p ->
                         val items = planEx.filter { it.planId == p.id }
@@ -192,7 +193,7 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
                                         fontSize = 12.sp, color = extra.dim,
                                     )
                                 }
-                                Button(onClick = { startPlan(p.id) }, enabled = items.isNotEmpty()) { Text("Начать") }
+                                Button(onClick = { startPlan(p.id) }, enabled = items.isNotEmpty()) { Text(btnLabel("Начать")) }
                             }
                             if (p.description.isNotBlank()) Text(p.description, fontSize = 13.sp, color = extra.dim, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
                         }
@@ -207,10 +208,10 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
                 }
                 2 -> LazyColumn(contentPadding = PaddingValues(12.dp, 8.dp, 12.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     item {
-                        OutlinedButton(onClick = { tab = 4 }, Modifier.fillMaxWidth()) { Text("Бег, йога, прогулки — быстрая запись") }
+                        OutlinedButton(onClick = { tab = 4 }, Modifier.fillMaxWidth()) { Text(btnLabel("Бег, йога, прогулки — быстрая запись")) }
                     }
                     val done = sessions.filter { it.finishedAt != null }
-                    if (done.isEmpty()) item { Text("Завершённых тренировок пока нет.", color = extra.dim, modifier = Modifier.padding(8.dp)) }
+                    if (done.isEmpty()) item { Text(btnLabel("Завершённых тренировок пока нет."), color = extra.dim, modifier = Modifier.padding(8.dp)) }
                     items(done, key = { it.id }) { s ->
                         val mine = sets.filter { it.sessionId == s.id && it.done }
                         val minutes = ((s.finishedAt!! - s.startedAt) / 60000).toInt()
@@ -264,7 +265,7 @@ private fun ExerciseLibrary(exercises: List<Exercise>, sets: List<SetLog>, onOpe
     val list = exercises.filter { (muscle == null || it.muscle == muscle) && (q.isBlank() || it.name.contains(q, true) || it.equipment.contains(q, true)) }
     LazyColumn(contentPadding = PaddingValues(12.dp, 8.dp, 12.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         item {
-            OutlinedTextField(q, { q = it }, placeholder = { Text("Поиск упражнения") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))
+            OutlinedTextField(q, { q = it }, placeholder = { Text(btnLabel("Поиск упражнения")) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 8.dp)) {
                 Pill("Все", muscle == null) { muscle = null }
                 MUSCLES.forEach { m -> Pill(m, muscle == m) { muscle = if (muscle == m) null else m } }
@@ -295,10 +296,10 @@ internal fun ExercisePickerDialog(exercises: List<Exercise>, onDismiss: () -> Un
     var q by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Упражнение") },
+        title = { Text(btnLabel("Упражнение")) },
         text = {
             Column {
-                OutlinedTextField(q, { q = it }, placeholder = { Text("Поиск") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(q, { q = it }, placeholder = { Text(btnLabel("Поиск")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 LazyColumn(Modifier.heightIn(max = 420.dp).padding(top = 8.dp)) {
                     items(exercises.filter { q.isBlank() || it.name.contains(q, true) || it.muscle.contains(q, true) }, key = { it.id }) { e ->
                         Row(
@@ -316,7 +317,7 @@ internal fun ExercisePickerDialog(exercises: List<Exercise>, onDismiss: () -> Un
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Закрыть") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Закрыть")) } },
     )
 }
 
@@ -346,7 +347,7 @@ fun PlanEditScreen(nav: NavHostController, id: Long) {
 
     Screen(
         "Программа", onBack = { nav.popBackStack(); Unit },
-        actions = { TextButton(onClick = { deleting = true }) { Text("Удалить", color = extra.danger) } },
+        actions = { TextButton(onClick = { deleting = true }) { Text(btnLabel("Удалить"), color = extra.danger) } },
     ) { pad ->
         if (p == null) return@Screen
         Column(Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
@@ -377,10 +378,10 @@ fun PlanEditScreen(nav: NavHostController, id: Long) {
                                 fontSize = 12.sp, color = extra.dim,
                             )
                         }
-                        Text("↑", Modifier.clip(RoundedCornerShape(6.dp)).clickable(enabled = i > 0) {
+                        Text(btnLabel("↑"), Modifier.clip(RoundedCornerShape(6.dp)).clickable(enabled = i > 0) {
                             io { t.upsertPlanExercises(listOf(pe.copy(pos = i - 1), items[i - 1].copy(pos = i))) }
                         }.padding(8.dp), fontSize = 18.sp)
-                        Text("↓", Modifier.clip(RoundedCornerShape(6.dp)).clickable(enabled = i < items.lastIndex) {
+                        Text(btnLabel("↓"), Modifier.clip(RoundedCornerShape(6.dp)).clickable(enabled = i < items.lastIndex) {
                             io { t.upsertPlanExercises(listOf(pe.copy(pos = i + 1), items[i + 1].copy(pos = i))) }
                         }.padding(8.dp), fontSize = 18.sp)
                     }
@@ -395,7 +396,7 @@ fun PlanEditScreen(nav: NavHostController, id: Long) {
                     }
                 },
                 enabled = items.isNotEmpty(), modifier = Modifier.fillMaxWidth(),
-            ) { Text("Начать тренировку") }
+            ) { Text(btnLabel("Начать тренировку")) }
             Gap(40.dp)
         }
     }
@@ -483,12 +484,12 @@ private fun TargetDialog(pe: PlanExercise, e: Exercise?, onDismiss: () -> Unit, 
                     )
                 )
                 onDismiss()
-            }) { Text("Сохранить") }
+            }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
             Row {
-                TextButton(onClick = { onDelete(); onDismiss() }) { Text("Убрать", color = LocalExtra.current.danger) }
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                TextButton(onClick = { onDelete(); onDismiss() }) { Text(btnLabel("Убрать"), color = LocalExtra.current.danger) }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
         },
     )
@@ -518,7 +519,7 @@ fun ExerciseScreen(nav: NavHostController, id: Long) {
 
     Screen(
         if (id == 0L) "Новое упражнение" else "Упражнение", onBack = { save(false); nav.popBackStack(); Unit },
-        actions = { TextButton(onClick = { save(true) }, enabled = !ex?.name.isNullOrBlank()) { Text("Сохранить") } },
+        actions = { TextButton(onClick = { save(true) }, enabled = !ex?.name.isNullOrBlank()) { Text(btnLabel("Сохранить")) } },
     ) { pad ->
         if (ex == null) return@Screen
         Column(Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
@@ -555,7 +556,7 @@ fun ExerciseScreen(nav: NavHostController, id: Long) {
                 }
                 Gap(8.dp)
             }
-            OutlinedButton(onClick = { addMedia() }, modifier = Modifier.fillMaxWidth()) { Text("+ Фото или GIF техники") }
+            OutlinedButton(onClick = { addMedia() }, modifier = Modifier.fillMaxWidth()) { Text(btnLabel("+ Фото или GIF техники")) }
             VideoAddButtons("training") { path -> e = e?.copy(media = (e?.media.orEmpty().lines().filter { it.isNotBlank() } + path).joinToString("\n")) }
             Gap(8.dp)
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -596,7 +597,7 @@ fun ExerciseScreen(nav: NavHostController, id: Long) {
                     }
                 }
                 Gap(16.dp)
-                if (ex.custom) TextButton(onClick = { deleting = true }) { Text("Удалить упражнение", color = extra.danger) }
+                if (ex.custom) TextButton(onClick = { deleting = true }) { Text(btnLabel("Удалить упражнение"), color = extra.danger) }
             }
             Gap(40.dp)
         }
@@ -679,7 +680,7 @@ fun SessionScreen(nav: NavHostController, id: Long) {
 
     Screen(
         s?.title ?: "Тренировка", onBack = { nav.popBackStack(); Unit },
-        actions = { if (!finished) TextButton(onClick = { finishing = true }) { Text("Завершить") } },
+        actions = { if (!finished) TextButton(onClick = { finishing = true }) { Text(btnLabel("Завершить")) } },
     ) { pad ->
         if (s == null) return@Screen
         Column(Modifier.padding(pad).fillMaxSize()) {
@@ -725,8 +726,8 @@ fun SessionScreen(nav: NavHostController, id: Long) {
                         }
                         Gap(6.dp)
                         Row(Modifier.fillMaxWidth()) {
-                            Text("#", Modifier.width(26.dp), fontSize = 12.sp, color = extra.dim)
-                            if (kind == ExKind.WEIGHT) Text("вес", Modifier.weight(1f), fontSize = 12.sp, color = extra.dim)
+                            Text(btnLabel("#"), Modifier.width(26.dp), fontSize = 12.sp, color = extra.dim)
+                            if (kind == ExKind.WEIGHT) Text(btnLabel("вес"), Modifier.weight(1f), fontSize = 12.sp, color = extra.dim)
                             Text(if (kind == ExKind.TIME) "время" else "повторы", Modifier.weight(1f).padding(start = 8.dp), fontSize = 12.sp, color = extra.dim)
                             Box(Modifier.width(52.dp))
                         }
@@ -748,22 +749,22 @@ fun SessionScreen(nav: NavHostController, id: Long) {
                                             if (nowDone) restEnd = System.currentTimeMillis() + (pe?.restSec ?: 90) * 1000L
                                         },
                                     contentAlignment = Alignment.Center,
-                                ) { Text("✓", color = if (set.done) scheme.onPrimary else scheme.outline, fontWeight = FontWeight.Bold, fontSize = 18.sp) }
+                                ) { Text(btnLabel("✓"), color = if (set.done) scheme.onPrimary else scheme.outline, fontWeight = FontWeight.Bold, fontSize = 18.sp) }
                             }
                         }
                         if (!finished) Row {
-                            TextButton(onClick = { io { TrainingRepo.addSet(id, exId) } }) { Text("+ Подход") }
+                            TextButton(onClick = { io { TrainingRepo.addSet(id, exId) } }) { Text(btnLabel("+ Подход")) }
                             val last = list.maxByOrNull { it.setIndex }
-                            if (last != null && list.size > 1) TextButton(onClick = { io { t.deleteSet(last) } }) { Text("− Подход", color = extra.dim) }
+                            if (last != null && list.size > 1) TextButton(onClick = { io { t.deleteSet(last) } }) { Text(btnLabel("− Подход"), color = extra.dim) }
                         }
                     }
                 }
                 if (!finished) item {
-                    OutlinedButton(onClick = { adding = true }, Modifier.fillMaxWidth()) { Text("+ Упражнение в эту тренировку") }
+                    OutlinedButton(onClick = { adding = true }, Modifier.fillMaxWidth()) { Text(btnLabel("+ Упражнение в эту тренировку")) }
                 }
                 if (finished && s.note.isNotBlank()) item { Text(s.note, color = extra.dim, modifier = Modifier.padding(8.dp)) }
                 if (finished) item {
-                    TextButton(onClick = { discard = true }) { Text("Удалить тренировку", color = extra.danger) }
+                    TextButton(onClick = { discard = true }) { Text(btnLabel("Удалить тренировку"), color = extra.danger) }
                 }
             }
             restEnd?.let { end ->
@@ -773,9 +774,9 @@ fun SessionScreen(nav: NavHostController, id: Long) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text("Отдых ${mmss(left)}", fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { restEnd = end - 15_000 }) { Text("−15") }
-                    TextButton(onClick = { restEnd = end + 15_000 }) { Text("+15") }
-                    TextButton(onClick = { restEnd = null }) { Text("Пропустить") }
+                    TextButton(onClick = { restEnd = end - 15_000 }) { Text(btnLabel("−15")) }
+                    TextButton(onClick = { restEnd = end + 15_000 }) { Text(btnLabel("+15")) }
+                    TextButton(onClick = { restEnd = null }) { Text(btnLabel("Пропустить")) }
                 }
             }
         }
@@ -787,10 +788,10 @@ fun SessionScreen(nav: NavHostController, id: Long) {
         var note by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { finishing = false },
-            title = { Text("Завершить тренировку?") },
+            title = { Text(btnLabel("Завершить тренировку?")) },
             text = {
                 Column {
-                    Text("Как прошла?", fontSize = 13.sp, color = extra.dim)
+                    Text(btnLabel("Как прошла?"), fontSize = 13.sp, color = extra.dim)
                     Row(Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         (1..5).forEach { l -> Box(Modifier.clip(RoundedCornerShape(20.dp)).clickable { feel = l }) { MoodFace(l, 38.dp, selected = feel == l) } }
                     }
@@ -806,12 +807,12 @@ fun SessionScreen(nav: NavHostController, id: Long) {
                         val notes = TrainingRepo.finish(id, feel, note)
                         withContext(Dispatchers.Main) { summary = notes }
                     }
-                }) { Text("Завершить") }
+                }) { Text(btnLabel("Завершить")) }
             },
             dismissButton = {
                 Row {
-                    TextButton(onClick = { finishing = false; discard = true }) { Text("Удалить", color = extra.danger) }
-                    TextButton(onClick = { finishing = false }) { Text("Продолжить") }
+                    TextButton(onClick = { finishing = false; discard = true }) { Text(btnLabel("Удалить"), color = extra.danger) }
+                    TextButton(onClick = { finishing = false }) { Text(btnLabel("Продолжить")) }
                 }
             },
         )
@@ -819,7 +820,7 @@ fun SessionScreen(nav: NavHostController, id: Long) {
     summary?.let { notes ->
         AlertDialog(
             onDismissRequest = { summary = null; nav.popBackStack() },
-            title = { Text("Тренировка сохранена") },
+            title = { Text(btnLabel("Тренировка сохранена")) },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     if (notes.isEmpty()) Text("Записана в журнал тренировок и калории дня.")
@@ -831,7 +832,7 @@ fun SessionScreen(nav: NavHostController, id: Long) {
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { summary = null; nav.popBackStack() }) { Text("Готово") } },
+            confirmButton = { TextButton(onClick = { summary = null; nav.popBackStack() }) { Text(btnLabel("Готово")) } },
         )
     }
     if (discard) ConfirmDialog("Удалить тренировку?", "Подходы этой тренировки будут удалены.", onDismiss = { discard = false }) {

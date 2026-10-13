@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.craft
 
 import android.content.Intent
+import com.dasein.poryadok.ui.common.btnLabel
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -26,13 +27,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -119,7 +120,7 @@ fun PbnHomeScreen(nav: NavHostController) {
                             Text(p.name, fontWeight = FontWeight.SemiBold)
                             Text("до ${p.colors} цветов · ${listOf("крупно", "средне", "подробно")[p.detail.coerceIn(0, 2)]}", fontSize = 12.sp, color = extra.dim)
                         }
-                        TextButton(onClick = { toDelete = p }) { Text("Удалить", color = extra.danger, fontSize = 12.sp) }
+                        TextButton(onClick = { toDelete = p }) { Text(btnLabel("Удалить"), color = extra.danger, fontSize = 12.sp) }
                     }
                 }
             }
@@ -130,8 +131,8 @@ fun PbnHomeScreen(nav: NavHostController) {
         AlertDialog(
             onDismissRequest = { toDelete = null },
             title = { Text("Удалить «${p.name}»?") },
-            confirmButton = { TextButton(onClick = { PbnStore.delete(ctx, p.id); toDelete = null; refresh++ }) { Text("Удалить", color = extra.danger) } },
-            dismissButton = { TextButton(onClick = { toDelete = null }) { Text("Отмена") } },
+            confirmButton = { TextButton(onClick = { PbnStore.delete(ctx, p.id); toDelete = null; refresh++ }) { Text(btnLabel("Удалить"), color = extra.danger) } },
+            dismissButton = { TextButton(onClick = { toDelete = null }) { Text(btnLabel("Отмена")) } },
         )
     }
 }
@@ -144,7 +145,7 @@ fun PbnScreen(nav: NavHostController, id: Long) {
     val scope = rememberCoroutineScope()
     var project by remember { mutableStateOf(PbnStore.load(ctx, id)) }
     val p0 = project ?: run {
-        Screen("Раскраска", onBack = { nav.popBackStack() }) { pad -> Text("Раскраска не найдена", Modifier.padding(pad).padding(16.dp)) }
+        Screen("Раскраска", onBack = { nav.popBackStack() }) { pad -> Text(btnLabel("Раскраска не найдена"), Modifier.padding(pad).padding(16.dp)) }
         return
     }
     val ver = PbnStore.version.intValue
@@ -210,14 +211,14 @@ fun PbnScreen(nav: NavHostController, id: Long) {
             Text("Раскраску можно увеличить в PDF — контуры и цифры векторные, печатаются чётко.", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
 
             SectionTitle("Настройки")
-            Text("Детализация", fontSize = 14.sp)
+            Text(btnLabel("Детализация"), fontSize = 14.sp)
             Segments(listOf(0 to "Крупно", 1 to "Средне", 2 to "Подробно"), p0.detail, { save(p0.copy(detail = it)) })
             Text("Крупно — большие области, удобно детям; подробно — мелкие детали, дольше раскрашивать.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
             Gap(8.dp)
             Text("Цветов: до ${p0.colors} (карандашей у вас: ${pencils.size})", fontSize = 14.sp)
             var k by remember(p0.id) { mutableFloatStateOf(p0.colors.toFloat()) }
             Slider(k, { k = it }, valueRange = 4f..maxOf(5f, minOf(48f, pencils.size.toFloat())), onValueChangeFinished = { save(p0.copy(colors = k.toInt())) })
-            Text("Лист для печати", fontSize = 14.sp)
+            Text(btnLabel("Лист для печати"), fontSize = 14.sp)
             Segments(listOf(0 to "A4", 1 to "A3"), p0.paper, { save(p0.copy(paper = it)) })
             var title by remember(p0.id) { mutableStateOf(p0.name) }
             Gap(6.dp)
@@ -238,8 +239,8 @@ fun PbnScreen(nav: NavHostController, id: Long) {
                     }
                 }
                 SectionTitle("Печать")
-                Button(onClick = { pdfExport.launch("$name.pdf") }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Сохранить PDF для печати") }
-                OutlinedButton(onClick = { share() }, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("Поделиться PDF / распечатать") }
+                Button(onClick = { pdfExport.launch("$name.pdf") }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(btnLabel("Сохранить PDF для печати")) }
+                OutlinedButton(onClick = { share() }, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text(btnLabel("Поделиться PDF / распечатать")) }
                 Text("В PDF две страницы: раскраска с номерами и таблицей карандашей и цветной образец — подсказка, как должно получиться.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
             }
             message?.let { Text(it, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp)) }
@@ -262,7 +263,7 @@ fun PencilsScreen(nav: NavHostController) {
         Column(Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             Text("Отметьте карандаши, которые у вас есть. Раскраски подбирают цвета только из них.", fontSize = 13.sp, color = extra.dim)
             Gap(6.dp)
-            Text("Быстро выбрать набор:", fontSize = 13.sp)
+            Text(btnLabel("Быстро выбрать набор:"), fontSize = 13.sp)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
                 PaintByNumbers.SETS.forEach { (t, codes) -> Pill(t, owned == codes.toSet()) { PbnStore.setOwned(ctx, codes.toSet()) } }
                 Pill("Снять все", false) { PbnStore.setOwned(ctx, emptySet()) }
@@ -282,10 +283,10 @@ fun PencilsScreen(nav: NavHostController) {
                 Row(Modifier.fillMaxWidth().clickable { edit = c }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(28.dp).clip(RoundedCornerShape(6.dp)).background(sw(c.rgb)).border(1.dp, extra.line, RoundedCornerShape(6.dp)))
                     Text("  ${c.name.ifBlank { "Свой цвет ${c.n}" }}", Modifier.weight(1f), fontSize = 14.sp)
-                    TextButton(onClick = { PbnStore.setCustom(ctx, custom.filter { it.n != c.n }) }) { Text("Удалить", color = extra.danger, fontSize = 12.sp) }
+                    TextButton(onClick = { PbnStore.setCustom(ctx, custom.filter { it.n != c.n }) }) { Text(btnLabel("Удалить"), color = extra.danger, fontSize = 12.sp) }
                 }
             }
-            OutlinedButton(onClick = { edit = MyPencil(0, 0x9E9E9E) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("+ Добавить свой цвет") }
+            OutlinedButton(onClick = { edit = MyPencil(0, 0x9E9E9E) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text(btnLabel("+ Добавить свой цвет")) }
             Gap(40.dp)
         }
     }

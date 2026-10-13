@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.calendar
 
 import android.content.Context
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import android.content.Intent
 import androidx.compose.animation.animateContentSize
@@ -31,14 +32,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -169,7 +170,7 @@ internal fun ExpandableEntry(e: DayEntry, day: Long, dateText: String? = null) {
                     Text(c.note, lineHeight = 21.sp)
                 }
                 Gap(6.dp)
-                OutlinedButton(onClick = { edit = true }) { Text("Изменить") }
+                OutlinedButton(onClick = { edit = true }) { Text(btnLabel("Изменить")) }
             } else if (h != null) {
                 HolidayDetails(h, marks.firstOrNull { it.holidayId == h.id })
             }
@@ -213,7 +214,7 @@ internal fun HolidayDetails(h: Holiday, mark: HolidayMark?) {
         com.dasein.poryadok.ui.common.LikeButton(like, liked, 30)
         Text(if (liked) "  В понравившемся" else "  Нравится — добавить в понравившееся", fontSize = 13.sp)
     }
-    Text("Выделить цветом в календаре", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
+    Text(btnLabel("Выделить цветом в календаре"), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         MARK_COLORS.forEach { c ->
             Box(
@@ -224,14 +225,14 @@ internal fun HolidayDetails(h: Holiday, mark: HolidayMark?) {
         }
     }
     Row {
-        if (mark != null) TextButton(onClick = { io { Graph.days.deleteMark(h.id) } }) { Text("Без выделения") }
+        if (mark != null) TextButton(onClick = { io { Graph.days.deleteMark(h.id) } }) { Text(btnLabel("Без выделения")) }
         TextButton(onClick = {
             val text = listOf(h.name, HolidayRules.describe(h.rule), h.about, h.how, h.facts).filter { it.isNotBlank() }.joinToString("\n\n")
             ctx.startActivity(
                 Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text) }, "Поделиться")
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             )
-        }) { Text("Поделиться") }
+        }) { Text(btnLabel("Поделиться")) }
     }
 }
 
@@ -305,8 +306,8 @@ fun HolidayBanner(nav: NavHostController) {
         Tile(onClick = { nav.navigate(Routes.calendar(2)) }, padding = 12.dp) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Glyph("fest/03", 26.dp, badge = false)
-                Text("Праздники и события — открыть календарь", fontSize = 14.sp, modifier = Modifier.padding(start = 10.dp).weight(1f))
-                Text("›", fontSize = 22.sp, color = extra.dim)
+                Text(btnLabel("Праздники и события — открыть календарь"), fontSize = 14.sp, modifier = Modifier.padding(start = 10.dp).weight(1f))
+                Text(btnLabel("›"), fontSize = 22.sp, color = extra.dim)
             }
         }
         return
@@ -338,7 +339,7 @@ fun HolidayBanner(nav: NavHostController) {
                 }
                 if (lines.size > 3) Text("и ещё ${lines.size - 3}", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 2.dp))
             }
-            Text("›", fontSize = 22.sp, color = extra.dim)
+            Text(btnLabel("›"), fontSize = 22.sp, color = extra.dim)
         }
     }
 }
@@ -431,7 +432,7 @@ fun HolidayScreen(nav: NavHostController, id: String) {
     val marks by observe(emptyList()) { Graph.days.marks() }
     val mark = marks.firstOrNull { it.holidayId == id }
     Screen(h?.name ?: "Праздник", onBack = { nav.popBackStack(); Unit }) { pad ->
-        if (h == null) { Text("Праздник не найден", Modifier.padding(pad).padding(16.dp)); return@Screen }
+        if (h == null) { Text(btnLabel("Праздник не найден"), Modifier.padding(pad).padding(16.dp)); return@Screen }
         Column(Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             Text(h.name, style = MaterialTheme.typography.headlineSmall)
             Gap(8.dp)
@@ -467,10 +468,10 @@ fun CustomDayDialog(initial: CustomDay, onDismiss: () -> Unit) {
                 Gap(8.dp)
                 NumberField(year, { year = it }, if (kind == DayKindTag.BIRTHDAY) "Год рождения (для возраста)" else "Год (необязательно)", decimal = false)
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
-                    Text("Повторять каждый год", Modifier.weight(1f))
+                    Text(btnLabel("Повторять каждый год"), Modifier.weight(1f))
                     Switch(yearly, { yearly = it })
                 }
-                Text("Цвет в календаре", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp, bottom = 6.dp))
+                Text(btnLabel("Цвет в календаре"), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp, bottom = 6.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     MARK_COLORS.forEach { c ->
                         Box(
@@ -497,12 +498,12 @@ fun CustomDayDialog(initial: CustomDay, onDismiss: () -> Unit) {
                     )
                 }
                 onDismiss()
-            }) { Text("Сохранить") }
+            }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
             Row {
-                if (initial.id != 0L) TextButton(onClick = { io { Graph.days.deleteCustomDay(initial) }; onDismiss() }) { Text("Удалить", color = extra.danger) }
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                if (initial.id != 0L) TextButton(onClick = { io { Graph.days.deleteCustomDay(initial) }; onDismiss() }) { Text(btnLabel("Удалить"), color = extra.danger) }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
         },
     )

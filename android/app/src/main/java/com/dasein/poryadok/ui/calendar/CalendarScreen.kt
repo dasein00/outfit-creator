@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.calendar
 
 import androidx.activity.compose.BackHandler
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.Glyphs
 import com.dasein.poryadok.ui.common.Glyph
@@ -48,7 +49,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -104,7 +105,7 @@ fun CalendarScreen(nav: NavHostController, initialTab: Int, onBack: (() -> Unit)
         title = "Календарь",
         onBack = onBack,
         actions = {
-            IconButton(onClick = { nav.navigate(com.dasein.poryadok.ui.more.LIKES_ROUTE) }) { Text("♥", fontSize = 20.sp, color = com.dasein.poryadok.ui.common.LikeGreen) }
+            IconButton(onClick = { nav.navigate(com.dasein.poryadok.ui.more.LIKES_ROUTE) }) { Text(btnLabel("♥"), fontSize = 20.sp, color = com.dasein.poryadok.ui.common.LikeGreen) }
             IconButton(onClick = { selected = Dates.today() }) { Icon(Icons.Default.Today, "Сегодня") }
         },
         fab = {
@@ -113,9 +114,9 @@ fun CalendarScreen(nav: NavHostController, initialTab: Int, onBack: (() -> Unit)
                     Icon(Icons.Default.Add, "Добавить")
                 }
                 DropdownMenu(expanded = addMenu, onDismissRequest = { addMenu = false }) {
-                    DropdownMenuItem(text = { Text("Событие") }, leadingIcon = { Glyph(Glyphs.EVENT, 20.dp) }, onClick = { addMenu = false; nav.navigate(Routes.event(0, selected)) })
-                    DropdownMenuItem(text = { Text("Задача") }, leadingIcon = { Glyph(Glyphs.CHECK, 20.dp) }, onClick = { addMenu = false; quickTask = true })
-                    DropdownMenuItem(text = { Text("Напоминалка") }, leadingIcon = { Glyph(Glyphs.REMINDER, 20.dp) }, onClick = {
+                    DropdownMenuItem(text = { Text(btnLabel("Событие")) }, leadingIcon = { Glyph(Glyphs.EVENT, 20.dp) }, onClick = { addMenu = false; nav.navigate(Routes.event(0, selected)) })
+                    DropdownMenuItem(text = { Text(btnLabel("Задача")) }, leadingIcon = { Glyph(Glyphs.CHECK, 20.dp) }, onClick = { addMenu = false; quickTask = true })
+                    DropdownMenuItem(text = { Text(btnLabel("Напоминалка")) }, leadingIcon = { Glyph(Glyphs.REMINDER, 20.dp) }, onClick = {
                         addMenu = false
                         editReminder = Reminder(title = "", day = selected, min = (Dates.nowMinutes() / 60 + 1).coerceAtMost(23) * 60)
                     })
@@ -127,11 +128,11 @@ fun CalendarScreen(nav: NavHostController, initialTab: Int, onBack: (() -> Unit)
             androidx.compose.material3.ScrollableTabRow(
                 selectedTabIndex = when (tab) { 2 -> 1; 3 -> 2; 4 -> 3; 1 -> 4; else -> 0 }, containerColor = MaterialTheme.colorScheme.background, edgePadding = 8.dp,
             ) {
-                Tab(tab == 0, onClick = { tab = 0 }, text = { Text("Месяц", fontSize = 13.sp, maxLines = 1) })
-                Tab(tab == 2, onClick = { tab = 2 }, text = { Text("Праздники", fontSize = 13.sp, maxLines = 1) })
-                Tab(tab == 3, onClick = { tab = 3 }, text = { Text("История", fontSize = 13.sp, maxLines = 1) })
-                Tab(tab == 4, onClick = { tab = 4 }, text = { Text("Культура", fontSize = 13.sp, maxLines = 1) })
-                Tab(tab == 1, onClick = { tab = 1 }, text = { Text("Напоминалки", fontSize = 13.sp, maxLines = 1, softWrap = false) })
+                Tab(tab == 0, onClick = { tab = 0 }, text = { Text(btnLabel("Месяц"), fontSize = 13.sp, maxLines = 1) })
+                Tab(tab == 2, onClick = { tab = 2 }, text = { Text(btnLabel("Праздники"), fontSize = 13.sp, maxLines = 1) })
+                Tab(tab == 3, onClick = { tab = 3 }, text = { Text(btnLabel("История"), fontSize = 13.sp, maxLines = 1) })
+                Tab(tab == 4, onClick = { tab = 4 }, text = { Text(btnLabel("Культура"), fontSize = 13.sp, maxLines = 1) })
+                Tab(tab == 1, onClick = { tab = 1 }, text = { Text(btnLabel("Напоминалки"), fontSize = 13.sp, maxLines = 1, softWrap = false) })
             }
             when (tab) {
                 0 -> MonthView(nav, selected, onSelect = { selected = it }, onReminder = { editReminder = it })
@@ -373,14 +374,14 @@ fun ReminderDialog(initial: Reminder, onDismiss: () -> Unit) {
             TextButton(onClick = {
                 if (r.title.isNotBlank()) { val cur = r.copy(title = r.title.trim(), done = false); io { Graph.dao.upsertReminder(cur) } }
                 onDismiss()
-            }) { Text("Сохранить") }
+            }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
             Row {
                 if (initial.id != 0L) TextButton(onClick = { io { Graph.dao.deleteReminder(initial) }; onDismiss() }) {
-                    Text("Удалить", color = LocalExtra.current.danger)
+                    Text(btnLabel("Удалить"), color = LocalExtra.current.danger)
                 }
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
         },
     )
@@ -421,7 +422,7 @@ fun EventEditScreen(nav: NavHostController, id: Long, day: Long) {
             Gap(10.dp)
             FieldButton("Дата", "${Dates.weekdayShort(e.day)}, ${Dates.full(e.day)}", Modifier.fillMaxWidth()) { pickDate = true }
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Весь день", Modifier.weight(1f))
+                Text(btnLabel("Весь день"), Modifier.weight(1f))
                 Switch(checked = e.startMin == null, onCheckedChange = { all ->
                     e = if (all) e.copy(startMin = null, endMin = null) else e.copy(startMin = 10 * 60, endMin = 11 * 60)
                 })

@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.notes
 
 import android.content.Intent
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,7 +44,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -418,7 +419,7 @@ fun PageScreen(nav: NavHostController, id: Long) {
                         c.title.ifBlank { "Без названия" }, fontSize = 13.sp, color = extra.dim, maxLines = 1,
                         modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable { nav.navigate(Routes.page(c.id)) }.padding(4.dp),
                     )
-                    Text("/", fontSize = 13.sp, color = extra.dim)
+                    Text(btnLabel("/"), fontSize = 13.sp, color = extra.dim)
                 }
                 Text((title ?: "").ifBlank { "Без названия" }, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(4.dp))
             }
@@ -428,17 +429,17 @@ fun PageScreen(nav: NavHostController, id: Long) {
             Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "Ещё") }
                 DropdownMenu(menu, { menu = false }) {
-                    DropdownMenuItem({ Text("Иконка") }, { menu = false; pickIcon = true })
+                    DropdownMenuItem({ Text(btnLabel("Иконка")) }, { menu = false; pickIcon = true })
                     DropdownMenuItem({ Text(if (p?.cover.isNullOrBlank()) "Добавить обложку" else "Сменить обложку") }, { menu = false; pickCover() })
-                    if (!p?.cover.isNullOrBlank()) DropdownMenuItem({ Text("Убрать обложку") }, { menu = false; p?.let { io { Graph.pages.upsertPage(it.copy(cover = "")) } } })
-                    DropdownMenuItem({ Text("Добавить подстраницу") }, { menu = false; addSubpage(st.blocks.lastOrNull()?.id) })
-                    DropdownMenuItem({ Text("Переместить…") }, { menu = false; moving = true })
-                    DropdownMenuItem({ Text("Дублировать") }, {
+                    if (!p?.cover.isNullOrBlank()) DropdownMenuItem({ Text(btnLabel("Убрать обложку")) }, { menu = false; p?.let { io { Graph.pages.upsertPage(it.copy(cover = "")) } } })
+                    DropdownMenuItem({ Text(btnLabel("Добавить подстраницу")) }, { menu = false; addSubpage(st.blocks.lastOrNull()?.id) })
+                    DropdownMenuItem({ Text(btnLabel("Переместить…")) }, { menu = false; moving = true })
+                    DropdownMenuItem({ Text(btnLabel("Дублировать")) }, {
                         menu = false
                         st.save()
                         io { PagesRepo.duplicate(id)?.let { nid -> kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { nav.navigate(Routes.page(nid)) } } }
                     })
-                    DropdownMenuItem({ Text("Поделиться текстом") }, {
+                    DropdownMenuItem({ Text(btnLabel("Поделиться текстом")) }, {
                         menu = false
                         st.save()
                         io {
@@ -448,7 +449,7 @@ fun PageScreen(nav: NavHostController, id: Long) {
                             ctx.startActivity(Intent.createChooser(send, "Поделиться").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                         }
                     })
-                    DropdownMenuItem({ Text("В корзину", color = extra.danger) }, {
+                    DropdownMenuItem({ Text(btnLabel("В корзину"), color = extra.danger) }, {
                         menu = false
                         st.save()
                         io { PagesRepo.archive(id) }
@@ -468,8 +469,8 @@ fun PageScreen(nav: NavHostController, id: Long) {
                 }
                 if (p != null && (p.icon.isBlank() || p.cover.isBlank())) {
                     Row(Modifier.padding(top = 8.dp)) {
-                        if (p.icon.isBlank()) TextButton(onClick = { pickIcon = true }) { Text("+ Иконка", color = extra.dim, fontSize = 13.sp) }
-                        if (p.cover.isBlank()) TextButton(onClick = { pickCover() }) { Text("+ Обложка", color = extra.dim, fontSize = 13.sp) }
+                        if (p.icon.isBlank()) TextButton(onClick = { pickIcon = true }) { Text(btnLabel("+ Иконка"), color = extra.dim, fontSize = 13.sp) }
+                        if (p.cover.isBlank()) TextButton(onClick = { pickCover() }) { Text(btnLabel("+ Обложка"), color = extra.dim, fontSize = 13.sp) }
                     }
                 }
                 BasicTextField(
@@ -485,13 +486,13 @@ fun PageScreen(nav: NavHostController, id: Long) {
                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp).focusRequester(titleFocus),
                     decorationBox = { inner ->
                         Box {
-                            if ((title ?: "").isEmpty()) Text("Без названия", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = extra.dim.copy(alpha = .5f))
+                            if ((title ?: "").isEmpty()) Text(btnLabel("Без названия"), fontSize = 30.sp, fontWeight = FontWeight.Bold, color = extra.dim.copy(alpha = .5f))
                             inner()
                         }
                     },
                 )
                 if (isEmpty) {
-                    Text("Начните писать или выберите шаблон:", fontSize = 13.sp, color = extra.dim)
+                    Text(btnLabel("Начните писать или выберите шаблон:"), fontSize = 13.sp, color = extra.dim)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 8.dp)) {
                         PagesRepo.templates().forEach { (name, blocks) ->
                             Pill(name, false) {
@@ -646,7 +647,7 @@ private fun BlockView(
                 Box(
                     Modifier.fillMaxWidth().height(90.dp).background(extra.card).clickable(onClick = onPickImage),
                     contentAlignment = Alignment.Center,
-                ) { Text("Нажмите, чтобы выбрать картинку или GIF", color = extra.dim, fontSize = 13.sp) }
+                ) { Text(btnLabel("Нажмите, чтобы выбрать картинку или GIF"), color = extra.dim, fontSize = 13.sp) }
             } else {
                 MediaView(b.media, Modifier.fillMaxWidth().heightIn(min = 120.dp, max = 360.dp).clickable { st.selected = b.id; st.focused = null })
             }
@@ -656,7 +657,7 @@ private fun BlockView(
                 textStyle = TextStyle(fontSize = 13.sp, color = extra.dim),
                 cursorBrush = SolidColor(scheme.primary),
                 modifier = Modifier.fillMaxWidth().padding(6.dp),
-                decorationBox = { inner -> Box { if (b.text.isEmpty()) Text("Подпись", fontSize = 13.sp, color = extra.dim.copy(alpha = .5f)); inner() } },
+                decorationBox = { inner -> Box { if (b.text.isEmpty()) Text(btnLabel("Подпись"), fontSize = 13.sp, color = extra.dim.copy(alpha = .5f)); inner() } },
             )
         }
 
@@ -752,7 +753,7 @@ private fun BlockView(
                                 .border(2.dp, if (b.checked) scheme.primary else extra.dim, RoundedCornerShape(5.dp))
                                 .clickable { st.update(b.id) { it.copy(checked = !it.checked) } },
                             contentAlignment = Alignment.Center,
-                        ) { if (b.checked) Text("✓", color = scheme.onPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+                        ) { if (b.checked) Text(btnLabel("✓"), color = scheme.onPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                         field(Modifier.weight(1f))
                     }
                     BlockType.QUOTE -> {
@@ -787,7 +788,7 @@ private fun BlockView(
                                     textStyle = TextStyle(fontSize = 15.sp, color = scheme.onSurface, lineHeight = 21.sp),
                                     cursorBrush = SolidColor(scheme.primary),
                                     modifier = Modifier.fillMaxWidth().padding(start = 22.dp, top = 4.dp),
-                                    decorationBox = { inner -> Box { if (b.media.isEmpty()) Text("Скрытый текст", color = extra.dim.copy(alpha = .5f)); inner() } },
+                                    decorationBox = { inner -> Box { if (b.media.isEmpty()) Text(btnLabel("Скрытый текст"), color = extra.dim.copy(alpha = .5f)); inner() } },
                                 )
                             }
                         }
@@ -809,7 +810,7 @@ internal fun MovePageDialog(page: Page, pages: List<Page>, onDismiss: () -> Unit
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Переместить в…") },
+        title = { Text(btnLabel("Переместить в…")) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(
@@ -828,6 +829,6 @@ internal fun MovePageDialog(page: Page, pages: List<Page>, onDismiss: () -> Unit
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
 }

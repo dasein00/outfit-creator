@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -91,7 +90,7 @@ fun RestrictedSettingsHelp(access: String, onOpenAccess: () -> Unit) {
             "Если трёх точек нет, прокрутите экран приложения вниз: у некоторых производителей пункт называется «Разрешить ограниченные параметры».",
             fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp),
         )
-        OutlinedButton(onClick = { SystemScreens.appDetails(ctx) }, Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Настройки DASEIN") }
+        OutlinedButton(onClick = { SystemScreens.appDetails(ctx) }, Modifier.fillMaxWidth().padding(top = 8.dp)) { Text(btnLabel("Настройки DASEIN")) }
         OutlinedButton(onClick = onOpenAccess, Modifier.fillMaxWidth()) { Text(access) }
     }
 }

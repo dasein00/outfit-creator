@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.more
 
 import android.content.Intent
+import com.dasein.poryadok.ui.common.btnLabel
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -8,8 +9,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.Button
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -51,7 +52,7 @@ fun AiSettingsSection() {
             fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
         )
         OutlinedButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://openrouter.ai/keys"))) } }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
-            Text("Открыть openrouter.ai — получить ключ")
+            Text(btnLabel("Открыть openrouter.ai — получить ключ"))
         }
         Gap(6.dp)
         TextInput(key, { key = it; Ai.setKey(ctx, it) }, "Ключ OpenRouter (sk-or-…)")
@@ -64,7 +65,7 @@ fun AiSettingsSection() {
                     status = if (models.isEmpty()) "Не удалось загрузить список — проверьте интернет" else "Бесплатных моделей: ${models.size}"
                     busy = false
                 }
-            }, enabled = !busy, modifier = Modifier.weight(1f)) { Text("Обновить модели") }
+            }, enabled = !busy, modifier = Modifier.weight(1f)) { Text(btnLabel("Обновить модели")) }
             Button(onClick = {
                 busy = true; status = null
                 scope.launch {

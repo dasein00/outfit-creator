@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.productivity
 
 import androidx.activity.compose.BackHandler
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.Glyphs
 import com.dasein.poryadok.ui.common.Glyph
@@ -25,13 +26,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -235,7 +236,7 @@ fun GoalScreen(nav: NavHostController, id: Long) {
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Создать цель и добавить этапы") }
+            ) { Text(btnLabel("Создать цель и добавить этапы")) }
             else {
                 gm.forEach { m ->
                     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -254,7 +255,7 @@ fun GoalScreen(nav: NavHostController, id: Long) {
                     }
                 }
                 OutlinedTextField(
-                    value = newMs, onValueChange = { newMs = it }, placeholder = { Text("+ Этап") }, singleLine = true,
+                    value = newMs, onValueChange = { newMs = it }, placeholder = { Text(btnLabel("+ Этап")) }, singleLine = true,
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { addMs() }),
@@ -265,7 +266,7 @@ fun GoalScreen(nav: NavHostController, id: Long) {
                     io { dao.upsertGoal(current()) }
                     nav.navigate(Routes.task(0, goal = g.id))
                 }
-                if (gt.isEmpty()) Text("Задачи с этой целью появятся здесь.", color = extra.dim, fontSize = 13.sp)
+                if (gt.isEmpty()) Text(btnLabel("Задачи с этой целью появятся здесь."), color = extra.dim, fontSize = 13.sp)
                 Tile(padding = 6.dp) {
                     gt.forEach { t ->
                         val subs = subtasks.filter { it.taskId == t.id }
@@ -278,7 +279,7 @@ fun GoalScreen(nav: NavHostController, id: Long) {
             ColorPicker(g.color) { g = g.copy(color = it) }
             Gap()
             if (editMode || id == 0L) EmojiPicker(g.emoji) { g = g.copy(emoji = it) }
-            else Text("Сменить значок", color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable { editMode = true })
+            else Text(btnLabel("Сменить значок"), color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable { editMode = true })
             Gap(20.dp)
             if (g.id != 0L) Button(
                 onClick = { g = g.copy(done = !g.done); val cur = current(); io { dao.upsertGoal(cur) } },

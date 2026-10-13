@@ -232,7 +232,7 @@ fun IconGroupRow(title: String, keys: List<String>, onClick: () -> Unit, trailin
             Text("${keys.size} иконок", fontSize = 12.sp, color = extra.dim)
         }
         trailing()
-        Text("›", fontSize = 22.sp, color = extra.dim, modifier = Modifier.padding(start = 6.dp))
+        Text(btnLabel("›"), fontSize = 22.sp, color = extra.dim, modifier = Modifier.padding(start = 6.dp))
     }
 }
 
@@ -383,6 +383,7 @@ fun ReorderGrid(
             }
         },
         state = state,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp),
     ) {
         items(order, key = { it }) { k ->
             val dragging = k == dragKey

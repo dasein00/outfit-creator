@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.productivity
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.clickable
 import com.dasein.poryadok.ui.common.Glyphs
 import com.dasein.poryadok.ui.common.Glyph
@@ -151,12 +152,12 @@ fun QuickAddSheet(onDismiss: () -> Unit, defaultDay: Long? = null, defaultProjec
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
         Column(Modifier.padding(horizontal = 18.dp).padding(bottom = 18.dp).navigationBarsPadding().imePadding()) {
-            Text("Новая задача", style = MaterialTheme.typography.titleLarge)
+            Text(btnLabel("Новая задача"), style = MaterialTheme.typography.titleLarge)
             Hint("quickadd_syntax", "Пишите как говорите: «завтра в 18», «в пятницу», «каждый день», «!2» — приоритет, «#дом» — список, «@тег»", Modifier.padding(top = 2.dp, bottom = 10.dp), title = "Как писать быстро")
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = text, onValueChange = { text = it },
-                    placeholder = { Text("Что нужно сделать?") },
+                    placeholder = { Text(btnLabel("Что нужно сделать?")) },
                     modifier = Modifier.weight(1f).focusRequester(focus),
                     shape = RoundedCornerShape(14.dp),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
@@ -174,7 +175,7 @@ fun QuickAddSheet(onDismiss: () -> Unit, defaultDay: Long? = null, defaultProjec
                 val day = parsed.dueDay ?: defaultDay
                 if (day != null) AssistChip(onClick = {}, label = { Text(Dates.label(day, today)) }, leadingIcon = { Glyph("cal/00", 14.dp, badge = false) })
                 parsed.dueMin?.let { AssistChip(onClick = {}, label = { Text(Dates.time(it)) }, leadingIcon = { Glyph("cal/13", 14.dp, badge = false) }) }
-                if (parsed.priority > 0) AssistChip(onClick = {}, label = { Text("⚑ " + listOf("", "низкий", "средний", "высокий")[parsed.priority]) })
+                if (parsed.priority > 0) AssistChip(onClick = {}, label = { Text(btnLabel("⚑ ") + listOf("", "низкий", "средний", "высокий")[parsed.priority]) })
                 parsed.project?.let { AssistChip(onClick = {}, label = { Text("# $it") }) }
                 parsed.tags.forEach { AssistChip(onClick = {}, label = { Text("@$it") }) }
                 if (parsed.repeat != Repeat.NONE) AssistChip(onClick = {}, label = { Text(parsed.repeat.label) }, leadingIcon = { Glyph(Glyphs.REPEAT, 14.dp, badge = false) })

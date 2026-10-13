@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.recipes
 
 import androidx.compose.foundation.clickable
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -108,7 +109,7 @@ fun FridgeSheet(
         Gap(8.dp)
         OutlinedTextField(
             q, { q = it }, Modifier.fillMaxWidth(), singleLine = true,
-            placeholder = { Text("Найти продукт") }, leadingIcon = { Icon(Icons.Default.Search, null) },
+            placeholder = { Text(btnLabel("Найти продукт")) }, leadingIcon = { Icon(Icons.Default.Search, null) },
             shape = RoundedCornerShape(14.dp),
         )
         val nq = Fridge.norm(q)
@@ -128,12 +129,12 @@ fun FridgeSheet(
                     Text("$n блюд", fontSize = 12.sp, color = extra.dim)
                 }
             }
-            if (shown.isEmpty()) item { Text("Такого продукта нет в рецептах", color = extra.dim, modifier = Modifier.padding(vertical = 12.dp)) }
+            if (shown.isEmpty()) item { Text(btnLabel("Такого продукта нет в рецептах"), color = extra.dim, modifier = Modifier.padding(vertical = 12.dp)) }
         }
         Gap(4.dp)
         Row(Modifier.fillMaxWidth().clickable { onlyHave = !onlyHave }, verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Только если всё есть", fontSize = 15.sp)
+                Text(btnLabel("Только если всё есть"), fontSize = 15.sp)
                 Text("Соль, вода, сахар, масло и специи считаются имеющимися", fontSize = 12.sp, color = extra.dim)
             }
             Switch(onlyHave, { onlyHave = it })

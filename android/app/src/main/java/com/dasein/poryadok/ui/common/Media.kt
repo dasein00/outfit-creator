@@ -31,6 +31,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -131,15 +132,15 @@ fun VideoAddButtons(dir: String, onPicked: (String) -> Unit) {
         return
     }
     androidx.compose.foundation.layout.Row {
-        androidx.compose.material3.OutlinedButton(
+        com.dasein.poryadok.ui.common.OutlinedButton(
             onClick = { gallery.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)) },
             modifier = Modifier.weight(1f),
-        ) { Text("+ Видео из галереи", maxLines = 1) }
+        ) { Text(btnLabel("+ Видео из галереи"), maxLines = 1) }
         androidx.compose.foundation.layout.Spacer(Modifier.padding(4.dp))
-        androidx.compose.material3.OutlinedButton(
+        com.dasein.poryadok.ui.common.OutlinedButton(
             onClick = { files.launch(arrayOf("video/*", "application/mp4", "application/octet-stream", "*/*")) },
             modifier = Modifier.weight(1f),
-        ) { Text("+ Из файлов", maxLines = 1) }
+        ) { Text(btnLabel("+ Из файлов"), maxLines = 1) }
     }
 }
 
@@ -212,8 +213,8 @@ fun VideoPlayer(path: String, modifier: Modifier = Modifier) = androidx.compose.
                 .background(Color.Black.copy(alpha = .55f)).clickable { full = true }.padding(horizontal = 9.dp, vertical = 2.dp),
         )
     }
-    if (full) Dialog(onDismissRequest = { full = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().background(Color.Black)) {
+    if (full) Dialog(onDismissRequest = { full = false }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        Box(Modifier.fillMaxSize().background(Color.Black).systemBarsPadding()) {
             AndroidView(
                 factory = { c -> playerView(c, path, autoplay = true) },
                 onRelease = { it.stopPlayback() },
@@ -243,10 +244,10 @@ fun CompressVideoButton(path: String, onDone: (String) -> Unit) {
     val scope = rememberCoroutineScope()
     var busy by remember(path) { mutableStateOf(false) }
     if (busy) {
-        Text("Сжимаю…", fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp))
+        Text(btnLabel("Сжимаю…"), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp))
         return
     }
-    androidx.compose.material3.TextButton(onClick = {
+    com.dasein.poryadok.ui.common.TextButton(onClick = {
         busy = true
         scope.launch {
             val before = File(path).length()
@@ -257,5 +258,5 @@ fun CompressVideoButton(path: String, onDone: (String) -> Unit) {
                 android.widget.Toast.makeText(ctx, "Видео сжато: ${com.dasein.poryadok.system.VideoCompress.mb(before)} → ${com.dasein.poryadok.system.VideoCompress.mb(File(out).length())}", android.widget.Toast.LENGTH_LONG).show()
             } else android.widget.Toast.makeText(ctx, "Это видео уже компактное или не сжимается", android.widget.Toast.LENGTH_SHORT).show()
         }
-    }) { Text("Сжать") }
+    }) { Text(btnLabel("Сжать")) }
 }

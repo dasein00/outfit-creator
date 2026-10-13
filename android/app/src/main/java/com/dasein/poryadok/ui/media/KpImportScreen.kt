@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.media
 
 import android.annotation.SuppressLint
+import com.dasein.poryadok.ui.common.btnLabel
 import android.graphics.Bitmap
 import android.webkit.CookieManager
 import android.webkit.WebView
@@ -19,14 +20,14 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -191,24 +192,24 @@ fun KpImportScreen(nav: NavHostController, kind: Int) {
                             val target = "https://www.kinopoisk.ru/user/$id/votes/"
                             if (web == null) { startUrl = target; opened = true } else web?.loadUrl(target)
                         }
-                    }) { Text("Мои оценки", fontSize = 12.sp) }
+                    }) { Text(btnLabel("Мои оценки"), fontSize = 12.sp) }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Switch(allPages, { allPages = it })
-                    Text("  Все страницы", fontSize = 13.sp, modifier = Modifier.weight(1f))
+                    Text(btnLabel("  Все страницы"), fontSize = 13.sp, modifier = Modifier.weight(1f))
                     Text("Собрано: ${found.size}", fontSize = 13.sp, color = extra.dim)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Button(onClick = { start() }, enabled = !collecting && web != null, modifier = Modifier.weight(1f)) {
                         Text(if (collecting) "Собираю… стр. $pages" else "Собрать")
                     }
-                    OutlinedButton(onClick = { review = true }, enabled = found.isNotEmpty(), modifier = Modifier.weight(1f)) { Text("Проверить и добавить") }
+                    OutlinedButton(onClick = { review = true }, enabled = found.isNotEmpty(), modifier = Modifier.weight(1f)) { Text(btnLabel("Проверить и добавить")) }
                 }
                 Text(url, fontSize = 10.sp, color = extra.dim, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(vertical = 2.dp))
             }
             if (!opened) {
                 Box(Modifier.weight(1f).fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                    Button(onClick = { opened = true }) { Text("Открыть Кинопоиск") }
+                    Button(onClick = { opened = true }) { Text(btnLabel("Открыть Кинопоиск")) }
                 }
             } else AndroidView(
                 factory = { c ->
@@ -259,19 +260,19 @@ private fun ReviewSheet(kind: Int, items: List<MediaParse.KpItem>, onDismiss: ()
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.padding(horizontal = 16.dp)) {
             Text("Найдено: ${items.size}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Text("Статус для всех", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
+            Text(btnLabel("Статус для всех"), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 MediaStatus.names(kind).forEachIndexed { i, n -> Pill(n, status == i) { status = i } }
             }
-            Text("Добавить ещё и в список", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
+            Text(btnLabel("Добавить ещё и в список"), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Pill("Без списка", listId == 0L) { listId = 0L }
                 lists.filter { it.kind == -1 || it.kind == kind }.forEach { l -> Pill(l.name, listId == l.id, glyph = l.glyph.ifBlank { "ui:folder" }) { listId = l.id } }
                 Pill("+ Новый", false) { newList = true }
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
-                TextButton(onClick = { items.forEach { chosen[it.id] = true } }) { Text("Выбрать все") }
-                TextButton(onClick = { items.forEach { chosen[it.id] = false } }) { Text("Снять все") }
+                TextButton(onClick = { items.forEach { chosen[it.id] = true } }) { Text(btnLabel("Выбрать все")) }
+                TextButton(onClick = { items.forEach { chosen[it.id] = false } }) { Text(btnLabel("Снять все")) }
             }
             LazyColumn(Modifier.heightIn(max = 360.dp)) {
                 items(items, key = { it.id }) { it2 ->

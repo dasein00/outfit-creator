@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.health
 
 import android.content.Context
+import com.dasein.poryadok.ui.common.btnLabel
 import android.content.Intent
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
@@ -29,10 +30,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -94,7 +95,7 @@ fun StatusCard(a: PressureInsight.Assessment, doctor: Boolean) {
     var why by remember { mutableStateOf(false) }
     val col = Color(a.status.color)
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(col.copy(alpha = .13f)).padding(14.dp)) {
-        Text("СОСТОЯНИЕ ПО ДАННЫМ ДНЕВНИКА", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = extra.dim)
+        Text(btnLabel("СОСТОЯНИЕ ПО ДАННЫМ ДНЕВНИКА"), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = extra.dim)
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
             Box(Modifier.size(14.dp).clip(CircleShape).background(col))
             Text("  ${a.status.title}", fontSize = 19.sp, fontWeight = FontWeight.SemiBold, color = col, modifier = Modifier.weight(1f))
@@ -109,13 +110,13 @@ fun StatusCard(a: PressureInsight.Assessment, doctor: Boolean) {
     }
     if (why) AlertDialog(
         onDismissRequest = { why = false },
-        title = { Text("Почему приложение так считает") },
+        title = { Text(btnLabel("Почему приложение так считает")) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(a.conclusion, fontWeight = FontWeight.Medium)
-                Text("Оценка сформирована на основании:", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
+                Text(btnLabel("Оценка сформирована на основании:"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
                 a.basis.forEach { Text("• $it", fontSize = 14.sp, lineHeight = 20.sp) }
-                Text("Как считается уровень", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
+                Text(btnLabel("Как считается уровень"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
                 Text(
                     "🟢 стабильное — среднее за 7 дней ниже порога и без роста; 🟡 требует наблюдения — у порога, рост к прошлой неделе ≥5 мм или превышение без устойчивости; " +
                         "🟠 устойчиво повышенное — выше порога и за 7, и за 14 дней; 🔴 требует медицинской оценки — среднее ≥160/100, повторные значения ≥180/110 " +
@@ -125,7 +126,7 @@ fun StatusCard(a: PressureInsight.Assessment, doctor: Boolean) {
                 Text("Источники: ${PressureInsight.SOURCES}.", fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 10.dp))
             }
         },
-        confirmButton = { TextButton(onClick = { why = false }) { Text("Понятно") } },
+        confirmButton = { TextButton(onClick = { why = false }) { Text(btnLabel("Понятно")) } },
     )
 }
 
@@ -139,7 +140,7 @@ fun WeekStrip(p: Pressure.Person, rs: List<Pressure.Reading>) {
     val a7 = Pressure.avg(PressureInsight.window(rs, now - 7 * DAY, now))
     val b7 = Pressure.avg(PressureInsight.window(rs, now - 14 * DAY, now - 7 * DAY))
     Tile {
-        Text("Неделя", fontSize = 12.sp, color = extra.dim)
+        Text(btnLabel("Неделя"), fontSize = 12.sp, color = extra.dim)
         Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
             cells.forEach { c ->
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -155,12 +156,12 @@ fun WeekStrip(p: Pressure.Person, rs: List<Pressure.Reading>) {
         }
         Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.Bottom) {
             Column(Modifier.weight(1f)) {
-                Text("Среднее за 7 дней", fontSize = 12.sp, color = extra.dim)
+                Text(btnLabel("Среднее за 7 дней"), fontSize = 12.sp, color = extra.dim)
                 Text(a7?.let { "${it.sys}/${it.dia}" } ?: "—", fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
             }
             if (a7 != null && b7 != null) Column(horizontalAlignment = Alignment.End) {
                 val d = a7.sys - b7.sys
-                Text("Тренд к прошлой неделе", fontSize = 12.sp, color = extra.dim)
+                Text(btnLabel("Тренд к прошлой неделе"), fontSize = 12.sp, color = extra.dim)
                 Text("${arrow(d)} ${abs(d)} мм рт. ст.", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = if (d >= 3) extra.danger else if (d <= -3) extra.ok else MaterialTheme.colorScheme.onSurface)
             }
         }
@@ -174,7 +175,7 @@ fun DeviationCard(rs: List<Pressure.Reading>) {
     val d = PressureInsight.deviation(rs, last) ?: return
     val extra = LocalExtra.current
     Tile {
-        Text("Отклонение от вашего обычного", fontSize = 12.sp, color = extra.dim)
+        Text(btnLabel("Отклонение от вашего обычного"), fontSize = 12.sp, color = extra.dim)
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
             Column(Modifier.weight(1f)) {
                 Text("Обычно (30 дней): ${d.usual.sys}/${d.usual.dia}", fontSize = 13.sp)
@@ -202,7 +203,7 @@ fun ZoomChart(p: Pressure.Person, rs: List<Pressure.Reading>) {
     val pts = remember(rs, range, daily) { PressureInsight.points(rs, now - range * DAY, now, daily) }
     val t = Pressure.target(p)
     Tile(padding = 10.dp) {
-        Text("Артериальное давление", fontWeight = FontWeight.SemiBold)
+        Text(btnLabel("Артериальное давление"), fontWeight = FontWeight.SemiBold)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
             listOf(7 to "7 дней", 30 to "30 дней", 90 to "3 мес", 180 to "6 мес", 365 to "1 год").forEach { (d, s) -> Pill(s, range == d) { range = d } }
         }
@@ -211,7 +212,7 @@ fun ZoomChart(p: Pressure.Person, rs: List<Pressure.Reading>) {
             Pill("Все измерения", !daily) { daily = false }
         }
         if (pts.size < 2) {
-            Text("За этот период мало данных для графика.", fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(vertical = 20.dp))
+            Text(btnLabel("За этот период мало данных для графика."), fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(vertical = 20.dp))
             return@Tile
         }
         val t0 = minOf(pts.first().time, now - range * DAY); val t1 = now
@@ -319,10 +320,10 @@ fun ZoomChart(p: Pressure.Person, rs: List<Pressure.Reading>) {
             }
         }
         Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(10.dp).clip(CircleShape).background(SYS_COL)); Text("САД", fontSize = 11.sp, color = extra.dim)
-            Box(Modifier.size(10.dp).clip(CircleShape).background(DIA_COL)); Text("ДАД", fontSize = 11.sp, color = extra.dim)
-            Text("- - среднее", fontSize = 11.sp, color = extra.dim)
-            Box(Modifier.size(10.dp).background(Color(0xFF3E9B5B).copy(alpha = .3f))); Text("цель", fontSize = 11.sp, color = extra.dim)
+            Box(Modifier.size(10.dp).clip(CircleShape).background(SYS_COL)); Text(btnLabel("САД"), fontSize = 11.sp, color = extra.dim)
+            Box(Modifier.size(10.dp).clip(CircleShape).background(DIA_COL)); Text(btnLabel("ДАД"), fontSize = 11.sp, color = extra.dim)
+            Text(btnLabel("- - среднее"), fontSize = 11.sp, color = extra.dim)
+            Box(Modifier.size(10.dp).background(Color(0xFF3E9B5B).copy(alpha = .3f))); Text(btnLabel("цель"), fontSize = 11.sp, color = extra.dim)
         }
         Text(
             (meanSys?.let { "Среднее на экране: ${it.roundToInt()}/${meanDia?.roundToInt()} · " } ?: "") +
@@ -361,7 +362,7 @@ fun DayProfileCard(rs: List<Pressure.Reading>) {
     if (prof.morning == null && prof.evening == null) return
     val extra = LocalExtra.current
     Tile {
-        Text("Суточный профиль · 30 дней", fontWeight = FontWeight.SemiBold)
+        Text(btnLabel("Суточный профиль · 30 дней"), fontWeight = FontWeight.SemiBold)
         Row(Modifier.padding(top = 6.dp)) {
             listOf(Triple("🌅 Утро", prof.morning, "4–11 ч"), Triple("☀️ День", prof.day, "12–16 ч"), Triple("🌙 Вечер", prof.evening, "17–23 ч")).forEach { (l, a, h) ->
                 Column(Modifier.weight(1f)) {
@@ -385,9 +386,9 @@ fun PressureCalendar(p: Pressure.Person, rs: List<Pressure.Reading>) {
     val cells = PressureInsight.days(rs, p, ym.atDay(1), ym.atEndOfMonth())
     Tile {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("‹", fontSize = 22.sp, modifier = Modifier.clip(CircleShape).clickable { ym = ym.minusMonths(1) }.padding(horizontal = 12.dp))
+            Text(btnLabel("‹"), fontSize = 22.sp, modifier = Modifier.clip(CircleShape).clickable { ym = ym.minusMonths(1) }.padding(horizontal = 12.dp))
             Text(ym.month.getDisplayName(TextStyle.FULL_STANDALONE, RU).replaceFirstChar { it.uppercase() } + " ${ym.year}", fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
-            Text("›", fontSize = 22.sp, modifier = Modifier.clip(CircleShape).clickable { if (ym < YearMonth.now()) ym = ym.plusMonths(1) }.padding(horizontal = 12.dp))
+            Text(btnLabel("›"), fontSize = 22.sp, modifier = Modifier.clip(CircleShape).clickable { if (ym < YearMonth.now()) ym = ym.plusMonths(1) }.padding(horizontal = 12.dp))
         }
         Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
             listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс").forEach { Text(it, fontSize = 11.sp, color = extra.dim, textAlign = TextAlign.Center, modifier = Modifier.weight(1f)) }
@@ -428,7 +429,7 @@ fun StabilityCard(rs: List<Pressure.Reading>) {
     val extra = LocalExtra.current
     Tile {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Стабильность", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text(btnLabel("Стабильность"), fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             Text("${s.score} %", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = if (s.high) extra.warn else extra.ok)
         }
         com.dasein.poryadok.ui.common.Bar(s.score / 100f, if (s.high) extra.warn else extra.ok, Modifier.padding(top = 6.dp), height = 10.dp)
@@ -492,7 +493,7 @@ fun WeeklyReportCard(p: Pressure.Person, rs: List<Pressure.Reading>) {
         Line("Качество мониторинга", w.quality)
         w.note?.let { Text("На что обратить внимание: $it", fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp)) }
         Text("Рекомендация: ${w.advice}", fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp))
-        Button(onClick = { sharePdf(ctx, p, rs) }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) { Text("Сформировать PDF для врача") }
+        Button(onClick = { sharePdf(ctx, p, rs) }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) { Text(btnLabel("Сформировать PDF для врача")) }
     }
 }
 

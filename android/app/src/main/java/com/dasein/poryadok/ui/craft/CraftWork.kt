@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.craft
 
 import android.graphics.Paint
+import com.dasein.poryadok.ui.common.btnLabel
 import android.graphics.Typeface
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -24,7 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -244,8 +245,8 @@ fun CraftWorkScreen(nav: NavHostController, id: Long) {
             selected?.let { s ->
                 Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("${pat.colors[s].label} · ${pat.colors[s].name}: ${doneBy[s]} из ${counts[s]}", Modifier.weight(1f), fontSize = 12.sp)
-                    TextButton(onClick = { pat.cells.forEachIndexed { i, c -> if (c == s) d[i] = true }; version++ }) { Text("Весь цвет ✓", fontSize = 12.sp) }
-                    TextButton(onClick = { pat.cells.forEachIndexed { i, c -> if (c == s) d[i] = false }; version++ }) { Text("Снять", fontSize = 12.sp) }
+                    TextButton(onClick = { pat.cells.forEachIndexed { i, c -> if (c == s) d[i] = true }; version++ }) { Text(btnLabel("Весь цвет ✓"), fontSize = 12.sp) }
+                    TextButton(onClick = { pat.cells.forEachIndexed { i, c -> if (c == s) d[i] = false }; version++ }) { Text(btnLabel("Снять"), fontSize = 12.sp) }
                 }
             }
         }

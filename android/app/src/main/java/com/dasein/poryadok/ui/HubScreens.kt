@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui
 
 import com.dasein.poryadok.ui.common.FitText
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.background
 import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.layout.Arrangement
@@ -144,19 +145,19 @@ fun HealthHubScreen(nav: NavHostController) {
         ) {
             item(span = { GridItemSpan(2) }) {
                 Tile(padding = 12.dp) {
-                    Text("Баланс за сегодня", fontSize = 12.sp, color = extra.dim)
+                    Text(btnLabel("Баланс за сегодня"), fontSize = 12.sp, color = extra.dim)
                     Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.Top) {
                         Column(Modifier.weight(1f)) {
                             FitText("$eaten", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                            Text("съедено, ккал", fontSize = 11.sp, color = extra.dim)
+                            Text(btnLabel("съедено, ккал"), fontSize = 11.sp, color = extra.dim)
                         }
                         Column(Modifier.weight(1f)) {
                             FitText("${burned.total}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = Palette.item(0))
-                            Text("сожжено, ккал", fontSize = 11.sp, color = extra.dim)
+                            Text(btnLabel("сожжено, ккал"), fontSize = 11.sp, color = extra.dim)
                         }
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                             FitText("${plan.targetKcal}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                            Text("цель, ккал", fontSize = 11.sp, color = extra.dim)
+                            Text(btnLabel("цель, ккал"), fontSize = 11.sp, color = extra.dim)
                         }
                     }
                 }
@@ -166,7 +167,7 @@ fun HealthHubScreen(nav: NavHostController) {
                 Tile(onClick = { nav.navigate(t.route) }, padding = 12.dp, onLongClick = { editing = t }) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Glyph(look.icon, 22.dp)
-                        Text("  " + look.name, fontSize = 13.sp, color = extra.dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(btnLabel("  ") + look.name, fontSize = 13.sp, color = extra.dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Text(t.value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp), maxLines = 1)
                     Text(t.sub, fontSize = 11.sp, color = extra.dim, maxLines = 1, overflow = TextOverflow.Ellipsis)

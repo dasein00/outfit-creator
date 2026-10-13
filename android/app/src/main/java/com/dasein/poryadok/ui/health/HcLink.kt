@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.health
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -14,9 +15,9 @@ import com.dasein.poryadok.ui.common.UiState
 import com.dasein.poryadok.ui.common.rememberUiFlag
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -93,7 +94,7 @@ fun HcLinkCard(refresh: Int, syncing: Boolean, onSync: () -> Unit, onGranted: ()
             Glyph(Glyphs.SCALE, 24.dp)
             HGap(10.dp)
             Column(Modifier.weight(1f)) {
-                Text("Связь с весами", fontWeight = FontWeight.SemiBold)
+                Text(btnLabel("Связь с весами"), fontWeight = FontWeight.SemiBold)
                 Text(
                     if (d?.lastAt != null) "Последнее в Health Connect: " + WHEN.format(Date(d.lastAt)) else "Весы → OKOK → Google Fit → Health Connect → DASEIN",
                     fontSize = 12.sp, color = extra.dim,
@@ -103,7 +104,7 @@ fun HcLinkCard(refresh: Int, syncing: Boolean, onSync: () -> Unit, onGranted: ()
         }
         AnimatedVisibility(expanded) { Column {
         if (d == null) {
-            Text("Проверяю…", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
+            Text(btnLabel("Проверяю…"), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
         } else {
             Check(
                 d.status == Steps.HcStatus.AVAILABLE, "Health Connect",
@@ -159,9 +160,9 @@ fun HcLinkCard(refresh: Int, syncing: Boolean, onSync: () -> Unit, onGranted: ()
             )
             Gap(8.dp)
             Row {
-                OutlinedButton(onClick = { SystemScreens.app(ctx, "com.google.android.apps.fitness") }, Modifier.weight(1f)) { Text("Google Fit", fontSize = 13.sp) }
+                OutlinedButton(onClick = { SystemScreens.app(ctx, "com.google.android.apps.fitness") }, Modifier.weight(1f)) { Text(btnLabel("Google Fit"), fontSize = 13.sp) }
                 HGap(8.dp)
-                OutlinedButton(onClick = { SystemScreens.healthConnect(ctx) }, Modifier.weight(1f)) { Text("Health Connect", fontSize = 13.sp, maxLines = 1) }
+                OutlinedButton(onClick = { SystemScreens.healthConnect(ctx) }, Modifier.weight(1f)) { Text(btnLabel("Health Connect"), fontSize = 13.sp, maxLines = 1) }
             }
         }
         } }

@@ -30,7 +30,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -81,11 +80,12 @@ object Glyphs {
         // Новые иллюстрации блюд по разделам книги рецептов.
         "Завтраки" to "nbreakfast", "Супы" to "nsoup", "Обеды" to "nlunch", "Ужины" to "ndinner",
         "Гарниры" to "nside", "Салаты" to "nsalad", "Перекусы" to "nsnack", "Кухни мира" to "nworld",
+        "Выпечка" to "nbakery", "Десерты" to "ndessert", "Напитки" to "ndrink", "Заготовки" to "nprep",
     ) + listOf(
         "Курица" to "chicken", "Салаты и продукты" to "salads", "Паста и вок" to "pasta", "Блюда мира" to "world",
         "Домашнее" to "own", "Полезное" to "healthy", "Завтраки (прежние)" to "breakfast", "Основные блюда" to "dishes1", "Ещё блюда" to "dishes2",
-        "Русская кухня" to "russian", "Кавказская кухня" to "caucasus", "Разное" to "mixed", "Выпечка" to "bakery",
-        "Десерты" to "desserts", "Фастфуд" to "fastfood",
+        "Русская кухня" to "russian", "Кавказская кухня" to "caucasus", "Разное" to "mixed", "Выпечка (прежние)" to "bakery",
+        "Десерты (прежние)" to "desserts", "Фастфуд" to "fastfood",
     ) + listOf(
         "Картофель и мясо" to "potmeat", "Рыба и морепродукты" to "seafood", "Тесто, яйца, лепёшки" to "dough",
         "Итальянская паста" to "pasta2", "Блюда из курицы" to "chicken2", "Салат-бар и кухня" to "saladbar", "Протеин и кухня" to "protein",
@@ -226,7 +226,10 @@ fun Glyph(value: String, size: Dp = 24.dp, modifier: Modifier = Modifier, badge:
 /** Иконка ровно по ключу [key], без замен. [editKey] — что меняет долгое нажатие (null — нельзя). */
 @Composable
 internal fun GlyphRaw(key: String, editKey: String?, size: Dp = 24.dp, modifier0: Modifier = Modifier, badge: Boolean? = null, dimmed: Boolean = false) {
-    val modifier = if (editKey != null && LocalIconEditable.current) modifier0.iconLongPress(editKey) else modifier0
+    // Внутри кнопки иконку меняют удержанием самой кнопки (окно «Кнопка»: иконка и название).
+    val holder = LocalLabelHolder.current
+    if (holder != null && editKey != null && holder.icon == null) holder.icon = editKey
+    val modifier = if (editKey != null && holder == null && LocalIconEditable.current) modifier0.iconLongPress(editKey) else modifier0
     // Иконки можно править — перерисовываем после правки.
     val ver = com.dasein.poryadok.system.IconSets.version.intValue
     val ctx0 = LocalContext.current
@@ -319,7 +322,7 @@ fun GlyphPickerDialog(
     }
     androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
         androidx.compose.material3.Surface(
             Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 12.dp, vertical = 12.dp),
@@ -328,17 +331,17 @@ fun GlyphPickerDialog(
         ) {
             Column(Modifier.padding(vertical = 16.dp)) {
                 androidx.compose.foundation.layout.Row(Modifier.padding(start = 8.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (open != null && level != IconLibrary.MINE) TextButton(onClick = { open = null }) { Text("‹ Назад") }
+                    if (open != null && level != IconLibrary.MINE) TextButton(onClick = { open = null }) { Text(btnLabel("‹ Назад")) }
                     else Box(Modifier.size(12.dp))
                     Text(title, style = MaterialTheme.typography.headlineSmall, maxLines = 1, modifier = Modifier.weight(1f))
-                    TextButton(onClick = onDismiss) { Text("Закрыть") }
+                    TextButton(onClick = onDismiss) { Text(btnLabel("Закрыть")) }
                 }
                 Box(Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
                     IconLibraryTabs(level, mineCount, setsCount) { level = it; open = null }
                 }
                 androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { pickOwn() }, modifier = Modifier.padding(start = 8.dp)) { Text("+ Своя") }
-                    if (!dishes) TextButton(onClick = { importing = true }) { Text("+ Набор из картинки") }
+                    TextButton(onClick = { pickOwn() }, modifier = Modifier.padding(start = 8.dp)) { Text(btnLabel("+ Своя")) }
+                    if (!dishes) TextButton(onClick = { importing = true }) { Text(btnLabel("+ Набор из картинки")) }
                     Box(Modifier.weight(1f))
                     if (showGrid) Box(Modifier.padding(end = 16.dp)) { Pill(if (editMode) "✓ Готово" else "✎ Редактировать", editMode) { editMode = !editMode } }
                 }
@@ -395,7 +398,7 @@ fun GlyphPickerDialog(
                                     k.startsWith("dish/") -> GlyphRaw(k, null, if (dishes) 72.dp else 30.dp)
                                     else -> GlyphRaw(k, null, 30.dp)
                                 }
-                                if (editMode && sets.canEdit(k)) Text("✎", fontSize = 11.sp, color = extra.dim, modifier = Modifier.align(Alignment.TopEnd).padding(4.dp))
+                                if (editMode && sets.canEdit(k)) Text(btnLabel("✎"), fontSize = 11.sp, color = extra.dim, modifier = Modifier.align(Alignment.TopEnd).padding(4.dp))
                             }
                         }
                     }

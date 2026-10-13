@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.today
 
 import androidx.compose.foundation.background
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,7 +23,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -105,8 +106,8 @@ fun HomeEditScreen(nav: NavHostController) {
                     fontSize = 13.sp, color = extra.dim,
                 )
                 Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { HomeLayout.undo() }, enabled = HomeLayout.canUndo.value, modifier = Modifier.weight(1f)) { Text("Отменить") }
-                    OutlinedButton(onClick = { confirmReset = true }, enabled = !HomeLayout.isDefault, modifier = Modifier.weight(1f)) { Text("Как было") }
+                    OutlinedButton(onClick = { HomeLayout.undo() }, enabled = HomeLayout.canUndo.value, modifier = Modifier.weight(1f)) { Text(btnLabel("Отменить")) }
+                    OutlinedButton(onClick = { confirmReset = true }, enabled = !HomeLayout.isDefault, modifier = Modifier.weight(1f)) { Text(btnLabel("Как было")) }
                 }
                 SectionTitle("На главном · ${layout.size}")
             }

@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.media
 
 import androidx.compose.foundation.BorderStroke
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -22,7 +23,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -122,10 +123,10 @@ fun BulkActionsDialog(
     when (step) {
         "folder" -> AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("В какие папки") },
+            title = { Text(btnLabel("В какие папки")) },
             text = {
                 Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
-                    if (folders.isEmpty()) Text("Папок пока нет — создайте первую.", color = extra.dim)
+                    if (folders.isEmpty()) Text(btnLabel("Папок пока нет — создайте первую."), color = extra.dim)
                     folders.forEach { f ->
                         Row(Modifier.fillMaxWidth().clickable { pickFolders = if (f.id in pickFolders) pickFolders - f.id else pickFolders + f.id }, verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(f.id in pickFolders, { on -> pickFolders = if (on) pickFolders + f.id else pickFolders - f.id })
@@ -133,16 +134,16 @@ fun BulkActionsDialog(
                             Text("  ${f.name}")
                         }
                     }
-                    TextButton(onClick = onNewFolder) { Text("+ Новая папка") }
+                    TextButton(onClick = onNewFolder) { Text(btnLabel("+ Новая папка")) }
                 }
             },
             confirmButton = {
                 TextButton(enabled = pickFolders.isNotEmpty(), onClick = {
                     io { pickFolders.forEach { lid -> chosen.forEach { m -> Graph.extra.addToMediaList(MediaListItem(lid, m.id, addedAt = now)) } } }
                     onDone()
-                }) { Text("Добавить") }
+                }) { Text(btnLabel("Добавить")) }
             },
-            dismissButton = { TextButton(onClick = { step = "menu" }) { Text("Назад") } },
+            dismissButton = { TextButton(onClick = { step = "menu" }) { Text(btnLabel("Назад")) } },
         )
         "status" -> AlertDialog(
             onDismissRequest = onDismiss,
@@ -164,11 +165,11 @@ fun BulkActionsDialog(
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { step = "menu" }) { Text("Назад") } },
+            dismissButton = { TextButton(onClick = { step = "menu" }) { Text(btnLabel("Назад")) } },
         )
         "tag" -> AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Добавить метку") },
+            title = { Text(btnLabel("Добавить метку")) },
             text = {
                 Column {
                     TextInput(tag, { tag = it }, "Например: с мамой, пересмотреть, корейское")
@@ -180,9 +181,9 @@ fun BulkActionsDialog(
                     val t = tag.trim()
                     io { chosen.forEach { m -> Graph.extra.upsertMedia(m.copy(tags = (MediaCatalog.split(m.tags) + t).distinct().joinToString(", "))) } }
                     onDone()
-                }) { Text("Добавить") }
+                }) { Text(btnLabel("Добавить")) }
             },
-            dismissButton = { TextButton(onClick = { step = "menu" }) { Text("Назад") } },
+            dismissButton = { TextButton(onClick = { step = "menu" }) { Text(btnLabel("Назад")) } },
         )
         "delete" -> ConfirmDialog(
             "Удалить ${chosen.size} из коллекции?", "Карточки, оценки и отзывы будут удалены. Это нельзя отменить.",
@@ -212,7 +213,7 @@ fun BulkActionsDialog(
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = onDismiss) { Text("Закрыть") } },
+            dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Закрыть")) } },
         )
     }
 }
@@ -238,16 +239,16 @@ fun RenameAllDialog(kind: Int, folders: List<MediaList>, onDismiss: () -> Unit) 
     val own = remember(folders) { androidx.compose.runtime.mutableStateListOf(*folders.map { it.name }.toTypedArray()) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Названия папок и статусов") },
+        title = { Text(btnLabel("Названия папок и статусов")) },
         text = {
             Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Статусы", fontWeight = FontWeight.SemiBold)
+                Text(btnLabel("Статусы"), fontWeight = FontWeight.SemiBold)
                 defaults.forEachIndexed { i, d -> TextInput(statuses[i], { statuses[i] = it }, d) }
                 if (folders.isNotEmpty()) {
-                    Text("Мои папки", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                    Text(btnLabel("Мои папки"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
                     folders.forEachIndexed { i, f -> TextInput(own[i], { own[i] = it }, f.name) }
                 }
-                Text("Умные папки", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                Text(btnLabel("Умные папки"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
                 MediaShelf.SMART.forEachIndexed { i, sm -> TextInput(smart[i], { smart[i] = it }, sm.title) }
                 Text("Пустое поле вернёт стандартное название. Статусы меняются и в карточках, фильтрах и группах.", fontSize = 12.sp, color = extra.dim)
             }
@@ -259,8 +260,8 @@ fun RenameAllDialog(kind: Int, folders: List<MediaList>, onDismiss: () -> Unit) 
                 val changed = folders.mapIndexedNotNull { i, f -> own[i].trim().takeIf { it.isNotBlank() && it != f.name }?.let { f.copy(name = it) } }
                 if (changed.isNotEmpty()) io { changed.forEach { Graph.extra.upsertMediaList(it) } }
                 onDismiss()
-            }) { Text("Сохранить") }
+            }) { Text(btnLabel("Сохранить")) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
 }

@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.craft
 
 import android.content.Intent
+import com.dasein.poryadok.ui.common.btnLabel
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -34,17 +35,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -143,7 +144,7 @@ fun CraftHomeScreen(nav: NavHostController) {
             )
             Gap(10.dp)
             Button(onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                Text("Схема из фото")
+                Text(btnLabel("Схема из фото"))
             }
             Button(onClick = { nav.navigate(Routes.CRAFT_PBN) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
                 Text("🖍 Картины по номерам — раскраска для карандашей")
@@ -155,7 +156,7 @@ fun CraftHomeScreen(nav: NavHostController) {
                 Text("Мои запасы DMC (${CraftStore.stash(ctx).size} цветов)")
             }
             if (busy) Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Text("  Готовлю фото…")
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Text(btnLabel("  Готовлю фото…"))
             }
             error?.let { Text(it, color = extra.danger, modifier = Modifier.padding(top = 8.dp)) }
             SectionTitle("Мои схемы")
@@ -190,7 +191,7 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
     val extra = LocalExtra.current
     val scope = rememberCoroutineScope()
     var project by remember { mutableStateOf(CraftStore.load(ctx, id)) }
-    val p0 = project ?: run { Screen("Схема", onBack = { nav.popBackStack() }) { Text("Схема не найдена", Modifier.padding(it).padding(16.dp)) }; return }
+    val p0 = project ?: run { Screen("Схема", onBack = { nav.popBackStack() }) { Text(btnLabel("Схема не найдена"), Modifier.padding(it).padding(16.dp)) }; return }
     var pattern by remember { mutableStateOf<CraftPattern.Pattern?>(null) }
     var preview by remember { mutableStateOf<Bitmap?>(null) }
     var busy by remember { mutableStateOf(true) }
@@ -353,7 +354,7 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
                 Button(onClick = { nav.navigate(Routes.craftWork(p0.id)) }, enabled = !busy && pattern != null, modifier = Modifier.weight(1f)) {
                     Text(if (p0.kindEnum == CraftPattern.Kind.CROSS) "Вышивать" else "Выкладывать")
                 }
-                OutlinedButton(onClick = { printDialog = true }, enabled = !busy && pattern != null, modifier = Modifier.weight(1f)) { Text("PDF / печать") }
+                OutlinedButton(onClick = { printDialog = true }, enabled = !busy && pattern != null, modifier = Modifier.weight(1f)) { Text(btnLabel("PDF / печать")) }
             }
             Text("Ниже — размер холста, цвета, таблица с заменой цветов, печать и список покупок ↓", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
 
@@ -403,7 +404,7 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
             Text("Цвета подбираются по самой картинке: сначала находятся её главные оттенки, потом — ближайшие нитки и стразы DMC. Меньше цветов — проще работа, больше — точнее портреты.", fontSize = 12.sp, color = extra.dim)
             if (p0.kindEnum == CraftPattern.Kind.CROSS) {
                 Gap(6.dp)
-                Text("Канва Аида", fontSize = 14.sp)
+                Text(btnLabel("Канва Аида"), fontSize = 14.sp)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { listOf(11, 14, 16, 18).forEach { c -> Pill("$c", p0.count == c) { save(p0.copy(count = c)) } } }
             }
             if (p0.kindEnum == CraftPattern.Kind.DIAMOND) Toggle("Круглые стразы", "2,8 мм вместо квадратных 2,5 мм — холст получится крупнее", p0.round) { on -> save(p0.copy(round = on)) }
@@ -464,14 +465,14 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
                 if (p0.replace.isNotEmpty()) TextButton(onClick = { update { it.copy(replace = emptyMap()) } }) { Text("Вернуть исходные цвета (замен: ${p0.replace.size})") }
 
                 SectionTitle("Печать и выгрузка")
-                Text("Вид клеток схемы", fontSize = 14.sp)
+                Text(btnLabel("Вид клеток схемы"), fontSize = 14.sp)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
                     listOf(0 to "Цветная, как в наборе", 1 to "Светлая", 2 to "Ч/б символы").forEach { (i, s) -> Pill(s, p0.chartStyle == i) { save(p0.copy(chartStyle = i)) } }
                 }
                 Button(onClick = { printDialog = true }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Выгрузить: схема PDF (A4, A3, A2…) + таблица цветов") }
-                OutlinedButton(onClick = { pngExporter.launch("$fileName.png") }, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("Схема одной картинкой (PNG)") }
-                OutlinedButton(onClick = { legendExporter.launch("$fileName — таблица цветов.png") }, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("Таблица цветов с миниатюрой (PNG)") }
-                OutlinedButton(onClick = { share() }, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("Поделиться: схема PDF + таблица цветов") }
+                OutlinedButton(onClick = { pngExporter.launch("$fileName.png") }, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text(btnLabel("Схема одной картинкой (PNG)")) }
+                OutlinedButton(onClick = { legendExporter.launch("$fileName — таблица цветов.png") }, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text(btnLabel("Таблица цветов с миниатюрой (PNG)")) }
+                OutlinedButton(onClick = { share() }, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text(btnLabel("Поделиться: схема PDF + таблица цветов")) }
                 val toBuy = pat.colors.indices.filter { pat.colors[it].code !in stash }
                 OutlinedButton(
                     onClick = {
@@ -492,7 +493,7 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
                 )
             }
             message?.let { Tile(Modifier.padding(top = 8.dp)) { Text(it) } }
-            TextButton(onClick = { confirmDelete = true }, modifier = Modifier.padding(top = 8.dp)) { Text("Удалить схему", color = extra.danger) }
+            TextButton(onClick = { confirmDelete = true }, modifier = Modifier.padding(top = 8.dp)) { Text(btnLabel("Удалить схему"), color = extra.danger) }
             Gap(60.dp)
         }
     }
@@ -504,10 +505,10 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
     pending?.let { n ->
         AlertDialog(
             onDismissRequest = { pending = null },
-            title = { Text("Схема изменится") },
+            title = { Text(btnLabel("Схема изменится")) },
             text = { Text("Отметки выложенных клеток относятся к текущей схеме и сбросятся. Продолжить?") },
-            confirmButton = { TextButton(onClick = { save(n); pending = null }) { Text("Изменить") } },
-            dismissButton = { TextButton(onClick = { pending = null }) { Text("Оставить как есть") } },
+            confirmButton = { TextButton(onClick = { save(n); pending = null }) { Text(btnLabel("Изменить")) } },
+            dismissButton = { TextButton(onClick = { pending = null }) { Text(btnLabel("Оставить как есть")) } },
         )
     }
     colorEdit?.let { i ->
@@ -520,14 +521,14 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
                 text = {
                     Column(Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState())) {
                         Text(t.name, color = extra.dim)
-                        Text("Заменить на соседний оттенок:", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+                        Text(btnLabel("Заменить на соседний оттенок:"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
                         CraftPattern.alternatives(t, mine = if (p0.onlyMine) mineThreads.takeIf { it.size >= 2 } else null).forEach { a ->
                             Row(Modifier.fillMaxWidth().clickable { update { it.copy(replace = it.replace + (t.code to a.code)) }; colorEdit = null }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Box(Modifier.size(24.dp).clip(RoundedCornerShape(5.dp)).background(Color(a.rgb or (0xFF shl 24))))
                                 Text("  ${a.label} · ${a.name}", fontSize = 14.sp)
                             }
                         }
-                        Text("Слить с цветом схемы:", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+                        Text(btnLabel("Слить с цветом схемы:"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
                         pat.colors.forEachIndexed { j, o ->
                             if (j != i) Row(Modifier.fillMaxWidth().clickable { update { it.copy(replace = it.replace + (t.code to o.code)) }; colorEdit = null }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                 ColorChip(o, j, 24)
@@ -537,7 +538,7 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
                     }
                 },
                 confirmButton = {},
-                dismissButton = { TextButton(onClick = { colorEdit = null }) { Text("Закрыть") } },
+                dismissButton = { TextButton(onClick = { colorEdit = null }) { Text(btnLabel("Закрыть")) } },
             )
         }
     }
@@ -546,7 +547,7 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
         val merged = pat.colors.size - matches.map { it.to.code }.distinct().size
         AlertDialog(
             onDismissRequest = { stashDialog = false },
-            title = { Text("Собрать из моих страз") },
+            title = { Text(btnLabel("Собрать из моих страз")) },
             text = {
                 Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
                     Text(
@@ -558,7 +559,7 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
                         val same = m.from.code == m.to.code
                         Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                             ColorChip(m.from, i, 26)
-                            Text(" →  ", color = extra.dim)
+                            Text(btnLabel(" →  "), color = extra.dim)
                             Box(Modifier.size(26.dp).clip(RoundedCornerShape(6.dp)).background(Color(m.to.rgb or (0xFF shl 24))))
                             Column(Modifier.weight(1f).padding(start = 8.dp)) {
                                 Text(if (same) "DMC ${m.to.code} — уже есть" else "DMC ${m.from.code} → ${m.to.code} · ${m.to.name}", fontSize = 13.sp, fontWeight = FontWeight.Medium)
@@ -580,9 +581,9 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
                     val r = CraftPattern.stashReplace(p0.replace, matches)
                     update { it.copy(replace = r) }; stashDialog = false
                     message = "Схема собрана из ваших страз: заменено ${matches.count { it.from.code != it.to.code }} цв."
-                }) { Text("Заменить") }
+                }) { Text(btnLabel("Заменить")) }
             },
-            dismissButton = { TextButton(onClick = { stashDialog = false }) { Text("Отмена") } },
+            dismissButton = { TextButton(onClick = { stashDialog = false }) { Text(btnLabel("Отмена")) } },
         )
     }
     if (printDialog) {
@@ -593,10 +594,10 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
         var mode by remember { mutableStateOf(CraftStore.PRINT_FIT) }
         AlertDialog(
             onDismissRequest = { printDialog = false },
-            title = { Text("PDF для печати") },
+            title = { Text(btnLabel("PDF для печати")) },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
-                    Text("Формат бумаги", fontWeight = FontWeight.SemiBold)
+                    Text(btnLabel("Формат бумаги"), fontWeight = FontWeight.SemiBold)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
                         (CraftStore.PAPERS.map { it.first } + "Свой").forEach { n -> Pill(n, paper == n) { paper = n } }
                     }
@@ -604,9 +605,9 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
                         Box(Modifier.weight(1f)) { NumberField(cw, { cw = it }, "Ширина", suffix = "мм", decimal = false) }
                         Box(Modifier.weight(1f)) { NumberField(ch, { ch = it }, "Высота", suffix = "мм", decimal = false) }
                     } else if (mode != CraftStore.PRINT_FIT) Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(land, { land = it }); Text("Альбомная ориентация")
+                        Checkbox(land, { land = it }); Text(btnLabel("Альбомная ориентация"))
                     }
-                    Text("Что печатать", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+                    Text(btnLabel("Что печатать"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
                     listOf(
                         CraftStore.PRINT_FIT to "Вся схема на одном листе",
                         CraftStore.PRINT_SHEETS to "По листам — крупные клетки, части склеиваются",
@@ -645,9 +646,9 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
                     else CraftStore.PAPERS.first { it.first == paper }.second.let { if (land) it.second to it.first else it }
                     exportPaper = size; exportMode = mode; printDialog = false
                     pdfExporter.launch("$fileName ${if (paper == "Свой") "${size.first}x${size.second}" else paper}.pdf")
-                }) { Text("Сохранить PDF") }
+                }) { Text(btnLabel("Сохранить PDF")) }
             },
-            dismissButton = { TextButton(onClick = { printDialog = false }) { Text("Отмена") } },
+            dismissButton = { TextButton(onClick = { printDialog = false }) { Text(btnLabel("Отмена")) } },
         )
     }
     if (confirmDelete) ConfirmDialog("Удалить «${p0.name}»?", "Фото, настройки и отметки удалятся.", onDismiss = { confirmDelete = false }) {
@@ -695,8 +696,8 @@ fun CraftStashScreen(nav: NavHostController) {
                         val codes = CraftPattern.DMC.map { it.code }.toSet()
                         val add = bulk.split(',', ' ', ';', '\n').map { it.trim() }.filter { c -> c in codes || c.lowercase() in codes }
                         set(stash + add); bulk = ""
-                    }, enabled = bulk.isNotBlank()) { Text("Добавить") }
-                    TextButton(onClick = { set(emptySet()) }, enabled = stash.isNotEmpty()) { Text("Очистить всё", color = extra.danger) }
+                    }, enabled = bulk.isNotBlank()) { Text(btnLabel("Добавить")) }
+                    TextButton(onClick = { set(emptySet()) }, enabled = stash.isNotEmpty()) { Text(btnLabel("Очистить всё"), color = extra.danger) }
                 }
                 TextInput(q, { q = it }, "Поиск: номер или название цвета")
                 Text("Отмечено: ${stash.size} из ${CraftPattern.DMC.size}", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(vertical = 6.dp))

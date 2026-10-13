@@ -413,6 +413,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             editTab?.let { (i, t) -> TabMenu(nav, i, t) { editTab = null } }
         }
         com.dasein.poryadok.ui.common.IconEditHost()
+        com.dasein.poryadok.ui.common.LabelEditHost()
     }
 }
 

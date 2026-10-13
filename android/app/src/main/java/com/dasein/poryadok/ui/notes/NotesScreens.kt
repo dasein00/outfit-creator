@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.notes
 
 import androidx.activity.compose.BackHandler
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.GlyphRow
 import com.dasein.poryadok.ui.common.Glyph
@@ -54,7 +55,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -136,7 +137,7 @@ fun NotesScreen(nav: NavHostController) {
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
             if (searching) OutlinedTextField(
-                value = query, onValueChange = { query = it }, placeholder = { Text("Искать в заметках…") },
+                value = query, onValueChange = { query = it }, placeholder = { Text(btnLabel("Искать в заметках…")) },
                 singleLine = true, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), shape = RoundedCornerShape(14.dp),
             )
             if (shown.isEmpty()) Empty(Ic.notebook, if (query.isBlank()) "Заметок нет" else "Ничего не нашлось", "Мысли, списки покупок, идеи — всё сюда.")
@@ -148,11 +149,11 @@ fun NotesScreen(nav: NavHostController) {
             ) {
                 val pinned = shown.filter { it.pinned }
                 if (pinned.isNotEmpty()) item(span = StaggeredGridItemSpan.FullLine) {
-                    Text("ЗАКРЕПЛЁННЫЕ", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(4.dp))
+                    Text(btnLabel("ЗАКРЕПЛЁННЫЕ"), fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(4.dp))
                 }
                 items(pinned, key = { it.id }) { n -> NoteCard(n) { nav.navigate(Routes.note(n.id)) } }
                 if (pinned.isNotEmpty()) item(span = StaggeredGridItemSpan.FullLine) {
-                    Text("ОСТАЛЬНЫЕ", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(4.dp))
+                    Text(btnLabel("ОСТАЛЬНЫЕ"), fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(4.dp))
                 }
                 items(shown.filter { !it.pinned }, key = { it.id }) { n -> NoteCard(n) { nav.navigate(Routes.note(n.id)) } }
             }
@@ -235,7 +236,7 @@ fun NoteEditScreen(nav: NavHostController, id: Long) {
             Modifier.padding(pad).fillMaxSize().background(noteColor(n.color)).imePadding().verticalScroll(rememberScrollState())
         ) {
             TextField(
-                n.title, { n = n.copy(title = it) }, placeholder = { Text("Заголовок") },
+                n.title, { n = n.copy(title = it) }, placeholder = { Text(btnLabel("Заголовок")) },
                 textStyle = MaterialTheme.typography.titleLarge, colors = fieldColors, modifier = Modifier.fillMaxWidth(),
             )
             if (n.checklist) {
@@ -261,16 +262,16 @@ fun NoteEditScreen(nav: NavHostController, id: Long) {
                     }
                 }
                 TextField(
-                    newItem, { newItem = it }, placeholder = { Text("+ Пункт") }, singleLine = true, colors = fieldColors,
+                    newItem, { newItem = it }, placeholder = { Text(btnLabel("+ Пункт")) }, singleLine = true, colors = fieldColors,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = KeyboardActions(onDone = { add() }),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 if (items.any { it.first }) TextButton(onClick = { n = n.copy(body = formatChecklist(items.filter { !it.first })) }, modifier = Modifier.padding(start = 4.dp)) {
-                    Text("Убрать отмеченные")
+                    Text(btnLabel("Убрать отмеченные"))
                 }
             } else {
                 TextField(
-                    n.body, { n = n.copy(body = it) }, placeholder = { Text("Заметка…") },
+                    n.body, { n = n.copy(body = it) }, placeholder = { Text(btnLabel("Заметка…")) },
                     colors = fieldColors, modifier = Modifier.fillMaxWidth(), minLines = 12,
                 )
             }
@@ -344,7 +345,7 @@ fun TopsScreen(nav: NavHostController, embedded: Boolean = false) {
             }
             item { ReadyTops(nav, media, lists) }
             if (lists.isNotEmpty()) item {
-                Text("Новый топ по идее", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp))
+                Text(btnLabel("Новый топ по идее"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 10.dp)) {
                     TOP_IDEAS.filter { (_, t) -> lists.none { it.title == t } }.forEach { (e, t) ->
                         Pill(t, false, glyph = e) { io { Graph.dao.upsertTopList(TopList(title = t, emoji = e, sort = lists.size)) } }
@@ -377,9 +378,9 @@ private fun TopListDialog(l: TopList, onDismiss: () -> Unit) {
             TextButton(onClick = {
                 if (title.isNotBlank()) io { Graph.dao.upsertTopList(l.copy(title = title.trim(), emoji = emoji)) }
                 onDismiss()
-            }) { Text("Сохранить") }
+            }) { Text(btnLabel("Сохранить")) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
 }
 
@@ -439,7 +440,7 @@ fun TopScreen(nav: NavHostController, id: Long) {
         LazyColumn(Modifier.padding(pad).imePadding(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 40.dp)) {
             item {
                 OutlinedTextField(
-                    newText, { newText = it }, placeholder = { Text("Добавить в топ…") }, singleLine = true,
+                    newText, { newText = it }, placeholder = { Text(btnLabel("Добавить в топ…")) }, singleLine = true,
                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = KeyboardActions(onDone = { add() }),
                     trailingIcon = { IconButton(onClick = { add() }) { Icon(Icons.Default.Add, "Добавить") } },
@@ -494,7 +495,7 @@ fun TopScreen(nav: NavHostController, id: Long) {
             if (entries.count { it.rating > 0 } >= 2) item {
                 TextButton(onClick = {
                     io { Graph.dao.upsertTopItems(entries.sortedByDescending { it.rating }.mapIndexed { k, e -> e.copy(sort = k) }) }
-                }) { Text("Упорядочить по оценке") }
+                }) { Text(btnLabel("Упорядочить по оценке")) }
             }
         }
     }
@@ -506,7 +507,7 @@ fun TopScreen(nav: NavHostController, id: Long) {
         val m = linked(r)
         AlertDialog(
             onDismissRequest = { randomPick = null },
-            title = { Text("Случайный выбор") },
+            title = { Text(btnLabel("Случайный выбор")) },
             text = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     m?.let { com.dasein.poryadok.ui.media.Poster(it, 70.dp); HGapSmall() }
@@ -518,11 +519,11 @@ fun TopScreen(nav: NavHostController, id: Long) {
             },
             confirmButton = {
                 Row {
-                    TextButton(onClick = { randomPick = (entries - r).randomOrNull() ?: r }) { Text("Другой") }
-                    if (m != null) TextButton(onClick = { randomPick = null; nav.navigate(Routes.media(m.id, m.kind)) }) { Text("Открыть") }
+                    TextButton(onClick = { randomPick = (entries - r).randomOrNull() ?: r }) { Text(btnLabel("Другой")) }
+                    if (m != null) TextButton(onClick = { randomPick = null; nav.navigate(Routes.media(m.id, m.kind)) }) { Text(btnLabel("Открыть")) }
                 }
             },
-            dismissButton = { TextButton(onClick = { randomPick = null }) { Text("Закрыть") } },
+            dismissButton = { TextButton(onClick = { randomPick = null }) { Text(btnLabel("Закрыть")) } },
         )
     }
     edit?.let { it0 ->
@@ -532,7 +533,7 @@ fun TopScreen(nav: NavHostController, id: Long) {
         var rating by remember(it0) { mutableStateOf(it0.rating) }
         AlertDialog(
             onDismissRequest = { edit = null },
-            title = { Text("Пункт") },
+            title = { Text(btnLabel("Пункт")) },
             text = {
                 Column {
                     TextInput(title, { title = it }, "Название")
@@ -555,12 +556,12 @@ fun TopScreen(nav: NavHostController, id: Long) {
                     val p = place.toIntOrNull()
                     if (p != null && p != entries.indexOf(it0) + 1) moveTo(updated, p)
                     edit = null
-                }) { Text("Сохранить") }
+                }) { Text(btnLabel("Сохранить")) }
             },
             dismissButton = {
                 Row {
-                    TextButton(onClick = { io { Graph.dao.deleteTopItem(it0) }; edit = null }) { Text("Удалить", color = extra.danger) }
-                    TextButton(onClick = { edit = null }) { Text("Отмена") }
+                    TextButton(onClick = { io { Graph.dao.deleteTopItem(it0) }; edit = null }) { Text(btnLabel("Удалить"), color = extra.danger) }
+                    TextButton(onClick = { edit = null }) { Text(btnLabel("Отмена")) }
                 }
             },
         )

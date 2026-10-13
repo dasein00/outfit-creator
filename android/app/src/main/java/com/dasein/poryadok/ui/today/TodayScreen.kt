@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.today
 
 import com.dasein.poryadok.ui.common.FitText
+import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.background
 import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.MoodFace
@@ -36,7 +37,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -142,7 +143,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
             ExtendedFloatingActionButton(
                 onClick = { quickAdd = true },
                 icon = { Icon(Icons.Default.Add, null) },
-                text = { Text("Задача") },
+                text = { Text(btnLabel("Задача")) },
                 containerColor = MaterialTheme.colorScheme.primary,
             )
         },
@@ -328,7 +329,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                         item {
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.wellbeing(2)) }) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) { Glyph(Glyphs.WATER, 18.dp, badge = false); Text("  Вода", fontSize = 13.sp, color = extra.dim) }
+                                    Row(verticalAlignment = Alignment.CenterVertically) { Glyph(Glyphs.WATER, 18.dp, badge = false); Text(btnLabel("  Вода"), fontSize = 13.sp, color = extra.dim) }
                                     val ml = water?.waterMl ?: 0
                                     Text("$ml / $waterGoal мл", style = MaterialTheme.typography.titleMedium)
                                     Gap(6.dp)
@@ -363,11 +364,11 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                                 Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.recipes(1)) }) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Glyph("food/05", 18.dp, badge = false)
-                                        Text("  Меню на сегодня", fontSize = 13.sp, color = extra.dim)
+                                        Text(btnLabel("  Меню на сегодня"), fontSize = 13.sp, color = extra.dim)
                                     }
                                     if (todayPlan.isEmpty()) {
-                                        Text("Не составлено", style = MaterialTheme.typography.titleMedium)
-                                        Text("Подобрать блюда →", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                                        Text(btnLabel("Не составлено"), style = MaterialTheme.typography.titleMedium)
+                                        Text(btnLabel("Подобрать блюда →"), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
                                     } else {
                                         Text("${todayPlan.sumOf { it.kcal * it.servings }.roundToInt()} ккал", style = MaterialTheme.typography.titleMedium)
                                         Text(
@@ -431,8 +432,8 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
             }
             item {
                 Gap(14.dp)
-                androidx.compose.material3.OutlinedButton(onClick = { nav.navigate(HOME_EDIT) }, modifier = Modifier.fillMaxWidth()) {
-                    Glyph("ui:sliders", 18.dp, badge = false); Text("  Настроить главное")
+                com.dasein.poryadok.ui.common.OutlinedButton(onClick = { nav.navigate(HOME_EDIT) }, modifier = Modifier.fillMaxWidth()) {
+                    Glyph("ui:sliders", 18.dp, badge = false); Text(btnLabel("  Настроить главное"))
                 }
             }
             item { HowTo("today") }

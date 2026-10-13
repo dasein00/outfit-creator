@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.recipes
 
 import android.content.Intent
+import com.dasein.poryadok.ui.common.btnLabel
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -13,9 +14,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.OutlinedButton
+import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -105,12 +106,12 @@ fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolea
                     TextButton(onClick = {
                         runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(v))) }
                             .onFailure { Toast.makeText(ctx, "Нет приложения, чтобы открыть ссылку", Toast.LENGTH_SHORT).show() }
-                    }) { Text("Смотреть") }
+                    }) { Text(btnLabel("Смотреть")) }
                 }
             } else if (File(v).exists()) {
                 LocalVideo(v, Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(12.dp)).background(Color.Black))
             } else {
-                Text("Файл видео не найден", color = extra.dim)
+                Text(btnLabel("Файл видео не найден"), color = extra.dim)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val size = if (RecipeVideos.isLink(v)) 0L else File(v).length()
@@ -126,14 +127,14 @@ fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolea
                             .forEach { r -> Graph.extra.setVideos(r.id, RecipeVideos.list(r).map { x -> if (x == v) new else x }.joinToString("\n")) }
                     }
                 }
-                TextButton(onClick = { remove = v }) { Text("Убрать", color = extra.danger) }
+                TextButton(onClick = { remove = v }) { Text(btnLabel("Убрать"), color = extra.danger) }
             }
         }
     }
     Row {
         Column(Modifier.weight(1f)) {
             com.dasein.poryadok.ui.common.VideoAddButtons("recipes/video") { path -> save(videos + path) }
-            OutlinedButton(onClick = { addLink = true }, Modifier.fillMaxWidth()) { Text("+ Ссылка на видео (YouTube, VK, Rutube)") }
+            OutlinedButton(onClick = { addLink = true }, Modifier.fillMaxWidth()) { Text(btnLabel("+ Ссылка на видео (YouTube, VK, Rutube)")) }
         }
     }
 
@@ -142,7 +143,7 @@ fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolea
         val url = RecipeVideos.normalizeLink(text)
         AlertDialog(
             onDismissRequest = { addLink = false },
-            title = { Text("Ссылка на видео") },
+            title = { Text(btnLabel("Ссылка на видео")) },
             text = {
                 Column {
                     TextInput(text, { text = it }, "https://…")
@@ -151,9 +152,9 @@ fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolea
                 }
             },
             confirmButton = {
-                TextButton(enabled = url != null, onClick = { url?.let { save(videos + it) }; addLink = false }) { Text("Добавить") }
+                TextButton(enabled = url != null, onClick = { url?.let { save(videos + it) }; addLink = false }) { Text(btnLabel("Добавить")) }
             },
-            dismissButton = { TextButton(onClick = { addLink = false }) { Text("Отмена") } },
+            dismissButton = { TextButton(onClick = { addLink = false }) { Text(btnLabel("Отмена")) } },
         )
     }
     remove?.let { v ->

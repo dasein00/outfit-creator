@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.more
 
 import com.dasein.poryadok.ui.common.Hint
+import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.clickable
 import com.dasein.poryadok.ui.common.Glyph
@@ -20,7 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -167,14 +168,14 @@ fun WheelScreen(nav: NavHostController) {
             Button(onClick = {
                 val scores = values.joinToString(",") { it.toInt().toString() }
                 io { Graph.dao.upsertWheel(BalanceWheel(day = Dates.today(), scores = scores)) }
-            }, modifier = Modifier.fillMaxWidth()) { Text("Сохранить оценку") }
+            }, modifier = Modifier.fillMaxWidth()) { Text(btnLabel("Сохранить оценку")) }
             if (wheels.isNotEmpty()) {
                 SectionTitle("История")
                 wheels.take(12).forEach { w ->
                     val s = w.scores.split(",").mapNotNull { it.toIntOrNull() }
                     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                         Text(Dates.full(w.day), Modifier.weight(1f), fontSize = 13.sp)
-                        Text("в среднем %.1f".format(s.average()), fontSize = 13.sp, color = extra.dim)
+                        Text(btnLabel("в среднем %.1f").format(s.average()), fontSize = 13.sp, color = extra.dim)
                     }
                 }
             }
@@ -219,12 +220,12 @@ fun ReviewScreen(nav: NavHostController, settings: Settings) {
         LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 40.dp)) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("‹", fontSize = 28.sp, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { offset++ }.padding(horizontal = 14.dp))
+                    Text(btnLabel("‹"), fontSize = 28.sp, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { offset++ }.padding(horizontal = 14.dp))
                     Text(
                         "${Dates.short(start)} — ${Dates.short(end)}", Modifier.weight(1f),
                         style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     )
-                    Text("›", fontSize = 28.sp, color = if (offset > 0) MaterialTheme.colorScheme.onSurface else extra.line,
+                    Text(btnLabel("›"), fontSize = 28.sp, color = if (offset > 0) MaterialTheme.colorScheme.onSurface else extra.line,
                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(enabled = offset > 0) { offset-- }.padding(horizontal = 14.dp))
                 }
                 Gap()
@@ -239,8 +240,8 @@ fun ReviewScreen(nav: NavHostController, settings: Settings) {
                 }
                 SectionTitle("Деньги")
                 Tile {
-                    Row { Text("Расходы", Modifier.weight(1f)); Text(Money.format(spent, settings.currency), fontWeight = FontWeight.SemiBold) }
-                    Row { Text("Доходы", Modifier.weight(1f)); Text(Money.format(income, settings.currency), color = extra.ok) }
+                    Row { Text(btnLabel("Расходы"), Modifier.weight(1f)); Text(Money.format(spent, settings.currency), fontWeight = FontWeight.SemiBold) }
+                    Row { Text(btnLabel("Доходы"), Modifier.weight(1f)); Text(Money.format(income, settings.currency), color = extra.ok) }
                     if (spentPrev > 0) {
                         val d = ((spent - spentPrev) / spentPrev * 100).toInt()
                         Text(
@@ -256,7 +257,7 @@ fun ReviewScreen(nav: NavHostController, settings: Settings) {
                         Text("Сон: в среднем ${avg / 60} ч ${avg % 60} мин")
                     }
                     if (wStart != null && wEnd != null) Text("Вес: ${"%.1f".format(wEnd)} кг (${if (wEnd - wStart >= 0) "+" else ""}${"%.1f".format(wEnd - wStart)})")
-                    if (weekSleep.isEmpty() && wEnd == null) Text("Записей о самочувствии нет", color = extra.dim)
+                    if (weekSleep.isEmpty() && wEnd == null) Text(btnLabel("Записей о самочувствии нет"), color = extra.dim)
                 }
                 SectionTitle("Привычки")
             }
@@ -276,7 +277,7 @@ fun ReviewScreen(nav: NavHostController, settings: Settings) {
             }
             item {
                 SectionTitle("Сделано за неделю")
-                if (doneTasks.isEmpty()) Text("Пока пусто", color = extra.dim)
+                if (doneTasks.isEmpty()) Text(btnLabel("Пока пусто"), color = extra.dim)
                 doneTasks.take(20).forEach { Text("✓ ${it.title}", modifier = Modifier.padding(vertical = 2.dp)) }
             }
             item { HowTo("review") }
@@ -301,11 +302,11 @@ fun SearchScreen(nav: NavHostController) {
     Screen(title = "Поиск", onBack = { nav.popBackStack() }) { pad ->
         Column(Modifier.padding(pad).padding(horizontal = 12.dp)) {
             OutlinedTextField(
-                q, { q = it }, placeholder = { Text("Задачи, заметки, события, операции…") }, singleLine = true,
+                q, { q = it }, placeholder = { Text(btnLabel("Задачи, заметки, события, операции…")) }, singleLine = true,
                 modifier = Modifier.fillMaxWidth().focusRequester(focus), shape = RoundedCornerShape(14.dp),
             )
             if (q.length < 2) {
-                Text("Введите хотя бы 2 символа", color = extra.dim, modifier = Modifier.padding(12.dp))
+                Text(btnLabel("Введите хотя бы 2 символа"), color = extra.dim, modifier = Modifier.padding(12.dp))
                 return@Screen
             }
             fun String.hit() = contains(q, ignoreCase = true)
@@ -318,7 +319,7 @@ fun SearchScreen(nav: NavHostController) {
                 txns.filter { it.note.hit() }.take(20).forEach { add(Triple("ui:wallet|" + it.note, Dates.label(it.day) + " · " + it.amount.toInt(), Routes.txn(it.id))) }
                 tops.filter { it.title.hit() || it.note.hit() }.forEach { add(Triple("ui:trophy|" + it.title, "в топе", Routes.top(it.listId))) }
             }
-            if (results.isEmpty()) Text("Ничего не найдено", color = extra.dim, modifier = Modifier.padding(12.dp))
+            if (results.isEmpty()) Text(btnLabel("Ничего не найдено"), color = extra.dim, modifier = Modifier.padding(12.dp))
             LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
                 items(results) { (title, sub, route) ->
                     Row(
