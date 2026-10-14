@@ -139,6 +139,20 @@
     main.scrollTop = sc;
   };
   App.refresh = () => App.render(true);
+  /* Мягкая перерисовка для фоновых обновлений (погода, шаги, банк, синхронизации).
+     Не трогает экран, пока пользователь листает или касается его, пока открыто окно, и склеивает
+     несколько вызовов в один. Перерисовывает только экраны, где эти данные видны. */
+  let lastTouch = 0, bgT = null;
+  ["touchstart", "touchmove", "wheel", "scroll", "pointerdown"].forEach((ev) => document.addEventListener(ev, () => { lastTouch = Date.now(); }, { passive: true, capture: true }));
+  const BG_VIEWS = /^(today|health|money|summary|stats|habits|tasks|calendar|plan)\b/;
+  App.bgRefresh = () => {
+    clearTimeout(bgT);
+    bgT = setTimeout(function tryNow() {
+      const busy = Date.now() - lastTouch < 1200 || document.querySelector(".sheet-wrap") || (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName));
+      if (busy) { bgT = setTimeout(tryNow, 800); return; }
+      if (BG_VIEWS.test(App.route().name)) App.render(true);
+    }, 300);
+  };
   window.__openRoute = (route) => { if (route) App.go(route); };
   App.current = () => current;
   window.addEventListener("hashchange", () => { App.closeSheet(true); App.render(); });

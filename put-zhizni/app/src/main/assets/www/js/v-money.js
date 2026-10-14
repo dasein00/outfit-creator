@@ -330,7 +330,7 @@
     if (added.length) {
       A.upsert("importLog", { at: new Date().toISOString(), source: "Сбербанк (уведомления и SMS)", count: added.length, txIds: added.map((t) => t.id), total: sum(added.filter((t) => t.kind === "out").map((t) => t.amt)) });
       A.toast("Из Сбербанка добавлено операций: " + added.length);
-      A.refresh();
+      if (manual) A.refresh(); else A.bgRefresh();
     } else if (manual) A.toast(list.length ? "Новых операций нет — всё уже в финансах" : "Очередь пуста: новые операции появятся после уведомлений банка");
     A.save();
     return added.length;

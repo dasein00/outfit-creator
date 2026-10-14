@@ -20,6 +20,8 @@
   const saveCfg = (c) => ls.set(CFG, JSON.stringify(c));
 
   /* ---------- список бесплатных моделей ---------- */
+  const PREF = [/deepseek/, /llama-3\.3|llama-4/, /gemini/, /qwen/, /mistral/, /gemma/];
+  const pri = (id) => { const i = PREF.findIndex((r) => r.test(id)); return i < 0 ? PREF.length : i; };
   ai.models = async (force) => {
     try {
       const c = JSON.parse(ls.get(MODELS) || "null");
@@ -30,7 +32,7 @@
     const j = await r.json();
     const list = (j.data || []).filter((m) => /:free$/.test(m.id) || (m.pricing && +m.pricing.prompt === 0 && +m.pricing.completion === 0 && !/^openrouter\//.test(m.id)))
       .map((m) => ({ id: m.id, name: m.name || m.id, ctx: m.context_length || 0, vision: ((m.architecture && (m.architecture.input_modalities || [])) || []).includes("image") || /image/.test((m.architecture && m.architecture.modality) || "") }))
-      .sort((a, b) => b.ctx - a.ctx);
+      .sort((a, b) => pri(a.id) - pri(b.id) || b.ctx - a.ctx);
     ls.set(MODELS, JSON.stringify({ t: Date.now(), list }));
     return list;
   };
@@ -38,18 +40,38 @@
     const c = ai.cfg(); let list = [];
     try { list = (await ai.models()).filter((m) => !vision || m.vision).map((m) => m.id); } catch (e) {}
     const pref = vision ? c.vmodel : c.model;
-    const out = [pref].concat(list.slice(0, 6), vision ? FALLBACK_VISION : FALLBACK_TEXT).filter(Boolean);
+    const out = [pref].concat(list.slice(0, 10), vision ? FALLBACK_VISION : FALLBACK_TEXT).filter(Boolean);
     return [...new Set(out)];
   };
 
   /* ---------- запрос ---------- */
   // messages — в формате OpenAI; opts: {vision, system, temperature, max}
+  // разбор ошибок OpenRouter в понятные причины
+  const kindOf = (st, msg) => {
+    const m = String(msg || "").toLowerCase();
+    if (st === 401 || /user not found|invalid api key|no auth/.test(m)) return "key";
+    if (/data policy|privacy|publication|training/.test(m)) return "privacy";
+    if (st === 402 || /credit|insufficient|payment/.test(m)) return "credits";
+    if (st === 429 || /rate.?limit|too many|temporarily/.test(m)) return "rate";
+    if (st === 404 || /no endpoints|not a valid model|not found/.test(m)) return "model";
+    if (/failed to fetch|network|load failed/.test(m)) return "network";
+    return "other";
+  };
+  ai.HELP = {
+    key: "Ключ не принят. Скопируйте его заново целиком (начинается с sk-or-v1-) и нажмите «Сохранить».",
+    privacy: "В вашем аккаунте OpenRouter запрещены бесплатные модели. Откройте openrouter.ai → Settings → Privacy и включите переключатели для бесплатных моделей (Free model publication / «Enable free endpoints…»), затем нажмите «Проверить» ещё раз.",
+    credits: "OpenRouter просит пополнить баланс для этой модели — выберите другую модель (с пометкой free) или оставьте «Автовыбор».",
+    rate: "Бесплатные модели сейчас перегружены или исчерпан дневной лимит бесплатных запросов (около 50 в сутки для новых аккаунтов). Попробуйте через несколько минут.",
+    model: "Выбранная модель больше не доступна бесплатно. Нажмите «Обновить список моделей» и оставьте «Автовыбор».",
+    network: "Нет связи с openrouter.ai: проверьте интернет, VPN или блокировки сайта у вашего провайдера.",
+    other: "Модели не ответили. Попробуйте позже или выберите другую модель."
+  };
   ai.chat = async (messages, opts = {}) => {
-    if (!ai.ready()) throw new Error("Нет ключа OpenRouter — добавьте его в Настройки → ИИ-помощник");
+    if (!ai.ready()) throw Object.assign(new Error("Нет ключа OpenRouter — добавьте его в Настройки → ИИ-помощник"), { kind: "key" });
     const msgs = (opts.system ? [{ role: "system", content: opts.system }] : []).concat(messages);
     const models = await candidates(!!opts.vision);
-    let last = "";
-    for (const model of models.slice(0, 5)) {
+    const tried = [];
+    for (const model of models.slice(0, opts.tries || 8)) {
       try {
         const r = await fetch(API + "/chat/completions", {
           method: "POST",
@@ -57,16 +79,26 @@
           body: JSON.stringify({ model, messages: msgs, temperature: opts.temperature ?? 0.7, max_tokens: opts.max || 1800 })
         });
         const j = await r.json().catch(() => ({}));
-        if (r.status === 401) throw Object.assign(new Error("Ключ не принят OpenRouter — проверьте, что он скопирован полностью"), { fatal: true });
-        if (!r.ok || j.error) { last = (j.error && j.error.message) || "HTTP " + r.status; continue; }
+        const err = j.error ? (j.error.message || "") + (j.error.metadata && j.error.metadata.raw ? " — " + String(j.error.metadata.raw).slice(0, 160) : "") : "";
+        if (!r.ok || j.error) {
+          const k = kindOf(r.status, err || "HTTP " + r.status);
+          tried.push({ model, status: r.status, msg: err || "HTTP " + r.status, kind: k });
+          if (k === "key" || k === "privacy") break; // другие модели не помогут
+          continue;
+        }
         const text = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
-        if (!text) { last = "пустой ответ"; continue; }
-        ai.lastModel = model;
+        if (!text) { tried.push({ model, status: r.status, msg: "пустой ответ", kind: "other" }); continue; }
+        ai.lastModel = model; ai.lastTried = tried;
         return String(text).trim();
-      } catch (e) { if (e.fatal) throw e; last = e.message; }
+      } catch (e) { tried.push({ model, status: 0, msg: e.message, kind: kindOf(0, e.message) }); if (tried.length >= 2 && tried.every((t) => t.kind === "network")) break; }
     }
-    throw new Error("Бесплатные модели сейчас не ответили (" + last + "). Попробуйте через минуту — у бесплатного тарифа есть лимит запросов в минуту и в день.");
+    ai.lastTried = tried;
+    const order = ["key", "privacy", "network", "credits", "rate", "model", "other"];
+    const kind = order.find((k) => tried.some((t) => t.kind === k)) || "other";
+    throw Object.assign(new Error(ai.HELP[kind]), { kind, tried });
   };
+  // ошибка ИИ для показа на любом экране: причина + что нажать
+  ai.errHtml = (e) => '<p class="warn">' + esc(e.message) + "</p>" + (e.kind === "privacy" ? '<a class="btn sm primary" href="https://openrouter.ai/settings/privacy">Настройки приватности OpenRouter</a> ' : "") + '<a class="btn sm ghost" href="#/settings/ai">Проверить ключ</a>';
   ai.ask = (prompt, opts = {}) => ai.chat([{ role: "user", content: prompt }], opts);
   // фото → data URL до 1280 px по длинной стороне (меньше трафика и лимитов)
   ai.shrink = (file, max = 1280) => new Promise((res, rej) => {
@@ -108,8 +140,32 @@
     el.querySelector("#aiM").addEventListener("change", (e) => { const c = ai.cfg(); c.model = e.target.value; saveCfg(c); });
     el.querySelector("#aiV").addEventListener("change", (e) => { const c = ai.cfg(); c.vmodel = e.target.value; saveCfg(c); });
     A.bind(el, {
-      aiSave() { const v = el.querySelector("#aiKey").value.trim(); if (!/^sk-or-/.test(v)) { A.toast("Ключ должен начинаться с sk-or-"); return; } ls.set(KEY, v); st.textContent = "Ключ сохранён на этом телефоне."; A.toast("Ключ сохранён"); },
-      async aiTest() { st.textContent = "Проверяю…"; try { const t = await ai.ask("Ответь одним словом по-русски: работает?", { max: 20, temperature: 0 }); st.textContent = "Работает ✓ Ответ модели (" + ai.lastModel + "): " + t; } catch (e) { st.textContent = e.message; } },
+      aiSave() { const v = el.querySelector("#aiKey").value.replace(/\s+/g, ""); if (!/^sk-or-/.test(v)) { A.toast("Ключ должен начинаться с sk-or-"); return; } el.querySelector("#aiKey").value = v; ls.set(KEY, v); st.textContent = "Ключ сохранён на этом телефоне."; A.toast("Ключ сохранён"); },
+      async aiTest() {
+        // ключ из поля сохраняем сразу — частая ошибка: вставили, но не нажали «Сохранить»
+        const v = el.querySelector("#aiKey").value.replace(/\s+/g, "");
+        if (/^sk-or-/.test(v) && v !== ai.key()) { ls.set(KEY, v); el.querySelector("#aiKey").value = v; }
+        if (!ai.ready()) { st.innerHTML = "Вставьте ключ, начинающийся с <b>sk-or-</b>."; return; }
+        st.innerHTML = "Проверяю ключ…";
+        let keyInfo = "";
+        try {
+          let r = await fetch(API + "/key", { headers: { Authorization: "Bearer " + ai.key() } });
+          if (r.status === 404) r = await fetch(API + "/auth/key", { headers: { Authorization: "Bearer " + ai.key() } });
+          if (r.status === 401) { st.innerHTML = '<span style="color:var(--bad)">' + ai.HELP.key + "</span>"; return; }
+          const j = await r.json().catch(() => ({})), d = j.data || {};
+          keyInfo = r.ok ? "Ключ принят ✓" + (d.is_free_tier ? " (бесплатный тариф)" : "") + (d.limit_remaining != null ? ", остаток лимита: " + d.limit_remaining : "") : "Ключ: ответ " + r.status;
+        } catch (e) { st.innerHTML = '<span style="color:var(--bad)">' + ai.HELP.network + "</span><br><small>" + esc(e.message) + "</small>"; return; }
+        st.innerHTML = esc(keyInfo) + "<br>Проверяю модели…";
+        try {
+          const t = await ai.ask("Ответь одним словом по-русски: работает?", { max: 20, temperature: 0 });
+          st.innerHTML = esc(keyInfo) + '<br><b style="color:var(--good)">Работает ✓</b> Модель: ' + esc(ai.lastModel) + " — «" + esc(t) + "»";
+        } catch (e) {
+          const rows = (e.tried || []).map((x) => "<li><code>" + esc(x.model) + "</code>: " + esc(x.msg).slice(0, 220) + "</li>").join("");
+          st.innerHTML = esc(keyInfo) + '<br><b style="color:var(--bad)">' + esc(e.message) + "</b>" +
+            (e.kind === "privacy" ? '<br><a class="btn sm primary" style="margin-top:6px" href="https://openrouter.ai/settings/privacy">Открыть настройки приватности OpenRouter</a>' : "") +
+            (rows ? '<details style="margin-top:6px"><summary>Подробно по моделям</summary><ul style="padding-left:18px">' + rows + "</ul></details>" : "");
+        }
+      },
       aiDel() { A.confirm("Удалить ключ с телефона?", () => { ls.set(KEY, null); A.refresh(); }); },
       aiReload() { fill(true); }
     });
@@ -138,7 +194,7 @@
           i.value = ""; const tip = log.querySelector(".card.tint"); if (tip) tip.remove(); log.insertAdjacentHTML("beforeend", '<div class="ai-msg user">' + esc(q) + '</div><div class="ai-msg assistant" id="aiWait"><span class="muted">Думаю…</span></div>');
           log.lastElementChild.scrollIntoView({ block: "end" });
           try { const a = await ai.chat(H.slice(-12), { system: SYS }); H.push({ role: "assistant", content: a }); ls.set(HKEY, JSON.stringify(H.slice(-30))); el.querySelector("#aiWait").outerHTML = '<div class="ai-msg assistant">' + ai.fmt(a) + "</div>"; }
-          catch (e) { el.querySelector("#aiWait").outerHTML = '<div class="ai-msg assistant warn">' + esc(e.message) + "</div>"; }
+          catch (e) { el.querySelector("#aiWait").outerHTML = '<div class="ai-msg assistant">' + ai.errHtml(e) + "</div>"; }
         },
         aiClear() { ls.set(HKEY, null); A.refresh(); }
       });

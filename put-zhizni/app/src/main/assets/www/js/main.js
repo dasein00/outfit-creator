@@ -75,13 +75,13 @@
     if (hiddenAt && Date.now() - hiddenAt > 60000) A.lock();
     hiddenAt = 0;
     daily();
-    A.refresh();
+    A.bgRefresh();
   };
   document.addEventListener("visibilitychange", () => { if (!A.native) { if (document.hidden) hiddenAt = Date.now(); else window.__onResume(); } });
 
   // Смена дня, пока приложение открыто.
   let lastDay = A.today();
-  setInterval(() => { if (A.today() !== lastDay) { lastDay = A.today(); daily(); A.refresh(); } }, 60000);
+  setInterval(() => { if (A.today() !== lastDay) { lastDay = A.today(); daily(); A.bgRefresh(); } }, 60000);
 
   /* ---------- старт ---------- */
   A.load();

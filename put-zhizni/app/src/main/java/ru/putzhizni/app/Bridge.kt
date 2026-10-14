@@ -107,7 +107,21 @@ class Bridge(private val act: MainActivity) {
 
     // ---------- Автоматическая резервная копия во внутренней памяти ----------
 
+    // Запись копии уходит в отдельный поток: интерфейс не ждёт диска. Если за время записи пришло
+    // несколько сохранений, пишется только последнее.
+    private val backupExec = java.util.concurrent.Executors.newSingleThreadExecutor()
+    @Volatile private var pendingBackup: String? = null
+
     @JavascriptInterface fun backup(json: String) {
+        pendingBackup = json
+        backupExec.execute {
+            val j = pendingBackup ?: return@execute
+            pendingBackup = null
+            writeBackup(j)
+        }
+    }
+
+    private fun writeBackup(json: String) {
         try {
             val dir = File(act.filesDir, "backup").apply { mkdirs() }
             val tmp = File(dir, "current.tmp")

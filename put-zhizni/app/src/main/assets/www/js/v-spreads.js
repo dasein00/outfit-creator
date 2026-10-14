@@ -180,7 +180,7 @@
                 '<img src="' + D.photo + '" style="width:100%;border-radius:12px;margin:6px 0">' + "</div>";
               el.querySelector('[data-a="dManual"]').click();
               const box = work(); box.insertAdjacentHTML("afterbegin", '<div class="card"><p class="small">Найдено карт: <b>' + got.length + "</b>. Расклад: <b>" + esc(spreadOf(D.deck, D.key, got.length).name) + "</b>. Ниже можно исправить распознавание.</p><img src=\"" + D.photo + "\" style=\"width:100%;border-radius:12px\" alt=\"Фото расклада\"></div>");
-            } catch (e) { work().innerHTML = '<div class="card"><p class="warn">' + esc(e.message) + "</p></div>"; }
+            } catch (e) { work().innerHTML = '<div class="card">' + (e.kind ? A.ai.errHtml(e) : '<p class="warn">' + esc(e.message) + "</p>") + "</div>"; }
           };
           i.click();
         },
@@ -232,7 +232,7 @@
         const sys = el.querySelector("#sSys").value, out = el.querySelector("#sAiOut");
         b.disabled = true; out.innerHTML = '<p class="muted">Толкую… бесплатной модели нужно 10–60 секунд.</p>';
         try { const t = await aiReading(s, sys); s.ai = t; s.sys = sys; A.upsert("spreads", s); out.innerHTML = A.ai.fmt(t) + '<p class="small muted">Модель: ' + esc(A.ai.lastModel || "") + "</p>"; }
-        catch (e) { out.innerHTML = '<p class="warn">' + esc(e.message) + "</p>"; }
+        catch (e) { out.innerHTML = A.ai.errHtml(e); }
         b.disabled = false;
       },
       sDel() { A.confirm("Удалить расклад?", () => { A.remove("spreads", s.id); A.go("spreads", true); }); }

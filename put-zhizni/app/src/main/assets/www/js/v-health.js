@@ -101,7 +101,7 @@
     Object.entries(o.sleep || {}).forEach(([d, v]) => { const day = A.day(d); if (!day.sleep || day.sleep.src === "hc") { day.sleep = Object.assign({ q: null }, day.sleep, { bed: v.bed, wake: v.wake, src: "hc" }); n++; } });
     (o.workouts || []).forEach((w) => { if (!A.col("workouts").some((x) => x.hcId === w.id)) { A.col("workouts").push({ id: A.uid(), hcId: w.id, date: w.date, type: w.type || "other", dur: w.dur, kcal: w.kcal || null, int: 5, sets: [], note: "Health Connect" + (w.title ? ": " + w.title : "") }); n++; } });
     A.db().profile.hcLast = new Date().toISOString();
-    A.save(); if (manual) A.toast("Синхронизировано записей: " + n); A.refresh();
+    A.save(); if (manual) { A.toast("Синхронизировано записей: " + n); A.refresh(); } else A.bgRefresh();
   };
   A.edit.steps = (d) => {
     const day = A.day(d);
@@ -178,10 +178,10 @@
       const w = await A.weatherProvider().fetch(p.lat, p.lon);
       day.weather = Object.assign(w, { src: "api", at: A.nowHM(), ts: Date.now() });
       p.lastWeather = day.weather;
-      A.save(); if (manual) A.toast("Погода обновлена"); A.refresh();
+      A.save(); if (manual) { A.toast("Погода обновлена"); A.refresh(); } else A.bgRefresh();
     } catch (e) {
       if (manual) A.toast("Нет связи. Показано последнее значение — можно ввести вручную.");
-      if (!day.weather && p.lastWeather) { day.weather = Object.assign({}, p.lastWeather, { src: "cache" }); A.save(); A.refresh(); }
+      if (!day.weather && p.lastWeather) { day.weather = Object.assign({}, p.lastWeather, { src: "cache" }); A.save(); A.bgRefresh(); }
     }
   };
 
@@ -194,7 +194,7 @@
     if (isFinite(n) && n >= 0) {
       const day = A.day(today());
       // Не затираем ручной ввод меньшим значением.
-      if (day.stepsSrc !== "manual" || n > (day.steps || 0)) { day.steps = n; day.stepsSrc = "sensor"; A.save(); A.refresh(); }
+      if (day.stepsSrc !== "manual" || n > (day.steps || 0)) { day.steps = n; day.stepsSrc = "sensor"; A.save(); A.bgRefresh(); }
       if (manual) A.toast("Шаги: " + n);
     } else if (manual) A.toast("Нет данных от датчика (нужно разрешение «Физическая активность»)");
   };
