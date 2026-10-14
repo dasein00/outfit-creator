@@ -7,6 +7,7 @@
 :root{
 --paper:#efe4cd; --paper2:#f7efdd; --ink:#241c15; --ink2:#4a3c2d;
 --cin:#9d2b23; --cin2:#c04a34; --gold:#a8853f; --jade:#3f6b57; --line:#c9b48a; --line2:#e0cfa8;
+--card2:#fffdf7; --mut:#9d8a6c; --soft:#f0ebdf;
 }
 body{font-family:"Songti SC","Noto Serif",Georgia,"Times New Roman",serif;
 background:
@@ -43,15 +44,15 @@ legend{font-size:12px;letter-spacing:.20em;color:var(--cin);padding:0 12px;text-
 legend .han{letter-spacing:.14em;margin-right:6px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px}
 label{display:block;font-size:11px;letter-spacing:.10em;color:var(--ink2);margin-bottom:6px;text-transform:uppercase}
-input,select{width:100%;padding:10px 11px;border:1px solid var(--line);background:#fffdf7;
+input,select{width:100%;padding:10px 11px;border:1px solid var(--line);background:var(--card2);
  font-family:inherit;font-size:15px;color:var(--ink);border-radius:0}
 input:focus,select:focus{outline:none;border-color:var(--cin);box-shadow:0 0 0 2px rgba(157,43,35,.13)}
-.hint{font-size:11px;color:#9d8a6c;margin-top:5px;font-style:italic}
+.hint{font-size:11px;color:var(--mut);margin-top:5px;font-style:italic}
 
 .btns{display:flex;gap:12px;margin:8px 0 28px;flex-wrap:wrap;align-items:center}
 button{padding:12px 30px;border:1px solid var(--cin);background:var(--cin);color:#fdf6e6;
  font-family:inherit;font-size:14px;letter-spacing:.05em;cursor:pointer;border-radius:0;transition:.15s}
-button:hover{background:#82211b;border-color:#82211b}
+button:hover{background:#82211b;border-color:var(--cin)}
 button.sec{background:transparent;color:var(--cin)}
 button.sec:hover{background:rgba(157,43,35,.08);color:var(--cin)}
 button.mini{padding:7px 15px;font-size:12px}
@@ -72,15 +73,15 @@ h2:first-child{margin-top:0}
 h3{font-size:15px;font-weight:normal;color:var(--cin);margin-bottom:9px;letter-spacing:.01em}
 
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:13px}
-.card{border:1px solid var(--line);padding:18px;background:#fffdf7;position:relative}
+.card{border:1px solid var(--line);padding:18px;background:var(--card2);position:relative}
 .card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--gold);opacity:.45}
-.card .lbl{font-size:10px;letter-spacing:.12em;color:#9d8a6c;margin-bottom:9px;text-transform:uppercase}
+.card .lbl{font-size:10px;letter-spacing:.12em;color:var(--mut);margin-bottom:9px;text-transform:uppercase}
 .card .val{font-size:36px;color:var(--cin);line-height:1;margin-bottom:5px}
-.card .raw{font-size:15px;color:#b6a17e;margin-bottom:6px}
+.card .raw{font-size:15px;color:var(--mut);margin-bottom:6px}
 .card .planet{font-size:11px;color:var(--ink2)}
-.card .calc{font-size:10px;color:#b6a17e;margin-top:8px;font-family:"Courier New",monospace}
+.card .calc{font-size:10px;color:var(--mut);margin-top:8px;font-family:"Courier New",monospace}
 
-table{width:100%;border-collapse:collapse;font-size:13px;background:#fffdf7;border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:13px;background:var(--card2);border:1px solid var(--line)}
 th{background:rgba(157,43,35,.09);padding:10px;text-align:left;font-size:10px;letter-spacing:.10em;
  color:var(--cin);font-weight:normal;border-bottom:1px solid var(--line);text-transform:uppercase}
 td{padding:9px 10px;border-bottom:1px solid var(--line2);vertical-align:top}
@@ -89,7 +90,7 @@ td.n{text-align:center;color:var(--cin);font-size:16px;width:46px}
 td.l{text-align:center;font-size:19px;width:50px}
 .grp{background:rgba(201,180,138,.18);font-size:11px;letter-spacing:.07em;color:var(--cin);text-transform:uppercase}
 
-.blk{border:1px solid var(--line);border-left:4px solid var(--cin);padding:18px 20px;margin-bottom:13px;background:#fffdf7}
+.blk{border:1px solid var(--line);border-left:4px solid var(--cin);padding:18px 20px;margin-bottom:13px;background:var(--card2)}
 .blk p{font-size:13.5px;margin-bottom:10px}
 .blk p:last-child{margin-bottom:0}
 .qual{display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:12px;margin-top:12px;padding-top:12px;border-top:1px dotted var(--line)}
@@ -98,16 +99,16 @@ td.l{text-align:center;font-size:19px;width:50px}
 .neg{color:var(--ink2)}
 
 .note{background:rgba(201,180,138,.16);padding:15px 19px;font-size:12.5px;font-style:italic;
- color:#5a4a34;border-left:3px solid var(--gold);margin-bottom:15px}
+ color:var(--ink2);border-left:3px solid var(--gold);margin-bottom:15px}
 .code-line{font-family:"Courier New",monospace;font-size:20px;letter-spacing:.22em;color:var(--cin);padding:7px 0}
-.harm{font-size:13px;padding:11px 15px;margin-top:9px;border:1px solid var(--line);background:#fffdf7}
+.harm{font-size:13px;padding:11px 15px;margin-top:9px;border:1px solid var(--line);background:var(--card2)}
 .meet{background:rgba(255,253,247,.9);border:1px solid var(--line);border-top:2px solid var(--gold);
  padding:14px 18px;margin:11px 0;font-size:13px}
 .meet b{color:var(--cin);font-weight:normal}
 
-footer{padding:26px 44px;border-top:3px double var(--cin);font-size:11px;color:#8c7a5c;
+footer{padding:26px 44px;border-top:3px double var(--cin);font-size:11px;color:var(--mut);
  background:rgba(201,180,138,.12);line-height:1.85}
-.empty{text-align:center;padding:40px 0;color:#9d8a6c;font-style:italic}
+.empty{text-align:center;padding:40px 0;color:var(--mut);font-style:italic}
 
 /* термины с пояснением */
 .term{border-bottom:1px dotted var(--cin);cursor:help;color:var(--ink)}
@@ -115,7 +116,7 @@ footer{padding:26px 44px;border-top:3px double var(--cin);font-size:11px;color:#
 
 /* участники */
 .prow{display:grid;grid-template-columns:1.2fr 1.1fr .8fr .8fr auto;gap:11px;margin-bottom:11px;align-items:end}
-.prow .del{background:transparent;border:1px solid var(--line);color:#9d8a6c;padding:10px 13px;font-size:13px}
+.prow .del{background:transparent;border:1px solid var(--line);color:var(--mut);padding:10px 13px;font-size:13px}
 .prow .del:hover{border-color:var(--cin);color:var(--cin);background:transparent}
 @media(max-width:760px){.prow{grid-template-columns:1fr 1fr}}
 
@@ -127,14 +128,14 @@ footer{padding:26px 44px;border-top:3px double var(--cin);font-size:11px;color:#
 .bg.b{color:var(--cin);border-color:var(--cin);background:rgba(157,43,35,.07)}
 .bg.n{color:var(--gold);border-color:var(--gold);background:rgba(168,133,63,.07)}
 .score{font-size:44px;color:var(--cin);line-height:1}
-.pcard{border:1px solid var(--line);background:#fffdf7;padding:20px;margin-bottom:16px;position:relative}
+.pcard{border:1px solid var(--line);background:var(--card2);padding:20px;margin-bottom:16px;position:relative}
 .pcard::after{content:"";position:absolute;top:8px;right:8px;width:14px;height:14px;
  border:1px solid var(--gold);opacity:.5;pointer-events:none}
 .pcard h3{padding-right:26px}
 .pill{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:10px 0}
 .pill div{border:1px solid var(--line2);text-align:center;padding:8px 4px;background:rgba(255,253,247,.7)}
 .pill .h{font-size:22px;line-height:1.25}
-.pill .s{font-size:10px;color:#9d8a6c}
+.pill .s{font-size:10px;color:var(--mut)}
 
 @media(max-width:640px){.body,header,footer{padding-left:22px;padding-right:22px}
  .qual{grid-template-columns:1fr}.seal{display:none}h1{font-size:25px}}
@@ -163,7 +164,7 @@ header .emblem{position:absolute;right:44px;top:30px}
 .cover-n{font-size:31px;margin:10px 0 4px;letter-spacing:.02em}
 .cover-b{font-size:14px;color:var(--ink2)}
 .cover-r{width:70px;height:1px;background:var(--gold);margin:20px auto}
-.cover-s{font-size:12px;color:#9d8a6c;font-style:italic}
+.cover-s{font-size:12px;color:var(--mut);font-style:italic}
 .cover-c{margin-top:22px;font-size:14px;color:var(--cin)}
 .cover-c span{font-size:11.5px;color:var(--ink2);font-style:italic}
 .toc{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px}
@@ -187,7 +188,7 @@ header .emblem{position:absolute;right:44px;top:30px}
 #printdoc{position:absolute;left:-99999px;top:0;width:210mm;background:#fff;z-index:-1}
 #printdoc .page{width:210mm;padding:15mm 16mm 19mm;box-sizing:border-box;background:#fff}
 #printdoc .ph,#printdoc .pf{display:flex;justify-content:space-between;font-size:9.5px;
- letter-spacing:.09em;color:#9d8a6c;text-transform:uppercase}
+ letter-spacing:.09em;color:var(--mut);text-transform:uppercase}
 #printdoc .ph{border-bottom:1px solid var(--line);padding-bottom:5px;margin-bottom:9mm}
 #printdoc .pf{border-top:1px solid var(--line);padding-top:5px;margin-top:8mm}
 .ptoc td{padding:7px 8px;font-size:12.5px}
@@ -213,10 +214,10 @@ header .emblem{position:absolute;right:44px;top:30px}
  .pblock{margin-bottom:0}
  .psec{break-after:avoid;page-break-after:avoid}
  .ph{display:flex;justify-content:space-between;font-size:9.5px;letter-spacing:.09em;
-  color:#9d8a6c;border-bottom:1px solid var(--line);padding-bottom:5px;margin-bottom:9mm;
+  color:var(--mut);border-bottom:1px solid var(--line);padding-bottom:5px;margin-bottom:9mm;
   text-transform:uppercase;flex:0 0 auto}
  .pf{display:flex;justify-content:space-between;font-size:9.5px;letter-spacing:.09em;
-  color:#9d8a6c;border-top:1px solid var(--line);padding-top:5px;margin-top:auto;
+  color:var(--mut);border-top:1px solid var(--line);padding-top:5px;margin-top:auto;
   position:absolute;left:16mm;right:16mm;bottom:11mm}
  .pf .pnum{color:var(--cin)}
  .pb{flex:1 1 auto;overflow:hidden}
@@ -242,20 +243,20 @@ header .emblem{position:absolute;right:44px;top:30px}
 
 /* ---- Матрица ---- */
 .mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;max-width:520px;margin:6px 0 4px}
-.mcell{border:1px solid var(--line);background:#fffdf7;padding:13px 10px;text-align:center;position:relative}
+.mcell{border:1px solid var(--line);background:var(--card2);padding:13px 10px;text-align:center;position:relative}
 .mcell.g{border-color:var(--jade);box-shadow:inset 0 2px 0 var(--jade)}
 .mcell.b{border-color:var(--cin);box-shadow:inset 0 2px 0 var(--cin)}
 .mcell.n{box-shadow:inset 0 2px 0 var(--gold)}
-.mcell .mk{position:absolute;top:5px;left:8px;font-size:10px;color:#b6a17e}
+.mcell .mk{position:absolute;top:5px;left:8px;font-size:10px;color:var(--mut)}
 .mcell .mv{font-size:26px;color:var(--cin);letter-spacing:.06em;line-height:1.2;margin-top:6px;min-height:32px}
 .mcell .mn{font-size:11px;color:var(--ink2);margin-top:3px}
-.mcell .ms{font-size:10px;letter-spacing:.08em;color:#9d8a6c;text-transform:uppercase;margin-top:5px}
+.mcell .ms{font-size:10px;letter-spacing:.08em;color:var(--mut);text-transform:uppercase;margin-top:5px}
 .mcell .me{font-size:10.5px;margin-top:2px}
 @media(max-width:560px){.mgrid{gap:6px}.mcell{padding:9px 5px}.mcell .mv{font-size:20px}}
 
 /* ---- Выбор разделов ---- */
 .clbar{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap}.clbar input{flex:1;min-width:160px}
-.clrow{border:1px solid var(--line);border-left:4px solid var(--gold);background:#fffdf7;padding:11px 14px;margin-bottom:9px}
+.clrow{border:1px solid var(--line);border-left:4px solid var(--gold);background:var(--card2);padding:11px 14px;margin-bottom:9px}
 .clrow.cur{box-shadow:0 0 0 2px rgba(157,43,35,.25)}
 .clhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.clhead b{font-weight:normal;font-size:16px}
 .clhead select{width:auto;margin-left:auto;padding:5px 8px;font-size:12.5px}
@@ -278,7 +279,7 @@ header .emblem{position:absolute;right:44px;top:30px}
 .picki{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink2);
  text-transform:none;letter-spacing:0;cursor:pointer;margin:0 0 3px;padding:2px 0}
 .picki:hover{color:var(--cin)}
-#pickwrap input[type=checkbox]{width:auto;margin:0;accent-color:#9d2b23;flex:0 0 auto}
+#pickwrap input[type=checkbox]{width:auto;margin:0;accent-color:var(--cin);flex:0 0 auto}
 .pickfoot{padding:10px 16px;border-top:1px solid var(--line2);font-size:12px;
  color:var(--ink2);background:rgba(201,180,138,.12)}
 .pickfoot b{color:var(--cin);font-weight:normal}
@@ -292,12 +293,12 @@ header .emblem{position:absolute;right:44px;top:30px}
 .qtopic{font-size:12px;color:var(--ink2)}
 
 /* ---- График жизни ---- */
-.lifewrap{border:1px solid var(--line);background:#fffdf7;padding:14px 10px;margin-bottom:14px;overflow-x:auto}
+.lifewrap{border:1px solid var(--line);background:var(--card2);padding:14px 10px;margin-bottom:14px;overflow-x:auto}
 .lifechart{width:100%;min-width:640px;height:auto;display:block}
 
 /* ---- События для ректификации ---- */
 .erow{display:grid;grid-template-columns:.7fr 1.6fr auto;gap:11px;margin-bottom:10px;align-items:end}
-.erow .del{background:transparent;border:1px solid var(--line);color:#9d8a6c;padding:10px 13px;font-size:13px}
+.erow .del{background:transparent;border:1px solid var(--line);color:var(--mut);padding:10px 13px;font-size:13px}
 .erow .del:hover{border-color:var(--cin);color:var(--cin)}
 @media(max-width:640px){.erow{grid-template-columns:1fr 1fr}}
 
@@ -320,11 +321,11 @@ body.nohz .hztip{display:none}
 .hzc{font-size:34px;line-height:1;color:var(--ink)}
 .hzc.g{color:var(--jade)}.hzc.b{color:var(--cin)}.hzc.self{color:var(--cin)}
 .hzn{font-size:14px;color:var(--ink)}
-.hzs{font-size:11.5px;color:#9d8a6c}
+.hzs{font-size:11.5px;color:var(--mut)}
 .hzrow{margin-bottom:5px}
 .hzrow b{color:var(--cin);font-weight:normal}
 .hzt{font-size:12px;color:var(--ink2);font-style:italic;margin:7px 0}
-.hzf{font-size:10.5px;color:#9d8a6c;border-top:1px dotted var(--line);padding-top:7px;margin-top:8px}
+.hzf{font-size:10.5px;color:var(--mut);border-top:1px dotted var(--line);padding-top:7px;margin-top:8px}
 .hb{display:inline-block;font-size:10px;letter-spacing:.05em;padding:2px 7px;border:1px solid;margin-right:5px}
 .hb.g{color:var(--jade);border-color:var(--jade)}
 .hb.b{color:var(--cin);border-color:var(--cin)}
@@ -336,22 +337,22 @@ body.nohz .hztip{display:none}
 /* ---- Режим чтения ---- */
 .rbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:18px;
  padding:10px 14px;border:1px solid var(--line);background:rgba(201,180,138,.12)}
-.rlab{font-size:10px;letter-spacing:.18em;color:#9d8a6c;text-transform:uppercase}
+.rlab{font-size:10px;letter-spacing:.18em;color:var(--mut);text-transform:uppercase}
 .rb{padding:6px 14px;font-size:12px;background:transparent;border:1px solid var(--line);color:var(--ink2);cursor:pointer}
 .rb:hover{border-color:var(--cin);color:var(--cin);background:transparent}
 .rb.on{background:var(--cin);border-color:var(--cin);color:#fdf6e6}
 .rsep{flex:1}
 .rchk{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink2);
  text-transform:none;letter-spacing:0;margin:0;cursor:pointer}
-.rchk input{width:auto;accent-color:#9d2b23}
+.rchk input{width:auto;accent-color:var(--cin)}
 .pdhide{display:none}
 body.fullmode .pdhide,.blk.pdopen .pdhide{display:block}
 .pdmore{background:transparent;border:none;color:var(--cin);font-size:12px;
  padding:4px 0;cursor:pointer;border-bottom:1px dotted var(--cin);font-family:inherit}
-.pdmore:hover{background:transparent;color:#82211b}
+.pdmore:hover{background:transparent;color:var(--cin)}
 
 /* ---- Карта жизни ---- */
-.lmwrap{border:1px solid var(--line);background:#fffdf7;padding:10px;overflow-x:auto}
+.lmwrap{border:1px solid var(--line);background:var(--card2);padding:10px;overflow-x:auto}
 .lifemap{width:100%;min-width:900px;height:auto;display:block}
 .lmst{cursor:pointer}
 .lmst circle{transition:.15s}
@@ -360,14 +361,14 @@ body.fullmode .pdhide,.blk.pdopen .pdhide{display:block}
 .lmst.sel circle:nth-child(2){fill:rgba(168,133,63,.18)}
 .lmst:focus{outline:none}
 .lmst:focus circle:nth-child(1){opacity:1}
-.lmpanel{border:1px solid var(--line);border-top:2px solid var(--cin);background:#fffdf7;
+.lmpanel{border:1px solid var(--line);border-top:2px solid var(--cin);background:var(--card2);
  padding:18px 20px;margin-top:14px}
-.lmempty{color:#9d8a6c;font-style:italic;font-size:13px;text-align:center;padding:16px 0}
+.lmempty{color:var(--mut);font-style:italic;font-size:13px;text-align:center;padding:16px 0}
 .lmhead{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:12px;
  padding-bottom:12px;border-bottom:1px solid var(--line2)}
 .lmpil{display:flex;flex-direction:column;font-size:27px;line-height:1.05}
 .lmt{font-size:16px;color:var(--cin)}
-.lms{font-size:12px;color:#9d8a6c}
+.lms{font-size:12px;color:var(--mut)}
 .lmbadge{margin-left:auto;font-size:11px;letter-spacing:.06em;border:1px solid;padding:5px 11px}
 .lmrow{font-size:13px;margin-bottom:7px}
 .lmrow b{color:var(--cin);font-weight:normal}
@@ -379,10 +380,10 @@ body.fullmode .pdhide,.blk.pdopen .pdhide{display:block}
 .lmbar.p i{background:var(--jade)}
 .lmbar.m i{background:var(--cin)}
 .lmyn{font-size:11.5px;color:var(--ink)}
-.lmya{font-size:10px;color:#9d8a6c}
+.lmya{font-size:10px;color:var(--mut)}
 .lmye{font-size:10px;color:var(--cin)}
 .lmye.z{color:#d8cbb0}
-.lmhint{font-size:11.5px;color:#9d8a6c;font-style:italic;border-top:1px dotted var(--line);padding-top:9px}
+.lmhint{font-size:11.5px;color:var(--mut);font-style:italic;border-top:1px dotted var(--line);padding-top:9px}
 
 /* ---- Колесо стихий ---- */
 .whwrap{display:grid;grid-template-columns:400px 1fr;gap:20px;align-items:center}
@@ -391,7 +392,7 @@ body.fullmode .pdhide,.blk.pdopen .pdhide{display:block}
 .whn circle{transition:.15s}
 .whn:hover circle:nth-child(2),.whn.sel circle:nth-child(2){opacity:.85}
 .whn:focus{outline:none}
-.whinfo{border:1px solid var(--line);border-left:3px solid var(--gold);background:#fffdf7;padding:18px 20px;min-height:150px}
+.whinfo{border:1px solid var(--line);border-left:3px solid var(--gold);background:var(--card2);padding:18px 20px;min-height:150px}
 .whh{font-size:17px;color:var(--ink);margin-bottom:10px}
 .whr{font-size:13px;margin-bottom:5px}
 .whr b{color:var(--cin);font-weight:normal}
@@ -403,7 +404,7 @@ body.fullmode .pdhide,.blk.pdopen .pdhide{display:block}
 
 /* ---- Аллегорическая карта ---- */
 .maplayout{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
-.mapwrap{border:1px solid var(--line);background:#fffdf7;padding:8px;overflow-x:auto}
+.mapwrap{border:1px solid var(--line);background:var(--card2);padding:8px;overflow-x:auto}
 .lifemapA{width:100%;min-width:900px;height:auto;display:block}
 .lifemapA .ms{cursor:pointer}
 .lifemapA .ms text{transition:.15s}
@@ -412,12 +413,12 @@ body.fullmode .pdhide,.blk.pdopen .pdhide{display:block}
 .lifemapA .ms.sel path,.lifemapA .ms.sel rect{filter:drop-shadow(0 0 5px rgba(157,43,35,.55))}
 .lifemapA .est.empty{opacity:.45}
 .lifemapA .gate.act{filter:drop-shadow(0 0 6px rgba(157,43,35,.4))}
-.mappanel{border:1px solid var(--line);border-top:2px solid var(--cin);background:#fffdf7;
+.mappanel{border:1px solid var(--line);border-top:2px solid var(--cin);background:var(--card2);
  padding:18px 20px;position:sticky;top:14px}
 .mph{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px;flex-wrap:wrap}
 .mpt{font-size:16px;color:var(--cin);flex:1;line-height:1.35}
 .mpb{font-size:10px;letter-spacing:.05em;border:1px solid;padding:3px 8px;white-space:nowrap;flex:0 0 auto}
-.mps{font-size:11.5px;color:#9d8a6c;margin-bottom:11px;padding-bottom:11px;border-bottom:1px dotted var(--line)}
+.mps{font-size:11.5px;color:var(--mut);margin-bottom:11px;padding-bottom:11px;border-bottom:1px dotted var(--line)}
 .mpbody{font-size:13px;line-height:1.7}
 .mpgo{width:100%;margin-top:14px;padding:10px 12px;font-size:12px;background:transparent;
  border:1px solid var(--cin);color:var(--cin);cursor:pointer;font-family:inherit;text-align:left}
@@ -440,23 +441,23 @@ body.fullmode .pdhide,.blk.pdopen .pdhide{display:block}
 
 /* ---- 12 дворцов ---- */
 .plclayout{display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start}
-.plcwrap{border:1px solid var(--line);background:#fffdf7;padding:10px}
+.plcwrap{border:1px solid var(--line);background:var(--card2);padding:10px}
 .palcircle{width:100%;max-width:660px;height:auto;display:block}
 .plc{cursor:pointer}
 .plc path{transition:.15s}
 .plc:hover path{fill-opacity:.26}
 .plc.sel path{fill-opacity:.34;stroke-width:2.4}
 .plc:focus{outline:none}
-.plcpanel{border:1px solid var(--line);border-top:2px solid var(--cin);background:#fffdf7;
+.plcpanel{border:1px solid var(--line);border-top:2px solid var(--cin);background:var(--card2);
  padding:18px 20px;position:sticky;top:14px}
 .plcpil{display:flex;align-items:center;gap:12px;margin:12px 0;padding:10px 0;
  border-top:1px dotted var(--line);border-bottom:1px dotted var(--line)}
 .plcpil .hz{font-size:26px;line-height:1}
 .plcr{font-size:13px;color:var(--ink)}
-.plcs{font-size:11px;color:#9d8a6c}
+.plcs{font-size:11px;color:var(--mut)}
 .plcnote{font-size:12px;color:var(--ink2);font-style:italic;margin-top:10px;
  border-top:1px dotted var(--line);padding-top:9px}
-.plchid{font-size:11.5px;color:#9d8a6c;margin-top:7px}
+.plchid{font-size:11.5px;color:var(--mut);margin-top:7px}
 .plchid b{color:var(--cin);font-weight:normal}
 @media(max-width:980px){.plclayout{grid-template-columns:1fr}.plcpanel{position:static}}
 
@@ -470,7 +471,7 @@ body.fullmode .pdhide,.blk.pdopen .pdhide{display:block}
 .starmap .st-ms:hover text{fill:#9d2b23}
 .starmap .st-ms:focus{outline:none}
 .starmap .st-ms.sel circle{filter:drop-shadow(0 0 6px rgba(157,43,35,.75))}
-.starpanel{border:1px solid var(--line);border-top:2px solid var(--cin);background:#fffdf7;
+.starpanel{border:1px solid var(--line);border-top:2px solid var(--cin);background:var(--card2);
  padding:18px 20px;position:sticky;top:14px}
 @media(max-width:960px){.starlayout{grid-template-columns:1fr}.starpanel{position:static}}
 @media print{.starpanel{position:static}}
@@ -493,14 +494,14 @@ body.fullmode .pdhide,.blk.pdopen .pdhide{display:block}
 .whn.dim{opacity:.34}
 .whn:focus{outline:none}
 .whchain{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:9px 0;font-size:11.5px}
-.whchain .wc{border:1px solid var(--line);padding:3px 9px;color:var(--ink2);background:#fffdf7}
+.whchain .wc{border:1px solid var(--line);padding:3px 9px;color:var(--ink2);background:var(--card2)}
 .whchain .wc.me{border-color:var(--gold);color:var(--ink)}
-.whchain .wa{color:#9d8a6c;font-size:10.5px}
+.whchain .wa{color:var(--mut);font-size:10.5px}
 .whchain.red .wc.me{border-color:var(--cin)}
 .whfix{background:rgba(168,133,63,.14);border-left:3px solid var(--gold);padding:10px 13px;
  font-size:12.5px;margin:10px 0}
 .whfix b{color:var(--cin);font-weight:normal}
-.whbal{border:1px solid var(--line);background:#fffdf7;padding:14px 16px}
+.whbal{border:1px solid var(--line);background:var(--card2);padding:14px 16px}
 .whrow{display:grid;grid-template-columns:78px 1fr 42px 34px 96px;gap:10px;align-items:center;
  padding:6px 0;border-bottom:1px dotted var(--line2)}
 .whrow:last-child{border-bottom:none}
@@ -524,13 +525,13 @@ body.fullmode tr.pdhide,.pdwrap.pdopen tr.pdhide{display:table-row}
 .pdwrap.pdopen .pdclip::after,body.fullmode .pdclip::after{display:none}
 .pdwrap>.pdmore,.blk>.pdmore{display:inline-block;margin-top:9px;background:transparent;border:none;color:var(--cin);
  font-size:12px;padding:4px 0;cursor:pointer;border-bottom:1px dotted var(--cin);font-family:inherit;letter-spacing:0}
-.pdmore:hover{background:transparent;color:#82211b;border-bottom-style:solid}
+.pdmore:hover{background:transparent;color:var(--cin);border-bottom-style:solid}
 .pdwrap>.pdmore{margin-top:11px}
 @media print{tr.pdhide{display:table-row!important}.pdclip{max-height:none!important;overflow:visible!important;padding-bottom:0}
  .pdclip::after{display:none!important}.pdmore{display:none!important}}
 
 /* ---- Полоса движения стихий ---- */
-.elstrip{display:flex;gap:1px;border:1px solid var(--line);background:#fffdf7;padding:10px 8px 22px;
+.elstrip{display:flex;gap:1px;border:1px solid var(--line);background:var(--card2);padding:10px 8px 22px;
  overflow-x:auto;position:relative}
 .elc{flex:1;min-width:7px;position:relative;cursor:help;padding-top:2px}
 .elc i,.elc u{display:block;height:22px;opacity:.62;transition:.12s}
@@ -541,7 +542,7 @@ body.fullmode tr.pdhide,.pdwrap.pdopen tr.pdhide{display:table-row}
 .elc.bd::after{content:"";position:absolute;left:0;right:0;top:-4px;height:2px;background:var(--cin)}
 .elc.now{outline:2px solid var(--cin);outline-offset:1px;z-index:2}
 .elc b{position:absolute;bottom:-19px;left:50%;transform:translateX(-50%);font-size:9.5px;
- color:#9d8a6c;font-weight:normal}
+ color:var(--mut);font-weight:normal}
 .ellegend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:11.5px;color:var(--ink2)}
 .ellegend span{display:flex;align-items:center;gap:6px}
 .ellegend i{width:13px;height:13px;display:block}
@@ -586,25 +587,25 @@ td,th{overflow-wrap:break-word;word-break:normal;hyphens:auto}
 
 /* ---- Редактор опросника ---- */
 .qhead{display:grid;grid-template-columns:2.2fr .9fr 1.1fr auto;gap:11px;
- font-size:10px;letter-spacing:.14em;color:#9d8a6c;text-transform:uppercase;margin-bottom:7px;padding:0 2px}
+ font-size:10px;letter-spacing:.14em;color:var(--mut);text-transform:uppercase;margin-bottom:7px;padding:0 2px}
 .qhead span:last-child{width:42px}
 .qrow{display:grid;grid-template-columns:2.2fr .9fr 1.1fr auto;gap:11px;margin-bottom:9px;align-items:center}
-.qrow .del{background:transparent;border:1px solid var(--line);color:#9d8a6c;padding:10px 13px;font-size:13px}
+.qrow .del{background:transparent;border:1px solid var(--line);color:var(--mut);padding:10px 13px;font-size:13px}
 .qrow .del:hover{border-color:var(--cin);color:var(--cin);background:transparent}
 @media(max-width:820px){.qhead{display:none}.qrow{grid-template-columns:1fr 1fr}}
 
 /* ---- Панель колеса: стартовая сводка ---- */
 .whinfo{display:flex;flex-direction:column;justify-content:flex-start}
 .whsplit{height:1px;background:var(--line2);margin:11px 0}
-.whhint{font-size:11.5px;color:#9d8a6c;font-style:italic;margin-top:auto;padding-top:12px;
+.whhint{font-size:11.5px;color:var(--mut);font-style:italic;margin-top:auto;padding-top:12px;
  border-top:1px dotted var(--line)}
-.whhint2{font-size:11px;color:#9d8a6c;font-style:italic;margin-top:8px}
+.whhint2{font-size:11px;color:var(--mut);font-style:italic;margin-top:8px}
 .whn.pinned .whhalo{opacity:1;stroke-width:3}
 .whn.pinned .whbody{fill-opacity:.9}
 .whwrap{align-items:stretch}
 .inlchk{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--ink2);
  text-transform:none;letter-spacing:0;margin:0;cursor:pointer}
-.inlchk input{width:auto;accent-color:#9d2b23}
+.inlchk input{width:auto;accent-color:var(--cin)}
 .hzsep{height:1px;background:var(--line);margin:12px 0}
 .hztip{max-width:340px}
 svg text{cursor:default}
@@ -617,13 +618,13 @@ svg text{cursor:default}
 .lcband:hover rect{fill:rgba(201,180,138,.28)}
 .lcguide{pointer-events:none}
 .lcinfo{min-height:96px;margin-top:10px;padding:13px 16px;border:1px solid var(--line);
- border-left:3px solid var(--gold);background:#fffdf7;font-size:13px}
+ border-left:3px solid var(--gold);background:var(--card2);font-size:13px}
 .lcinfo:empty::before{content:"Наведите курсор на график — здесь появится разбор года. Нажмите на полосу такта, чтобы увидеть десятилетие.";
- color:#9d8a6c;font-style:italic;font-size:12.5px}
+ color:var(--mut);font-style:italic;font-size:12.5px}
 .lch{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:9px;
  padding-bottom:9px;border-bottom:1px dotted var(--line)}
 .lcy{font-size:19px;color:var(--cin)}
-.lca{font-size:12px;color:#9d8a6c}
+.lca{font-size:12px;color:var(--mut)}
 .lcb{margin-left:auto;font-size:10.5px;border:1px solid;padding:3px 9px;white-space:nowrap}
 .lcr{font-size:12.5px;margin-bottom:4px}
 .lcr b{color:var(--cin);font-weight:normal}
@@ -635,14 +636,14 @@ svg text{cursor:default}
  padding:14px 44px 14px 18px;box-shadow:0 10px 34px rgba(60,40,15,.28);font-size:13px}
 #errbar .ebt{font-size:11px;letter-spacing:.16em;color:var(--cin);text-transform:uppercase;margin-bottom:6px}
 #errbar .ebm{font-family:"Courier New",monospace;font-size:12.5px;color:var(--ink);word-break:break-word}
-#errbar .ebh{font-size:11.5px;color:#9d8a6c;font-style:italic;margin-top:7px}
+#errbar .ebh{font-size:11.5px;color:var(--mut);font-style:italic;margin-top:7px}
 #errbar .ebx{position:absolute;top:8px;right:10px;background:transparent;border:none;
  color:var(--cin);font-size:17px;cursor:pointer;padding:2px 7px}
 @media print{#errbar{display:none!important}}
 
-#out[contenteditable="true"]{background:#fffdf7}
+#out[contenteditable="true"]{background:var(--card2)}
 #editnote{display:none;background:rgba(168,133,63,.14);border-left:3px solid var(--gold);
- padding:12px 16px;font-size:12.5px;margin-bottom:16px;font-style:italic;color:#5a4a34}
+ padding:12px 16px;font-size:12.5px;margin-bottom:16px;font-style:italic;color:var(--ink2)}
 .yrbtns{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
 .yrbtns button{padding:7px 13px;font-size:12px}
 @media print{#editnote{display:none!important}}
@@ -651,20 +652,75 @@ svg text{cursor:default}
 /* ---- Панель тарифов ---- */
 .tarbar{display:flex;flex-wrap:wrap;gap:7px;padding:14px 16px 4px;border-bottom:1px solid var(--line)}
 .tarbtn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:9px 13px;
- border:1px solid var(--line);background:#fffdf7;cursor:pointer;transition:.15s;min-width:132px;text-align:left}
+ border:1px solid var(--line);background:var(--card2);cursor:pointer;transition:.15s;min-width:132px;text-align:left}
 .tarbtn:hover{border-color:var(--cin);background:rgba(201,180,138,.16)}
 .tarbtn.on{background:var(--cin);border-color:var(--cin)}
 .tarbtn.on .tarn,.tarbtn.on .tarp{color:#fdf6e6}
 .tarbtn.demo{border-style:dashed;border-color:var(--jade)}
 .tarbtn.demo.on{background:var(--jade);border-color:var(--jade)}
 .tarn{font-size:12.5px;color:var(--ink);font-weight:normal}
-.tarp{font-size:11px;color:#9d8a6c}
+.tarp{font-size:11px;color:var(--mut)}
 .tarnote{padding:11px 16px;font-size:12.5px;color:var(--ink2);border-bottom:1px solid var(--line2);
  background:rgba(201,180,138,.1);line-height:1.6}
 .tarnote b{color:var(--cin);font-weight:normal}
-</style></head><body><div class="dragonwrap" id="dragonhost"></div>
+</style>
+<style id="pz-skin">
+/* Оформление в стиле приложения «Путь»: лавандовая палитра, карточки, Noto Serif в заголовках, светлая и тёмная тема */
+:root{--paper:#FBF7F2;--paper2:#FBF7F2;--ink:#2E2A36;--ink2:#6D6679;--cin:#8E7CC3;--cin2:#B07CA0;--gold:#C9A86A;--jade:#6F9A76;
+ --line:#E9E2EE;--line2:#F1ECF4;--card2:#FFFFFF;--mut:#8A8396;--soft:#F4EEE6;--acc2:#EDE7F8;--shadow:0 1px 3px rgba(46,42,54,.06),0 4px 14px rgba(46,42,54,.05);
+ --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",Arial,sans-serif;--serif:"Noto Serif",Georgia,"Times New Roman",serif}
+html[data-theme="dark"]{--paper:#1C1A22;--paper2:#1C1A22;--ink:#EEEAF4;--ink2:#A8A1B6;--cin:#B3A4E6;--cin2:#D7A3C6;--gold:#DDBB72;--jade:#93C19A;
+ --line:#3A3645;--line2:#312D3B;--card2:#2A2733;--mut:#9A93A8;--soft:#24212C;--acc2:#3A3354;--shadow:0 1px 3px rgba(0,0,0,.3)}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);line-height:1.6;padding:0 0 40px}
+.wrap{background:transparent;border:none;box-shadow:none;max-width:860px}
+.wrap::before,.wrap::after{display:none}
+header{background:linear-gradient(135deg,var(--acc2),var(--soft));border-bottom:none;border-radius:0 0 22px 22px;padding:22px 18px 20px}
+h1{font-family:var(--serif);font-size:24px;font-weight:600;color:var(--ink)}
+h1 .han{color:var(--cin);font-size:20px}
+.seal{border-color:var(--cin);color:var(--cin);background:transparent;border-radius:14px;width:58px;height:58px;font-size:19px;right:18px;top:20px}
+.body{padding:18px 16px 40px}
+fieldset{border:none;background:var(--card2);border-radius:18px;box-shadow:var(--shadow);padding:18px 16px}
+legend{padding:0 0 10px;color:var(--cin);font-weight:600;letter-spacing:.08em}
+label{color:var(--ink2);letter-spacing:.04em}
+input,select,textarea{border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--ink);font-family:var(--sans)}
+input:focus,select:focus{border-color:var(--cin);box-shadow:0 0 0 3px var(--acc2)}
+.hint{color:var(--mut)}
+button{border-radius:12px;background:var(--cin);border-color:var(--cin);color:#fff;font-family:var(--sans);font-weight:600;letter-spacing:0}
+html[data-theme="dark"] button{color:#1C1A22}
+button:hover{background:var(--cin);filter:brightness(.94);border-color:var(--cin)}
+button.sec{background:var(--soft);color:var(--ink);border-color:var(--line)}
+button.sec:hover{background:var(--acc2);color:var(--ink)}
+.tabs{border-bottom:none;gap:6px}
+.tab{border-radius:20px;border:1px solid var(--line);background:var(--card2);color:var(--ink2);letter-spacing:.02em}
+.tab:hover{color:var(--cin);background:var(--acc2)}
+.tab.on{background:var(--cin);border-color:var(--cin);color:#fff}
+html[data-theme="dark"] .tab.on{color:#1C1A22}
+h2{font-family:var(--serif);font-size:17px;font-weight:600;letter-spacing:.02em;text-transform:none;color:var(--ink);border-bottom:1px solid var(--line)}
+h2::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--cin);margin-right:8px;vertical-align:2px}
+h3{font-family:var(--serif);font-weight:600;color:var(--ink)}
+.card,.blk,.pcard,.harm,.meet{background:var(--card2);border:none;border-radius:16px;box-shadow:var(--shadow)}
+.card::before{display:none}
+.card .val,.score,td.n{color:var(--cin)}
+.blk{border-left:4px solid var(--cin)}
+.note{background:var(--acc2);color:var(--ink);font-style:normal;border-left:3px solid var(--cin);border-radius:12px}
+table{background:var(--card2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th{background:var(--acc2);color:var(--ink)}
+td{border-bottom-color:var(--line2)}
+.grp{background:var(--soft);color:var(--cin)}
+.pill div{background:var(--soft);border-color:var(--line);border-radius:10px}
+.bar{background:var(--soft);border-radius:8px}
+.bg{border-radius:20px}
+footer{border-top:1px solid var(--line);background:transparent;color:var(--mut)}
+.empty{color:var(--mut)}
+.term{border-bottom-color:var(--cin)}
+.pz-back{display:inline-flex;align-items:center;gap:4px;font:600 14px var(--sans);color:var(--cin);text-decoration:none;margin-bottom:8px}
+html[data-theme="dark"] img,html[data-theme="dark"] svg{filter:none}
+</style>
+<script>/* тема приложения: светлая/тёмная — как в настройках «Пути» */
+(function(){var t="light";try{var d=JSON.parse(localStorage.getItem("pz.db.v1")||"{}"),p=(d&&d.profile)||{};t=p.theme==="dark"||((!p.theme||p.theme==="system")&&window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light"}catch(e){}document.documentElement.setAttribute("data-theme",t)})();</script></head><body><div class="dragonwrap" id="dragonhost"></div>
 <div class="wrap">
 <header>
+<a class="pz-back" href="index.html#/more">‹ Назад в приложение</a>
 <div id="hdremb"></div>
 <h1><span class="han">命理</span>Усовершенствованная нумерология</h1>
 <div class="sub">Ба-цзы и числовая психология в одной карте &middot; характер &middot; сильные и слабые стороны &middot; прогноз по годам вперёд и назад &middot; совместимость в любви, деле и команде &middot; зачатие</div></header>
@@ -684,8 +740,8 @@ svg text{cursor:default}
 <div><label>Часовой пояс</label><input type="number" id="btz" value="3" step="1"><div class="hint">UTC+, современное значение</div></div>
 <div><label>Долгота</label><input type="number" id="blon" value="37.6" step="0.01"><div class="hint">градусы, восточная &mdash; со знаком плюс</div></div>
 </div>
-<div style="margin-top:14px;font-size:12px;color:#5a4a34"><label style="display:inline;text-transform:none;letter-spacing:0;font-size:12.5px"><input type="checkbox" id="bsol" checked style="width:auto;margin-right:8px">учитывать истинное солнечное время &mdash; уравнение времени и поправку на долготу</label></div>
-<div style="margin-top:8px;font-size:12px;color:#5a4a34"><label style="display:inline;text-transform:none;letter-spacing:0;font-size:12.5px"><input type="checkbox" id="bhistchk" checked style="width:auto;margin-right:8px">учитывать историческое время &mdash; декретный час и перевод часов в СССР и России</label></div>
+<div style="margin-top:14px;font-size:12px;color:var(--ink2)"><label style="display:inline;text-transform:none;letter-spacing:0;font-size:12.5px"><input type="checkbox" id="bsol" checked style="width:auto;margin-right:8px">учитывать истинное солнечное время &mdash; уравнение времени и поправку на долготу</label></div>
+<div style="margin-top:8px;font-size:12px;color:var(--ink2)"><label style="display:inline;text-transform:none;letter-spacing:0;font-size:12.5px"><input type="checkbox" id="bhistchk" checked style="width:auto;margin-right:8px">учитывать историческое время &mdash; декретный час и перевод часов в СССР и России</label></div>
 <div id="bhist" class="hint" style="margin-top:10px"></div>
 </fieldset>
 <fieldset id="clientsfs"><legend><span class="han">客</span>Клиенты: демо &rarr; полный разбор</legend>
@@ -907,7 +963,7 @@ function go(){
  h+=`<h2>Все составы Числа Действия ${act}</h2>`;
  family.forEach(x=>{
  const on=(x===actRaw);
- h+=`<div class="blk" style="${on?'border-left-color:#8b6f3f;background:#fffdf8':'border-left-color:#ddd5c4;opacity:.72'}">
+ h+=`<div class="blk" style="${on?'border-left-color:#8b6f3f;background:var(--card2)':'border-left-color:#ddd5c4;opacity:.72'}">
  <h3>${x}${on?" — ваш вариант":""}${meet(x)?" · "+meet(x):""}</h3><p>${ACTCOMP2[x]}</p></div>`;
  });
   }
@@ -936,9 +992,9 @@ function go(){
   h+=`</div>
   <h2>Персональный код</h2><div class="blk">
   <div class="code-line">${um} – ${act} – ${real} – ${itog}</div>
-  <div style="font-size:13px;color:#7a6e5c">＋ Число Персональных Данных ${pd}</div>
+  <div style="font-size:13px;color:var(--mut)">＋ Число Персональных Данных ${pd}</div>
   <div class="code-line" style="border-top:1px solid #ddd5c4;margin-top:6px;padding-top:8px">${red(um+pd)} – ${red(act+pd)} – ${red(real+pd)} – ${red(itog+pd)}</div>
-  <p style="font-size:12.5px;color:#5c5344;margin-top:10px">Персональный Код — сочетание числовых значений фамилии, имени, отчества и энергий Числа Ума, Действия, Реализации и Итога.</p></div>`;
+  <p style="font-size:12.5px;color:var(--ink2);margin-top:10px">Персональный Код — сочетание числовых значений фамилии, имени, отчества и энергий Числа Ума, Действия, Реализации и Итога.</p></div>`;
 
   h+=`<h2>Трактовки</h2>`;
   h+=blk("Число Имени "+nI,"Число Имени показывает, каким человека видят и запоминают: темперамент, манеру, заметные способности. "+NAME[nI],
@@ -970,7 +1026,7 @@ function go(){
   ${card("Согласные имени",nCon,0,cn.join(" · ")||"—")}</div>
   <div class="note">Гласные говорят о внутреннем мире, их сумма — скрытые желания и устремления. Согласные отражают внешнюю проявленность; их сумма указывает на степень реализованности в обществе.</div>`;
   if(firstVow&&VOW[firstVow])h+=`<div class="blk"><h3>Первая гласная — ${firstVow}</h3>
-  <p style="font-size:12px;color:#9b917f;font-style:italic">Указывает, как человек думает и чего от него можно ожидать.</p><p>${VOW[firstVow]}</p></div>`;
+  <p style="font-size:12px;color:var(--mut);font-style:italic">Указывает, как человек думает и чего от него можно ожидать.</p><p>${VOW[firstVow]}</p></div>`;
   T.letters=h;
 
   /* --- вкладка: матрица --- */
@@ -1025,7 +1081,7 @@ function go(){
 
   h+=`<h2>Детализированная матрица</h2>
   <div class="note">К цифрам даты рождения добавляются цифры Числа Действия (${actRaw}), Числа Реализации (${realRaw}) и Числа Итога (${itogRaw}). Это энергии, которые включаются не сразу с рождения, а с возрастом — когда начинают активироваться Число Действия человека, его Реализация и Итог.</div>
-  <div style="font-size:11.5px;color:#7a6e5c;margin-bottom:10px">
+  <div style="font-size:11.5px;color:var(--mut);margin-bottom:10px">
   <span style="color:#8b6f3f">■</span> дата рождения &nbsp;
   <span style="color:#b0472f">■</span> Число Действия &nbsp;
   <span style="color:#2f6fb0">■</span> Число Реализации &nbsp;
@@ -1072,10 +1128,10 @@ function go(){
  });
  Object.keys(byName).forEach(lb=>src.push("Число "+lb+" — "+byName[lb]));
  h+=`<div class="blk"><h3>${String(k).repeat(Math.min(tot[k],6))}${tot[k]>6?"…":""} · ${cc.name||""} — ${tot[k]} ${tot[k]<5?"цифры":"цифр"}</h3>
- <p style="font-size:11.5px;color:#9b917f;font-style:italic">Порог избытка для этой энергии — ${thr}. Откуда: ${src.join(", ")}.</p>
+ <p style="font-size:11.5px;color:var(--mut);font-style:italic">Порог избытка для этой энергии — ${thr}. Откуда: ${src.join(", ")}.</p>
  <p>${c.high||cc.high||"—"}</p>
- ${c.tip?`<p style="font-size:12.5px;color:#7a6e5c;border-top:1px dotted #ddd5c4;padding-top:8px">${c.tip}</p>`:""}
- ${gapsPreview.length?`<p style="font-size:12.5px;color:#7a6e5c">Куда направить избыток: пустые ячейки ${gapsPreview.join(", ")}.</p>`:""}
+ ${c.tip?`<p style="font-size:12.5px;color:var(--mut);border-top:1px dotted #ddd5c4;padding-top:8px">${c.tip}</p>`:""}
+ ${gapsPreview.length?`<p style="font-size:12.5px;color:var(--mut)">Куда направить избыток: пустые ячейки ${gapsPreview.join(", ")}.</p>`:""}
  </div>`;
  });
   }
@@ -1147,7 +1203,7 @@ function go(){
  const tot=red(seq.join("").split("").reduce((a,b)=>a+ +b,0));
  h+=`<div class="blk"><h3>${lb}: ${x} + ${y}</h3>
  <div class="code-line">${st.show} = ${tot}</div>
- <p style="font-size:12.5px;color:#7a6e5c">Этапы по очереди: ${seq.join(" → ")}</p>`;
+ <p style="font-size:12.5px;color:var(--mut)">Этапы по очереди: ${seq.join(" → ")}</p>`;
  const flat=seq.join("").split("").map(Number).filter(z=>z>0);
  flat.forEach((z,ix)=>{
  const c=COMPAT[z];if(!c)return;
@@ -1165,7 +1221,7 @@ function go(){
  const c=COMPAT[z];if(!c)return;
  const txt=c[key];
  h+=`<div class="blk"><h3>${z} в Числе ${pos}${c.name?" · "+c.name:""}</h3>
- <p>${txt||c.gen||"—"}</p>${txt?"":'<p style="font-size:11.5px;color:#9b917f;font-style:italic">Для этой позиции в книге описание не приведено — показано общее значение энергии.</p>'}</div>`;
+ <p>${txt||c.gen||"—"}</p>${txt?"":'<p style="font-size:11.5px;color:var(--mut);font-style:italic">Для этой позиции в книге описание не приведено — показано общее значение энергии.</p>'}</div>`;
  });
 
  /* --- 3 уровень: диагонали --- */
@@ -1179,7 +1235,7 @@ function go(){
  const z=red(x+y),c=COMPAT[z];
  h+=`<div class="blk"><h3>${lb}</h3>
  <div class="code-line" style="font-size:15px">${x} + ${y} = ${x+y}${x+y!==z?" = "+z:""}</div>
- <p style="font-size:12.5px;color:#7a6e5c">Показывает, ${meaning}.</p>
+ <p style="font-size:12.5px;color:var(--mut)">Показывает, ${meaning}.</p>
  <p>${c?((c.name?"<b>"+c.name+".</b> ":"")+(c.gen||"")):"—"}</p></div>`;
  });
 
@@ -1347,7 +1403,7 @@ function card(lbl,n,raw,calc){
   return `<div class="card"><div class="lbl">${lbl}</div><div class="val">${n||"—"}</div>${rw}<div class="planet">${pl}</div><div class="calc">${calc||""}</div></div>`;
 }
 function uniqLow(a){return [...new Set(a.filter(Boolean).map(x=>x.toLowerCase()))]}
-function blk(t,p,extra){return `<div class="blk"><h3>${t}</h3><p>${p}</p>${extra?`<p style="font-size:12px;color:#7a6e5c;font-style:italic">${extra}</p>`:""}</div>`}
+function blk(t,p,extra){return `<div class="blk"><h3>${t}</h3><p>${p}</p>${extra?`<p style="font-size:12px;color:var(--mut);font-style:italic">${extra}</p>`:""}</div>`}
 function clr(){["f","i","o","d","a","p2d"].forEach(x=>document.getElementById(x).value="");
 document.getElementById("out").style.display="none";document.getElementById("empty").style.display="block"}
 document.addEventListener("keypress",e=>{if(e.key==="Enter"&&e.target.tagName==="INPUT")go()});
@@ -1850,7 +1906,7 @@ function renderPythagoras(F,I,O,D){
     const ks=o.masters.concat(o.main?[o.main]:[]);
     let t=`<p>${PY_POS[pos]}</p>`;
     ks.forEach(k=>{const x=PY_NUM[k];t+=`<p><b>${k} — ${x.n}.</b> Сильная сторона: ${x.p}. Перекос: ${x.m}.${pos==="dest"?" Подходящее дело: "+x.w+".":""}</p>`});
-    if(o.masters.length&&o.main)t+=`<p class="small" style="color:#7a6e5c">Составное число ${o.label}: первое определяет второе — ${PY_NUM[o.masters[0]].n.toLowerCase()} выражается через «${PY_NUM[o.main].n.toLowerCase()}».</p>`;
+    if(o.masters.length&&o.main)t+=`<p class="small" style="color:var(--mut)">Составное число ${o.label}: первое определяет второе — ${PY_NUM[o.masters[0]].n.toLowerCase()} выражается через «${PY_NUM[o.main].n.toLowerCase()}».</p>`;
     o.warn.forEach(w=>t+=`<p class="small" style="color:#a5553d"><b>Предупреждающее число ${w}:</b> ${PY_WARN[w]}.</p>`);
     return t;
   };
@@ -1871,7 +1927,7 @@ function renderPythagoras(F,I,O,D){
   const [y,m,d]=D.split("-").map(Number), cy=new Date().getFullYear();
   const s=n=>String(n).split("").reduce((a,b)=>a+ +b,0), base=pyRed(s(d)+s(m));
   const yr=k=>{let n=base+s(k);while(n>9)n=s(n);return n};
-  h+=`<div class="blk"><h3>Урок года</h3><p>Число даты рождения (день + месяц) — ${base>9?base:base}; к нему прибавляется сумма цифр года.</p>`+[cy,cy+1,cy+2].map(k=>`<p><b>${k}: ${yr(k)}</b> — ${PY_YEAR[yr(k)]}.</p>`).join("")+`<p class="small" style="color:#7a6e5c">Число года — не предсказание удачи, а направление, в котором усилия этого года дают больше всего.</p></div>`;
+  h+=`<div class="blk"><h3>Урок года</h3><p>Число даты рождения (день + месяц) — ${base>9?base:base}; к нему прибавляется сумма цифр года.</p>`+[cy,cy+1,cy+2].map(k=>`<p><b>${k}: ${yr(k)}</b> — ${PY_YEAR[yr(k)]}.</p>`).join("")+`<p class="small" style="color:var(--mut)">Число года — не предсказание удачи, а направление, в котором усилия этого года дают больше всего.</p></div>`;
   h+=pyExtra(parts,N,B);
   return h;
 }
@@ -2121,7 +2177,7 @@ function renderIndian(F,I,D,bt){
   <p><b>Аюрведа:</b> стихия — ${T(soul).el}, ведущая доша — ${T(soul).dosha}. ${s.health}</p>
   <p><b>Пост:</b> ${s.fast}. <b>Медитация:</b> ${s.med}. <b>Божество:</b> ${s.deity}; число повторений мантры — ${s.mantraN}.</p>
   <p><b>Хорошие годы жизни:</b> ${s.years}.</p>
-  <p class="small" style="color:#7a6e5c">Указания о здоровье, камнях и постах — традиционные рекомендации системы, а не медицинский совет.</p></div>`;
+  <p class="small" style="color:var(--mut)">Указания о здоровье, камнях и постах — традиционные рекомендации системы, а не медицинский совет.</p></div>`;
   // отношения
   const L=n=>n.join(", ");
   h+=`<div class="blk"><h3>Люди вокруг: дружба, любовь, дело</h3><p><b>Дружба:</b> ${s.friend}.</p><p><b>Любовь:</b> ${s.love}</p>
@@ -2132,7 +2188,7 @@ function renderIndian(F,I,D,bt){
   const yr=Y=>{const wd=new Date(Date.UTC(Y,m-1,d)).getUTCDay();const raw=m+d+(Y%100)+IND_WD[wd];return {Y,wd,raw,n:indRed(raw)}};
   h+=`<div class="blk"><h3>Заглянем в будущее: число года</h3><p>Месяц рождения + день рождения + две последние цифры года + число планеты того дня недели, на который в этом году приходится день рождения (вс 1, пн 2, вт 9, ср 5, чт 3, пт 6, сб 8).</p>`+
     [cy,cy+1,cy+2].map(Y=>{const r=yr(Y),q=IND_YEAR[r.n];return `<p><b>${Y} — ${q.t} (${r.n})</b> <span class="small">${m} + ${d} + ${String(Y%100).padStart(2,"0")} + ${IND_WD[r.wd]} (${WDN[r.wd]}) = ${r.raw}</span><br>${q.p.join("; ")}.${q.good?" <b>Удачно для:</b> "+q.good+".":""}${q.avoid?" <b>Осторожно:</b> "+q.avoid+".":""}</p>`}).join("")+
-    `<p class="small" style="color:#7a6e5c">Это общая картина года, а не точный прогноз событий.</p></div>`;
+    `<p class="small" style="color:var(--mut)">Это общая картина года, а не точный прогноз событий.</p></div>`;
   return h;
 }
 // Приложение I: как часто число встречается в имени (по буквам) и что это значит
@@ -2208,7 +2264,7 @@ function nskForecast(D,sex){
   let h=`<div class="blk"><h3>Прогноз по «Карте Ло»</h3><p>Каждый год звёзды сдвигаются по магическому квадрату. Ваша звезда года рождения — <b>${bs}</b>${sex==="f"?" (женский вариант)":""}; для года берётся его мужское число. Дом, в который попадает ваша звезда, задаёт общий тон года. Год считается от 4 февраля.</p>`;
   [Y0,Y0+1,Y0+2].forEach(Y=>{const c=ys(Y),H=nskHouse(bs,c),x=NSK_HOUSE[H];
     h+=`<p><b>${Y}/${String((Y+1)%100).padStart(2,"0")} — звезда года ${c}, ваш дом ${H} (${x.n})</b><br>${x.t} <i>Беречь:</i> ${x.risk}.${x.care&&x.care.includes(bs)?` <b>Для вашей звезды ${bs} книга советует быть в этот год особенно внимательными.</b>`:""}</p>`});
-  return h+`<p class="small" style="color:#7a6e5c">Общая тенденция года, а не предсказание событий; указания о здоровье — традиционные, не медицинские.</p></div>`;
+  return h+`<p class="small" style="color:var(--mut)">Общая тенденция года, а не предсказание событий; указания о здоровье — традиционные, не медицинские.</p></div>`;
 }
 function renderNineStar(D,sex){
   const r=nineStar(D,sex), Y=NSK[r.year], Mo=NSK[r.month];
@@ -2976,22 +3032,22 @@ function renderPro(ch,noHour){
   const dm=ch.dm,P=ch.pillars,ord=[3,2,1,0];
   const dv=voidOf(P[2]),yv=voidOf(P[0]);
   const cell=(x,st)=>`<td style="text-align:center;border:1px solid #ddd5c4;padding:7px 5px;${st||""}">${x}</td>`;
-  const hd=t=>`<td style="font-size:10px;letter-spacing:.08em;color:#9b917f;text-transform:uppercase;border:1px solid #ddd5c4;padding:7px 6px;white-space:nowrap">${t}</td>`;
+  const hd=t=>`<td style="font-size:10px;letter-spacing:.08em;color:var(--mut);text-transform:uppercase;border:1px solid #ddd5c4;padding:7px 6px;white-space:nowrap">${t}</td>`;
   let h=`<h2>Профессиональная карта</h2>`;
   h+=`<div class="note">Полная таблица столпов, как её строят мастера: божества стволов и скрытых стволов, мелодия На Инь, двенадцать стадий жизненной силы, пустоты декады и символические звёзды каждого столпа.${noHour?" Час рождения не указан — колонка часа условная.":""}</div>`;
   h+=`<div style="overflow-x:auto"><table style="background:#fff;min-width:520px">`;
-  h+=`<tr>${hd("")}${ord.map(i=>`<td style="text-align:center;font-size:10px;letter-spacing:.1em;color:#9b917f;text-transform:uppercase;border:1px solid #ddd5c4;padding:7px">${PILNAME[i]}</td>`).join("")}</tr>`;
+  h+=`<tr>${hd("")}${ord.map(i=>`<td style="text-align:center;font-size:10px;letter-spacing:.1em;color:var(--mut);text-transform:uppercase;border:1px solid #ddd5c4;padding:7px">${PILNAME[i]}</td>`).join("")}</tr>`;
   h+=`<tr>${hd("Божество")}${ord.map(i=>cell(i===2?"Господин дня":godOf(dm,P[i].s),"font-size:11.5px;color:#8b6f3f")).join("")}</tr>`;
-  h+=`<tr>${hd("Ствол")}${ord.map(i=>{const S=BZS[P[i].s];return cell(`<span style="font-size:26px;color:${ELCOL[S.el]}">${S.c}</span><div style="font-size:11px;color:#5c5344">${S.r} · ${S.el} ${S.yy?"Ян":"Инь"}</div>`)}).join("")}</tr>`;
-  h+=`<tr>${hd("Ветвь")}${ord.map(i=>{const B=BZB[P[i].b];return cell(`<span style="font-size:26px;color:${ELCOL[B.el]}">${B.c}</span><div style="font-size:11px;color:#5c5344">${B.r} · ${B.a}</div>`)}).join("")}</tr>`;
+  h+=`<tr>${hd("Ствол")}${ord.map(i=>{const S=BZS[P[i].s];return cell(`<span style="font-size:26px;color:${ELCOL[S.el]}">${S.c}</span><div style="font-size:11px;color:var(--ink2)">${S.r} · ${S.el} ${S.yy?"Ян":"Инь"}</div>`)}).join("")}</tr>`;
+  h+=`<tr>${hd("Ветвь")}${ord.map(i=>{const B=BZB[P[i].b];return cell(`<span style="font-size:26px;color:${ELCOL[B.el]}">${B.c}</span><div style="font-size:11px;color:var(--ink2)">${B.r} · ${B.a}</div>`)}).join("")}</tr>`;
   h+=`<tr>${hd("Скрытые")}${ord.map(i=>cell(BZB[P[i].b].hid.map(x=>`<div style="font-size:11px"><span style="color:${ELCOL[BZS[x].el]}">${BZS[x].c}</span> ${godShort(godOf(dm,x))}</div>`).join(""))).join("")}</tr>`;
-  h+=`<tr>${hd("Стадия ГД")}${ord.map(i=>{const g=STAGES[stageOf(dm,P[i].b)];return cell(`${g[0]}<div style="font-size:11px;color:#5c5344">${g[1]}</div>`)}).join("")}</tr>`;
-  h+=`<tr>${hd("На себе")}${ord.map(i=>{const g=STAGES[stageOf(P[i].s,P[i].b)];return cell(`${g[0]}<div style="font-size:11px;color:#5c5344">${g[1]}</div>`)}).join("")}</tr>`;
+  h+=`<tr>${hd("Стадия ГД")}${ord.map(i=>{const g=STAGES[stageOf(dm,P[i].b)];return cell(`${g[0]}<div style="font-size:11px;color:var(--ink2)">${g[1]}</div>`)}).join("")}</tr>`;
+  h+=`<tr>${hd("На себе")}${ord.map(i=>{const g=STAGES[stageOf(P[i].s,P[i].b)];return cell(`${g[0]}<div style="font-size:11px;color:var(--ink2)">${g[1]}</div>`)}).join("")}</tr>`;
   h+=`<tr>${hd("На Инь")}${ord.map(i=>{const n=NAYIN[jz60(P[i].s,P[i].b)>>1];return cell(`${n[0]}<div style="font-size:11px;color:${ELCOL[n[2]]}">${n[1]}</div>`)}).join("")}</tr>`;
   h+=`<tr>${hd("Пустота")}${ord.map(i=>{const v=[];if(dv.includes(P[i].b)&&i!==2)v.push("от дня");if(yv.includes(P[i].b)&&i!==0)v.push("от года");return cell(v.length?`<b style="color:var(--cin)">空</b><div style="font-size:11px">${v.join(", ")}</div>`:"·")}).join("")}</tr>`;
   h+=`<tr>${hd("Звёзды")}${ord.map(i=>cell(proStars(ch,i).map(k=>`<div style="font-size:11px;white-space:nowrap" title="${SHENSHA[k][2]}">${SHENSHA[k][0]} ${SHENSHA[k][1]}</div>`).join("")||"·")).join("")}</tr>`;
   h+=`</table></div>`;
-  h+=`<div style="font-size:11px;color:#9b917f;margin-top:6px;font-style:italic">Стадия ГД — сила Господина дня в ветви столпа. «На себе» — сила ствола в собственной ветви (自坐). Пустоты декады от дня: ${dv.map(b=>BZB[b].c+" "+BZB[b].a).join(", ")}; от года: ${yv.map(b=>BZB[b].c+" "+BZB[b].a).join(", ")}.</div>`;
+  h+=`<div style="font-size:11px;color:var(--mut);margin-top:6px;font-style:italic">Стадия ГД — сила Господина дня в ветви столпа. «На себе» — сила ствола в собственной ветви (自坐). Пустоты декады от дня: ${dv.map(b=>BZB[b].c+" "+BZB[b].a).join(", ")}; от года: ${yv.map(b=>BZB[b].c+" "+BZB[b].a).join(", ")}.</div>`;
 
   const lp=lifePalace(ch).list[0],fo=fetalOrigin(ch);
   const pil=p=>`${BZS[p.s].c}${BZB[p.b].c} ${BZS[p.s].r} ${BZB[p.b].r}`;
@@ -3065,14 +3121,14 @@ const PILMEAN=["Предки, род, детство до 16 лет, насле�
 function pilCell(p,dm,i){
   const S=BZS[p.s],B=BZB[p.b];
   const gS=i===2?"Элемент Личности":godOf(dm,p.s);
-  const hid=B.hid.map((h,j)=>`<div style="font-size:11px;color:#7a6e5c">${BZS[h].c} ${BZS[h].r} — ${godShort(godOf(dm,h))}${j===0?" <i>(осн. Ци)</i>":""}</div>`).join("");
+  const hid=B.hid.map((h,j)=>`<div style="font-size:11px;color:var(--mut)">${BZS[h].c} ${BZS[h].r} — ${godShort(godOf(dm,h))}${j===0?" <i>(осн. Ци)</i>":""}</div>`).join("");
   return `<td style="vertical-align:top;text-align:center;border:1px solid #ddd5c4;padding:10px 8px">
-    <div style="font-size:10px;letter-spacing:.1em;color:#9b917f;text-transform:uppercase">${PILNAME[i]}</div>
+    <div style="font-size:10px;letter-spacing:.1em;color:var(--mut);text-transform:uppercase">${PILNAME[i]}</div>
     <div style="font-size:30px;color:${ELCOL[S.el]};line-height:1.15;margin-top:6px">${S.c}</div>
-    <div style="font-size:12px;color:#5c5344">${S.r} · ${S.el} ${S.yy?"Ян":"Инь"}</div>
+    <div style="font-size:12px;color:var(--ink2)">${S.r} · ${S.el} ${S.yy?"Ян":"Инь"}</div>
     <div style="font-size:11px;color:#8b6f3f;margin-bottom:8px">${gS}</div>
     <div style="font-size:30px;color:${ELCOL[B.el]};line-height:1.15">${B.c}</div>
-    <div style="font-size:12px;color:#5c5344">${B.r} · ${B.a}</div>
+    <div style="font-size:12px;color:var(--ink2)">${B.r} · ${B.a}</div>
     <div style="margin-top:7px;border-top:1px dotted #ddd5c4;padding-top:6px">${hid}</div>
   </td>`;
 }
@@ -3081,8 +3137,8 @@ function renderChart(ch,st,us,struct){
   const dm=ch.dm,D=BZS[dm];
   let h=`<h2>Карта Ба-цзы — четыре столпа</h2>`;
   h+=`<div class="note">Столпы читаются справа налево: Час · День · Месяц · Год. Элемент Личности — верхний знак столпа дня. Все божества считаются относительно него.</div>`;
-  h+=`<table style="background:#fff"><tr>${[3,2,1,0].map(i=>pilCell(ch.pillars[i],dm,i)).join("")}</tr></table>`;
-  h+=`<div style="font-size:11px;color:#9b917f;margin-top:6px;font-style:italic">${PILNAME.map((n,i)=>n+": "+PILMEAN[i]).join(" · ")}</div>`;
+  h+=`<table style="background:var(--card2)"><tr>${[3,2,1,0].map(i=>pilCell(ch.pillars[i],dm,i)).join("")}</tr></table>`;
+  h+=`<div style="font-size:11px;color:var(--mut);margin-top:6px;font-style:italic">${PILNAME.map((n,i)=>n+": "+PILMEAN[i]).join(" · ")}</div>`;
 
   h+=`<h2>Элемент Личности</h2>`;
   h+=blk(D.c+" "+D.r+" — "+D.el+" "+(D.yy?"Ян":"Инь"),
@@ -3101,11 +3157,11 @@ function renderChart(ch,st,us,struct){
   const bar=ELS.map(e=>{
     const v=st.w[e],max=Math.max(...ELS.map(x=>st.w[x]))||1;
     return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-      <div style="width:62px;font-size:12px;color:#5c5344">${e}</div>
-      <div style="flex:1;background:#f0ebdf;height:15px"><div style="width:${v/max*100}%;height:15px;background:${ELCOL[e]}"></div></div>
-      <div style="width:40px;font-size:11px;color:#9b917f;text-align:right">${v.toFixed(1)}</div></div>`}).join("");
+      <div style="width:62px;font-size:12px;color:var(--ink2)">${e}</div>
+      <div style="flex:1;background:var(--soft);height:15px"><div style="width:${v/max*100}%;height:15px;background:${ELCOL[e]}"></div></div>
+      <div style="width:40px;font-size:11px;color:var(--mut);text-align:right">${v.toFixed(1)}</div></div>`}).join("");
   h+=`<div class="blk"><h3>${st.lbl} — ${st.pct.toFixed(0)}% поддержки</h3><p>${st.txt}</p>${bar}
-  <p style="font-size:12px;color:#7a6e5c;font-style:italic;margin-top:10px">Сила карты описывает характер. События и удачу определяют полезность элементов и приходящие комбинации.</p></div>`;
+  <p style="font-size:12px;color:var(--mut);font-style:italic;margin-top:10px">Сила карты описывает характер. События и удачу определяют полезность элементов и приходящие комбинации.</p></div>`;
 
   h+=`<div class="meet"><b>Температурный режим:</b> карта ${us.temp} (тепло ${us.hot} / холод ${us.cold}). ${us.temp==="жаркая"?"В жаркой карте почти всегда полезна вода — она спасает от пересушивания и перегрева.":us.temp==="холодная"?"В холодной карте почти всегда полезен огонь — без тепла элементы не работают, а вода замерзает.":"Температура сбалансирована, резких перекосов нет."}</div>`;
   h+=`<div class="meet"><b>Благоприятные элементы:</b> ${us.good.join(", ")}. <b>Неблагоприятные:</b> ${us.bad.join(", ")}.</div>`;
@@ -3135,7 +3191,7 @@ function renderGods(ch,st,us){
     const where=all.filter(x=>x.g===g).map(x=>x.src).join("; ");
     const cat=GODCAT[g];
     const useCat=us.good.includes(catEl(cat,st.dme))?"полезно":us.bad.includes(catEl(cat,st.dme))?"неполезно":"нейтрально";
-    h+=`<tr><td><b style="color:#8b6f3f;font-weight:normal">${g}</b><div style="font-size:11px;color:#9b917f">${useCat}</div></td>
+    h+=`<tr><td><b style="color:#8b6f3f;font-weight:normal">${g}</b><div style="font-size:11px;color:var(--mut)">${useCat}</div></td>
     <td>${cat}</td><td class="n">${byGod[g].toFixed(1)}</td><td style="font-size:12px">${where}</td></tr>`;
   });
   h+=`</table>`;
@@ -3264,7 +3320,7 @@ function renderLuck(ch,st,us){
     const gS=godOf(ch.dm,L.s),gB=godOf(ch.dm,B.hid[0]);
     const [rs,cs]=relLabel(S.el,us),[rb,cb]=relLabel(B.el,us);
     const act=(now>=L.year&&now<L.year+10);
-    h+=`<tr${act?' style="background:#f7f2e6"':''}><td class="n">${L.age}–${L.age+9}</td>
+    h+=`<tr${act?' style="background:var(--card2)"':''}><td class="n">${L.age}–${L.age+9}</td>
     <td style="font-size:12px">${L.year}–${L.year+9}${act?" <b style='color:#8b6f3f;font-weight:normal'>· сейчас</b>":""}</td>
     <td class="l"><span style="color:${ELCOL[S.el]}">${S.c}</span><br><span style="color:${ELCOL[B.el]}">${B.c}</span></td>
     <td style="font-size:12px">${gS}<br>${gB}</td>
@@ -3355,8 +3411,8 @@ function renderSynth(ch,st,us,nd,struct){
     else if(d>0)v="Числа дают больше, чем карта: качество заявлено, но энергетически не обеспечено — нарабатывается сознательно.";
     else v="Карта даёт больше, чем числа: качество есть в энергетике, но человек его не осознаёт как своё.";
     h+=`<tr><td style="color:${ELCOL[e]}">${e}</td>
-    <td><div style="background:#f0ebdf;height:13px"><div style="width:${a}%;height:13px;background:${ELCOL[e]};opacity:.55"></div></div><span style="font-size:11px;color:#9b917f">${a.toFixed(0)}%</span></td>
-    <td><div style="background:#f0ebdf;height:13px"><div style="width:${b}%;height:13px;background:${ELCOL[e]}"></div></div><span style="font-size:11px;color:#9b917f">${b.toFixed(0)}%</span></td>
+    <td><div style="background:var(--soft);height:13px"><div style="width:${a}%;height:13px;background:${ELCOL[e]};opacity:.55"></div></div><span style="font-size:11px;color:var(--mut)">${a.toFixed(0)}%</span></td>
+    <td><div style="background:var(--soft);height:13px"><div style="width:${b}%;height:13px;background:${ELCOL[e]}"></div></div><span style="font-size:11px;color:var(--mut)">${b.toFixed(0)}%</span></td>
     <td style="font-size:12px">${v}</td></tr>`;
   });
   h+=`</table>`;
@@ -3630,7 +3686,7 @@ function personCard(P){
   <div style="font-size:12.5px;line-height:1.75">
   <b style="color:var(--cin);font-weight:normal">Элемент Личности:</b> ${BZS[P.ch.dm].c} ${BZS[P.ch.dm].r} — ${BZS[P.ch.dm].el} ${BZS[P.ch.dm].yy?"Ян":"Инь"} (${BZS[P.ch.dm].img})<br>
   <b style="color:var(--cin);font-weight:normal">Сила карты:</b> ${st.lbl} · <b style="color:var(--cin);font-weight:normal">Структура:</b> ${sr.god}<br>
-  <b style="color:var(--cin);font-weight:normal">Поток:</b> ${f.el||"не выражен"} <span style="color:#9d8a6c">(${f.src})</span><br>
+  <b style="color:var(--cin);font-weight:normal">Поток:</b> ${f.el||"не выражен"} <span style="color:var(--mut)">(${f.src})</span><br>
   <b style="color:var(--cin);font-weight:normal">Благоприятные элементы:</b> ${us.good.join(", ")} · <b style="color:var(--cin);font-weight:normal">неблагоприятные:</b> ${us.bad.join(", ")}
   </div></div>`;
 }
@@ -3719,7 +3775,7 @@ function renderBiz(main,others,all){
       const wa=aA[k].w,wb=aB[k].w;
       const st=(wa+wb)>=1.5?["закрыт","g"]:(wa+wb)>0?["слабо","n"]:["не закрыт","b"];
       if(st[0]!=="закрыт")gaps.push(k);
-      h+=`<tr><td><b style="color:var(--cin);font-weight:normal">${k}</b><div style="font-size:11px;color:#9d8a6c">${ASPECT_ROLE[k].r}</div></td>
+      h+=`<tr><td><b style="color:var(--cin);font-weight:normal">${k}</b><div style="font-size:11px;color:var(--mut)">${ASPECT_ROLE[k].r}</div></td>
       <td style="font-size:12px">${ASPECT_ROLE[k].d}</td>
       <td class="n">${wa.toFixed(1)}</td><td class="n">${wb.toFixed(1)}</td>
       <td><span class="bg ${st[1]}">${st[0]}</span></td></tr>`;
@@ -3755,7 +3811,7 @@ function renderTeam(main,others){
     const sum=data.reduce((s,d)=>s+d.a[k].w,0);
     const st=sum>=3?["сильно","g"]:sum>=1.5?["достаточно","g"]:sum>0?["слабо","n"]:["дыра","b"];
     if(sum===0)gaps.push(k); else if(sum<1.5)weak.push(k);
-    h+=`<tr><td><b style="color:var(--cin);font-weight:normal">${k}</b><div style="font-size:11px;color:#9d8a6c">${ASPECT_ROLE[k].r}</div></td>
+    h+=`<tr><td><b style="color:var(--cin);font-weight:normal">${k}</b><div style="font-size:11px;color:var(--mut)">${ASPECT_ROLE[k].r}</div></td>
     ${data.map(d=>{const w=d.a[k].w;return `<td class="n" style="color:${w>=1.5?"var(--jade)":w>0?"var(--gold)":"#c9b48a"}">${w?w.toFixed(1):"—"}</td>`}).join("")}
     <td><span class="bg ${st[1]}">${st[0]}</span></td></tr>`;
   });
@@ -3800,7 +3856,7 @@ function renderTeam(main,others){
   const fl=all.map(P=>({P:P,f:flowOf(P.ch)}));
   h+=`<table><tr><th></th>${all.map(P=>`<th>${P.name}</th>`).join("")}</tr>`;
   fl.forEach((a,i)=>{
-    h+=`<tr><td><b style="color:var(--cin);font-weight:normal">${a.P.name}</b><div style="font-size:11px;color:#9d8a6c">поток ${a.f.el||"—"}</div></td>`;
+    h+=`<tr><td><b style="color:var(--cin);font-weight:normal">${a.P.name}</b><div style="font-size:11px;color:var(--mut)">поток ${a.f.el||"—"}</div></td>`;
     fl.forEach((b,j)=>{
       if(i===j){h+=`<td style="background:rgba(201,180,138,.18)"></td>`;return}
       const v=flowVerdict(a.f,b.f);
@@ -3848,7 +3904,7 @@ function renderTeam(main,others){
     const p=pairNum(numOf(all[i].date),numOf(all[j].date));
     h+=`<tr><td>${all[i].name} + ${all[j].name}</td>${p.map(x=>`<td class="n" title="${x.biz?x.biz.t:""}">${x.n}</td>`).join("")}</tr>`;
   }
-  h+=`</table><div style="font-size:11px;color:#9d8a6c;margin-top:6px;font-style:italic">Наведите курсор на цифру, чтобы увидеть краткое значение для деловых отношений.</div>`;
+  h+=`</table><div style="font-size:11px;color:var(--mut);margin-top:6px;font-style:italic">Наведите курсор на цифру, чтобы увидеть краткое значение для деловых отношений.</div>`;
   return h;
 }
 
@@ -4397,7 +4453,7 @@ function renderYears(ch,st,us,nd,fromY,toY,name){
     <p><b style="color:var(--cin);font-weight:normal">Небесный ствол:</b> ${r.S.c} ${r.S.r}, ${r.S.el} ${r.S.yy?"Ян":"Инь"} — ${r.gS}. <b style="color:var(--cin);font-weight:normal">Земная ветвь:</b> ${r.B.c} ${r.B.r}, ${r.B.el} — ${r.gB}.</p>
     <p>${YEARTHEME[r.gB]||YEARTHEME[r.gS]||""}</p>
     <p style="font-size:12.5px"><b style="color:var(--cin);font-weight:normal">Действующий такт:</b> ${r.LS.c}${r.LB.c} (${r.L.age}–${r.L.age+9} лет) — ${godOf(ch.dm,r.L.s)} / ${godOf(ch.dm,r.LB.hid[0])}. Такт задаёт фон, год задаёт событие.</p>
-    ${r.ev.length?r.ev.map(e=>`<p style="font-size:12.5px"><span class="bg ${e.c}">${e.t}</span> ${e.d}</p>`).join(""):`<p style="font-size:12.5px;color:#9d8a6c">Прямых комбинаций с картой нет — год ровный, тему задаёт само божество.</p>`}
+    ${r.ev.length?r.ev.map(e=>`<p style="font-size:12.5px"><span class="bg ${e.c}">${e.t}</span> ${e.d}</p>`).join(""):`<p style="font-size:12.5px;color:var(--mut)">Прямых комбинаций с картой нет — год ровный, тему задаёт само божество.</p>`}
     ${r.health.length?`<p style="font-size:12.5px"><b style="color:var(--cin);font-weight:normal">Здоровье:</b> ${r.health.join(" ")}</p>`:""}
     <p style="font-size:12px;color:var(--ink2);font-style:italic;border-top:1px dotted var(--line);padding-top:9px">
     Числовая система: личный год ${r.py} — ${PL[r.py]?PL[r.py].p:"планета"}, стихия — ${r.pyEl}. Две системы: <b style="font-weight:normal;color:${r.agree==="совпадает"?"var(--jade)":r.agree==="расходится"?"var(--cin)":"var(--gold)"}">${r.agree}</b>. ${r.agree==="совпадает"?"Оба слоя показывают, что год работает на человека — здесь стоит планировать главное.":r.agree==="расходится"?"Числовой слой обещает одно, энергетический — другое. На практике это означает: желание будет, а условий нет; действовать можно, но с опорой на благоприятные элементы, а не на настроение.":"Числовой слой нейтрален — решает энергетический."}</p>
@@ -4641,14 +4697,14 @@ function renderStrengths(ch,st,us,nd,sr,sp,name){
 
   h+=`<div class="pairgrid">
   <div class="pcard"><h3 style="color:var(--jade)">Сильные стороны</h3>
-    <div style="font-size:11px;letter-spacing:.1em;color:#9d8a6c;margin:10px 0 6px">ЧИСЛОВОЙ СЛОЙ</div>
+    <div style="font-size:11px;letter-spacing:.1em;color:var(--mut);margin:10px 0 6px">ЧИСЛОВОЙ СЛОЙ</div>
     <ul style="margin-left:18px;font-size:13px">${strong.map(x=>"<li>"+x+"</li>").join("")}</ul>
-    <div style="font-size:11px;letter-spacing:.1em;color:#9d8a6c;margin:14px 0 6px">СЛОЙ БА-ЦЗЫ</div>
+    <div style="font-size:11px;letter-spacing:.1em;color:var(--mut);margin:14px 0 6px">СЛОЙ БА-ЦЗЫ</div>
     <ul style="margin-left:18px;font-size:13px">${bzStrong.map(x=>"<li>"+x+"</li>").join("")}</ul></div>
   <div class="pcard"><h3 style="color:var(--cin)">Слабые стороны</h3>
-    <div style="font-size:11px;letter-spacing:.1em;color:#9d8a6c;margin:10px 0 6px">ЧИСЛОВОЙ СЛОЙ</div>
+    <div style="font-size:11px;letter-spacing:.1em;color:var(--mut);margin:10px 0 6px">ЧИСЛОВОЙ СЛОЙ</div>
     <ul style="margin-left:18px;font-size:13px">${weak.map(x=>"<li>"+x+"</li>").join("")}</ul>
-    <div style="font-size:11px;letter-spacing:.1em;color:#9d8a6c;margin:14px 0 6px">СЛОЙ БА-ЦЗЫ</div>
+    <div style="font-size:11px;letter-spacing:.1em;color:var(--mut);margin:14px 0 6px">СЛОЙ БА-ЦЗЫ</div>
     <ul style="margin-left:18px;font-size:13px">${bzWeak.map(x=>"<li>"+x+"</li>").join("")}</ul></div></div>`;
 
   /* жизненный путь */
@@ -5185,8 +5241,8 @@ function renderMatrix(nd,ch,st,us){
     else if(d>0)v="Числа дают больше, чем карта: качество заявлено, но энергией не обеспечено — держится на сознательном усилии."+useful;
     else v="Карта даёт больше, чем числа: качество есть, но вы не считаете его своим и не используете."+useful;
     h+=`<tr><td style="color:${ELCOL[e]}">${e}</td><td class="n" style="font-size:13px">${cells.join(", ")}</td>
-    <td><div class="bar"><i style="width:${a}%;background:${ELCOL[e]};opacity:.55"></i></div><span style="font-size:11px;color:#9d8a6c">${a.toFixed(0)}%</span></td>
-    <td><div class="bar"><i style="width:${b}%;background:${ELCOL[e]}"></i></div><span style="font-size:11px;color:#9d8a6c">${b.toFixed(0)}%</span></td>
+    <td><div class="bar"><i style="width:${a}%;background:${ELCOL[e]};opacity:.55"></i></div><span style="font-size:11px;color:var(--mut)">${a.toFixed(0)}%</span></td>
+    <td><div class="bar"><i style="width:${b}%;background:${ELCOL[e]}"></i></div><span style="font-size:11px;color:var(--mut)">${b.toFixed(0)}%</span></td>
     <td style="font-size:12px">${v}</td></tr>`;
   });
   h+=`</table>`;
@@ -5207,7 +5263,7 @@ function renderMatrix(nd,ch,st,us){
     else if(cat[1]==="g")out="Заполнена, стихия благоприятна — это опора. Стройте дела вокруг неё.";
     else if(cat[1]==="b")out="Заполнена, но стихия неблагоприятна: качество есть, а среда его не поддерживает. Используйте точечно.";
     else out="Заполнена, стихия нейтральна — рабочий инструмент без особых условий.";
-    h+=`<tr><td class="n">${k}<div style="font-size:10px;color:#9d8a6c">${c[k]||"—"}</div></td>
+    h+=`<tr><td class="n">${k}<div style="font-size:10px;color:var(--mut)">${c[k]||"—"}</div></td>
     <td style="font-size:12px;color:${ELCOL[el]}">${el}</td>
     <td style="font-size:12px">${brg}</td>
     <td><span class="bg ${cat[1]}">${cat[0]}</span></td>
@@ -5281,7 +5337,7 @@ function renderMonths(ch,st,us,nd,Y){
   h+=`<table><tr><th>Период</th><th>Сезон</th><th>Столп</th><th>Божества</th><th>Взаимодействия</th><th>Окно</th></tr>`;
   rows.forEach(r=>{
     h+=`<tr><td style="font-size:12px">${r.from.d} ${MONTHRU[r.from.m-1]} — ${r.to.d} ${MONTHRU[r.to.m-1]}</td>
-    <td style="font-size:11.5px;color:#9d8a6c">${TERMNAME[r.i]}</td>
+    <td style="font-size:11.5px;color:var(--mut)">${TERMNAME[r.i]}</td>
     <td class="l"><span style="color:${ELCOL[r.S.el]}">${r.S.c}</span><span style="color:${ELCOL[r.B.el]}">${r.B.c}</span></td>
     <td style="font-size:11.5px">${godShort(r.gS)} / ${godShort(r.gB)}</td>
     <td style="font-size:11.5px">${r.ev.length?r.ev.map(e=>`<span class="bg ${e.c}">${e.t.replace("со столпом ","")}</span>`).join(" "):"—"}</td>
@@ -5419,7 +5475,7 @@ function renderElect(ch,st,us,evKey,fromISO,toISO){
   R.best.forEach(r=>{
     const dt=new Date(Date.UTC(r.D.y,r.D.m-1,r.D.d));
     h+=`<tr><td style="font-size:12.5px">${r.D.d} ${MONTHRU[r.D.m-1]} ${r.D.y}</td>
-    <td style="font-size:12px;color:#9d8a6c">${wd[dt.getUTCDay()]}</td>
+    <td style="font-size:12px;color:var(--mut)">${wd[dt.getUTCDay()]}</td>
     <td class="l"><span style="color:${ELCOL[r.S.el]}">${r.S.c}</span><span style="color:${ELCOL[r.B.el]}">${r.B.c}</span></td>
     <td style="font-size:11.5px">${godShort(r.gS)} / ${godShort(r.gB)}</td>
     <td style="font-size:12px;color:var(--jade)">${r.plus.join("; ")||"—"}</td>
@@ -5847,7 +5903,7 @@ function renderRectify(Y,M,DD,btz,blon,bsol,sex,events,curHour){
     <td class="l" style="font-size:16px">${BZS[r.chart.pillars[3].s].c}${BZB[r.chart.pillars[3].b].c}</td>
     <td class="n">${r.hits} из ${r.total}</td>
     <td><div class="bar"><i style="width:${r.pct}%;background:${r.pct>=70?"var(--jade)":r.pct>=40?"var(--gold)":"var(--cin)"}"></i></div>
-      <span style="font-size:11px;color:#9d8a6c">${r.pct}%</span></td></tr>`;
+      <span style="font-size:11px;color:var(--mut)">${r.pct}%</span></td></tr>`;
   });
   h+=`</table>`;
 
@@ -5861,7 +5917,7 @@ function renderRectify(Y,M,DD,btz,blon,bsol,sex,events,curHour){
   best.detail.forEach((d,i)=>{
     const c=cur?cur.detail[i]:null;
     h+=`<tr><td style="font-size:12px">${EVKIND[d.k].n}</td><td class="n">${d.y}</td>
-    <td>${d.ok?`<span class="bg g">объясняет</span><div style="font-size:11px;color:#9d8a6c">${d.why.join("; ")}</div>`:`<span class="bg b">не объясняет</span>`}</td>
+    <td>${d.ok?`<span class="bg g">объясняет</span><div style="font-size:11px;color:var(--mut)">${d.why.join("; ")}</div>`:`<span class="bg b">не объясняет</span>`}</td>
     ${cur?`<td>${c&&c.ok?`<span class="bg g">объясняет</span>`:`<span class="bg b">не объясняет</span>`}</td>`:""}</tr>`;
   });
   h+=`</table>`;
@@ -6471,7 +6527,7 @@ function renderWheel(ch,st,us){
       <div class="whdev" style="color:${Math.abs(dev)<6?"#9d8a6c":dev>0?"var(--gold)":"var(--cin)"}">${dev>0?"+":""}${dev.toFixed(0)}</div>
       <div class="whtag"><span class="bg ${f}">${f==="g"?"полезна":f==="b"?"вредна":"нейтральна"}</span></div></div>`;
   });
-  h+=`</div><div style="font-size:11.5px;color:#9d8a6c;font-style:italic;margin-top:7px">Серая риска — равновесие в двадцать процентов. Отклонение вправо означает избыток стихии, влево — нехватку.</div>`;
+  h+=`</div><div style="font-size:11.5px;color:var(--mut);font-style:italic;margin-top:7px">Серая риска — равновесие в двадцать процентов. Отклонение вправо означает избыток стихии, влево — нехватку.</div>`;
 
   const strongest=order.reduce((a,b)=>st.w[a]>st.w[b]?a:b);
   const weakest=order.reduce((a,b)=>st.w[a]<st.w[b]?a:b);
@@ -7165,9 +7221,9 @@ function renderPalaces(ch,st,us){
     const gS=godOf(dm,p.s), gB=godOf(dm,B.hid[0]);
     const q=qiPhase(dm,p.b);
     h+=`<tr><td><b style="color:var(--cin);font-weight:normal">${PALACES[k].n}</b>
-      <div style="font-size:11px;color:#9d8a6c">${PALACES[k].sp}</div></td>
+      <div style="font-size:11px;color:var(--mut)">${PALACES[k].sp}</div></td>
       <td class="l"><span style="color:${ELCOL[S.el]}">${S.c}</span><span style="color:${ELCOL[B.el]}">${B.c}</span>
-      <div style="font-size:10px;color:#9d8a6c">${B.a}</div></td>
+      <div style="font-size:10px;color:var(--mut)">${B.a}</div></td>
       <td style="font-size:12px;color:${ELCOL[B.el]}">${B.el}</td>
       <td style="font-size:11.5px">${godShort(gS)} / ${godShort(gB)}</td>
       <td style="font-size:11.5px">${q.name}</td>
@@ -7202,7 +7258,7 @@ function renderPalaces(ch,st,us){
     h+=`<tr><td><b style="color:var(--cin);font-weight:normal">${d.n.replace("Дворец ","")}</b></td>
     <td><span class="bg ${d.fav}">${d.fav==="g"?"светлый":d.fav==="b"?"тёмный":"ровный"}</span></td>
     <td style="font-size:12px">${d.fix}</td>
-    <td style="font-size:11.5px;color:#9d8a6c">${d.elfix||"—"}</td></tr>`;
+    <td style="font-size:11.5px;color:var(--mut)">${d.elfix||"—"}</td></tr>`;
   });
   h+=`</table>`;
   h+=`<div class="note">Дворцы описывают отношение человека к сферам жизни, а не сами события. Благоприятный дворец — это не гарантия, а склонность: человеку легче в этой области, он охотнее в неё идёт и меньше в ней устаёт. Неблагоприятный дворец не запрещает сферу, но требует в ней осознанности и внешней опоры.</div>`;
@@ -7228,7 +7284,7 @@ function initPalaces(){
       '<div class="plcs">'+d.el+' · '+d.gS+' / '+d.gB+' · фаза '+d.phase+'</div></div></div>'+
       '<div class="mpbody">'+d.txt+'</div>'+
       '<div class="whfix"><b>'+d.fixh+':</b> '+d.fix+
-        (d.elfix?'<br><span style="color:#9d8a6c">Через стихию '+d.el+': '+d.elfix+'</span>':'')+'</div>'+
+        (d.elfix?'<br><span style="color:var(--mut)">Через стихию '+d.el+': '+d.elfix+'</span>':'')+'</div>'+
       '<div class="plcnote">'+d.note+'</div>'+
       '<div class="plchid"><b>Скрытые стволы:</b> '+d.hid+'</div>';
     if(window.HZ){
@@ -7712,12 +7768,12 @@ function doBuildAnketa(){
    "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"+
    "<title>Анкета перед разбором — "+cons+"</title><style>"+css+"\n"+
    ".afield{margin-bottom:16px}.afield textarea{width:100%;padding:10px 11px;border:1px solid var(--line);"+
-   "background:#fffdf7;font-family:inherit;font-size:15px;color:var(--ink);resize:vertical}"+
+   "background:var(--card2);font-family:inherit;font-size:15px;color:var(--ink);resize:vertical}"+
    ".afield textarea:focus{outline:none;border-color:var(--cin)}"+
    ".aerow{display:grid;grid-template-columns:110px 1fr auto;gap:10px;margin-bottom:9px}"+
    ".aprow{display:grid;grid-template-columns:1fr 1fr .7fr .6fr 1.2fr auto;gap:10px;margin-bottom:11px;align-items:end}"+
    "@media(max-width:820px){.aprow{grid-template-columns:1fr 1fr}}"+
-   ".adel{background:transparent;border:1px solid var(--line);color:#9d8a6c;padding:9px 13px;font-size:13px;cursor:pointer}"+
+   ".adel{background:transparent;border:1px solid var(--line);color:var(--mut);padding:9px 13px;font-size:13px;cursor:pointer}"+
    ".adel:hover{border-color:var(--cin);color:var(--cin);background:transparent}"+
    "#awarn{display:none;background:rgba(157,43,35,.09);border-left:3px solid var(--cin);padding:12px 16px;"+
    "font-size:13px;color:var(--cin);margin-bottom:16px}"+
@@ -8141,14 +8197,14 @@ function renderMatchPane(){
   const ST={match:["совпадает","var(--jade)"],num:["только числа","var(--gold)"],bz:["только Ба-цзы","var(--gold)"],part:["частично","#9d8a6c"],weak:["общая слабая зона","var(--cin)"]};
   let h=`<h2>Совпадение систем</h2><div class="note">Раздел только для вас: в файл клиента он не попадает. Клиент получает лишь темы, где обе системы сходятся, — единым текстом, без названий систем.</div>`;
   h+=`<div class="pairgrid"><div class="pcard"><h3>По числам</h3><p style="font-size:13px">Ум ${nd.um} «${NUM9[nd.um].name}», Действие ${nd.act} «${NUM9[nd.act].name}», Реализация ${nd.real} «${NUM9[nd.real].name}», Итог ${nd.itog}.${sef?" Ключевое число по Сефариалу — "+sef.key+" ("+SEF_KEY[sef.key].pl+").":""}</p>
-    <ul style="margin-left:18px;font-size:13px">${top("n").map(r=>`<li><b>${THEMES[r.k].n}</b> — ${pct(r.n)}%<br><span style="color:#9d8a6c">${r.ns.slice(0,3).join(", ")}</span></li>`).join("")}</ul>
+    <ul style="margin-left:18px;font-size:13px">${top("n").map(r=>`<li><b>${THEMES[r.k].n}</b> — ${pct(r.n)}%<br><span style="color:var(--mut)">${r.ns.slice(0,3).join(", ")}</span></li>`).join("")}</ul>
     <p style="font-size:12.5px">Склад по планам чисел: <b>${M.numPlane}</b>.</p></div>
   <div class="pcard"><h3>По Ба-цзы</h3><p style="font-size:13px">Элемент Личности ${BZS[ch.dm].c} ${BZS[ch.dm].r} (${BZS[ch.dm].el}), структура «${sr.god}», благоприятные: ${us.good.join(", ")}.</p>
-    <ul style="margin-left:18px;font-size:13px">${top("b").map(r=>`<li><b>${THEMES[r.k].n}</b> — ${pct(r.b)}%<br><span style="color:#9d8a6c">${r.bs.slice(0,3).join(", ")}</span></li>`).join("")}</ul>
+    <ul style="margin-left:18px;font-size:13px">${top("b").map(r=>`<li><b>${THEMES[r.k].n}</b> — ${pct(r.b)}%<br><span style="color:var(--mut)">${r.bs.slice(0,3).join(", ")}</span></li>`).join("")}</ul>
     <p style="font-size:12.5px">Склад по стихии Элемента Личности: <b>${M.bzPlane}</b>.</p></div></div>`;
   h+=`<h2>Темы: сравнение</h2><table><tr><th>Тема</th><th>Числа</th><th>Ба-цзы</th><th>Итог</th></tr>${M.rows.slice().sort((a,c)=>c.lo-a.lo).map(r=>`<tr><td>${THEMES[r.k].n}</td>
-    <td><div style="background:#f0ebdf;height:9px;width:90px"><div style="height:9px;width:${pct(r.n)}%;background:var(--gold)"></div></div></td>
-    <td><div style="background:#f0ebdf;height:9px;width:90px"><div style="height:9px;width:${pct(r.b)}%;background:var(--cin)"></div></div></td>
+    <td><div style="background:var(--soft);height:9px;width:90px"><div style="height:9px;width:${pct(r.n)}%;background:var(--gold)"></div></div></td>
+    <td><div style="background:var(--soft);height:9px;width:90px"><div style="height:9px;width:${pct(r.b)}%;background:var(--cin)"></div></div></td>
     <td style="color:${ST[r.st][1]};font-size:12px">${ST[r.st][0]}${M.match.some(m=>m.k===r.k)?' <b style="color:var(--cin)">→ клиенту</b>':""}</td></tr>`).join("")}</table>`;
   h+=`<div class="meet"><b>Стихии.</b> Числа Ума, Действия и Реализации по квадрату Ло Шу: ${Object.keys(M.numEl).join(", ")}. ${M.elMatch.length?"Совпадают с благоприятными стихиями карты: "+M.elMatch.join(", ")+" — это уйдёт клиенту как «что вас поддерживает».":"С благоприятными стихиями карты не совпадают."} ${M.elClash.length?"Конфликт: "+M.elClash.join(", ")+" — по числам опора, по карте расход сил.":""}</div>`;
   h+=`<div class="meet"><b>Склад.</b> Числа: ${M.numPlane}; Ба-цзы: ${M.bzPlane}. ${M.planeMatch?"Совпадает — блок «Ваш склад» уйдёт клиенту.":"Расходится — клиенту не идёт."}</div>`;
@@ -8163,7 +8219,7 @@ function renderKabbalaPane(){
   const C=window.__CALC;if(!C||!C.SEF)return "";
   const s=C.SEF,nd=C.nd,K=SEF_KEY[s.key];
   let h=`<h2>Каббала чисел</h2><div class="note">По Сефариалу. Цифры даты (день, месяц, две последние цифры года) раскладываются по сетке «дух — душа — тело». Если рождение было до полудня, берётся предыдущий день: солнечная дата начинается в полдень.${s.shifted?" Здесь так и сделано: использована дата "+s.date+".":""}</div>`;
-  h+=`<table style="width:auto;margin-bottom:10px">${SEF_GRID.map((r,i)=>`<tr>${r.map(n=>{const c=s.digits.filter(d=>d===n).length;return `<td style="width:56px;height:46px;text-align:center;font-size:18px;color:${c?"var(--cin)":"#d8ccb2"}">${c?String(n).repeat(c):n}<div style="font-size:9.5px;color:#9d8a6c">${SEF_KEY[n].pl.split(" ")[0]}</div></td>`}).join("")}<td style="font-size:11.5px;color:#7a6e5c">${SEF_ROW[i]}</td></tr>`).join("")}</table>`;
+  h+=`<table style="width:auto;margin-bottom:10px">${SEF_GRID.map((r,i)=>`<tr>${r.map(n=>{const c=s.digits.filter(d=>d===n).length;return `<td style="width:56px;height:46px;text-align:center;font-size:18px;color:${c?"var(--cin)":"#d8ccb2"}">${c?String(n).repeat(c):n}<div style="font-size:9.5px;color:var(--mut)">${SEF_KEY[n].pl.split(" ")[0]}</div></td>`}).join("")}<td style="font-size:11.5px;color:var(--mut)">${SEF_ROW[i]}</td></tr>`).join("")}</table>`;
   h+=blk("Ключевое число "+s.key+" — "+K.pl,"Сумма цифр даты "+s.raw+" → "+s.key+". Главная нота характера: "+K.t+"."+(SEF_COMP[s.raw]?" Составное число "+s.raw+": "+SEF_COMP[s.raw]+".":""));
   if(s.conj.length)h+=`<div class="meet"><b>Соединения в сетке:</b> ${s.conj.map(c=>c[0]+"–"+c[1]+" ("+SEF_KEY[c[0]].pl.split(" ")[0]+" и "+SEF_KEY[c[1]].pl.split(" ")[0]+"): "+c[2]).join("; ")}.</div>`;
   const bad=[1,2,3,4,5,6,7,8,9].filter(n=>K.anti.includes(n)||SEF_KEY[n].anti.includes(s.key));
@@ -8504,7 +8560,7 @@ function doExportClient(){
   ".cbuy{border:2px solid var(--cin)!important;background:rgba(157,43,35,.04)}",
   ".cbuy .cbody{padding:24px 26px}",
   ".sumgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:18px}",
-  ".sumc{border:1px solid var(--line);border-top:3px solid var(--gold);background:#fffdf7;padding:14px 16px}",
+  ".sumc{border:1px solid var(--line);border-top:3px solid var(--gold);background:var(--card2);padding:14px 16px}",
   ".sumc.good{border-top-color:var(--jade)}.sumc.bad{border-top-color:var(--cin)}",
   ".sumc h3{font-size:15px;color:var(--cin);margin:0 0 8px;font-weight:normal;letter-spacing:.02em}",
   ".sumc p{font-size:14px;line-height:1.65;margin:0 0 8px}.sumc p:last-child{margin-bottom:0}",
@@ -8532,11 +8588,11 @@ function doExportClient(){
   ".cmain{padding:22px 30px 60px;min-width:0}",
   ".ctop{position:sticky;top:0;z-index:20;background:rgba(247,239,221,.97);border-bottom:1px solid var(--line);padding:11px 18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;backdrop-filter:blur(4px)}",
   ".ctop .cnm{font-size:12.5px;color:var(--cin);letter-spacing:.08em}",
-  "#csearch{flex:1;min-width:150px;max-width:320px;padding:8px 11px;font-size:13px;border:1px solid var(--line);background:#fffdf7;font-family:inherit}",
+  "#csearch{flex:1;min-width:150px;max-width:320px;padding:8px 11px;font-size:13px;border:1px solid var(--line);background:var(--card2);font-family:inherit}",
   ".ctop button{padding:7px 13px;font-size:11.5px}",
   "#cprogwrap{position:fixed;top:0;left:0;right:0;height:3px;background:rgba(201,180,138,.35);z-index:40}",
   "#cprog{height:3px;background:var(--cin);width:0}",
-  ".csec{border:1px solid var(--line);background:#fffdf7;margin-bottom:16px;position:relative}",
+  ".csec{border:1px solid var(--line);background:var(--card2);margin-bottom:16px;position:relative}",
   ".csec.readdone{border-left:4px solid var(--jade)}",
   ".chead{padding:15px 20px;border-bottom:1px solid var(--line);cursor:pointer;display:flex;align-items:center;gap:14px;background:rgba(201,180,138,.10)}",
   ".chead:hover{background:rgba(201,180,138,.2)}",
@@ -8547,7 +8603,7 @@ function doExportClient(){
   ".csec.closed .carrow{transform:rotate(-90deg)}",
   ".csec.closed .cbody,.csec.closed .cnote{display:none}",
   ".cbody{padding:20px 22px 6px}",
-  ".cmark{background:transparent;border:1px solid var(--line);color:#9d8a6c;padding:5px 11px;font-size:10.5px;letter-spacing:.06em;flex:0 0 auto}",
+  ".cmark{background:transparent;border:1px solid var(--line);color:var(--mut);padding:5px 11px;font-size:10.5px;letter-spacing:.06em;flex:0 0 auto}",
   ".cmark:hover{border-color:var(--cin);color:var(--cin);background:transparent}",
   ".cmark.done{border-color:var(--jade);color:var(--jade);background:rgba(63,107,87,.08)}",
   ".term{border-bottom:1px dotted var(--cin);cursor:pointer}",
@@ -8559,7 +8615,7 @@ function doExportClient(){
   ".cmbox p{font-size:13.5px;line-height:1.75}",
   "#cmclose{position:absolute;top:10px;right:12px;background:transparent;border:none;color:var(--cin);font-size:20px;padding:4px 8px;cursor:pointer}",
   ".ctask{display:inline-flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.08em;color:var(--ink2);text-transform:uppercase;margin-bottom:9px;cursor:pointer}",
-  ".ctask input{width:auto;accent-color:#9d2b23}",
+  ".ctask input{width:auto;accent-color:var(--cin)}",
   ".blk.done{background:rgba(63,107,87,.07);border-left-color:var(--jade)}",
   ".cans{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px dotted var(--line)}",
   ".cansb{background:transparent;border:1px solid var(--line);color:var(--ink2);padding:8px 15px;font-size:12px;cursor:pointer;font-family:inherit}",
@@ -8570,8 +8626,8 @@ function doExportClient(){
   ".cmeet{background:rgba(255,253,247,.9);border:1px solid var(--line);border-top:2px solid var(--gold);padding:14px 18px;margin:14px 22px 18px;font-size:13px}",
   ".cmeet b{color:var(--cin);font-weight:normal}",
   ".cnote{margin:8px 22px 20px;border-top:1px dotted var(--line);padding-top:12px}",
-  ".cnotel{font-size:10px;letter-spacing:.2em;color:#9d8a6c;text-transform:uppercase;margin-bottom:6px}",
-  ".cnote textarea{width:100%;min-height:64px;padding:10px 12px;border:1px solid var(--line);background:#fffdf7;font-family:inherit;font-size:13px;color:var(--ink);resize:vertical}",
+  ".cnotel{font-size:10px;letter-spacing:.2em;color:var(--mut);text-transform:uppercase;margin-bottom:6px}",
+  ".cnote textarea{width:100%;min-height:64px;padding:10px 12px;border:1px solid var(--line);background:var(--card2);font-family:inherit;font-size:13px;color:var(--ink);resize:vertical}",
   ".cnote textarea:focus{outline:none;border-color:var(--cin)}",
   "#navbtn{display:none}",
   "@media(max-width:900px){.cwrap{grid-template-columns:1fr}#cnav{display:none;position:static;max-height:none;border-right:none;border-bottom:1px solid var(--line)}body.navopen #cnav{display:flex}#navbtn{display:inline-block}.cmain{padding:16px 16px 50px}}",
@@ -9316,7 +9372,7 @@ function buildPrintDoc(){
       const t=(sec.dataset&&sec.dataset.label)||"Раздел";
       const g=(sec.dataset&&sec.dataset.group)||"";
       const num=(sec.dataset&&sec.dataset.sec)||"";
-      tocHTML+=`<tr><td style="width:26%;font-size:11px;color:#9d8a6c">${g}</td><td>${num}. ${t}</td><td style="width:12%;text-align:right">${pi+2}</td></tr>`;
+      tocHTML+=`<tr><td style="width:26%;font-size:11px;color:var(--mut)">${g}</td><td>${num}. ${t}</td><td style="width:12%;text-align:right">${pi+2}</td></tr>`;
     });
   });
   tocHTML+=`</table>`;
