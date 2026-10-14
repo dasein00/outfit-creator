@@ -53,6 +53,13 @@ object UiState {
 
     /** Меняется при «свернуть/развернуть всё», чтобы открытые экраны перечитали состояние. */
     val version = mutableStateOf(0)
+
+    private val hintsShown = mutableStateOf<Boolean?>(null)
+
+    /** Подсказки и инструкции включены (рубильник в настройках). Выключенные не сворачиваются, а исчезают совсем. */
+    fun hintsOn(ctx: Context): Boolean = hintsShown.value ?: bool(ctx, "hints_on", true).also { hintsShown.value = it }
+
+    fun setHintsOn(ctx: Context, on: Boolean) { setBool(ctx, "hints_on", on); hintsShown.value = on }
 }
 
 /** Флаг, который переживает перезапуск приложения. */
@@ -79,9 +86,12 @@ fun InfoBox(
     title: String,
     modifier: Modifier = Modifier,
     glyph: String? = "ui:bulb",
+    /** false — это не подсказка, а часть данных (формула, пояснение к результату): не прячется рубильником. */
+    hint: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val ctx = LocalContext.current
+    if (hint && !UiState.hintsOn(ctx)) return
     val extra = LocalExtra.current
     var open by rememberUiFlag("info_$key", UiState.infoDefault(ctx))
     Column(

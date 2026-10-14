@@ -135,11 +135,17 @@ fun rememberSpeaker(): Speaker {
 
 @Composable
 internal fun SpeakButton(sp: Speaker, text: String, size: Int = 36) {
-    Box(
-        Modifier.size(size.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = .15f)).clickable { sp.say(text) },
-        contentAlignment = Alignment.Center,
-    ) { Text(btnLabel("🔊"), fontSize = (size / 2.3).sp) }
+    // Своя правка удержанием, даже внутри карточки: можно заменить иконку на любую свою.
+    com.dasein.poryadok.ui.common.Editable {
+        Box(
+            Modifier.size(size.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = .15f)).clickable { sp.say(text) },
+            contentAlignment = Alignment.Center,
+        ) { Glyph(SPEAK_ICON, (size * 0.62f).dp, badge = false) }
+    }
 }
+
+/** Иконка озвучки «аудирование». Удержание открывает правку — можно заменить на любую свою иконку. */
+const val SPEAK_ICON = "tutor/18"
 
 /** Главный экран репетитора: серия, цель дня, слова на сегодня, повторение, тренировки, прогресс. */
 @Composable

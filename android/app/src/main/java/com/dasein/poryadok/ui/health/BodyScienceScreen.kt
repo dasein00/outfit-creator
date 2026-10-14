@@ -116,7 +116,7 @@ private fun EvidenceCard(e: Evidence) {
         if (e.verdict.isNotBlank()) Text(e.verdict, fontSize = 14.sp, modifier = Modifier.padding(top = 6.dp), lineHeight = 19.sp)
         if (e.needs != null && e.value != null) Text(e.needs, color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
         Gap(6.dp)
-        InfoBox("science_${e.key}", "Формула и источник", glyph = "ui:book") {
+        InfoBox("science_${e.key}", "Формула и источник", glyph = "ui:book", hint = false) {
             Text(e.about, fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp)
             Text(btnLabel("Формула: ") + e.formula, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
             Text(btnLabel("Источник: ") + e.source, fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp), lineHeight = 16.sp)

@@ -64,6 +64,8 @@ object Graph {
         db = AppDb.create(app)
         extraDb = ExtraDb.create(app)
         prefs = Prefs(app)
+        // Встроенный файл оформления (если есть) — до первого экрана, только на новой установке.
+        com.dasein.poryadok.system.UiProfile.applyBundled(app)
         Alarms.createChannels(app)
         scope.launch {
             Repo.seed()

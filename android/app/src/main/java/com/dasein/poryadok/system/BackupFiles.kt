@@ -90,7 +90,7 @@ object BackupFiles {
         m.forEach { (k, v) ->
             val body = v.drop(2)
             when (v.take(2)) {
-                "s:" -> e.putString(k, body)
+                "s:" -> e.putString(k, UiProfile.fixPaths(ctx, body))
                 "b:" -> e.putBoolean(k, body.toBoolean())
                 "i:" -> body.toIntOrNull()?.let { e.putInt(k, it) }
                 "l:" -> body.toLongOrNull()?.let { e.putLong(k, it) }
@@ -195,7 +195,8 @@ object BackupFiles {
                             val target = File(ctx.filesDir, e.name)
                             if (target.canonicalPath.startsWith(ctx.filesDir.canonicalPath)) {
                                 target.parentFile?.mkdirs()
-                                target.outputStream().use { zip.copyTo(it) }
+                                if (target.extension == "json" && e.name.startsWith("iconsets/")) target.writeText(UiProfile.fixPaths(ctx, zip.readBytes().decodeToString()))
+                                else target.outputStream().use { zip.copyTo(it) }
                                 files++
                             }
                         }

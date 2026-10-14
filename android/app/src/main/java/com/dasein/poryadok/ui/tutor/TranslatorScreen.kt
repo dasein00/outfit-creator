@@ -335,7 +335,7 @@ private fun PhrasesTab(sp: Speaker) {
                 if (p.ex.isNotBlank()) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
                         Text("“${p.ex}”", fontSize = 13.sp, modifier = Modifier.weight(1f))
-                        Text(btnLabel("🔊"), fontSize = 14.sp, modifier = Modifier.clip(CircleShape).clickable { sp.say(p.ex) }.padding(6.dp))
+                        SpeakButton(sp, p.ex, 28)
                     }
                     Text(p.exRu, fontSize = 12.sp, color = extra.dim)
                 }

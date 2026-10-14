@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.more
 
 import com.dasein.poryadok.ui.common.Hint
+import androidx.compose.ui.text.font.FontWeight
 import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import android.app.AlarmManager
@@ -112,8 +113,19 @@ fun SettingsScreen(nav: NavHostController, s: Settings) {
             }
 
             SectionTitle("Подсказки и инструкции")
-            Text("Все пояснения в разделах сворачиваются нажатием на заголовок. Здесь можно сразу свернуть или развернуть их везде.", fontSize = 12.sp, color = extra.dim)
-            Row(Modifier.padding(top = 6.dp)) {
+            val hintsOn = com.dasein.poryadok.ui.common.UiState.hintsOn(ctx)
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
+                Column(Modifier.weight(1f)) {
+                    Text(btnLabel("Показывать подсказки"), fontWeight = FontWeight.SemiBold)
+                    Text(
+                        if (hintsOn) "Подсказки и «Как пользоваться» видны во всех разделах. Нажмите на заголовок подсказки, чтобы свернуть или развернуть её."
+                        else "Подсказки и инструкции скрыты везде. Включите рубильник, чтобы вернуть их.",
+                        fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
+                    )
+                }
+                androidx.compose.material3.Switch(checked = hintsOn, onCheckedChange = { com.dasein.poryadok.ui.common.UiState.setHintsOn(ctx, it) })
+            }
+            if (hintsOn) Row(Modifier.padding(top = 6.dp)) {
                 OutlinedButton(onClick = { com.dasein.poryadok.ui.common.UiState.setAllInfo(ctx, false); android.widget.Toast.makeText(ctx, "Подсказки свёрнуты", android.widget.Toast.LENGTH_SHORT).show() }, Modifier.weight(1f)) { Text(btnLabel("Свернуть все")) }
                 HGap(8.dp)
                 OutlinedButton(onClick = { com.dasein.poryadok.ui.common.UiState.setAllInfo(ctx, true); android.widget.Toast.makeText(ctx, "Подсказки развёрнуты", android.widget.Toast.LENGTH_SHORT).show() }, Modifier.weight(1f)) { Text(btnLabel("Развернуть все")) }

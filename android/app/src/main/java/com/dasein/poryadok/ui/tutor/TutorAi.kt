@@ -269,7 +269,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.ChatTab() {
                     if (!m.mine) {
                         if (showRu && m.ru.isNotBlank()) Text(m.ru, fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
                         Row {
-                            TextButton(onClick = { sp.say(m.text) }) { Text("🔊") }
+                            SpeakButton(sp, m.text, 32)
                             if (m.ru.isNotBlank()) TextButton(onClick = { showRu = !showRu }) { Text(if (showRu) "Скрыть перевод" else "Перевод") }
                         }
                     }

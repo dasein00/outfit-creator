@@ -67,6 +67,7 @@ fun BackupScreen(nav: NavHostController) {
     var refresh by remember { mutableStateOf(0) }
     var importUri by remember { mutableStateOf<Uri?>(null) }
     var manifest by remember { mutableStateOf<BackupManifest?>(null) }
+    var restored by remember { mutableStateOf(false) }
     val summary by produceState<Map<BackupSection, Pair<Int, Int>>?>(null, refresh) { value = runCatching { BackupFiles.localSummary(ctx) }.getOrNull() }
     val last = remember(refresh) { UiStateBackup.last(ctx) }
 
@@ -80,6 +81,26 @@ fun BackupScreen(nav: NavHostController) {
             busy = null; refresh++
         }
     }
+    val profileExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        if (uri != null) scope.launch {
+            busy = "Сохраняю оформление…"
+            message = com.dasein.poryadok.system.UiProfile.export(ctx, uri).fold(
+                { "Файл оформления сохранён (иконок и служебных файлов: $it). Пришлите его в чат с Claude — он сделает эти настройки стандартными для приложения." },
+                { "Не получилось сохранить: ${it.message}" },
+            )
+            busy = null
+        }
+    }
+    val profileImport = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch {
+            busy = "Применяю оформление…"
+            message = com.dasein.poryadok.system.UiProfile.import(ctx, uri).fold(
+                { restored = true; "Оформление загружено (файлов: $it). Перезапустите приложение, чтобы всё применилось." },
+                { "Не получилось загрузить: ${it.message}" },
+            )
+            busy = null
+        }
+    }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
             busy = "Читаю копию…"
@@ -87,8 +108,6 @@ fun BackupScreen(nav: NavHostController) {
             busy = null
         }
     }
-
-    var restored by remember { mutableStateOf(false) }
 
     Screen("Резервное копирование", onBack = { nav.popBackStack() }) { pad ->
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
@@ -141,6 +160,25 @@ fun BackupScreen(nav: NavHostController) {
                 onClick = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) }, enabled = busy == null,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
             ) { Text(btnLabel("Загрузить копию из файла")) }
+
+            SectionTitle("Файл оформления")
+            Text(
+                "Только вид приложения, без записей: как расставлены плашки на главной, названия разделов и кнопок, свои иконки и замены, " +
+                    "тема и цвет, вид виджета, город погоды. PIN и ключи сюда не попадают. Файл можно загрузить на другом телефоне — " +
+                    "или прислать в чат с Claude, чтобы эти настройки встроили в приложение и они появлялись сразу после установки.",
+                fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
+            )
+            Gap(8.dp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = { profileExport.launch("DASEIN-оформление.zip") }, enabled = busy == null,
+                    modifier = Modifier.weight(1f).heightIn(min = 50.dp),
+                ) { Text(btnLabel("Выгрузить оформление")) }
+                OutlinedButton(
+                    onClick = { profileImport.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) }, enabled = busy == null,
+                    modifier = Modifier.weight(1f).heightIn(min = 50.dp),
+                ) { Text(btnLabel("Загрузить оформление")) }
+            }
 
             busy?.let {
                 Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -87,7 +87,7 @@ fun Screen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
-        floatingActionButton = fab,
+        floatingActionButton = { Editable { fab() } },
         containerColor = MaterialTheme.colorScheme.background,
         content = content,
     )
@@ -102,18 +102,21 @@ fun Tile(
     onLongClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    // Карточка-кнопка без своего удержания: удержание открывает правку её надписи и иконки.
+    val holder = if (onClick != null && onLongClick == null) androidx.compose.runtime.remember { LabelHolder() } else null
     Surface(
         modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).let {
             when {
                 onLongClick != null -> it.combinedClickable(onClick = onClick ?: {}, onLongClick = onLongClick)
-                onClick != null -> it.clickable(onClick = onClick)
+                onClick != null -> (if (holder != null && LocalIconEditable.current) it.labelLongPress(holder) else it).clickable(onClick = onClick)
                 else -> it
             }
         },
         color = color,
         shape = RoundedCornerShape(18.dp),
     ) {
-        Column(Modifier.padding(padding), content = content)
+        if (holder != null) androidx.compose.runtime.CompositionLocalProvider(LocalLabelHolder provides holder) { Column(Modifier.padding(padding), content = content) }
+        else Column(Modifier.padding(padding), content = content)
     }
 }
 
@@ -127,10 +130,12 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier, action: String? = 
             text.uppercase(), style = MaterialTheme.typography.labelMedium, letterSpacing = 1.2.sp,
             color = LocalExtra.current.dim, modifier = Modifier.weight(1f),
         )
-        if (action != null) Text(
-            action, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onAction).padding(6.dp),
-        )
+        if (action != null) Editable {
+            Text(
+                btnLabel(action), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onAction).padding(6.dp),
+            )
+        }
     }
 }
 
@@ -207,11 +212,13 @@ fun EmojiPicker(selected: String, onSelect: (String) -> Unit) {
 fun <T> Segments(options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit, modifier: Modifier = Modifier) {
     SingleChoiceSegmentedButtonRow(modifier.fillMaxWidth()) {
         options.forEachIndexed { i, (value, label) ->
+            val holder = androidx.compose.runtime.remember { LabelHolder() }
             SegmentedButton(
                 selected = value == selected,
                 onClick = { onSelect(value) },
                 shape = SegmentedButtonDefaults.itemShape(i, options.size),
-                label = { Text(label, maxLines = 1, fontSize = 13.sp) },
+                modifier = if (LocalIconEditable.current) Modifier.labelLongPress(holder) else Modifier,
+                label = { androidx.compose.runtime.CompositionLocalProvider(LocalLabelHolder provides holder) { Text(btnLabel(label), maxLines = 1, fontSize = 13.sp) } },
             )
         }
     }
@@ -343,6 +350,12 @@ fun ConfirmDialog(title: String, text: String, confirm: String = "Удалить
 
 @Composable
 fun FieldButton(label: String, value: String, modifier: Modifier = Modifier, glyph: String? = null, onClick: () -> Unit) {
+    val holder = androidx.compose.runtime.remember { LabelHolder() }
+    androidx.compose.runtime.CompositionLocalProvider(LocalLabelHolder provides holder) { FieldButtonBody(label, value, (if (LocalIconEditable.current) modifier.labelLongPress(holder) else modifier), glyph, onClick) }
+}
+
+@Composable
+private fun FieldButtonBody(label: String, value: String, modifier: Modifier, glyph: String?, onClick: () -> Unit) {
     Row(
         modifier.clip(RoundedCornerShape(14.dp)).border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
             .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 9.dp),
@@ -350,7 +363,7 @@ fun FieldButton(label: String, value: String, modifier: Modifier = Modifier, gly
     ) {
         if (glyph != null) { Glyph(glyph, 20.dp); Spacer(Modifier.width(10.dp)) }
         Column {
-            Text(label, fontSize = 12.sp, color = LocalExtra.current.dim)
+            Text(btnLabel(label), fontSize = 12.sp, color = LocalExtra.current.dim)
             Text(value, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }

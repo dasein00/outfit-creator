@@ -65,12 +65,27 @@ fun btnLabel(text: String): String {
 object LabelEdit {
     data class Target(val label: String?, val icon: String?)
     val target = mutableStateOf<Target?>(null)
+    /** Касание, которое уже взял самый внутренний редактируемый элемент (кнопка внутри карточки) — карточка его не трогает. */
+    internal var claimed: androidx.compose.ui.input.pointer.PointerId? = null
+}
+
+/** Любой блок, который можно править удержанием: первая надпись (btnLabel) и первая иконка внутри него. */
+@Composable
+fun Editable(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val holder = remember { LabelHolder() }
+    Box(if (LocalIconEditable.current) modifier.labelLongPress(holder) else modifier) {
+        CompositionLocalProvider(LocalLabelHolder provides holder) { content() }
+    }
 }
 
 /** Удержание кнопки: если есть что править — открываем окно, а нажатие на саму кнопку не срабатывает. */
 fun Modifier.labelLongPress(holder: LabelHolder): Modifier = pointerInput(holder) {
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false)
+        // Внутренний элемент получает касание раньше внешнего: если он уже взял его, внешний молчит.
+        if (holder.label == null && holder.icon == null) return@awaitEachGesture
+        if (LabelEdit.claimed == down.id) return@awaitEachGesture
+        LabelEdit.claimed = down.id
         val slop = viewConfiguration.touchSlop
         val released = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
             while (true) {
