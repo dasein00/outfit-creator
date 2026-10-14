@@ -125,6 +125,7 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
     var editBudget by remember { mutableStateOf<Budget?>(null) }
     var editRecurring by remember { mutableStateOf<Recurring?>(null) }
     var editCategory by remember { mutableStateOf<Category?>(null) }
+    var align by remember { mutableStateOf(false) }
     val nbNotes by observe(emptyList()) { Graph.extra.financeNotes() }
 
     Screen(
@@ -180,12 +181,13 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
                 2 -> FinanceAnalytics(txns, cats, accounts, budgets, ym, cur)
                 3 -> Budgets(month, cats, budgets, ym, cur) { editBudget = it }
                 4 -> RecurringList(recurring, cats, accounts, cur) { editRecurring = it }
-                5 -> Accounts(accounts, txns, cur) { editAccount = it }
+                5 -> Accounts(accounts, txns, cur, onAlign = { align = true }) { editAccount = it }
                 6 -> FinanceCalculators(cur)
             }
         }
     }
-    editAccount?.let { AccountDialog(it) { editAccount = null } }
+    editAccount?.let { AccountDialog(it, txns, cur) { editAccount = null } }
+    if (align) BalanceAlignDialog(accounts.filter { !it.archived }, txns, cur) { align = false }
     editBudget?.let { BudgetDialog(it, cats.filter { c -> !c.income }, cur) { editBudget = null } }
     editRecurring?.let { RecurringDialog(it, cats, accounts, cur) { editRecurring = null } }
     editCategory?.let { CategoryDialog(it) { editCategory = null } }
@@ -206,6 +208,10 @@ private fun Operations(nav: NavHostController, month: List<Txn>, cats: List<Cate
             Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Pill("− Расход", false) { nav.navigate(Routes.txn(0)) }
                 Pill("+ Доход", false) { nav.navigate(Routes.txn(0, income = true)) }
+            }
+            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Pill("Импорт выписки", false, glyph = "ui:document") { nav.navigate(STATEMENT_ROUTE) }
+                Pill("ИИ-анализ", false, glyph = "ui:stats") { nav.navigate(FIN_AI_ROUTE) }
             }
         }
         if (month.isEmpty()) item { Empty(Ic.wallet, "Операций нет", "Записывайте расходы сразу — это занимает пять секунд.") }
@@ -409,22 +415,41 @@ private fun RecurringList(list: List<Recurring>, cats: List<Category>, accounts:
 }
 
 @Composable
-private fun Accounts(accounts: List<Account>, txns: List<Txn>, cur: String, onEdit: (Account) -> Unit) {
+private fun Accounts(accounts: List<Account>, txns: List<Txn>, cur: String, onAlign: () -> Unit, onEdit: (Account) -> Unit) {
     val extra = LocalExtra.current
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    AccountMeta.version.value
     val total = accounts.sumOf { balanceOf(it, txns) }
+    val saving = accounts.filter { AccountMeta.savings(ctx, it.id) }
+    val savingSum = saving.sumOf { balanceOf(it, txns) }
+    val interest = saving.sumOf { AccountMeta.monthly(balanceOf(it, txns), AccountMeta.rate(ctx, it.id)) }
     LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 96.dp)) {
         item {
             Tile {
                 Text(btnLabel("Всего на счетах"), color = extra.dim, fontSize = 13.sp)
                 FitText(Money.format(total, cur), style = MaterialTheme.typography.headlineMedium)
+                if (saving.isNotEmpty()) {
+                    Text("на обычных ${Money.format(total - savingSum, cur)} · в сбережениях ${Money.format(savingSum, cur)}", fontSize = 13.sp, color = extra.dim)
+                    if (interest > 0) Text("проценты ≈ +${Money.format(interest, cur)} в месяц", fontSize = 13.sp, color = extra.ok)
+                }
             }
+            com.dasein.poryadok.ui.common.OutlinedButton(onClick = onAlign, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text(btnLabel("Выровнять остатки")) }
             Gap()
         }
         items(accounts, key = { it.id }) { a ->
             Tile(Modifier.padding(bottom = 8.dp), onClick = { onEdit(a) }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Glyph(a.emoji, 26.dp)
-                    Text(a.name, Modifier.weight(1f).padding(start = 12.dp))
+                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                        Text(a.name)
+                        if (AccountMeta.savings(ctx, a.id)) {
+                            val r = AccountMeta.rate(ctx, a.id)
+                            Text(
+                                "сберегательный" + if (r > 0) " · ${r.plain()}% · ≈ +${Money.format(AccountMeta.monthly(balanceOf(a, txns), r), cur)}/мес" else "",
+                                fontSize = 12.sp, color = extra.dim,
+                            )
+                        }
+                    }
                     val b = balanceOf(a, txns)
                     Text(Money.format(b, cur), fontWeight = FontWeight.SemiBold, color = if (b < 0) extra.danger else MaterialTheme.colorScheme.onSurface)
                 }
@@ -435,10 +460,15 @@ private fun Accounts(accounts: List<Account>, txns: List<Txn>, cur: String, onEd
 }
 
 @Composable
-private fun AccountDialog(a: Account, onDismiss: () -> Unit) {
+private fun AccountDialog(a: Account, txns: List<Txn>, cur: String, onDismiss: () -> Unit) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     var name by remember { mutableStateOf(a.name) }
     var emoji by remember { mutableStateOf(a.emoji) }
     var initial by remember { mutableStateOf(if (a.initial == 0.0) "" else a.initial.plain()) }
+    val balance = remember { balanceOf(a, txns) }
+    var actual by remember { mutableStateOf(if (a.id == 0L) "" else balance.plain()) }
+    var savings by remember { mutableStateOf(a.id != 0L && AccountMeta.savings(ctx, a.id)) }
+    var rate by remember { mutableStateOf(AccountMeta.rate(ctx, a.id).takeIf { a.id != 0L && it > 0 }?.plain().orEmpty()) }
     var confirm by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -447,14 +477,25 @@ private fun AccountDialog(a: Account, onDismiss: () -> Unit) {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 TextInput(name, { name = it }, "Название")
                 Gap(8.dp)
-                NumberField(initial, { initial = it }, "Начальный остаток")
+                if (a.id == 0L) NumberField(initial, { initial = it }, "Остаток сейчас")
+                else {
+                    NumberField(actual, { actual = it }, "Остаток сейчас", suffix = cur)
+                    Text("Впишите, сколько на счёте по данным банка, — остаток выровняется, история операций не изменится.", fontSize = 11.sp, color = LocalExtra.current.dim)
+                }
+                Gap(8.dp)
+                com.dasein.poryadok.ui.common.Segments(listOf(false to "Обычный", true to "Сберегательный"), savings, { savings = it })
+                if (savings) NumberField(rate, { rate = it }, "Процент годовых", suffix = "%")
                 Gap(8.dp)
                 GlyphRow(listOf("ui:card", "ui:coins", "ui:bank", "ui:wallet", "ui:receipt", "cal/39", "ui:stats", "ui:pie", "ui:gift", "ui:notebook"), emoji) { emoji = it }
             }
         },
         confirmButton = {
             TextButton(onClick = {
-                if (name.isNotBlank()) io { Graph.dao.upsertAccount(a.copy(name = name.trim(), emoji = emoji, initial = initial.num() ?: 0.0)) }
+                if (name.isNotBlank()) io {
+                    val init = if (a.id == 0L) initial.num() ?: 0.0 else a.initial + ((actual.num() ?: balance) - balance)
+                    val id = Graph.dao.upsertAccount(a.copy(name = name.trim(), emoji = emoji, initial = init))
+                    AccountMeta.set(ctx, if (a.id == 0L) id else a.id, savings, rate.num() ?: 0.0)
+                }
                 onDismiss()
             }) { Text(btnLabel("Сохранить")) }
         },

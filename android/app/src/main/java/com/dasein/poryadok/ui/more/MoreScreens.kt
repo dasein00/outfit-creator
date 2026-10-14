@@ -111,6 +111,7 @@ fun MoreScreen(nav: NavHostController) {
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.padding(pad),
         ) {
+            item(span = { GridItemSpan(2) }) { SectionSearchBar(nav, Modifier.padding(bottom = 4.dp)) }
             items(HUB) { h ->
                 val look = com.dasein.poryadok.ui.common.rememberSection(h.route, h.title, h.icon)
                 Tile(onClick = { nav.navigate(h.route) }, onLongClick = { editing = h }) {
@@ -302,11 +303,17 @@ fun SearchScreen(nav: NavHostController) {
     Screen(title = "Поиск", onBack = { nav.popBackStack() }) { pad ->
         Column(Modifier.padding(pad).padding(horizontal = 12.dp)) {
             OutlinedTextField(
-                q, { q = it }, placeholder = { Text(btnLabel("Задачи, заметки, события, операции…")) }, singleLine = true,
+                q, { q = it }, placeholder = { Text(btnLabel("Раздел, задача, заметка, операция…")) }, singleLine = true,
                 modifier = Modifier.fillMaxWidth().focusRequester(focus), shape = RoundedCornerShape(14.dp),
             )
+            val ctx = androidx.compose.ui.platform.LocalContext.current
+            val sections = remember(q) { SectionIndex.search(ctx, q, limit = if (q.length < 2) 12 else 6) }
+            if (q.isBlank()) {
+                Text(btnLabel("Начните вводить — ниже появятся разделы и подразделы, а с 2 букв ещё задачи, заметки, события и операции."), color = extra.dim, fontSize = 13.sp, modifier = Modifier.padding(12.dp))
+                return@Screen
+            }
             if (q.length < 2) {
-                Text(btnLabel("Введите хотя бы 2 символа"), color = extra.dim, modifier = Modifier.padding(12.dp))
+                Column(Modifier.padding(top = 8.dp)) { sections.forEach { DestRow(nav, it) } }
                 return@Screen
             }
             fun String.hit() = contains(q, ignoreCase = true)
@@ -319,8 +326,13 @@ fun SearchScreen(nav: NavHostController) {
                 txns.filter { it.note.hit() }.take(20).forEach { add(Triple("ui:wallet|" + it.note, Dates.label(it.day) + " · " + it.amount.toInt(), Routes.txn(it.id))) }
                 tops.filter { it.title.hit() || it.note.hit() }.forEach { add(Triple("ui:trophy|" + it.title, "в топе", Routes.top(it.listId))) }
             }
-            if (results.isEmpty()) Text(btnLabel("Ничего не найдено"), color = extra.dim, modifier = Modifier.padding(12.dp))
+            if (results.isEmpty() && sections.isEmpty()) Text(btnLabel("Ничего не найдено"), color = extra.dim, modifier = Modifier.padding(12.dp))
             LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
+                if (sections.isNotEmpty()) {
+                    item { Text(btnLabel("Разделы"), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(start = 8.dp, top = 4.dp)) }
+                    items(sections) { DestRow(nav, it) }
+                    if (results.isNotEmpty()) item { Text(btnLabel("Записи"), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(start = 8.dp, top = 10.dp)) }
+                }
                 items(results) { (title, sub, route) ->
                     Row(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { nav.navigate(route) }.padding(10.dp),

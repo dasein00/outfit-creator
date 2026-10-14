@@ -406,6 +406,8 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable(Routes.STEPS) { StepsScreen(nav, settings) }
             composable(Routes.SBER) { SberScreen(nav, settings) }
             composable(Routes.FIN_NOTEBOOK) { NotebookScreen(nav, settings) }
+            composable(com.dasein.poryadok.ui.finance.STATEMENT_ROUTE) { com.dasein.poryadok.ui.finance.StatementImportScreen(nav, settings) }
+            composable(com.dasein.poryadok.ui.finance.FIN_AI_ROUTE) { com.dasein.poryadok.ui.finance.FinanceAiScreen(nav, settings) }
         }
         if (showBar) {
             var editTab by remember { mutableStateOf<Pair<Int, Tab>?>(null) }

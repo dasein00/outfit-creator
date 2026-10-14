@@ -99,6 +99,8 @@ dependencies {
     implementation("androidx.exifinterface:exifinterface:1.3.7")
     implementation("androidx.health.connect:connect-client:1.1.0-alpha07")
     implementation("androidx.work:work-runtime-ktx:2.9.1")
+    // Текст PDF-выписок банков (СберБанк Онлайн и др.) — разбор на телефоне.
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
 
     testImplementation("junit:junit:4.13.2")
 }

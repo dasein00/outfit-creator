@@ -57,6 +57,14 @@ object BankSms {
         "Спорт" to listOf("фитнес", "fitness", "спортзал", "world class", "x-fit"),
     )
 
+    /** Категория по названию магазина или подписи операции (для выписок и ИИ-анализа). */
+    fun guessCategory(text: String, income: Boolean): String? {
+        val l = text.lowercase()
+        return if (income) {
+            if (SALARY.any { it in l }) "Зарплата" else if ("кэшбэк" in l || "кешбэк" in l || "cashback" in l) "Кэшбэк" else null
+        } else MERCHANT_CATEGORIES.firstOrNull { (_, words) -> words.any { it in l } }?.first
+    }
+
     fun isSberSource(pkg: String, title: String): Boolean {
         val p = pkg.lowercase()
         val t = title.lowercase().trim()
