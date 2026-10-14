@@ -20,11 +20,49 @@ object Statement {
     /** Шапка выписки: название и номер счёта, ставка, остаток на конец периода. */
     data class Header(val title: String = "", val number: String = "", val rate: Double? = null, val closingDay: Long? = null, val closing: Double? = null) {
         val savings get() = listOf("накопит", "вклад", "сберегат", "копилк").any { it in title.lowercase() }
+        /** Выписка по карте (или кусок без шапки) — её операции идут на счёт «Сбер», куда пишутся SMS и пуши. */
+        val card get() = !savings && (title.isBlank() || "карт" in title.lowercase())
     }
 
     private val REF = Regex("""(?<!\d)\d{2},\s*№\s*([\d-]{5,})""")
     private val PEER = Regex("""(?:•{2,}|\*{2,})\s?(\d{4})""")
-    private val TRANSFER_WORDS = listOf("между счетами одного клиента", "между своими счетами", "перевод между своими", "с вклада на карту", "с карты на вклад")
+    private val TRANSFER_WORDS = listOf(
+        "между счетами одного клиента", "между своими счетами", "перевод между своими", "с вклада на карту", "с карты на вклад",
+        "karta-vklad", "vklad-karta", "karta-schet", "schet-karta",
+    )
+
+    /** Категории из колонки «Категория» выписки Сбера → категории приложения (недостающие создадутся при импорте). */
+    private val SBER_CATEGORIES = mapOf(
+        "супермаркеты" to "Продукты", "рестораны и кафе" to "Кафе и рестораны", "здоровье и красота" to "Здоровье",
+        "одежда и аксессуары" to "Одежда", "транспорт" to "Транспорт", "отдых и развлечения" to "Развлечения",
+        "коммунальные платежи" to "Жильё и ЖКХ", "все для дома" to "Дом", "выдача наличных" to "Наличные",
+        "перевод сбп" to "Переводы", "перевод с карты" to "Переводы", "оплата по qr" to "Покупки по QR",
+        "автомобиль" to "Транспорт", "образование" to "Образование", "путешествия" to "Путешествия",
+    )
+    private val SBER_INCOME = mapOf(
+        "перевод на карту" to "Переводы от людей", "возврат" to "Возврат", "внесение наличных" to "Наличные",
+        "перевод сбп" to "Переводы от людей",
+    )
+
+    /** Категория по колонке «Категория» Сбера (текст до описания магазина). */
+    fun sberCategory(label: String, income: Boolean): String? {
+        val l = label.lowercase()
+        return (if (income) SBER_INCOME else SBER_CATEGORIES).entries.firstOrNull { l.startsWith(it.key) }?.value
+    }
+
+    /** Колонтитулы и шапки страниц PDF — не часть описания операции. */
+    private val PAGE_NOISE = listOf(
+        "продолжение на следующей странице", "для проверки подлинности", "выписка по сч", "дата операции (мск)", "страница ",
+        "действителен", "дата обработки", "расшифровка операций", "дата формирования",
+    )
+    private val DETAIL = Regex("""^\S+\s+\d{6}(\s|$)""")
+    private val FEE = Regex("""В сумму операции включена комиссия\s*[\d\s,.]+\s*(руб\.?|₽)?""", RegexOption.IGNORE_CASE)
+
+    private val CARD_TAIL = Regex("""\.?\s*Операция по\s+(?:карте|сч[её]ту)\s*\*+\d{4}""", RegexOption.IGNORE_CASE)
+
+    /** Вторая строка Сбера: «875330 PYATEROCHKA 23349 ZERNOGRAD RUS. Операция по карте ****3239» → «PYATEROCHKA 23349 ZERNOGRAD». */
+    fun cleanMerchant(s: String): String = CARD_TAIL.replace(FEE.replace(s, ""), "").replace(Regex("\\s+"), " ").trim()
+        .replace(Regex("""^\d{6}\s+"""), "").replace(Regex("""\s+RUS\.?$"""), "").trim(' ', '.', ',')
 
     fun header(text: String): Header {
         val t = text.replace('\u00a0', ' ')
@@ -149,15 +187,26 @@ object Statement {
             var body = TIME.replace(DATE.replace(rec, " "), " ").replace(Regex("\\s+"), " ").trim()
             // «Остаток на …», «Итого» после операции — не операция: всё, что дальше, отбрасываем.
             val lowBody = body.lowercase()
-            val cut = SKIP_WORDS.map { lowBody.indexOf(it) }.filter { it >= 0 }.minOrNull()
+            val cut = (SKIP_WORDS + PAGE_NOISE).map { lowBody.indexOf(it) }.filter { it >= 0 }.minOrNull()
             if (cut != null) body = body.substring(0, cut).trim()
-            val money = MONEY.find(body)
+            // Вторая строка операции Сбера («дата обработки» + код авторизации) — только описание, сумм в ней нет
+            // (а «В сумму операции включена комиссия 50,00 руб.» — уже внутри суммы).
+            val money = if (DETAIL.containsMatchIn(rec)) null else MONEY.find(body)
             if (money == null) {
                 // Вторая строка Сбера («дата обработки» и описание) — подпись к предыдущей операции.
                 ops.lastOrNull()?.let { last ->
                     if (body.isNotEmpty() && last.text.length < 100) {
-                        val t = (last.text + " \u00b7 " + body).take(140)
-                        ops[ops.lastIndex] = last.copy(text = t, category = last.category ?: guess(t, last.income))
+                        val merchant = cleanMerchant(body)
+                        val all = "${last.text} $body".lowercase()
+                        // Карта Сбера: в первой строке категория банка, во второй — магазин или получатель.
+                        val label = last.text
+                        val t = (if (merchant.isNotEmpty()) merchant else label).take(120)
+                        val transfer = last.transfer || TRANSFER_WORDS.any { it in all }
+                        ops[ops.lastIndex] = last.copy(
+                            text = if (merchant.isNotEmpty() && sberCategory(label, last.income) == null && label.length > 2 && !label.equals(merchant, true)) "$label: $merchant".take(120) else t,
+                            category = guess("$merchant $label", last.income) ?: sberCategory(label, last.income) ?: last.category,
+                            transfer = transfer,
+                        )
                     }
                 }
                 return@forEach

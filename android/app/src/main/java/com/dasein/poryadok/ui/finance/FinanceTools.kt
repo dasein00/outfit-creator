@@ -178,7 +178,7 @@ fun StatementImportScreen(nav: NavHostController, settings: Settings) {
 
     suspend fun replan() {
         val acc = account
-        val link = linked ?: Graph.dao.accountsNow().firstOrNull { it.name == com.dasein.poryadok.system.Sber.ACCOUNT && it.id != acc }?.id
+        val link = linked ?: StatementImport.defaultLinked(ctx, Graph.dao.accountsNow(), acc, header)
         val p = StatementImport.plan(ops, header, acc?.toString() ?: header.title, transfers, link)
         plans.clear(); plans.addAll(p)
         picked.clear(); p.indices.forEach { picked[it] = true }
@@ -186,7 +186,7 @@ fun StatementImportScreen(nav: NavHostController, settings: Settings) {
 
     suspend fun load(r: List<Statement.Op>, h: Statement.Header) {
         ops = r; header = h
-        if (!accountPicked) account = Graph.dao.accountsNow().firstOrNull { it.name.equals(h.title, true) }?.id
+        if (!accountPicked) account = Graph.dao.accountsNow().firstOrNull { it.name.equals(if (h.card) com.dasein.poryadok.system.Sber.ACCOUNT else h.title, true) }?.id
         replan()
     }
 
@@ -253,7 +253,8 @@ fun StatementImportScreen(nav: NavHostController, settings: Settings) {
                     }
                     SectionTitle("На какой счёт")
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (accounts.none { it.name.equals(header.title, true) }) Pill("＋ " + header.title.ifBlank { "Новый счёт «Выписка»" }, account == null) {
+                        val newName = if (header.card) com.dasein.poryadok.system.Sber.ACCOUNT else header.title.ifBlank { "Выписка" }
+                        if (accounts.none { it.name.equals(newName, true) }) Pill("＋ $newName", account == null) {
                             account = null; accountPicked = true; scope.launch { replan() }
                         }
                         accounts.forEach { a -> Pill(a.name, a.id == account) { account = a.id; accountPicked = true; scope.launch { replan() } } }
@@ -268,10 +269,10 @@ fun StatementImportScreen(nav: NavHostController, settings: Settings) {
                             fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
                         )
                         if (transfers) FlowRow(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            val sberId = accounts.firstOrNull { it.name == com.dasein.poryadok.system.Sber.ACCOUNT }?.id
-                            if (sberId == null) Pill("＋ ${com.dasein.poryadok.system.Sber.ACCOUNT}", linked == null) { linked = null; scope.launch { replan() } }
+                            val def = StatementImport.defaultLinked(ctx, accounts, account, header)
+                            if (def == null) Pill("＋ " + if (header.savings) com.dasein.poryadok.system.Sber.ACCOUNT else "Накопительный счёт", linked == null) { linked = null; scope.launch { replan() } }
                             accounts.filter { it.id != account }.forEach { a ->
-                                Pill(a.name, linked == a.id || (linked == null && a.id == sberId)) { linked = a.id; scope.launch { replan() } }
+                                Pill(a.name, linked == a.id || (linked == null && a.id == def)) { linked = a.id; scope.launch { replan() } }
                             }
                         }
                     }
@@ -299,7 +300,7 @@ fun StatementImportScreen(nav: NavHostController, settings: Settings) {
                                 busy = "Сохраняю…"
                                 val r = runCatching {
                                     val accId = StatementImport.account(ctx, account, header)
-                                    val linkId = StatementImport.linkedAccount(linked, accId)
+                                    val linkId = StatementImport.linkedAccount(ctx, linked, accId, header)
                                     // План пересчитываем для итогового счёта, чтобы дубли искались верно.
                                     val fresh = StatementImport.plan(ops, header, accId.toString(), transfers, linkId)
                                     val keys = sel.map { it.key }.toSet()

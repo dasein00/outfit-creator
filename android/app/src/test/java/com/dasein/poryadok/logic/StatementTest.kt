@@ -80,6 +80,37 @@ class StatementTest {
     }
 
     @Test
+    fun sberCardTwoLines() {
+        val text = """
+            Выписка по счёту дебетовой карты
+            Номер счёта 40817 810 0 0000 0000002 Пополнение 15 000,00
+            Остаток на 14.10.2026 14 150,00
+            ДАТА ОПЕРАЦИИ (МСК) КАТЕГОРИЯ СУММА В ВАЛЮТЕ СЧЁТА ОСТАТОК СРЕДСТВ
+            13.10.2026 16:58 Супермаркеты 676,00 14 150,00
+            13.10.2026 875330 CH61034 ZERNOGRAD RUS. Операция по карте ****1234
+            27.08.2026 10:00 Прочие расходы 1 050,00 14 826,00
+            27.08.2026 486780 YM*ozon_finance MOSKVA RUS. Операция по карте ****1234 В сумму операции включена комиссия 50,00 руб.
+            Продолжение на следующей странице
+            Для проверки подлинности документа
+            28.01.2025 10:49 Прочие операции +15 000,00 15 876,00
+            28.01.2025 694763 SBERBANK ONL@IN VKLAD-KARTA. Операция по карте
+            ****1234
+        """.trimIndent()
+        val h = Statement.header(text)
+        assertTrue(h.card)
+        assertEquals(14150.0, h.closing!!, 0.001)
+        val ops = Statement.fromText(text) { t, inc -> BankSms.guessCategory(t, inc) }
+        assertEquals(3, ops.size)
+        assertEquals("CH61034 ZERNOGRAD", ops[0].text)
+        assertEquals("Продукты", ops[0].category)
+        assertEquals(1050.0, ops[1].amount, 0.001)
+        assertFalse(ops[1].text.contains("комиссия"))
+        assertFalse(ops[1].text.contains("Продолжение"))
+        assertTrue(ops[2].income)
+        assertTrue(ops[2].transfer)
+    }
+
+    @Test
     fun tbankCsv() {
         val csv = "Дата операции;Дата платежа;Номер карты;Статус;Сумма операции;Валюта операции;Сумма платежа;Валюта платежа;Кэшбэк;Категория;MCC;Описание\n" +
             "\"03.10.2026 12:00:00\";\"03.10.2026\";\"*1234\";\"OK\";\"-350,00\";\"RUB\";\"-350,00\";\"RUB\";\"\";\"Кафе\";\"5814\";\"Кофейня\"\n" +

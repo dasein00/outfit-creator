@@ -28,7 +28,8 @@ object StatementImport {
 
     /** Ключи операций: номер документа, а если его нет — дата, сумма и остаток (одинаковые покупки в один день нумеруются). */
     fun keys(ops: List<Statement.Op>, header: Statement.Header, fallback: String): List<String> {
-        val acc = header.number.takeLast(10).ifBlank { fallback }
+        // Ключ привязан к счёту в приложении: выписка целиком и по частям (без шапки) дают одинаковые ключи.
+        val acc = fallback
         val seen = HashMap<String, Int>()
         return ops.map { op ->
             val base = op.ref.ifBlank { "${op.day}:${"%.2f".format(java.util.Locale.US, op.amount)}:${if (op.income) "+" else "-"}:${op.balance?.let { "%.2f".format(java.util.Locale.US, it) } ?: op.text.lowercase().hashCode()}" }
@@ -63,17 +64,31 @@ object StatementImport {
         }
     }
 
-    private fun categoryId(name: String?, income: Boolean, cats: List<Category>): Long? {
+    private val NEW_CAT_ICONS = mapOf(
+        "Проценты" to "ui:coins", "Переводы" to "ui:card", "Переводы от людей" to "ui:card", "Наличные" to "ui:coins",
+        "Дом" to "ui:home", "Возврат" to "ui:receipt", "Покупки по QR" to "ui:receipt",
+    )
+
+    /** Категория по имени; известные категории выписки (проценты, переводы, наличные…) создаются, если их ещё нет. */
+    private suspend fun categoryId(name: String?, income: Boolean, cats: MutableList<Category>): Long? {
         val list = cats.filter { it.income == income }
-        return (name?.let { n -> list.firstOrNull { it.name.equals(n, true) } ?: list.firstOrNull { it.name.startsWith(n, true) } ?: list.firstOrNull { n.lowercase() in it.name.lowercase() } }
-            ?: list.firstOrNull { it.name == "Другое" })?.id
+        name?.let { n -> list.firstOrNull { it.name.equals(n, true) } ?: list.firstOrNull { it.name.startsWith(n, true) } ?: list.firstOrNull { n.lowercase() in it.name.lowercase() } }
+            ?.let { return it.id }
+        if (name != null && name in NEW_CAT_ICONS) {
+            val c = Category(name = name, emoji = NEW_CAT_ICONS.getValue(name), color = cats.size, income = income, sort = 50 + cats.size)
+            val id = Graph.dao.upsertCategory(c)
+            cats += c.copy(id = id)
+            return id
+        }
+        return list.firstOrNull { it.name == "Другое" }?.id
     }
 
     /** Счёт для операций выписки: выбранный или новый с названием из выписки (сберегательный — с процентом). */
     suspend fun account(ctx: Context, chosen: Long?, header: Statement.Header): Long {
         val dao = Graph.dao
-        val id = chosen ?: dao.accountsNow().firstOrNull { it.name.equals(header.title, true) }?.id
-            ?: dao.upsertAccount(Account(name = header.title.ifBlank { "Выписка" }, emoji = if (header.savings) "ui:coins" else "ui:bank", sort = 50))
+        val name = if (header.card) Sber.ACCOUNT else header.title
+        val id = chosen ?: dao.accountsNow().firstOrNull { it.name.equals(name, true) }?.id
+            ?: dao.upsertAccount(Account(name = name.ifBlank { "Выписка" }, emoji = if (header.savings) "ui:coins" else "ui:bank", sort = 50))
         if (header.savings) {
             val meta = ctx.getSharedPreferences("fin_accounts", Context.MODE_PRIVATE)
             meta.edit().putBoolean("sav_$id", true).apply { header.rate?.let { putFloat("rate_$id", it.toFloat()) } }.apply()
@@ -81,17 +96,34 @@ object StatementImport {
         return id
     }
 
-    /** Связанный счёт для переводов: указанный или «Сбер» (туда же пишутся SMS 900 и пуши). */
-    suspend fun linkedAccount(chosen: Long?, accountId: Long): Long {
+    private fun isSavings(ctx: Context, a: Account) =
+        ctx.getSharedPreferences("fin_accounts", Context.MODE_PRIVATE).getBoolean("sav_${a.id}", false) || listOf("накопит", "вклад", "копилк").any { it in a.name.lowercase() }
+
+    /**
+     * Второй счёт для переводов между своими: для выписки сберегательного счёта — «Сбер» (карта),
+     * для выписки карты — сберегательный счёт. Ничего не создаёт.
+     */
+    fun defaultLinked(ctx: Context, accounts: List<Account>, accountId: Long?, header: Statement.Header): Long? {
+        val others = accounts.filter { it.id != accountId && !it.archived }
+        return if (header.savings) others.firstOrNull { it.name == Sber.ACCOUNT }?.id ?: others.firstOrNull { !isSavings(ctx, it) }?.id
+        else others.firstOrNull { isSavings(ctx, it) }?.id
+    }
+
+    /** Связанный счёт: выбранный, подходящий по умолчанию или новый («Сбер» либо «Накопительный счёт»). */
+    suspend fun linkedAccount(ctx: Context, chosen: Long?, accountId: Long, header: Statement.Header): Long {
         val dao = Graph.dao
-        return chosen?.takeIf { it != accountId } ?: dao.accountsNow().firstOrNull { it.name == Sber.ACCOUNT && it.id != accountId }?.id
-            ?: dao.upsertAccount(Account(name = Sber.ACCOUNT, emoji = "ui:bank", color = 1, sort = 40))
+        chosen?.takeIf { it != accountId }?.let { return it }
+        defaultLinked(ctx, dao.accountsNow(), accountId, header)?.let { return it }
+        return if (header.savings) dao.upsertAccount(Account(name = Sber.ACCOUNT, emoji = "ui:bank", color = 1, sort = 40))
+        else dao.upsertAccount(Account(name = "Накопительный счёт", emoji = "ui:coins", sort = 41)).also {
+            ctx.getSharedPreferences("fin_accounts", Context.MODE_PRIVATE).edit().putBoolean("sav_$it", true).apply()
+        }
     }
 
     suspend fun apply(ctx: Context, plans: List<Plan>, accountId: Long, linkedId: Long, transfers: Boolean, header: Statement.Header): Result {
         val dao = Graph.dao
         val x = Graph.extra
-        val cats = dao.categoriesNow()
+        val cats = dao.categoriesNow().toMutableList()
         val now = System.currentTimeMillis()
         var added = 0; var updated = 0; var replaced = 0
         plans.forEach { p ->
@@ -124,8 +156,12 @@ object StatementImport {
         }
         // Остаток счёта — как в выписке на её последний день.
         var aligned: Double? = null
-        val closingDay = header.closingDay
-        val closing = header.closing
+        // Остаток на конец выписки запоминаем: выписку, разделённую на части, выравниваем после каждой части.
+        val meta = ctx.getSharedPreferences("fin_accounts", Context.MODE_PRIVATE)
+        if (header.closingDay != null && header.closing != null) meta.edit().putString("close_$accountId", "${header.closingDay}|${header.closing}").apply()
+        val stored = meta.getString("close_$accountId", null)?.split('|')?.takeIf { it.size == 2 }
+        val closingDay = header.closingDay ?: stored?.get(0)?.toLongOrNull()
+        val closing = header.closing ?: stored?.get(1)?.toDoubleOrNull()
         if (closingDay != null && closing != null) {
             val acc = dao.accountsNow().firstOrNull { it.id == accountId }
             if (acc != null) {
