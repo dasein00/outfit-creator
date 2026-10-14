@@ -302,6 +302,22 @@ fun SberScreen(nav: NavHostController, settings: AppSettings) {
                     OutlinedButton(onClick = { run(0) }, enabled = !importing, modifier = Modifier.fillMaxWidth()) { Text(btnLabel("Перечитать все SMS 900 (за всё время)")) }
                 }
             }
+            SectionTitle("3. ИИ для непонятных сообщений")
+            Tile {
+                var auto by remember { mutableStateOf(com.dasein.poryadok.system.SmsAi.autoOn(ctx)) }
+                val aiOk = com.dasein.poryadok.system.Ai.enabled(ctx)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(btnLabel("Непонятные SMS и пуши — разбирать ИИ сам"), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            if (aiOk) "Если встроенный разбор не понял сообщение с суммой, оно уходит бесплатной модели (OpenRouter), и операция записывается сама. Выключено — такие сообщения ждут в списке «Не распознано» ниже."
+                            else "Нужен бесплатный ключ OpenRouter: «Настройки» → «ИИ-помощник».",
+                            fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
+                        )
+                    }
+                    androidx.compose.material3.Switch(auto, { auto = it; com.dasein.poryadok.system.SmsAi.setAuto(ctx, it) }, enabled = aiOk)
+                }
+            }
             UnparsedSms(settings)
             SectionTitle("Последние операции «Сбер»")
             Text("Всего записано: ${settings.sberImported}. Последняя: ${ago(settings.sberLastAt)}", fontSize = 12.sp, color = extra.dim)
