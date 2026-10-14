@@ -178,7 +178,12 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
             when (tab) {
                 0 -> Operations(nav, month, cats, accounts, cur)
                 1 -> Overview(txns, month, cats, ym, cur) { editCategory = it }
-                2 -> FinanceAnalytics(txns, cats, accounts, budgets, ym, cur)
+                2 -> Column {
+                    com.dasein.poryadok.ui.common.OutlinedButton(onClick = { nav.navigate(FIN_INFO_ROUTE) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+                        Text(btnLabel("Вся инфографика: капитал, места, подписки, календарь"))
+                    }
+                    FinanceAnalytics(txns, cats, accounts, budgets, ym, cur)
+                }
                 3 -> Budgets(month, cats, budgets, ym, cur) { editBudget = it }
                 4 -> RecurringList(recurring, cats, accounts, cur) { editRecurring = it }
                 5 -> Accounts(accounts, txns, cur, onAlign = { align = true }) { editAccount = it }
@@ -210,8 +215,9 @@ private fun Operations(nav: NavHostController, month: List<Txn>, cats: List<Cate
                 Pill("+ Доход", false) { nav.navigate(Routes.txn(0, income = true)) }
             }
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Pill("Импорт выписки", false, glyph = "ui:document") { nav.navigate(STATEMENT_ROUTE) }
-                Pill("ИИ-анализ", false, glyph = "ui:stats") { nav.navigate(FIN_AI_ROUTE) }
+                Pill("Выписка", false, glyph = "ui:document") { nav.navigate(STATEMENT_ROUTE) }
+                Pill("Инфографика", false, glyph = "ui:pie") { nav.navigate(FIN_INFO_ROUTE) }
+                Pill("ИИ", false, glyph = "ui:stats") { nav.navigate(FIN_AI_ROUTE) }
             }
         }
         if (month.isEmpty()) item { Empty(Ic.wallet, "Операций нет", "Записывайте расходы сразу — это занимает пять секунд.") }

@@ -8,7 +8,34 @@ import java.time.LocalDate
  *  - текст PDF-выписки (СберБанк Онлайн и похожие): строки, начинающиеся с даты, с суммой «1 234,56» или «+5 000,00».
  */
 object Statement {
-    data class Op(val day: Long, val amount: Double, val income: Boolean, val text: String, val category: String? = null)
+    /**
+     * Операция выписки. [balance] — остаток после неё (по нему и [ref] операция узнаётся при повторной загрузке),
+     * [ref] — номер документа («1234567890-37»), [transfer] — перевод между своими счетами, [peer] — последние цифры второго счёта.
+     */
+    data class Op(
+        val day: Long, val amount: Double, val income: Boolean, val text: String, val category: String? = null,
+        val balance: Double? = null, val ref: String = "", val transfer: Boolean = false, val peer: String = "",
+    )
+
+    /** Шапка выписки: название и номер счёта, ставка, остаток на конец периода. */
+    data class Header(val title: String = "", val number: String = "", val rate: Double? = null, val closingDay: Long? = null, val closing: Double? = null) {
+        val savings get() = listOf("накопит", "вклад", "сберегат", "копилк").any { it in title.lowercase() }
+    }
+
+    private val REF = Regex("""(?<!\d)\d{2},\s*№\s*([\d-]{5,})""")
+    private val PEER = Regex("""(?:•{2,}|\*{2,})\s?(\d{4})""")
+    private val TRANSFER_WORDS = listOf("между счетами одного клиента", "между своими счетами", "перевод между своими", "с вклада на карту", "с карты на вклад")
+
+    fun header(text: String): Header {
+        val t = text.replace('\u00a0', ' ')
+        val title = Regex("""Выписка по сч[её]ту\s*«([^»]+)»""").find(t)?.groupValues?.get(1)
+            ?: Regex("""Выписка по сч[её]ту ([а-яё ]{3,40})""", RegexOption.IGNORE_CASE).find(t)?.groupValues?.get(1)?.trim().orEmpty()
+        val number = Regex("""Номер сч[её]та\s+([\d ]{20,40})""").find(t)?.groupValues?.get(1)?.filter(Char::isDigit)?.take(20).orEmpty()
+        val rate = Regex("""(\d+(?:[.,]\d+)?)\s*%\s*годовых""").find(t)?.groupValues?.get(1)?.replace(',', '.')?.toDoubleOrNull()
+        val closing = Regex("""Остаток на (\d{2}\.\d{2}\.\d{4})\s+([+\-]?\d[\d ]*,\d{2})""").findAll(t)
+            .mapNotNull { m -> parseDate(m.groupValues[1])?.let { d -> parseNumber(m.groupValues[2])?.let { d to it } } }.maxByOrNull { it.first }
+        return Header(title, number, rate, closing?.first, closing?.second)
+    }
 
     private val DATE = Regex("""(?<!\d)(\d{2})[./](\d{2})[./](\d{4}|\d{2})(?!\d)|(?<!\d)(\d{4})-(\d{2})-(\d{2})(?!\d)""")
     /** Сумма с копейками: «1 234,56», «-350.00», «+5 000,00 ₽». */
@@ -138,14 +165,28 @@ object Statement {
             val amount = (money.groupValues[2].replace(Regex("\\D"), "") + "." + money.groupValues[3]).toDoubleOrNull() ?: return@forEach
             if (amount <= 0.0) return@forEach
             val sign = money.groupValues[1]
-            val desc = body.substring(0, money.range.first)
+            val ref = REF.find(body)?.groupValues?.get(1).orEmpty()
+            var desc = REF.replace(body.substring(0, money.range.first), " ")
                 .replace(Regex("\\b\\d{6,}\\b"), "").replace(Regex("\\s+"), " ").trim(' ', '-', '\u00b7')
             val income = when (sign) {
                 "+" -> true
                 "-", "\u2212", "\u2013" -> false
                 else -> looksIncome(rec)
             }
-            ops += Op(day, amount, income, desc.ifBlank { rec.take(80) }.take(120), guess(rec, income))
+            // Остаток после операции — следующая сумма сразу за суммой операции.
+            val balance = MONEY.find(body, money.range.last + 1)?.takeIf { it.range.first - money.range.last < 40 }
+                ?.let { (it.groupValues[2].replace(Regex("\\D"), "") + "." + it.groupValues[3]).toDoubleOrNull()?.let { v -> if (it.groupValues[1] == "-") -v else v } }
+            val lowRec = rec.lowercase()
+            val transfer = TRANSFER_WORDS.any { it in lowRec }
+            val peer = PEER.find(rec)?.groupValues?.get(1).orEmpty()
+            // Короткое «Списание» / «Зачисление» дополняем сутью из второй колонки.
+            if (desc.length < 25) {
+                val extra = Regex("""(?:Наименование услуги|Назначение платежа|Получатель|Плательщик):\s*([^:]{3,60}?)(?=\s+(?:Лицевой|Счет|Счёт|Наименование|Назначение|Получатель|Плательщик|к/с|Тип операции)|$)""")
+                    .find(rec)?.groupValues?.get(1)?.trim()
+                if (transfer) desc = "$desc: перевод между своими счетами" + if (peer.isNotEmpty()) " (•••• $peer)" else ""
+                else if (!extra.isNullOrBlank()) desc = "$desc: $extra"
+            }
+            ops += Op(day, amount, income, desc.ifBlank { rec.take(80) }.take(120), guess(rec, income), balance, ref, transfer, peer)
         }
         return ops
     }

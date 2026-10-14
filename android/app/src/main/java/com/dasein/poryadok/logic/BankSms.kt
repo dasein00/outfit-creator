@@ -61,7 +61,8 @@ object BankSms {
     fun guessCategory(text: String, income: Boolean): String? {
         val l = text.lowercase()
         return if (income) {
-            if (SALARY.any { it in l }) "Зарплата" else if ("кэшбэк" in l || "кешбэк" in l || "cashback" in l) "Кэшбэк" else null
+            if (SALARY.any { it in l }) "Зарплата" else if ("кэшбэк" in l || "кешбэк" in l || "cashback" in l) "Кэшбэк"
+            else if ("капитализац" in l || "начисленные %" in l || "проценты" in l || "процентов" in l) "Проценты" else null
         } else MERCHANT_CATEGORIES.firstOrNull { (_, words) -> words.any { it in l } }?.first
     }
 

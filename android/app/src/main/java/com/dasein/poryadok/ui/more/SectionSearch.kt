@@ -67,6 +67,7 @@ object SectionIndex {
                 "Регулярные" to "подписки платежи", "Счета" to "остаток баланс карты вклад сбережения", "Калькуляторы" to "кредит ипотека вклад процент")
                 .forEachIndexed { i, (t, k) -> add(Dest(t, Routes.finance(i), "ui:wallet", fin, k)) }
             add(Dest("Импорт выписки", com.dasein.poryadok.ui.finance.STATEMENT_ROUTE, "ui:document", fin, "выписка банк сбер тинькофф т-банк pdf csv excel загрузить операции"))
+            add(Dest("Инфографика финансов", com.dasein.poryadok.ui.finance.FIN_INFO_ROUTE, "ui:pie", fin, "графики метрики капитал подписки места календарь трат статистика"))
             add(Dest("ИИ-анализ финансов", com.dasein.poryadok.ui.finance.FIN_AI_ROUTE, "ui:stats", fin, "дубликаты дубли категории советы ии"))
             add(Dest("Выровнять остатки", Routes.finance(5), "ui:bank", fin, "остаток на счету сберегательный процент"))
 

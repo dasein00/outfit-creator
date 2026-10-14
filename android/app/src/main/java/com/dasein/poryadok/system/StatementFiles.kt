@@ -22,7 +22,7 @@ import java.util.zip.ZipInputStream
  * Всё разбирается на телефоне; ИИ — только по кнопке, если формат не распознан.
  */
 object StatementFiles {
-    data class Read(val ops: List<Statement.Op>, val text: String, val kind: String)
+    data class Read(val ops: List<Statement.Op>, val text: String, val kind: String, val header: Statement.Header = Statement.Header())
 
     private fun guess(t: String, income: Boolean) = BankSms.guessCategory(t, income)
 
@@ -36,7 +36,7 @@ object StatementFiles {
         when {
             bytes.size > 4 && bytes[0] == '%'.code.toByte() && bytes[1] == 'P'.code.toByte() && bytes[2] == 'D'.code.toByte() && bytes[3] == 'F'.code.toByte() -> {
                 val text = pdfText(ctx, bytes)
-                Read(Statement.fromText(text, ::guess), text, "PDF")
+                Read(Statement.fromText(text, ::guess), text, "PDF", Statement.header(text))
             }
             bytes.size > 2 && bytes[0] == 'P'.code.toByte() && bytes[1] == 'K'.code.toByte() -> {
                 val rows = xlsxRows(bytes)

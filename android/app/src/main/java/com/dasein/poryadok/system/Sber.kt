@@ -105,6 +105,20 @@ object Sber {
             x.putImportRecord(ImportRecord(tKey, KIND, twin.id, at))
             return false
         }
+        // Операция уже есть из банковской выписки (та же сумма, ±1 день) — выписка точнее, SMS не добавляем.
+        val stmtIds = x.importRecordsOf(StatementImport.KIND).mapTo(HashSet()) { it.targetId }
+        if (stmtIds.isNotEmpty()) {
+            val day = Dates.dayOf(at)
+            val fromStmt = dao.txnsNow().filter { t ->
+                t.id in stmtIds && abs(t.amount - op.amount) < 0.005 && abs(t.day - day) <= 1 && (t.type == type || t.type == TxnType.TRANSFER) &&
+                    records.none { it.targetId == t.id }
+            }.minByOrNull { abs(it.day - day) }
+            if (fromStmt != null) {
+                x.putImportRecord(ImportRecord(key, KIND, fromStmt.id, at))
+                x.putImportRecord(ImportRecord(tKey, KIND, fromStmt.id, at))
+                return false
+            }
+        }
         val id = dao.upsertTxn(
             Txn(type = type, amount = op.amount, accountId = acc, categoryId = categoryOf(op), day = Dates.dayOf(at), note = noteOf(op), createdAt = at)
         )
@@ -162,7 +176,7 @@ object Sber {
         val cats = dao.categoriesNow()
         val incomeCat = cats.filter { it.income }.let { l -> l.firstOrNull { it.name == "Другое" } ?: l.firstOrNull() }
         var flipped = 0
-        dao.txnsNow().filter { it.accountId == acc && it.type == TxnType.EXPENSE && BankSms.noteLooksIncoming(it.note) }.forEach { t ->
+        dao.txnsNow().filter { it.accountId == acc && it.type == TxnType.EXPENSE && it.note.startsWith("Сбер") && BankSms.noteLooksIncoming(it.note) }.forEach { t ->
             dao.upsertTxn(t.copy(type = TxnType.INCOME, categoryId = incomeCat?.id))
             flipped++
         }
@@ -170,7 +184,9 @@ object Sber {
         val byTxn = records.groupBy { it.targetId }
         fun channels(id: Long) = byTxn[id].orEmpty().mapNotNull { channelOf(it.key) }.toSet()
         val removed = mutableSetOf<Long>()
-        dao.txnsNow().filter { it.accountId == acc }.groupBy { it.type to Math.round(it.amount * 100) }.values.forEach { same ->
+        // Записи из банковских выписок не трогаем: они точные, а время записи у них общее (момент загрузки).
+        val stmtIds = x.importRecordsOf(StatementImport.KIND).mapTo(HashSet()) { it.targetId }
+        dao.txnsNow().filter { it.accountId == acc && it.id !in stmtIds }.groupBy { it.type to Math.round(it.amount * 100) }.values.forEach { same ->
             val sorted = same.sortedBy { it.createdAt }
             for (i in sorted.indices) {
                 val a = sorted[i]

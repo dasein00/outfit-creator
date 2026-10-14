@@ -49,6 +49,7 @@ import com.dasein.poryadok.logic.Money
 import com.dasein.poryadok.logic.Statement
 import com.dasein.poryadok.system.Ai
 import com.dasein.poryadok.system.StatementFiles
+import com.dasein.poryadok.system.StatementImport
 import com.dasein.poryadok.ui.common.Button
 import com.dasein.poryadok.ui.common.Gap
 import com.dasein.poryadok.ui.common.Hint
@@ -152,9 +153,7 @@ fun BalanceAlignDialog(accounts: List<Account>, txns: List<Txn>, cur: String, on
 
 // ---------- Импорт выписки ----------
 
-private data class ImportRow(val op: Statement.Op, val dup: Boolean)
-
-/** Импорт выписки из приложения банка: CSV, Excel или PDF → предпросмотр с отметками → операции на выбранном счёте. */
+/** Импорт выписки из приложения банка: CSV, Excel или PDF → предпросмотр с отметками → операции без дублей. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun StatementImportScreen(nav: NavHostController, settings: Settings) {
@@ -163,32 +162,43 @@ fun StatementImportScreen(nav: NavHostController, settings: Settings) {
     val scope = rememberCoroutineScope()
     val cur = settings.currency
     val accounts by observe(emptyList()) { Graph.dao.accounts() }
+    /** null — новый счёт с названием из выписки. */
     var account by remember { mutableStateOf<Long?>(null) }
-    val rows = remember { mutableStateListOf<ImportRow>() }
+    var accountPicked by remember { mutableStateOf(false) }
+    var linked by remember { mutableStateOf<Long?>(null) }
+    var transfers by remember { mutableStateOf(true) }
+    var ops by remember { mutableStateOf<List<Statement.Op>>(emptyList()) }
+    var header by remember { mutableStateOf(Statement.Header()) }
+    val plans = remember { mutableStateListOf<StatementImport.Plan>() }
     val picked = remember { mutableStateMapOf<Int, Boolean>() }
     var rawText by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
+    var done by remember { mutableStateOf(false) }
 
-    suspend fun show(ops: List<Statement.Op>) {
-        val existing = Graph.dao.txnsNow().filter { it.type != TxnType.TRANSFER }.map { Triple(it.day, it.amount, it.type == TxnType.INCOME) }
-        rows.clear(); picked.clear()
-        ops.sortedByDescending { it.day }.forEachIndexed { i, op ->
-            val dup = Statement.isDuplicate(op, existing)
-            rows += ImportRow(op, dup)
-            picked[i] = !dup
-        }
+    suspend fun replan() {
+        val acc = account
+        val link = linked ?: Graph.dao.accountsNow().firstOrNull { it.name == com.dasein.poryadok.system.Sber.ACCOUNT && it.id != acc }?.id
+        val p = StatementImport.plan(ops, header, acc?.toString() ?: header.title, transfers, link)
+        plans.clear(); plans.addAll(p)
+        picked.clear(); p.indices.forEach { picked[it] = true }
+    }
+
+    suspend fun load(r: List<Statement.Op>, h: Statement.Header) {
+        ops = r; header = h
+        if (!accountPicked) account = Graph.dao.accountsNow().firstOrNull { it.name.equals(h.title, true) }?.id
+        replan()
     }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
-            busy = "Читаю выписку…"; message = null
+            busy = "Читаю выписку…"; message = null; done = false
             runCatching { StatementFiles.read(ctx, uri) }.fold(
                 { r ->
                     rawText = r.text
-                    show(r.ops)
+                    load(r.ops, r.header)
                     message = if (r.ops.isEmpty()) "В файле (${r.kind}) не нашлось операций. Попробуйте «Разобрать с ИИ» или другой формат выписки."
-                    else "${r.kind}: найдено операций ${r.ops.size}. Похожие на уже записанные отмечены и сняты."
+                    else "${r.kind}" + (if (r.header.title.isNotBlank()) " · «${r.header.title}»" else "") + ": операций ${r.ops.size}."
                 },
                 { message = "Не удалось прочитать: ${it.message}" },
             )
@@ -201,9 +211,10 @@ fun StatementImportScreen(nav: NavHostController, settings: Settings) {
             item {
                 Hint(
                     "fin_import_how",
-                    "Сбер: «История» → значок выгрузки или «Выписки и справки» → «Выписка по счёту» → PDF → «Поделиться» → сохранить файл. " +
-                        "Т-Банк: «Операции» → «Выписка» (PDF) или в веб-версии «Выгрузить» в CSV/Excel. Альфа, ВТБ, Озон: «Выписка» в PDF или Excel. " +
-                        "Затем нажмите «Выбрать файл выписки». Всё разбирается на телефоне — в интернет ничего не уходит.",
+                    "Сбер: «Выписки и справки» → «Выписка по счёту» (карта, накопительный счёт, вклад) → PDF → «Поделиться» → сохранить файл. " +
+                        "Т-Банк: «Выписка» (PDF) или в веб-версии «Выгрузить» в CSV/Excel. Альфа, ВТБ, Озон: «Выписка» в PDF или Excel. " +
+                        "Загружайте выписки сколько угодно раз и с пересечением дат: уже записанные операции обновятся, а пришедшие SMS 900 и пуши заменятся версией из выписки — ничего не задвоится. " +
+                        "Файл разбирается на телефоне, в интернет ничего не уходит.",
                     title = "Как получить выписку",
                 )
                 Gap(8.dp)
@@ -217,66 +228,115 @@ fun StatementImportScreen(nav: NavHostController, settings: Settings) {
                     }
                 }
                 message?.let { Tile(Modifier.padding(top = 10.dp)) { Text(it, fontSize = 14.sp) } }
-                if (rawText.isNotBlank() && Ai.enabled(ctx)) OutlinedButton(
-                    onClick = {
-                        scope.launch {
-                            busy = "ИИ разбирает выписку…"
-                            runCatching { StatementFiles.aiParse(ctx, rawText) }.fold(
-                                { show(it); message = "ИИ нашёл операций: ${it.size}. Проверьте суммы перед импортом." },
-                                { message = "ИИ не помог: ${it.message}" },
-                            )
-                            busy = null
-                        }
-                    },
-                    enabled = busy == null, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                ) { Text(btnLabel("✨ Разобрать с ИИ")) }
-                if (rawText.isNotBlank() && Ai.enabled(ctx)) Text(
-                    "«Разобрать с ИИ» отправит текст выписки бесплатной модели (OpenRouter) — только по нажатию.",
-                    fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 2.dp),
-                )
-                if (rows.isNotEmpty()) {
-                    SectionTitle("На какой счёт")
-                    val acc = account ?: accounts.firstOrNull()?.id
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        accounts.forEach { a -> Pill(a.name, a.id == acc) { account = a.id } }
+                if (done) SberFollowUp(nav)
+                if (rawText.isNotBlank() && ops.isEmpty() && Ai.enabled(ctx)) {
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                busy = "ИИ разбирает выписку…"
+                                runCatching { StatementFiles.aiParse(ctx, rawText) }.fold(
+                                    { load(it, header); message = "ИИ нашёл операций: ${it.size}. Проверьте суммы перед импортом." },
+                                    { message = "ИИ не помог: ${it.message}" },
+                                )
+                                busy = null
+                            }
+                        },
+                        enabled = busy == null, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    ) { Text(btnLabel("✨ Разобрать с ИИ")) }
+                    Text("Отправит текст выписки бесплатной модели (OpenRouter) — только по нажатию.", fontSize = 11.sp, color = extra.dim)
+                }
+                if (plans.isNotEmpty()) {
+                    if (header.title.isNotBlank() || header.closing != null) Tile(Modifier.padding(top = 10.dp)) {
+                        if (header.title.isNotBlank()) Text("«${header.title}»" + if (header.number.isNotBlank()) " ·•${header.number.takeLast(4)}" else "", fontWeight = FontWeight.SemiBold)
+                        header.rate?.let { Text("Ставка ${it.plain()}% годовых" + if (header.savings) " · сберегательный счёт" else "", fontSize = 13.sp, color = extra.dim) }
+                        if (header.closing != null && header.closingDay != null) Text("Остаток на ${Dates.label(header.closingDay!!)}: ${Money.format(header.closing!!, cur)} — счёт выровняется по нему", fontSize = 13.sp, color = extra.dim)
                     }
-                    if (accounts.isEmpty()) Text(btnLabel("Счёт «Выписка» создастся сам."), fontSize = 12.sp, color = extra.dim)
+                    SectionTitle("На какой счёт")
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (accounts.none { it.name.equals(header.title, true) }) Pill("＋ " + header.title.ifBlank { "Новый счёт «Выписка»" }, account == null) {
+                            account = null; accountPicked = true; scope.launch { replan() }
+                        }
+                        accounts.forEach { a -> Pill(a.name, a.id == account) { account = a.id; accountPicked = true; scope.launch { replan() } } }
+                    }
+                    val trCount = ops.count { it.transfer }
+                    if (trCount > 0) {
+                        SectionTitle("Переводы между своими счетами ($trCount)")
+                        Segments(listOf(true to "Перевод", false to "Доход / расход"), transfers, { transfers = it; scope.launch { replan() } })
+                        Text(
+                            if (transfers) "Не считаются ни доходом, ни расходом — деньги просто переходят между вашими счетами. Второй счёт:"
+                            else "Каждый перевод станет доходом или расходом этого счёта (может задвоить траты с карты).",
+                            fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
+                        )
+                        if (transfers) FlowRow(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            val sberId = accounts.firstOrNull { it.name == com.dasein.poryadok.system.Sber.ACCOUNT }?.id
+                            if (sberId == null) Pill("＋ ${com.dasein.poryadok.system.Sber.ACCOUNT}", linked == null) { linked = null; scope.launch { replan() } }
+                            accounts.filter { it.id != account }.forEach { a ->
+                                Pill(a.name, linked == a.id || (linked == null && a.id == sberId)) { linked = a.id; scope.launch { replan() } }
+                            }
+                        }
+                    }
                     val n = picked.count { it.value }
-                    val inc = rows.indices.filter { picked[it] == true && rows[it].op.income }.sumOf { rows[it].op.amount }
-                    val exp = rows.indices.filter { picked[it] == true && !rows[it].op.income }.sumOf { rows[it].op.amount }
-                    Text("Отмечено $n из ${rows.size}: доходы ${Money.format(inc, cur)}, расходы ${Money.format(exp, cur)}", fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
+                    val sel = plans.indices.filter { picked[it] == true }.map { plans[it] }
+                    val inc = sel.filter { it.op.income && !(it.op.transfer && transfers) }.sumOf { it.op.amount }
+                    val exp = sel.filter { !it.op.income && !(it.op.transfer && transfers) }.sumOf { it.op.amount }
+                    Tile(Modifier.padding(top = 10.dp)) {
+                        Text("Отмечено $n из ${plans.size}", fontWeight = FontWeight.SemiBold)
+                        Text("доходы ${Money.format(inc, cur)} · расходы ${Money.format(exp, cur)}", fontSize = 13.sp)
+                        Text(
+                            "новых ${sel.count { it.status == StatementImport.Status.NEW }} · обновятся ${sel.count { it.status == StatementImport.Status.UPDATE }} · " +
+                                "заменят записи из SMS/пушей ${sel.count { it.status == StatementImport.Status.REPLACE }}",
+                            fontSize = 12.sp, color = extra.dim,
+                        )
+                    }
                     Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = { rows.indices.forEach { picked[it] = true } }) { Text(btnLabel("Все")) }
-                        TextButton(onClick = { rows.indices.forEach { picked[it] = !rows[it].dup } }) { Text(btnLabel("Без дублей")) }
-                        TextButton(onClick = { rows.indices.forEach { picked[it] = false } }) { Text(btnLabel("Снять")) }
+                        TextButton(onClick = { plans.indices.forEach { picked[it] = true } }) { Text(btnLabel("Все")) }
+                        TextButton(onClick = { plans.indices.forEach { picked[it] = plans[it].status == StatementImport.Status.NEW } }) { Text(btnLabel("Только новые")) }
+                        TextButton(onClick = { plans.indices.forEach { picked[it] = false } }) { Text(btnLabel("Снять")) }
                     }
                     Button(
                         onClick = {
                             scope.launch {
                                 busy = "Сохраняю…"
-                                val added = importOps(rows.indices.filter { picked[it] == true }.map { rows[it].op }, acc)
+                                val r = runCatching {
+                                    val accId = StatementImport.account(ctx, account, header)
+                                    val linkId = StatementImport.linkedAccount(linked, accId)
+                                    // План пересчитываем для итогового счёта, чтобы дубли искались верно.
+                                    val fresh = StatementImport.plan(ops, header, accId.toString(), transfers, linkId)
+                                    val keys = sel.map { it.key }.toSet()
+                                    StatementImport.apply(ctx, fresh.filter { it.key in keys }, accId, linkId, transfers, header)
+                                }
                                 busy = null
-                                message = "Добавлено операций: $added."
-                                rows.clear(); picked.clear(); rawText = ""
+                                r.onSuccess { res ->
+                                    message = "Готово: новых ${res.added}, обновлено ${res.updated}, заменено дублей ${res.replaced}." +
+                                        (res.aligned?.let { " Остаток счёта выровнен по выписке: ${Money.format(it, cur)}." } ?: "")
+                                    AccountMeta.version.value++
+                                    plans.clear(); picked.clear(); ops = emptyList(); rawText = ""; done = true
+                                }.onFailure { message = "Не получилось: ${it.message}" }
                             }
                         },
                         enabled = n > 0 && busy == null, modifier = Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(min = 50.dp),
                     ) { Text(btnLabel("Импортировать") + " ($n)") }
                 }
             }
-            itemsIndexed(rows) { i, r ->
+            itemsIndexed(plans) { i, p ->
+                val r = p.op
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
                     Checkbox(picked[i] == true, { picked[i] = it })
                     Column(Modifier.weight(1f)) {
-                        Text(r.op.text.ifBlank { "Без описания" }, maxLines = 2, overflow = TextOverflow.Ellipsis, fontSize = 14.sp)
+                        Text(r.text.ifBlank { "Без описания" }, maxLines = 2, overflow = TextOverflow.Ellipsis, fontSize = 14.sp)
                         Text(
-                            Dates.label(r.op.day) + (r.op.category?.let { " · $it" } ?: "") + if (r.dup) " · похоже, уже записана" else "",
-                            fontSize = 12.sp, color = if (r.dup) extra.warn else extra.dim,
+                            Dates.label(r.day) + (r.category?.let { " · $it" } ?: "") + when (p.status) {
+                                StatementImport.Status.UPDATE -> " · уже загружена — обновится"
+                                StatementImport.Status.REPLACE -> " · заменит запись из SMS/пуша"
+                                else -> ""
+                            },
+                            fontSize = 12.sp, color = if (p.status == StatementImport.Status.NEW) extra.dim else extra.warn,
                         )
                     }
+                    val tr = r.transfer && transfers
                     Text(
-                        (if (r.op.income) "+" else "−") + Money.format(r.op.amount, cur), fontWeight = FontWeight.SemiBold,
-                        color = if (r.op.income) extra.ok else MaterialTheme.colorScheme.onSurface,
+                        (if (tr) "⇄ " else if (r.income) "+" else "−") + Money.format(r.amount, cur), fontWeight = FontWeight.SemiBold,
+                        color = if (tr) extra.dim else if (r.income) extra.ok else MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
@@ -284,27 +344,51 @@ fun StatementImportScreen(nav: NavHostController, settings: Settings) {
     }
 }
 
-/** Категория по имени среди категорий нужного типа; иначе «Другое». */
-private suspend fun categoryId(name: String?, income: Boolean, cats: List<Category>): Long? {
-    val list = cats.filter { it.income == income }
-    return (name?.let { n -> list.firstOrNull { it.name.equals(n, true) } ?: list.firstOrNull { it.name.startsWith(n, true) } ?: list.firstOrNull { n.lowercase() in it.name.lowercase() } }
-        ?: list.firstOrNull { it.name == "Другое" })?.id
-}
-
-private suspend fun importOps(ops: List<Statement.Op>, accountId: Long?): Int {
-    val dao = Graph.dao
-    val acc = accountId ?: dao.accountsNow().firstOrNull()?.id ?: dao.upsertAccount(Account(name = "Выписка", emoji = "ui:bank"))
-    val cats = dao.categoriesNow()
-    val now = System.currentTimeMillis()
-    ops.forEach { op ->
-        dao.upsertTxn(
-            Txn(
-                type = if (op.income) TxnType.INCOME else TxnType.EXPENSE, amount = op.amount, accountId = acc,
-                categoryId = categoryId(op.category, op.income, cats), day = op.day, note = op.text, createdAt = now,
-            )
+/** После выписки: дальше записи ведутся сами — из SMS 900 и пушей СберБанк Онлайн, непонятные разбирает ИИ. */
+@Composable
+private fun SberFollowUp(nav: NavHostController) {
+    val ctx = LocalContext.current
+    val extra = LocalExtra.current
+    val scope = rememberCoroutineScope()
+    var info by remember { mutableStateOf<String?>(null) }
+    var auto by remember { mutableStateOf(com.dasein.poryadok.system.SmsAi.autoOn(ctx)) }
+    val listener = com.dasein.poryadok.system.Sber.listenerEnabled(ctx)
+    val sms = com.dasein.poryadok.system.Sber.smsAllowed(ctx)
+    Tile(Modifier.padding(top = 10.dp)) {
+        Text(btnLabel("Дальше — автоматически"), fontWeight = FontWeight.SemiBold)
+        Text(
+            "Новые операции после выписки приложение записывает само: из пушей СберБанк Онлайн (${if (listener) "включено ✓" else "выключено"}) " +
+                "и SMS с номера 900 (${if (sms) "доступ есть ✓" else "нет доступа"}). Когда загрузите следующую выписку, эти записи заменятся её версией.",
+            fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.padding(top = 4.dp),
         )
+        if (!listener || !sms) OutlinedButton(onClick = { nav.navigate(com.dasein.poryadok.ui.Routes.SBER) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+            Text(btnLabel("Включить пуши и SMS"))
+        }
+        if (sms) OutlinedButton(
+            onClick = {
+                scope.launch {
+                    info = "Читаю SMS…"
+                    val last = StatementImport.lastDay()
+                    val days = last?.let { (Dates.today() - it + 2).toInt().coerceIn(1, 400) } ?: 90
+                    val (seen, added) = com.dasein.poryadok.system.Sber.importSms(ctx, days)
+                    info = "SMS за $days дн.: просмотрено $seen, новых операций $added (совпавшие с выпиской не добавлены)."
+                }
+            },
+            modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+        ) { Text(btnLabel("Догрузить SMS 900 после выписки")) }
+        info?.let { Text(it, fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp)) }
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text(btnLabel("Непонятные SMS и пуши — разбирать ИИ сам"), fontSize = 14.sp)
+                Text(
+                    if (Ai.enabled(ctx)) "Сообщения, которые программа не поняла, отправляются бесплатной модели (OpenRouter) и записываются без вашего участия."
+                    else "Нужен бесплатный ключ OpenRouter в настройках ИИ.",
+                    fontSize = 11.sp, color = extra.dim,
+                )
+            }
+            androidx.compose.material3.Switch(auto, { auto = it; com.dasein.poryadok.system.SmsAi.setAuto(ctx, it) }, enabled = Ai.enabled(ctx))
+        }
     }
-    return ops.size
 }
 
 // ---------- ИИ-анализ финансов ----------

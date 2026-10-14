@@ -408,6 +408,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable(Routes.FIN_NOTEBOOK) { NotebookScreen(nav, settings) }
             composable(com.dasein.poryadok.ui.finance.STATEMENT_ROUTE) { com.dasein.poryadok.ui.finance.StatementImportScreen(nav, settings) }
             composable(com.dasein.poryadok.ui.finance.FIN_AI_ROUTE) { com.dasein.poryadok.ui.finance.FinanceAiScreen(nav, settings) }
+            composable(com.dasein.poryadok.ui.finance.FIN_INFO_ROUTE) { com.dasein.poryadok.ui.finance.FinanceInfographicScreen(nav, settings) }
         }
         if (showBar) {
             var editTab by remember { mutableStateOf<Pair<Int, Tab>?>(null) }

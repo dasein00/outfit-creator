@@ -6,6 +6,7 @@ import com.dasein.poryadok.logic.BankSms
 import com.dasein.poryadok.system.Ai.num
 import com.dasein.poryadok.system.Ai.str
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
@@ -15,7 +16,7 @@ import java.io.File
 
 /**
  * SMS и пуши банка, которые встроенный разбор не понял, хотя в них есть сумма. Хранятся на телефоне.
- * В ИИ уходят только по кнопке и только выбранные сообщения.
+ * В ИИ уходят по кнопке (только выбранные) или сами — если включён переключатель «разбирать ИИ сам».
  */
 object SmsAi {
     @Serializable
@@ -27,6 +28,32 @@ object SmsAi {
     private val json = Json { ignoreUnknownKeys = true }
     private fun file(ctx: Context) = File(ctx.filesDir, "sms_unparsed.json")
     val version = androidx.compose.runtime.mutableIntStateOf(0)
+
+    private fun prefs(ctx: Context) = ctx.getSharedPreferences("ai", Context.MODE_PRIVATE)
+
+    /** Включён ли автоматический разбор непонятных сообщений ИИ (выключено по умолчанию). */
+    fun autoOn(ctx: Context) = prefs(ctx).getBoolean("sms_auto", false)
+
+    fun setAuto(ctx: Context, on: Boolean) {
+        prefs(ctx).edit().putBoolean("sms_auto", on).apply()
+        if (on) Graph.scope.launch { autoRun(ctx) }
+    }
+
+    private val autoLock = kotlinx.coroutines.sync.Mutex()
+
+    /** Разобрать накопившиеся сообщения ИИ и записать операции. Сообщения копятся 15 секунд, чтобы уйти одним запросом. */
+    suspend fun autoRun(ctx: Context) {
+        if (!autoOn(ctx) || !Ai.enabled(ctx) || !autoLock.tryLock()) return
+        try {
+            kotlinx.coroutines.delay(15_000)
+            val items = list(ctx).sortedBy { it.at }.take(25)
+            if (items.isNotEmpty()) apply(ctx, ask(ctx, items))
+        } catch (e: Exception) {
+            android.util.Log.w("DASEIN", "sms ai auto", e)
+        } finally {
+            autoLock.unlock()
+        }
+    }
 
     fun list(ctx: Context): List<Item> = runCatching { json.decodeFromString(ListSerializer(Item.serializer()), file(ctx).readText()) }.getOrDefault(emptyList())
 
@@ -52,6 +79,7 @@ object SmsAi {
         val norm = BankSms.normalize(text)
         if (l.any { it.key == key || BankSms.normalize(it.text) == norm }) return
         write(ctx, l + Item(key, text, at, channel))
+        if (autoOn(ctx)) Graph.scope.launch { autoRun(ctx) }
     }
 
     fun dismiss(ctx: Context, keys: Collection<String>) = write(ctx, list(ctx).filter { it.key !in keys })
