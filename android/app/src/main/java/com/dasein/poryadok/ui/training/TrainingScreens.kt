@@ -176,6 +176,16 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
                     item {
                         OutlinedButton(onClick = { startPlan(null) }, Modifier.fillMaxWidth()) { Text(btnLabel("Свободная тренировка без программы")) }
                     }
+                    if (plans.isEmpty()) item {
+                        Tile {
+                            Text(btnLabel("Программ пока нет"), fontWeight = FontWeight.SemiBold)
+                            Text(
+                                "Составьте свою: кнопка «+ Программа» внизу → название и дни → добавьте упражнения из вкладки «Упражнения» с подходами, повторами и весом. " +
+                                    "Сначала создайте упражнения (с видео или GIF), если их ещё нет.",
+                                fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
+                            )
+                        }
+                    }
                     items(plans, key = { it.id }) { p ->
                         val items = planEx.filter { it.planId == p.id }
                         val last = sessions.firstOrNull { it.planId == p.id && it.finishedAt != null }
@@ -200,7 +210,7 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
                     }
                     item { HowTo("training") }
                 }
-                1 -> ExerciseLibrary(exercises, sets) { nav.navigate(Routes.exercise(it)) }
+                1 -> ExerciseShorts(exercises, sets, onAdd = { nav.navigate(Routes.exercise(0)) }) { nav.navigate(Routes.exercise(it)) }
                 // Журнал: быстрая запись бега, йоги, прогулок и любых тренировок, статистика недели и 8 недель.
                 4 -> Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp)) {
                     com.dasein.poryadok.ui.health.WorkoutTab(nav, inTraining = true)

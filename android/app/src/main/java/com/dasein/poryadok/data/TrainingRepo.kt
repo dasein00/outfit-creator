@@ -137,7 +137,26 @@ object TrainingRepo {
 
     private val seedLock = kotlinx.coroutines.sync.Mutex()
 
-    suspend fun seed() = seedLock.withLock { seedLocked() }
+    /**
+     * Встроенных программ и упражнений больше нет — вы составляете их сами. Один раз убираются прежние встроенные:
+     * программы целиком, упражнения — если по ним нет подходов, они не стоят в ваших программах и вы не добавили к ним видео.
+     */
+    suspend fun seed() = seedLock.withLock { removeBuiltIns() }
+
+    /** Пример данных для демо-режима (проверка экранов). */
+    suspend fun seedDemo() = seedLock.withLock { seedLocked() }
+
+    private suspend fun removeBuiltIns() {
+        val ui = Graph.app.getSharedPreferences("ui_state", android.content.Context.MODE_PRIVATE)
+        if (ui.getBoolean("training_builtin_removed", false)) return
+        val t = Graph.training
+        t.plansNow().filter { it.seedKey != null }.forEach { p -> t.deletePlanExercisesOf(p.id); t.deletePlan(p) }
+        val usedInSets = t.allSets().mapTo(HashSet()) { it.exerciseId }
+        val usedInPlans = t.allPlanExercises().mapTo(HashSet()) { it.exerciseId }
+        t.exercisesNow().filter { !it.custom && it.seedKey != null && it.id !in usedInSets && it.id !in usedInPlans && it.media.isBlank() }
+            .forEach { t.deleteExercise(it) }
+        ui.edit().putBoolean("training_builtin_removed", true).apply()
+    }
 
     private suspend fun seedLocked() {
         val t = Graph.training

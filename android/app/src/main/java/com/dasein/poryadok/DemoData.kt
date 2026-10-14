@@ -100,7 +100,9 @@ object DemoData {
             Graph.pages.pageNow(root)?.let { Graph.pages.upsertPage(it.copy(favorite = true, icon = "habit/23")) }
             com.dasein.poryadok.data.PagesRepo.create(null, "Идеи для отпуска", listOf(b(B.BULLET, "Грузия в октябре"), b(B.BULLET, "Казань на выходные"), b(B.BULLET, "Алтай летом")))
         }
-        com.dasein.poryadok.data.TrainingRepo.seed()
+        // Демо: встроенные программы нужны для примера, их уборка не должна их стереть.
+        Graph.app.getSharedPreferences("ui_state", android.content.Context.MODE_PRIVATE).edit().putBoolean("training_builtin_removed", true).commit()
+        com.dasein.poryadok.data.TrainingRepo.seedDemo()
         val t = Graph.training
         if (t.sessionsNow().isEmpty()) {
             val plan = t.plansNow().firstOrNull { it.seedKey == "full_body" }

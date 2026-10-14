@@ -186,7 +186,7 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
                 }
                 3 -> Budgets(month, cats, budgets, ym, cur) { editBudget = it }
                 4 -> RecurringList(recurring, cats, accounts, cur) { editRecurring = it }
-                5 -> Accounts(accounts, txns, cur, onAlign = { align = true }) { editAccount = it }
+                5 -> Accounts(accounts, txns, cur, onAlign = { align = true }, onStatement = { nav.navigate(STATEMENT_ROUTE) }) { editAccount = it }
                 6 -> FinanceCalculators(cur)
             }
         }
@@ -421,7 +421,7 @@ private fun RecurringList(list: List<Recurring>, cats: List<Category>, accounts:
 }
 
 @Composable
-private fun Accounts(accounts: List<Account>, txns: List<Txn>, cur: String, onAlign: () -> Unit, onEdit: (Account) -> Unit) {
+private fun Accounts(accounts: List<Account>, txns: List<Txn>, cur: String, onAlign: () -> Unit, onStatement: () -> Unit, onEdit: (Account) -> Unit) {
     val extra = LocalExtra.current
     val ctx = androidx.compose.ui.platform.LocalContext.current
     AccountMeta.version.value
@@ -439,7 +439,15 @@ private fun Accounts(accounts: List<Account>, txns: List<Txn>, cur: String, onAl
                     if (interest > 0) Text("проценты ≈ +${Money.format(interest, cur)} в месяц", fontSize = 13.sp, color = extra.ok)
                 }
             }
-            com.dasein.poryadok.ui.common.OutlinedButton(onClick = onAlign, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text(btnLabel("Выровнять остатки")) }
+            Text(btnLabel("Выровнять остатки на карте и накопительном:"), fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 10.dp))
+            Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                com.dasein.poryadok.ui.common.Button(onClick = onAlign, modifier = Modifier.weight(1f)) { Text(btnLabel("Вписать вручную")) }
+                com.dasein.poryadok.ui.common.OutlinedButton(onClick = onStatement, modifier = Modifier.weight(1f)) { Text(btnLabel("По выписке")) }
+            }
+            Text(
+                "«Вписать вручную» — укажите, сколько сейчас на каждом счёте (как в СберБанк Онлайн). «По выписке» — загрузите PDF-выписку: остаток выровняется по её итогу. История операций не меняется.",
+                fontSize = 11.sp, color = extra.dim, lineHeight = 15.sp, modifier = Modifier.padding(top = 4.dp),
+            )
             if (accounts.size > 2) ConsolidateAccountsButton(cur)
             Gap()
         }
