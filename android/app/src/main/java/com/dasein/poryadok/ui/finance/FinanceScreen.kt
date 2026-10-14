@@ -440,6 +440,7 @@ private fun Accounts(accounts: List<Account>, txns: List<Txn>, cur: String, onAl
                 }
             }
             com.dasein.poryadok.ui.common.OutlinedButton(onClick = onAlign, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text(btnLabel("Выровнять остатки")) }
+            if (accounts.size > 2) ConsolidateAccountsButton(cur)
             Gap()
         }
         items(accounts, key = { it.id }) { a ->

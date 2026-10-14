@@ -13,7 +13,8 @@ import java.time.YearMonth
  * Каждая исходная запись получает ключ, поэтому повторный импорт того же файла ничего не дублирует.
  */
 object NotebookImport {
-    const val ACCOUNT = "Тетрадь"
+    // Все расходы и доходы — с карты Сбера, тетрадь пишет туда же.
+    const val ACCOUNT = "Сбер"
     private const val KIND_INCOME = "nb-inc"
     private const val KIND_NOTE = "nb-note"
     /** Операции с датой из простой таблицы (шаблона «Дата · Расход · Доход · Примечание»). */

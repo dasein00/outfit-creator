@@ -70,6 +70,8 @@ object Graph {
         scope.launch {
             Repo.seed()
             runCatching { Repo.migrateGlyphs() }.onFailure { Log.e("DASEIN", "glyphs", it) }
+            // Счета как в жизни: дебетовая карта Сбера и накопительный счёт; остальные сливаются в карту (один раз).
+            runCatching { com.dasein.poryadok.system.AccountsCleanup.runOnce(app) }.onFailure { Log.e("DASEIN", "accounts", it) }
             runCatching { RecipeRepo.seed(); RecipeRepo.materializeRepeats() }.onFailure { Log.e("DASEIN", "recipes seed", it) }
             runCatching { com.dasein.poryadok.data.TrainingRepo.seed() }.onFailure { Log.e("DASEIN", "training seed", it) }
             runCatching { com.dasein.poryadok.data.PagesRepo.migrateOldNotes(app) }.onFailure { Log.e("DASEIN", "pages", it) }

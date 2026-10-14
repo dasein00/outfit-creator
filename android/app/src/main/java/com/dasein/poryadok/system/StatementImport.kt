@@ -86,8 +86,10 @@ object StatementImport {
     /** Счёт для операций выписки: выбранный или новый с названием из выписки (сберегательный — с процентом). */
     suspend fun account(ctx: Context, chosen: Long?, header: Statement.Header): Long {
         val dao = Graph.dao
-        val name = if (header.card) Sber.ACCOUNT else header.title
-        val id = chosen ?: dao.accountsNow().firstOrNull { it.name.equals(name, true) }?.id
+        // У вас две «настоящие» позиции: карта Сбера (всё, кроме вклада) и накопительный счёт.
+        val name = if (header.savings) AccountsCleanup.SAVINGS else Sber.ACCOUNT
+        val all = dao.accountsNow()
+        val id = chosen ?: (if (header.savings) all.firstOrNull { isSavings(ctx, it) } else null)?.id ?: all.firstOrNull { it.name.equals(name, true) }?.id
             ?: dao.upsertAccount(Account(name = name.ifBlank { "Выписка" }, emoji = if (header.savings) "ui:coins" else "ui:bank", sort = 50))
         if (header.savings) {
             val meta = ctx.getSharedPreferences("fin_accounts", Context.MODE_PRIVATE)

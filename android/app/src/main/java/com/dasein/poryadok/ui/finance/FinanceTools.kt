@@ -151,6 +151,42 @@ fun BalanceAlignDialog(accounts: List<Account>, txns: List<Txn>, cur: String, on
     )
 }
 
+/** Оставить два счёта: карта Сбера и накопительный; остальные слить в карту и пересчитать остатки. */
+@Composable
+fun ConsolidateAccountsButton(cur: String) {
+    val ctx = LocalContext.current
+    val extra = LocalExtra.current
+    val scope = rememberCoroutineScope()
+    var ask by remember { mutableStateOf(false) }
+    var result by remember { mutableStateOf<String?>(null) }
+    OutlinedButton(onClick = { ask = true }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text(btnLabel("Только карта Сбера и накопительный")) }
+    result?.let { Text(it, fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp)) }
+    if (ask) AlertDialog(
+        onDismissRequest = { ask = false },
+        title = { Text(btnLabel("Оставить два счёта?")) },
+        text = {
+            Text(
+                "Останутся «Сбер» (дебетовая карта — все доходы и расходы) и «Накопительный счёт». Операции остальных счетов перейдут на карту, " +
+                    "переводы между ними и картой исчезнут, записи, совпавшие с выпиской, уберутся, остатки пересчитаются по выпискам.",
+                fontSize = 14.sp,
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                ask = false
+                scope.launch {
+                    result = runCatching { com.dasein.poryadok.system.AccountsCleanup.consolidate(ctx) }.fold(
+                        { r -> "Готово: слито счетов ${r.merged}, перенесено операций ${r.moved}, убрано переводов ${r.removedTransfers}, дублей ${r.removedDuplicates}. Карта: ${Money.format(r.card, cur)}, накопительный: ${Money.format(r.savings, cur)}." },
+                        { "Не получилось: ${it.message}" },
+                    )
+                    AccountMeta.version.value++
+                }
+            }) { Text(btnLabel("Оставить два")) }
+        },
+        dismissButton = { TextButton(onClick = { ask = false }) { Text(btnLabel("Отмена")) } },
+    )
+}
+
 // ---------- Импорт выписки ----------
 
 /** Импорт выписки из приложения банка: CSV, Excel или PDF → предпросмотр с отметками → операции без дублей. */
@@ -186,7 +222,7 @@ fun StatementImportScreen(nav: NavHostController, settings: Settings) {
 
     suspend fun load(r: List<Statement.Op>, h: Statement.Header) {
         ops = r; header = h
-        if (!accountPicked) account = Graph.dao.accountsNow().firstOrNull { it.name.equals(if (h.card) com.dasein.poryadok.system.Sber.ACCOUNT else h.title, true) }?.id
+        if (!accountPicked) account = Graph.dao.accountsNow().firstOrNull { it.name.equals(if (h.savings) com.dasein.poryadok.system.AccountsCleanup.SAVINGS else com.dasein.poryadok.system.Sber.ACCOUNT, true) }?.id
         replan()
     }
 
@@ -253,7 +289,7 @@ fun StatementImportScreen(nav: NavHostController, settings: Settings) {
                     }
                     SectionTitle("На какой счёт")
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        val newName = if (header.card) com.dasein.poryadok.system.Sber.ACCOUNT else header.title.ifBlank { "Выписка" }
+                        val newName = if (header.savings) com.dasein.poryadok.system.AccountsCleanup.SAVINGS else com.dasein.poryadok.system.Sber.ACCOUNT
                         if (accounts.none { it.name.equals(newName, true) }) Pill("＋ $newName", account == null) {
                             account = null; accountPicked = true; scope.launch { replan() }
                         }
