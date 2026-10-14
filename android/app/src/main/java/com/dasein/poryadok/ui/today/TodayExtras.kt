@@ -203,7 +203,7 @@ private fun MetricsEditor(all: List<Pair<String, String>>, chosen0: List<String>
         },
         confirmButton = { TextButton(onClick = { onSave(order.filter { it in chosen }) }) { Text(btnLabel("Готово")) } },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 TextButton(onClick = { order = DEFAULT_METRICS.split(','); chosen = order.toSet() }) { Text(btnLabel("Как было")) }
                 TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }

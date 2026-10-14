@@ -431,7 +431,7 @@ private fun FoodDialog(e0: FoodEntry, history: List<FoodEntry>, onDismiss: () ->
             }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 if (e0.id != 0L) TextButton(onClick = { io { Graph.dao.deleteFood(e0) }; onDismiss() }) { Text(btnLabel("Удалить"), color = LocalExtra.current.danger) }
                 TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
@@ -609,7 +609,7 @@ private fun MeasureTab(nav: NavHostController, profile: BodyProfile?, current: D
                 }) { Text(btnLabel("Сохранить")) }
             },
             dismissButton = {
-                Row {
+                com.dasein.poryadok.ui.common.ButtonsRow {
                     TextButton(onClick = { io { Graph.dao.deleteMeasurement(m0) }; edit = null }) { Text(btnLabel("Удалить"), color = extra.danger) }
                     TextButton(onClick = { edit = null }) { Text(btnLabel("Отмена")) }
                 }
@@ -697,7 +697,7 @@ internal fun WorkoutTab(nav: NavHostController, inTraining: Boolean = false) {
                 }) { Text(btnLabel("Сохранить")) }
             },
             dismissButton = {
-                Row {
+                com.dasein.poryadok.ui.common.ButtonsRow {
                     if (w0.id != 0L) TextButton(onClick = { io { Graph.dao.deleteWorkout(w0) }; edit = null }) { Text(btnLabel("Удалить"), color = extra.danger) }
                     TextButton(onClick = { edit = null }) { Text(btnLabel("Отмена")) }
                 }

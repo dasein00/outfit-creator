@@ -146,16 +146,22 @@ object TrainingRepo {
     /** Пример данных для демо-режима (проверка экранов). */
     suspend fun seedDemo() = seedLock.withLock { seedLocked() }
 
+    /** Убрать все встроенные программы и упражнения (вместе с их подходами в истории и местами в ваших программах). */
     private suspend fun removeBuiltIns() {
         val ui = Graph.app.getSharedPreferences("ui_state", android.content.Context.MODE_PRIVATE)
-        if (ui.getBoolean("training_builtin_removed", false)) return
+        if (ui.getBoolean("training_builtin_removed_v2", false)) return
         val t = Graph.training
         t.plansNow().filter { it.seedKey != null }.forEach { p -> t.deletePlanExercisesOf(p.id); t.deletePlan(p) }
-        val usedInSets = t.allSets().mapTo(HashSet()) { it.exerciseId }
-        val usedInPlans = t.allPlanExercises().mapTo(HashSet()) { it.exerciseId }
-        t.exercisesNow().filter { !it.custom && it.seedKey != null && it.id !in usedInSets && it.id !in usedInPlans && it.media.isBlank() }
-            .forEach { t.deleteExercise(it) }
-        ui.edit().putBoolean("training_builtin_removed", true).apply()
+        val builtIn = t.exercisesNow().filter { !it.custom || it.seedKey != null }
+        val ids = builtIn.mapTo(HashSet()) { it.id }
+        t.allPlanExercises().filter { it.exerciseId in ids }.forEach { t.deletePlanExercise(it) }
+        val sets = t.allSets()
+        sets.filter { it.exerciseId in ids }.forEach { t.deleteSet(it) }
+        builtIn.forEach { t.deleteExercise(it) }
+        // Тренировки, в которых не осталось подходов, тоже убираем.
+        val left = t.allSets().mapTo(HashSet()) { it.sessionId }
+        t.sessionsNow().filter { s -> s.id !in left && sets.any { it.sessionId == s.id } }.forEach { t.deleteSession(it) }
+        ui.edit().putBoolean("training_builtin_removed_v2", true).apply()
     }
 
     private suspend fun seedLocked() {

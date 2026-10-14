@@ -310,7 +310,7 @@ fun DatePickDialog(initial: Long?, onDismiss: () -> Unit, onPick: (Long?) -> Uni
             TextButton(onClick = { onPick(state.selectedDateMillis?.let { it / 86_400_000L }); onDismiss() }) { Text(btnLabel("Готово")) }
         },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 if (allowClear) TextButton(onClick = { onPick(null); onDismiss() }) { Text(btnLabel("Без даты")) }
                 TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
@@ -326,7 +326,7 @@ fun TimePickDialog(initial: Int?, onDismiss: () -> Unit, onPick: (Int?) -> Unit,
         onDismissRequest = onDismiss,
         confirmButton = { TextButton(onClick = { onPick(state.hour * 60 + state.minute); onDismiss() }) { Text(btnLabel("Готово")) } },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 if (allowClear) TextButton(onClick = { onPick(null); onDismiss() }) { Text(btnLabel("Без времени")) }
                 TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }

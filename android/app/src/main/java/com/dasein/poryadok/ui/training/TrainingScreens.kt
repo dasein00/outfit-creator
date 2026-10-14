@@ -446,12 +446,10 @@ private fun TargetDialog(pe: PlanExercise, e: Exercise?, onDismiss: () -> Unit, 
         title = { Text(e?.name ?: "Цель") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                Row {
-                    NumberField(sets, { sets = it }, "Подходы", Modifier.weight(1f), decimal = false)
-                    HGap(8.dp)
-                    if (kind == ExKind.TIME) NumberField(seconds, { seconds = it }, "Секунды", Modifier.weight(1f), decimal = false)
-                    else NumberField(reps, { reps = it }, "Повторы", Modifier.weight(1f), decimal = false)
-                }
+                StepField(sets, { sets = it }, "Подходы", 1.0)
+                Gap(6.dp)
+                if (kind == ExKind.TIME) StepField(seconds, { seconds = it }, "Секунды", 5.0)
+                else StepField(reps, { reps = it }, "Повторы", 1.0)
                 if (kind != ExKind.TIME) {
                     Gap(6.dp)
                     Row {
@@ -462,11 +460,9 @@ private fun TargetDialog(pe: PlanExercise, e: Exercise?, onDismiss: () -> Unit, 
                 }
                 if (kind == ExKind.WEIGHT) {
                     Gap(6.dp)
-                    Row {
-                        NumberField(weight, { weight = it }, "Вес", Modifier.weight(1f), suffix = "кг")
-                        HGap(8.dp)
-                        NumberField(step, { step = it }, "Шаг веса", Modifier.weight(1f), suffix = "кг")
-                    }
+                    StepField(weight, { weight = it }, "Вес, кг", step.replace(',', '.').toDoubleOrNull()?.takeIf { it > 0 } ?: 2.5, decimal = true)
+                    Gap(6.dp)
+                    NumberField(step, { step = it }, "Шаг веса (на сколько «+» и прогрессия)", suffix = "кг")
                 }
                 if (kind == ExKind.REPS) { Gap(6.dp); NumberField(maxSets, { maxSets = it }, "Максимум подходов", decimal = false) }
                 Gap(6.dp)
@@ -497,7 +493,7 @@ private fun TargetDialog(pe: PlanExercise, e: Exercise?, onDismiss: () -> Unit, 
             }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 TextButton(onClick = { onDelete(); onDismiss() }) { Text(btnLabel("Убрать"), color = LocalExtra.current.danger) }
                 TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
@@ -835,7 +831,7 @@ fun SessionScreen(nav: NavHostController, id: Long) {
                 }) { Text(btnLabel("Завершить")) }
             },
             dismissButton = {
-                Row {
+                com.dasein.poryadok.ui.common.ButtonsRow {
                     TextButton(onClick = { finishing = false; discard = true }) { Text(btnLabel("Удалить"), color = extra.danger) }
                     TextButton(onClick = { finishing = false }) { Text(btnLabel("Продолжить")) }
                 }
@@ -864,4 +860,37 @@ fun SessionScreen(nav: NavHostController, id: Long) {
         io { TrainingRepo.discard(id) }
         nav.popBackStack()
     }
+}
+
+/** Число с кнопками «−» и «+» по бокам: подходы, повторы, вес меняются одним касанием. */
+@Composable
+private fun StepField(value: String, onChange: (String) -> Unit, label: String, step: Double, modifier: Modifier = Modifier, decimal: Boolean = false) {
+    val extra = LocalExtra.current
+    fun shift(k: Int) {
+        val v = (value.replace(',', '.').toDoubleOrNull() ?: 0.0) + k * step
+        val r = v.coerceAtLeast(0.0)
+        onChange(if (decimal && r != Math.floor(r)) "%.2f".format(r).trimEnd('0').trimEnd(',', '.').replace('.', ',') else r.toLong().toString())
+    }
+    Column(modifier) {
+        Text(label, fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(start = 4.dp, bottom = 2.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            StepButton("−") { shift(-1) }
+            androidx.compose.material3.OutlinedTextField(
+                value, { onChange(it.filter { c -> c.isDigit() || (decimal && (c == ',' || c == '.')) }) },
+                singleLine = true, modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+                textStyle = androidx.compose.material3.LocalTextStyle.current.copy(textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.SemiBold),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = if (decimal) androidx.compose.ui.text.input.KeyboardType.Decimal else androidx.compose.ui.text.input.KeyboardType.Number),
+                shape = RoundedCornerShape(12.dp),
+            )
+            StepButton("+") { shift(1) }
+        }
+    }
+}
+
+@Composable
+private fun StepButton(sign: String, onClick: () -> Unit) {
+    Box(
+        Modifier.size(36.dp).clip(androidx.compose.foundation.shape.CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = .16f)).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { Text(sign, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary) }
 }

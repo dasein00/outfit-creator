@@ -377,7 +377,7 @@ fun ReminderDialog(initial: Reminder, onDismiss: () -> Unit) {
             }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 if (initial.id != 0L) TextButton(onClick = { io { Graph.dao.deleteReminder(initial) }; onDismiss() }) {
                     Text(btnLabel("Удалить"), color = LocalExtra.current.danger)
                 }

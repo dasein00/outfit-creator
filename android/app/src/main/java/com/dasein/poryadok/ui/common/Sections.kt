@@ -91,7 +91,7 @@ fun SectionEditDialog(key: String, defName: String, defIcon: String, onDismiss: 
             TextButton(onClick = { Sections.save(ctx, key, name.ifBlank { defName }, icon); onDismiss() }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 TextButton(onClick = { Sections.reset(ctx, key); onDismiss() }) { Text(btnLabel("Как было")) }
                 TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }

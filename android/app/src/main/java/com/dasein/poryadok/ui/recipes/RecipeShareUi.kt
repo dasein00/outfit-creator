@@ -146,7 +146,7 @@ fun ShareRecipesDialog(all: List<Recipe>, preselected: Set<Long>, onDismiss: () 
             }) { Text(btnLabel("Отправить")) }
         },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 TextButton(enabled = chosen.isNotEmpty() && !busy, onClick = { save.launch("Рецепты DASEIN.zip") }) { Text(btnLabel("В файл")) }
                 TextButton(onClick = onDismiss, enabled = !busy) { Text(btnLabel("Отмена")) }
             }

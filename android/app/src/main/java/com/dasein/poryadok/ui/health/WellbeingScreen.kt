@@ -232,7 +232,7 @@ private fun MoodDialog(m0: MoodEntry, onDismiss: () -> Unit) {
         },
         confirmButton = { TextButton(onClick = { val cur = m; io { Graph.dao.upsertMood(cur) }; onDismiss() }) { Text(btnLabel("Сохранить")) } },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 if (m0.id != 0L) TextButton(onClick = { io { Graph.dao.deleteMood(m0) }; onDismiss() }) { Text(btnLabel("Удалить"), color = LocalExtra.current.danger) }
                 TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
@@ -338,7 +338,7 @@ private fun SleepDialog(s0: SleepEntry, onDismiss: () -> Unit) {
             }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 TextButton(onClick = { io { Graph.dao.deleteSleep(s0) }; onDismiss() }) { Text(btnLabel("Удалить"), color = LocalExtra.current.danger) }
                 TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }

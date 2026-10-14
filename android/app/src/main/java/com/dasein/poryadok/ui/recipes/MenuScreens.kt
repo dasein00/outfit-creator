@@ -235,7 +235,7 @@ private fun PlanItemDialog(p: MealPlanItem, onDismiss: () -> Unit) {
             }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 TextButton(onClick = { io { RecipeRepo.removeFromPlan(p) }; onDismiss() }) { Text(btnLabel("Убрать"), color = LocalExtra.current.danger) }
                 TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }

@@ -501,7 +501,7 @@ fun CustomDayDialog(initial: CustomDay, onDismiss: () -> Unit) {
             }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 if (initial.id != 0L) TextButton(onClick = { io { Graph.days.deleteCustomDay(initial) }; onDismiss() }) { Text(btnLabel("Удалить"), color = extra.danger) }
                 TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }

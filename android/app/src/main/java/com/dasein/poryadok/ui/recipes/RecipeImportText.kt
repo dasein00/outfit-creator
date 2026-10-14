@@ -150,6 +150,8 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
     var aiBusy by remember { mutableStateOf(false) }
     var aiError by remember { mutableStateOf<String?>(null) }
     var linkBusy by remember { mutableStateOf(false) }
+    var postUrl by remember { mutableStateOf("") }
+    var postBusy by remember { mutableStateOf(false) }
     var videoBusy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     val link = remember(text) { com.dasein.poryadok.system.RecipeLink.findUrl(text)?.takeIf { text.trim().length < it.length + 40 } }
@@ -203,7 +205,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
             Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState())) {
                 Text(
                     "1) «Распознать речь» — текст из видео появится в описании, его можно поправить. Или вставьте подпись из Instagram, ссылку на пост или сайт, свой текст.\n" +
-                        "2) В «Ингредиенты» вставьте список из поста с граммовками.\n3) «Сгенерировать рецепт» — ИИ заполнит ингредиенты, подробные этапы и описание. Всё можно править потом.",
+                        "2) Вставьте ссылку на пост Instagram и нажмите «Запарсить рецепт» — подпись под видео (ингредиенты, граммовки) попадёт в поле «Текст из поста». Или вставьте её вручную.\n3) «Сгенерировать рецепт» — ИИ заполнит ингредиенты, подробные этапы и описание. Всё можно править потом.",
                     fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
                 )
                 TextButton(onClick = {
@@ -220,7 +222,25 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                     }
                 }
                 TextInput(text, { text = it }, "Описание: речь из видео, текст поста или ссылка", singleLine = false, minLines = 5)
-                TextInput(ingrText, { ingrText = it }, "Ингредиенты (из поста, с граммовками)", Modifier.padding(top = 6.dp), singleLine = false, minLines = 3)
+                // Подпись под видео в Instagram: ссылка → «Запарсить рецепт» → текст поста попадает в поле ниже.
+                TextInput(postUrl, { postUrl = it.trim() }, "Ссылка на пост Instagram", Modifier.padding(top = 6.dp))
+                Button(
+                    enabled = postUrl.startsWith("http") && !postBusy,
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(min = 48.dp),
+                    onClick = {
+                        postBusy = true; aiError = null
+                        scope.launch {
+                            runCatching { com.dasein.poryadok.system.RecipeLink.fetch(postUrl) }
+                                .onSuccess { cap ->
+                                    ingrText = cap.trim()
+                                    status = "Описание из поста загружено. Распознайте речь из видео (если ещё не) и нажмите «Сгенерировать рецепт»."
+                                }
+                                .onFailure { aiError = "Не удалось загрузить пост: ${it.message}. Скопируйте подпись вручную в поле «Текст из поста»." }
+                            postBusy = false
+                        }
+                    },
+                ) { Text(if (postBusy) "Загружаю пост…" else btnLabel("Запарсить рецепт")) }
+                TextInput(ingrText, { ingrText = it }, "Текст из поста: ингредиенты, граммовки", Modifier.padding(top = 6.dp), singleLine = false, minLines = 3)
                 if (link != null) Button(enabled = !linkBusy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp), onClick = {
                     linkBusy = true; aiError = null
                     scope.launch {
@@ -233,6 +253,24 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                 status?.let { Text(it, fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp)) }
                 aiError?.let { Text(if ("Вставьте сюда" in it) it else it + " Можно нажать «Разобрать» — встроенный разбор работает без интернета.", fontSize = 12.sp, color = extra.danger, modifier = Modifier.padding(top = 6.dp)) }
                 if (!aiOn) Text("Точнее разбирает бесплатный ИИ: добавьте ключ OpenRouter в «Настройки» → «ИИ-помощник».", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
+                // Главные действия — крупно и во всю ширину, чтобы надписи не сжимались.
+                if (aiOn) Button(
+                    enabled = (text.isNotBlank() || ingrText.isNotBlank()) && !aiBusy && !videoBusy,
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp).heightIn(min = 52.dp),
+                    onClick = {
+                        aiBusy = true; aiError = null; status = "ИИ пишет подробный рецепт…"
+                        scope.launch {
+                            runCatching { aiParse(ctx, source()) }
+                                .onSuccess { applyResult(it, viaAi = true) }
+                                .onFailure { aiError = it.message ?: "ошибка"; aiBusy = false }
+                        }
+                    },
+                ) { Text(if (aiBusy) "ИИ думает…" else btnLabel("✨ Сгенерировать рецепт")) }
+                OutlinedButton(
+                    enabled = preview != null && !aiBusy,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 48.dp),
+                    onClick = { preview?.let { applyResult(it, viaAi = false) } },
+                ) { Text(btnLabel("Разобрать без ИИ")) }
                 preview?.let { p ->
                     Text(
                         listOfNotNull(
@@ -246,19 +284,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                 }
             }
         },
-        confirmButton = {
-            Row {
-            if (aiOn) TextButton(enabled = (text.isNotBlank() || ingrText.isNotBlank()) && !aiBusy && !videoBusy, onClick = {
-                aiBusy = true; aiError = null; status = "ИИ пишет подробный рецепт…"
-                scope.launch {
-                    runCatching { aiParse(ctx, source()) }
-                        .onSuccess { applyResult(it, viaAi = true) }
-                        .onFailure { aiError = it.message ?: "ошибка"; aiBusy = false }
-                }
-            }) { Text(if (aiBusy) "ИИ думает…" else "✨ Сгенерировать рецепт") }
-            TextButton(enabled = preview != null && !aiBusy, onClick = { preview?.let { applyResult(it, viaAi = false) } }) { Text(btnLabel("Разобрать")) }
-            }
-        },
+        confirmButton = {},
         dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
 }

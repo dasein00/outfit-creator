@@ -518,7 +518,7 @@ fun TopScreen(nav: NavHostController, id: Long) {
                 }
             },
             confirmButton = {
-                Row {
+                com.dasein.poryadok.ui.common.ButtonsRow {
                     TextButton(onClick = { randomPick = (entries - r).randomOrNull() ?: r }) { Text(btnLabel("Другой")) }
                     if (m != null) TextButton(onClick = { randomPick = null; nav.navigate(Routes.media(m.id, m.kind)) }) { Text(btnLabel("Открыть")) }
                 }
@@ -559,7 +559,7 @@ fun TopScreen(nav: NavHostController, id: Long) {
                 }) { Text(btnLabel("Сохранить")) }
             },
             dismissButton = {
-                Row {
+                com.dasein.poryadok.ui.common.ButtonsRow {
                     TextButton(onClick = { io { Graph.dao.deleteTopItem(it0) }; edit = null }) { Text(btnLabel("Удалить"), color = extra.danger) }
                     TextButton(onClick = { edit = null }) { Text(btnLabel("Отмена")) }
                 }

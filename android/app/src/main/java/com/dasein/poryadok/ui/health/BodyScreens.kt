@@ -751,7 +751,7 @@ internal fun WeightRulerDialog(initial: Double, onDismiss: () -> Unit, onMore: (
             Button(onClick = { val m = metric(); io { Body.save(m) }; onDismiss() }) { Text(btnLabel("Подтвердить")) }
         },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 TextButton(onClick = { onMore(metric()) }) { Text(btnLabel("Подробнее…")) }
                 TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }

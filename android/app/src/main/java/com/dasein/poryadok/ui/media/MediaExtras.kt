@@ -168,7 +168,7 @@ fun RandomPickDialog(kind: Int, candidates: List<MediaItem>, source: String = ""
         },
         confirmButton = { pick?.let { m -> TextButton(onClick = { onOpen(m) }) { Text(btnLabel("Открыть")) } } },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 if (candidates.size > 1) TextButton(onClick = { pick = (candidates - setOfNotNull(pick)).randomOrNull() ?: pick }) { Text(btnLabel("Другой")) }
                 TextButton(onClick = onDismiss) { Text(btnLabel("Закрыть")) }
             }

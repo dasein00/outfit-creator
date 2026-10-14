@@ -69,6 +69,33 @@ object LabelEdit {
     internal var claimed: androidx.compose.ui.input.pointer.PointerId? = null
 }
 
+/**
+ * Несколько кнопок в ряд (низ диалога и т.п.): если не помещаются — кнопка целиком переходит на следующую строку,
+ * а не сжимается так, что слово ломается посередине («Разобр-ать»).
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun ButtonsRow(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    androidx.compose.foundation.layout.FlowRow(
+        modifier, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp, Alignment.End),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(2.dp),
+    ) { content() }
+}
+
+/** Текст на кнопках: по центру, переносы по словам и ровными строками, без «висящего» слова. */
+private val ButtonText = androidx.compose.ui.text.TextStyle(
+    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+    lineBreak = androidx.compose.ui.text.style.LineBreak.Heading,
+)
+
+@Composable
+private fun ButtonContent(holder: LabelHolder, scope: RowScope, content: @Composable RowScope.() -> Unit) {
+    CompositionLocalProvider(
+        LocalLabelHolder provides holder,
+        androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.merge(ButtonText),
+    ) { scope.content() }
+}
+
 /** Любой блок, который можно править удержанием: первая надпись (btnLabel) и первая иконка внутри него. */
 @Composable
 fun Editable(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
@@ -128,8 +155,7 @@ fun Button(
 ) {
     val (holder, m) = rememberHolderModifier(modifier, enabled)
     androidx.compose.material3.Button(onClick = onClick, modifier = m, enabled = enabled, shape = shape, colors = colors, elevation = elevation, border = border, contentPadding = contentPadding, interactionSource = interactionSource) {
-        val scope = this
-        CompositionLocalProvider(LocalLabelHolder provides holder) { scope.content() }
+        ButtonContent(holder, this, content)
     }
 }
 
@@ -151,8 +177,7 @@ fun OutlinedButton(
 ) {
     val (holder, m) = rememberHolderModifier(modifier, enabled)
     val inner: @Composable RowScope.() -> Unit = {
-        val scope = this
-        CompositionLocalProvider(LocalLabelHolder provides holder) { scope.content() }
+        ButtonContent(holder, this, content)
     }
     if (border === DefaultOutline) androidx.compose.material3.OutlinedButton(
         onClick = onClick, modifier = m, enabled = enabled, shape = shape, colors = colors, elevation = elevation,
@@ -175,8 +200,7 @@ fun TextButton(
 ) {
     val (holder, m) = rememberHolderModifier(modifier, enabled)
     androidx.compose.material3.TextButton(onClick = onClick, modifier = m, enabled = enabled, shape = shape, colors = colors, elevation = elevation, border = border, contentPadding = contentPadding, interactionSource = interactionSource) {
-        val scope = this
-        CompositionLocalProvider(LocalLabelHolder provides holder) { scope.content() }
+        ButtonContent(holder, this, content)
     }
 }
 

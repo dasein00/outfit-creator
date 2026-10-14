@@ -286,7 +286,7 @@ fun ProjectDialog(p: Project, onDismiss: () -> Unit) {
             }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 if (p.id != 0L) TextButton(onClick = { confirmDelete = true }) { Text(btnLabel("Удалить"), color = LocalExtra.current.danger) }
                 TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }

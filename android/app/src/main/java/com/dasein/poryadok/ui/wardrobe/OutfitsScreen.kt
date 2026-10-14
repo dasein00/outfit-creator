@@ -153,7 +153,7 @@ fun OutfitsScreen(nav: NavHostController) {
                 }) { Text(btnLabel("Открыть в редакторе")) }
             },
             dismissButton = {
-                Row {
+                com.dasein.poryadok.ui.common.ButtonsRow {
                     TextButton(onClick = { confirm = true }) { Text(btnLabel("Удалить"), color = extra.danger) }
                     TextButton(onClick = { open = null }) { Text(btnLabel("Закрыть")) }
                 }

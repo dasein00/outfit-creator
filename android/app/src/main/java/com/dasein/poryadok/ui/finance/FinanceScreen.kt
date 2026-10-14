@@ -515,7 +515,7 @@ private fun AccountDialog(a: Account, txns: List<Txn>, cur: String, onDismiss: (
             }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 if (a.id != 0L) TextButton(onClick = { confirm = true }) { Text(btnLabel("Удалить"), color = LocalExtra.current.danger) }
                 TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
@@ -561,7 +561,7 @@ private fun BudgetDialog(b: Budget, cats: List<Category>, cur: String, onDismiss
             }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 if (b.categoryId >= 0) TextButton(onClick = { io { Graph.dao.deleteBudget(b.categoryId) }; onDismiss() }) {
                     Text(btnLabel("Удалить"), color = LocalExtra.current.danger)
                 }
@@ -637,7 +637,7 @@ private fun RecurringDialog(r0: Recurring, cats: List<Category>, accounts: List<
             }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 if (r0.id != 0L) TextButton(onClick = { io { Graph.dao.deleteRecurring(r0) }; onDismiss() }) {
                     Text(btnLabel("Удалить"), color = LocalExtra.current.danger)
                 }
@@ -678,7 +678,7 @@ private fun CategoryDialog(c: Category, onDismiss: () -> Unit) {
             }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 if (c.id != 0L) TextButton(onClick = {
                     io { Graph.dao.detachCategory(c.id); Graph.dao.deleteBudget(c.id); Graph.dao.deleteCategory(c) }
                     onDismiss()

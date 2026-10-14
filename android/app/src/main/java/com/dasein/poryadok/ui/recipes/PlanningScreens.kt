@@ -261,7 +261,7 @@ private fun RepeatDialog(r0: MealRepeat, book: RecipeBook, onDismiss: () -> Unit
             }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 if (r0.id != 0L) TextButton(onClick = { confirm = true }) { Text(btnLabel("Удалить"), color = LocalExtra.current.danger) }
                 TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }
@@ -438,7 +438,7 @@ private fun ShoppingItemDialog(s0: ShoppingItem, onDismiss: () -> Unit) {
             }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 if (s0.id != 0L) TextButton(onClick = { io { Graph.extra.deleteShopping(s0) }; onDismiss() }) { Text(btnLabel("Удалить"), color = LocalExtra.current.danger) }
                 TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
             }

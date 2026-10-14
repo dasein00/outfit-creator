@@ -463,7 +463,7 @@ internal fun BodyDialog(m0: BodyMetric, onDismiss: () -> Unit) {
             }) { Text(btnLabel("Сохранить")) }
         },
         dismissButton = {
-            Row {
+            com.dasein.poryadok.ui.common.ButtonsRow {
                 if (!isNew || m0.source == LEGACY) TextButton(onClick = {
                     io { if (m0.source == LEGACY) Graph.dao.deleteWeightOfDay(m0.day) else Body.delete(m0) }
                     onDismiss()
