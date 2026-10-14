@@ -37,6 +37,8 @@ data class BackupPrefs(
     val settings: Settings? = null,
     val widget: Map<String, String> = emptyMap(),
     val ui: Map<String, String> = emptyMap(),
+    /** Остальные настройки: ИИ (модель и ключи), цель чтения, факты из сети, город погоды. */
+    val other: Map<String, Map<String, String>> = emptyMap(),
 )
 
 /**
@@ -50,14 +52,19 @@ data class BackupPrefs(
 object BackupFiles {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     /** Безопасные пути внутри архива: «папка/файл», без «..». */
-    private val SAFE_ENTRY = Regex("^[a-z_]+/([a-z_]+/)?[A-Za-z0-9_.\\-]+$")
-    private val SKIP_DIRS = setOf("datastore", "profileInstalled")
+    private val SAFE_ENTRY = Regex("^[a-z_]+(/[\\p{L}\\p{N}_. ()+\\-]+){1,4}$")
+    /** Служебные папки и кэш, который сам загрузится заново (новости на месяц). */
+    private val SKIP_DIRS = setOf("datastore", "profileInstalled", "offline")
+    /** Дополнительные настройки, которые тоже переносятся (кроме widget и ui_state). */
+    private val OTHER_PREFS = listOf("ai", "reading", "talk_online", "weather")
+
+    private fun safe(name: String) = SAFE_ENTRY.matches(name) && name.split('/').none { it == ".." || it == "." || it.isBlank() }
     private val SHARED = listOf("widget", "ui_state")
 
     /** Папки с файлами пользователя и их файлы (вместе с одной вложенной папкой, например recipes/video). */
     private fun userDirs(ctx: Context): Map<String, List<File>> =
         ctx.filesDir.listFiles().orEmpty().filter { it.isDirectory && it.name !in SKIP_DIRS && !it.name.startsWith(".") }
-            .associate { d -> d.name to d.walkTopDown().maxDepth(2).filter { it.isFile && SAFE_ENTRY.matches(d.name + "/" + it.relativeTo(d).invariantSeparatorsPath) }.toList() }
+            .associate { d -> d.name to d.walkTopDown().maxDepth(4).filter { it.isFile && safe(d.name + "/" + it.relativeTo(d).invariantSeparatorsPath) }.toList() }
 
     /** Сколько записей и файлов в каждом разделе сейчас на телефоне. */
     suspend fun localSummary(ctx: Context): Map<BackupSection, Pair<Int, Int>> = withContext(Dispatchers.IO) {
@@ -117,7 +124,7 @@ object BackupFiles {
                 zip.write(json.encodeToString(BackupData.serializer(), data).toByteArray())
                 zip.closeEntry()
                 if (BackupSection.SETTINGS in sections) {
-                    val prefs = BackupPrefs(Graph.prefs.now(), sharedToMap(ctx, "widget"), sharedToMap(ctx, "ui_state"))
+                    val prefs = BackupPrefs(Graph.prefs.now(), sharedToMap(ctx, "widget"), sharedToMap(ctx, "ui_state"), OTHER_PREFS.associateWith { sharedToMap(ctx, it) })
                     zip.putNextEntry(ZipEntry("prefs.json"))
                     zip.write(json.encodeToString(BackupPrefs.serializer(), prefs).toByteArray())
                     zip.closeEntry()
@@ -151,7 +158,7 @@ object BackupFiles {
                         e.name == "manifest.json" -> manifest = json.decodeFromString(BackupManifest.serializer(), zip.readBytes().decodeToString())
                         e.name == "data.json" && manifest == null -> legacy = json.decodeFromString(BackupData.serializer(), zip.readBytes().decodeToString())
                         e.name == "prefs.json" -> hasPrefs = true
-                        !e.isDirectory && SAFE_ENTRY.matches(e.name) -> {
+                        !e.isDirectory && safe(e.name) -> {
                             val s = BackupSection.forDir(e.name.substringBefore('/')).name
                             files[s] = (files[s] ?: 0) + 1
                         }
@@ -184,7 +191,7 @@ object BackupFiles {
                     when {
                         e.name == "data.json" -> dataText = zip.readBytes().decodeToString()
                         e.name == "prefs.json" -> prefs = json.decodeFromString(BackupPrefs.serializer(), zip.readBytes().decodeToString())
-                        !e.isDirectory && SAFE_ENTRY.matches(e.name) && wanted(BackupSection.forDir(e.name.substringBefore('/'))) -> {
+                        !e.isDirectory && safe(e.name) && wanted(BackupSection.forDir(e.name.substringBefore('/'))) -> {
                             val target = File(ctx.filesDir, e.name)
                             if (target.canonicalPath.startsWith(ctx.filesDir.canonicalPath)) {
                                 target.parentFile?.mkdirs()
@@ -216,6 +223,7 @@ object BackupFiles {
                 }
                 if (p.widget.isNotEmpty()) mapToShared(ctx, "widget", p.widget)
                 if (p.ui.isNotEmpty()) mapToShared(ctx, "ui_state", p.ui)
+                p.other.forEach { (name, m) -> if (name in OTHER_PREFS && m.isNotEmpty()) mapToShared(ctx, name, m) }
             }
             Alarms.rescheduleAll(ctx)
             Widgets.refresh(ctx)

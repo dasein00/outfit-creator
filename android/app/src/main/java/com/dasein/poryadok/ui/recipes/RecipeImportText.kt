@@ -107,6 +107,7 @@ private const val AI_RECIPE_PROMPT = """Ты помощник кулинарно
  "ingredients": [{"name": "продукт в именительном падеже, без количества", "amount": число, "unit": "г|кг|мл|л|шт|ст.л.|ч.л.|стакан|щепотка|по вкусу", "grams_per_piece": вес одной штуки в граммах для unit=шт, иначе null}],
  "steps": [{"text": "подробный этап для новичка", "minutes": минуты этапа или 0}]}
 Правила: включи ВСЕ продукты, упомянутые в тексте, даже в советах (например «можно добавить сулугуни» — продукт с unit "по вкусу").
+Если в тексте есть блок «Ингредиенты (из поста, точные граммовки)» — бери продукты и количества оттуда в первую очередь, а речь используй для этапов и деталей.
 Если для продукта указано несколько количеств («150 г + 20 г на обвалку»), сложи их. Проценты жирности оставь в названии.
 Если количество сказано на глаз («горсть», «пара ложек», «кусочек») — переведи в граммы или ложки примерно. Если не сказано совсем — оцени разумное количество на указанные порции.
 Этапы пиши подробно и понятно новичку: что сделать, какой огонь или температура духовки, сколько минут, как понять, что готово. Не выдумывай продукты, которых нет в тексте.
@@ -140,7 +141,11 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
     val extra = LocalExtra.current
     val scope = rememberCoroutineScope()
     var text by remember { mutableStateOf(d.recipe.notes) }
-    val preview = remember(text) { if (text.isBlank()) null else RecipeText.parse(text) }
+    // Ингредиенты из поста (в видео их обычно не проговаривают): с граммовками — они важнее того, что сказано в речи.
+    var ingrText by remember { mutableStateOf("") }
+    /** Всё, что разбирается: речь или описание + ингредиенты из поста. */
+    fun source(): String = if (ingrText.isBlank()) text else "Ингредиенты (из поста, точные граммовки):\n" + ingrText.trim() + "\n\nОписание и речь из видео:\n" + text.trim()
+    val preview = remember(text, ingrText) { if (text.isBlank() && ingrText.isBlank()) null else RecipeText.parse(source()) }
     val aiOn = remember { com.dasein.poryadok.system.Ai.enabled(ctx) }
     var aiBusy by remember { mutableStateOf(false) }
     var aiError by remember { mutableStateOf<String?>(null) }
@@ -157,11 +162,11 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
     }
     fun applyResult(p: RecipeText.Parsed, viaAi: Boolean) {
         scope.launch {
-            applyParsed(d, p, text, viaAi)
+            applyParsed(d, p, source(), viaAi)
             // С ИИ — ещё и красивое описание для карточки блюда (его потом можно править вручную).
             if (viaAi) {
                 status = "Оформляю описание…"
-                runCatching { com.dasein.poryadok.system.RecipeLink.prettyDescription(ctx, text, d.recipe.name) }
+                runCatching { com.dasein.poryadok.system.RecipeLink.prettyDescription(ctx, source(), d.recipe.name) }
                     .onSuccess { if (it.length > 40) d.recipe = d.recipe.copy(notes = it) }
             }
             aiBusy = false; onDismiss()
@@ -172,14 +177,11 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
         scope.launch {
             runCatching { com.dasein.poryadok.system.VideoSpeech.transcribe(ctx, uri) { st -> status = st } }
                 .onSuccess { speech ->
+                    // Текст речи — в описание: его можно поправить, а потом добавить ингредиенты из поста и сгенерировать рецепт.
                     text = speech.trim()
-                    status = null; videoBusy = false
-                    // Речь есть — сразу разбираем ИИ: ингредиенты с граммовками, подробные этапы и описание.
-                    if (aiOn) {
-                        aiBusy = true; status = "ИИ заполняет карточку…"
-                        runCatching { aiParse(ctx, text) }.onSuccess { applyResult(it, viaAi = true) }
-                            .onFailure { aiError = it.message ?: "ошибка"; aiBusy = false; status = null }
-                    }
+                    d.recipe = d.recipe.copy(notes = text)
+                    status = "Речь распознана. Поправьте текст, добавьте ингредиенты из поста и нажмите «Сгенерировать рецепт»."
+                    videoBusy = false
                 }
                 .onFailure { e ->
                     videoBusy = false; status = null
@@ -199,21 +201,26 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
         title = { Text(btnLabel("Описание блюда")) },
         text = {
             Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState())) {
-                Text("Вставьте подпись к рецепту из Instagram или любой текст: ингредиенты с граммовками, порции и этапы приготовления определятся сами.", fontSize = 13.sp, color = extra.dim)
+                Text(
+                    "1) «Распознать речь» — текст из видео появится в описании, его можно поправить. Или вставьте подпись из Instagram, ссылку на пост или сайт, свой текст.\n" +
+                        "2) В «Ингредиенты» вставьте список из поста с граммовками.\n3) «Сгенерировать рецепт» — ИИ заполнит ингредиенты, подробные этапы и описание. Всё можно править потом.",
+                    fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
+                )
                 TextButton(onClick = {
                     val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     cm.primaryClip?.getItemAt(0)?.coerceToText(ctx)?.toString()?.let { text = it }
                 }) { Text(btnLabel("Вставить из буфера обмена")) }
-                TextInput(text, { text = it }, "Описание или ссылка (Instagram, сайт с рецептом)", singleLine = false, minLines = 6)
-                // Видео со звуком: речь распознаётся, и по ней ИИ заполняет карточку.
+                // Видео со звуком: речь распознаётся и попадает в описание.
                 OutlinedButton(enabled = !videoBusy && !aiBusy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp), onClick = {
                     videoPicker.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.VideoOnly))
-                }) { Text(if (videoBusy) (status ?: "Распознаю…") else "🎬 Из видео: распознать речь") }
+                }) { Text(if (videoBusy) (status ?: "Распознаю…") else "Распознать речь") }
                 ownVideos.forEachIndexed { i, v ->
                     TextButton(enabled = !videoBusy && !aiBusy, onClick = { fromVideo(android.net.Uri.fromFile(java.io.File(v))) }) {
                         Text("Распознать речь из видео рецепта" + if (ownVideos.size > 1) " №${i + 1}" else "")
                     }
                 }
+                TextInput(text, { text = it }, "Описание: речь из видео, текст поста или ссылка", singleLine = false, minLines = 5)
+                TextInput(ingrText, { ingrText = it }, "Ингредиенты (из поста, с граммовками)", Modifier.padding(top = 6.dp), singleLine = false, minLines = 3)
                 if (link != null) Button(enabled = !linkBusy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp), onClick = {
                     linkBusy = true; aiError = null
                     scope.launch {
@@ -241,14 +248,14 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
         },
         confirmButton = {
             Row {
-            if (aiOn) TextButton(enabled = text.isNotBlank() && !aiBusy, onClick = {
-                aiBusy = true; aiError = null
+            if (aiOn) TextButton(enabled = (text.isNotBlank() || ingrText.isNotBlank()) && !aiBusy && !videoBusy, onClick = {
+                aiBusy = true; aiError = null; status = "ИИ пишет подробный рецепт…"
                 scope.launch {
-                    runCatching { aiParse(ctx, text) }
+                    runCatching { aiParse(ctx, source()) }
                         .onSuccess { applyResult(it, viaAi = true) }
                         .onFailure { aiError = it.message ?: "ошибка"; aiBusy = false }
                 }
-            }) { Text(if (aiBusy) (status ?: "ИИ думает…") else "✨ С ИИ") }
+            }) { Text(if (aiBusy) "ИИ думает…" else "✨ Сгенерировать рецепт") }
             TextButton(enabled = preview != null && !aiBusy, onClick = { preview?.let { applyResult(it, viaAi = false) } }) { Text(btnLabel("Разобрать")) }
             }
         },

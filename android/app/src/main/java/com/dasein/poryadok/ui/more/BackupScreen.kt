@@ -88,10 +88,12 @@ fun BackupScreen(nav: NavHostController) {
         }
     }
 
+    var restored by remember { mutableStateOf(false) }
+
     Screen("Резервное копирование", onBack = { nav.popBackStack() }) { pad ->
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             Text(
-                "Одна копия — всё ваше: записи, настройки, вид виджета, фото, видео и GIF. Сохраните её в файл (лучше на Google Диск или в «Загрузки»), " +
+                "Одна копия — точная копия профиля: записи, рецепты и тренировки с видео, карточки блюд, фильмов, сериалов и книг, свои иконки и наборы, названия кнопок, главная, тема, виджет и все настройки. Сохраните её в файл (лучше на Google Диск или в «Загрузки»), " +
                     "а на другом телефоне откройте этот же раздел и нажмите «Загрузить копию». Можно сохранить и загрузить не всё, а только отмеченные разделы.",
                 fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
             )
@@ -147,6 +149,22 @@ fun BackupScreen(nav: NavHostController) {
                 }
             }
             message?.let { Tile(Modifier.padding(top = 12.dp)) { Text(it, fontSize = 14.sp) } }
+            if (restored) {
+                Gap(8.dp)
+                Button(
+                    onClick = {
+                        val act = ctx as? android.app.Activity
+                        val i = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
+                        if (i != null) {
+                            i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                            ctx.startActivity(i)
+                        }
+                        act?.finishAffinity()
+                        Runtime.getRuntime().exit(0)
+                    },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+                ) { Text(btnLabel("Перезапустить приложение")) }
+            }
             HowTo("backup")
             Gap(40.dp)
         }
@@ -159,7 +177,7 @@ fun BackupScreen(nav: NavHostController) {
         scope.launch {
             busy = "Загружаю копию…"
             message = BackupFiles.import(ctx, uri, chosen).fold(
-                { "Готово: загружено разделов ${chosen.size}, файлов $it." },
+                { restored = true; "Готово: загружено разделов ${chosen.size}, файлов $it. Перезапустите приложение — тогда иконки, названия кнопок, главная и оформление применятся полностью." },
                 { "Не получилось загрузить: ${it.message}" },
             )
             busy = null; refresh++
