@@ -70,7 +70,7 @@
     const p = A.db().profile;
     if (A.native && A.native.setFlags && (A._fl !== "" + p.hc + p.smsImport)) { A._fl = "" + p.hc + p.smsImport; try { A.native.setFlags(!!p.hc, !!p.smsImport); } catch (e) {} }
   });
-  window.__onPause = () => { hiddenAt = Date.now(); A.saveNow(); };
+  window.__onPause = () => { hiddenAt = Date.now(); A.saveNow(true); };
   window.__onResume = () => {
     if (hiddenAt && Date.now() - hiddenAt > 60000) A.lock();
     hiddenAt = 0;
@@ -91,4 +91,13 @@
   A.render();
   A.saveNow();
   setTimeout(daily, 300);
+  // большой справочник рецептов — после запуска, когда интерфейс уже отрисован
+  setTimeout(() => A.need("js/content-dasein-recipes.js"), 4000);
+  // если прошлый запуск закончился сбоем — сообщаем, где отчёт
+  setTimeout(() => {
+    try {
+      const log = A.native && A.native.crashLog ? A.native.crashLog() : "";
+      if (log && localStorage.getItem("pz-crash-seen") !== String(log.length)) { localStorage.setItem("pz-crash-seen", String(log.length)); A.toast("Был сбой — отчёт: Настройки → Отчёт о сбоях"); }
+    } catch (e) {}
+  }, 1500);
 })();

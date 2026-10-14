@@ -287,6 +287,7 @@
     title: (r) => (r.args[0] === "r" ? "Рецепт" : "Рецепты и меню"), tab: "more",
     actions(el, r) { if (!r.args[0] || r.args[0] === "catalog") el.innerHTML = '<button class="icon-btn" onclick="App.edit.recipe()" aria-label="Новый рецепт">{{i:plus}}</button>'; },
     render(el, r) {
+      if (!window.DASEIN_RECIPES) { App.need("js/content-dasein-recipes.js").then(() => A.refresh()); return '<div class="card"><p class="muted">Загружаю рецепты…</p></div>'; }
       const sec = r.args[0] || "catalog", P = r.params;
       if (sec === "r") { const rc = A.recipe(r.args[1]); return rc ? detail(rc, P) : A.empty("Рецепт не найден или удалён"); }
       let h = A.seg(TABS, sec, "sec");
@@ -380,6 +381,7 @@
       return h;
     },
     bind(el, r) {
+      if (!window.DASEIN_RECIPES) return;
       const P = A.route().params, sec = r.args[0] || "catalog";
       const q = (o) => { const x = Object.assign({}, P, o); A.go("recipes/" + (sec === "r" ? "r/" + r.args[1] : sec) + "?" + Object.keys(x).filter((k) => x[k] !== "" && x[k] != null).map((k) => k + "=" + encodeURIComponent(x[k])).join("&"), true); };
       const rq = el.querySelector("#rq"); if (rq) rq.addEventListener("change", () => q({ q: rq.value.trim() }));

@@ -51,10 +51,10 @@
     const partName = { m: "утро", d: "день", e: "вечер" };
     const en = day.energy || {};
     const epart = A._epart || part;
-    return '<div class="card"><h3>{{i:heart}} Состояние<span class="sp"></span><button class="link" data-a="feelings">' + (day.feelings && day.feelings.length ? esc(day.feelings.slice(0, 2).join(", ")) + (day.feelings.length > 2 ? "…" : "") : "+ чувства") + "</button></h3>" +
-      '<div class="small muted row">Настроение ' + (day.mood != null ? "<b>" + day.mood + "</b>" : "") + ((day.moods || []).length > 1 ? " · записей: " + day.moods.length : "") + '<span class="grow"></span><button class="link" data-a="moodEntry">+ запись с эмоциями</button></div>' + A.scale("mood", (day.moods || []).length ? day.moods[day.moods.length - 1].v : day.mood) +
+    return '<div class="card"><h3>{{i:heart}} Состояние</h3>' +
+      '<div class="small muted row">Настроение ' + (day.mood != null ? "<b>" + day.mood + "</b>" : "") + ((day.moods || []).length > 1 ? " · записей: " + day.moods.length : "") + '</div>' + A.scale("mood", (day.moods || []).length ? day.moods[day.moods.length - 1].v : day.mood) +
       '<div class="small muted" style="margin-top:8px">Энергия' + A.seg([["m", "утро " + (en.m ?? "")], ["d", "день " + (en.d ?? "")], ["e", "вечер " + (en.e ?? "")]], epart, "epart").replace('class="seg"', 'class="seg" style="margin:4px 0"') + "</div>" + A.scale("energy", en[epart]) +
-      '<div class="small muted" style="margin-top:8px">Стресс ' + (day.stress != null ? "<b>" + day.stress + "</b>" : "") + (day.stressSrc && day.stressSrc.length ? " · " + esc(day.stressSrc.join(", ")) : "") + ' <button class="link" data-a="stressSrc">источник</button></div>' + A.scale("stress", day.stress) +
+      '<div class="small muted" style="margin-top:8px">Стресс ' + (day.stress != null ? "<b>" + day.stress + "</b>" : "") + '</div>' + A.scale("stress", day.stress) +
       '<div class="row" style="margin-top:10px"><div class="grow small muted">Тревожность: ' + (day.anx && day.anx.length ? day.anx.map((a) => "<b>" + a.v + "</b> " + esc(a.t || "")).join(", ") : "нет записей") + '</div><button class="btn sm" data-a="anx">+ запись</button></div>' +
       '<p class="small muted" style="margin-top:6px">Это дневник самонаблюдения, а не диагностика.</p></div>';
   };

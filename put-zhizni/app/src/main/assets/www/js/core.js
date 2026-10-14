@@ -71,12 +71,23 @@
     App.migrate(db);
     return db;
   }
-  function saveNow() {
+  // Копия в память телефона — не чаще раза в 20 секунд (и обязательно при сворачивании):
+  // передача всей базы в Android на каждое изменение тормозила интерфейс и расходовала память.
+  let lastBk = 0, bkTimer = null;
+  const nativeBackup = (s, force) => {
+    if (!N || db.profile.autoBackup === false) return;
+    clearTimeout(bkTimer); bkTimer = null;
+    const wait = 20000 - (Date.now() - lastBk);
+    if (!force && wait > 0) { bkTimer = setTimeout(() => nativeBackup(JSON.stringify(db), true), wait); return; }
+    lastBk = Date.now();
+    try { N.backup(s); } catch (e) {}
+  };
+  function saveNow(force) {
     clearTimeout(saveTimer); saveTimer = null;
     db.savedAt = new Date().toISOString();
     const s = JSON.stringify(db);
     try { localStorage.setItem(KEY, s); } catch (e) { App.toast("Не удалось сохранить в память браузера — используйте резервную копию"); }
-    if (N && db.profile.autoBackup !== false) { try { N.backup(s); } catch (e) {} }
+    nativeBackup(s, force === true);
     App.emit("saved");
   }
   App.save = () => { clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 250); };
@@ -133,12 +144,20 @@
       App.collapsible(box, r.name);
       App.hydratePhotos(box);
     } catch (e) {
-      console.error(e);
+      console.error(e); logErr("экран " + r.name + ": " + (e.stack || e.message));
       main.innerHTML = '<div class="card"><b>Ошибка экрана.</b><p class="muted">' + esc(e.message) + "</p></div>";
     }
     main.scrollTop = sc;
   };
   App.refresh = () => App.render(true);
+  // загрузка тяжёлых справочников по требованию
+  const needs = {};
+  App.need = (src) => needs[src] || (needs[src] = new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = () => res(true); s.onerror = () => { delete needs[src]; res(false); }; document.head.appendChild(s); }));
+  // ошибки скриптов — в журнал (Настройки → Отчёт о сбоях)
+  const logErr = (msg) => { try { const L = JSON.parse(localStorage.getItem("pz-err") || "[]"); L.push(new Date().toISOString().slice(0, 19).replace("T", " ") + " · " + location.hash + " · " + String(msg).slice(0, 400)); localStorage.setItem("pz-err", JSON.stringify(L.slice(-25))); } catch (e) {} };
+  window.addEventListener("error", (e) => logErr((e.message || "ошибка") + (e.filename ? " @ " + e.filename.split("/").pop() + ":" + e.lineno : "")));
+  window.addEventListener("unhandledrejection", (e) => logErr("promise: " + ((e.reason && (e.reason.stack || e.reason.message)) || e.reason)));
+  App.errLog = () => { try { return JSON.parse(localStorage.getItem("pz-err") || "[]"); } catch (e) { return []; } };
   /* Мягкая перерисовка для фоновых обновлений (погода, шаги, банк, синхронизации).
      Не трогает экран, пока пользователь листает или касается его, пока открыто окно, и склеивает
      несколько вызовов в один. Перерисовывает только экраны, где эти данные видны. */

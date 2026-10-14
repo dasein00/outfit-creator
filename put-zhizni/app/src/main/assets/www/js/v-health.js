@@ -48,7 +48,6 @@
     const day = A.day(d), m = i != null ? day.moods[i] : { v: 7, tags: [], note: "" };
     A.formSheet(i != null ? "Запись настроения" : "Новая запись настроения", [
       { k: "v", label: "Оценка 1–10", type: "range", min: 1, max: 10 },
-      { k: "tags", label: "Эмоции", type: "multi", opts: A.FEELINGS.concat(["стресс", "благодарность", "любовь", "скука"]) },
       { k: "note", label: "Заметка: что происходит?", type: "textarea" }
     ], m, (o) => {
       if (i != null) Object.assign(day.moods[i], o); else { day.moods = day.moods || []; day.moods.push(Object.assign({ t: A.nowHM() }, o)); }
@@ -303,8 +302,6 @@
         const fc = {}; days.forEach((d) => ((A.dayGet(d) || {}).feelings || []).forEach((f) => (fc[f] = (fc[f] || 0) + 1)));
         const sc = {}; days.forEach((d) => ((A.dayGet(d) || {}).stressSrc || []).forEach((f) => (sc[f] = (sc[f] || 0) + 1)));
         const pal = ["#8E7CC3", "#7F9C7A", "#EFA984", "#C9A45C", "#E3899A", "#7DB0D6", "#B6A6D9", "#9CC5A1", "#F3C29F", "#D8C08A", "#EBB0BC", "#A9CBE5"];
-        if (Object.keys(fc).length) h += '<div class="card" style="margin-top:12px"><h3>Чувства за период</h3>' + A.charts.donut(Object.entries(fc).map(([n, v], i) => ({ name: n, v, color: pal[i % pal.length] })), A.sum(Object.values(fc)), "отметок") + "</div>";
-        if (Object.keys(sc).length) h += '<div class="card"><h3>Источники стресса</h3>' + A.charts.donut(Object.entries(sc).map(([n, v], i) => ({ name: n, v, color: pal[i % pal.length] })), A.sum(Object.values(sc)), "отметок") + "</div>";
         const anx = days.flatMap((d) => ((A.dayGet(d) || {}).anx || []).map((a) => Object.assign({ d }, a))).reverse().slice(0, 12);
         h += '<div class="card"><h3>Дневник тревожности</h3>' + (anx.length ? anx.map((a) => '<div class="item"><div class="ic" style="background:' + A.scaleColor(a.v, 10, "anx") + ';color:#fff">' + a.v + '</div><div class="tx"><b>' + fmtShort(a.d) + " · " + esc(a.t || "") + " · " + esc(a.dur || "") + "</b><small>" + esc(a.ctx || "") + "</small></div></div>").join("") : A.empty("Записей нет")) + "</div>";
       } else if (tab === "temp") {

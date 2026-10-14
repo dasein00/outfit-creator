@@ -74,9 +74,7 @@
     };
     switch (k) {
       case "mood": {
-        const w = scaleSheet("Настроение", "mood", day.mood, (v) => { if (v == null) { delete day.mood; delete day.moods; A.save(); return; } day.moods = []; A.addMood(d, v); },
-          '<div class="small muted" style="margin-top:10px">Эмоции</div>' + '<div class="chips" id="qtags">' + A.FEELINGS.map((f) => '<button class="chip' + ((day.feelings || []).includes(f) ? " on" : "") + '" data-f="' + f + '">' + f + "</button>").join("") + "</div>");
-        w.querySelector("#qtags").addEventListener("click", (e) => { const c = e.target.closest("[data-f]"); if (!c) return; c.classList.toggle("on"); day.feelings = [...w.querySelectorAll("#qtags .chip.on")].map((x) => x.dataset.f); A.save(); });
+        scaleSheet("Настроение", "mood", day.mood, (v) => { if (v == null) { delete day.mood; delete day.moods; A.save(); return; } day.moods = []; A.addMood(d, v); });
         return;
       }
       case "stress": return scaleSheet("Стресс", "stress", day.stress, (v) => { day.stress = v; A.save(); });

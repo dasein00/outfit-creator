@@ -46,7 +46,7 @@
 
   const validBackup = (o) => o && typeof o === "object" && o.profile && o.days && Array.isArray(o.habits);
 
-  const SECTIONS = [["ai", "ИИ-помощник (бесплатно)"], ["profile", "Профиль и режим"], ["targets", "Цели по здоровью"], ["look", "Оформление"], ["cards", "Экран «Сегодня»"], ["notif", "Уведомления"], ["security", "Защита"], ["data", "Данные и экспорт"], ["about", "О приложении"]];
+  const SECTIONS = [["ai", "ИИ-помощник (бесплатно)"], ["crash", "Отчёт о сбоях"], ["profile", "Профиль и режим"], ["targets", "Цели по здоровью"], ["look", "Оформление"], ["cards", "Экран «Сегодня»"], ["notif", "Уведомления"], ["security", "Защита"], ["data", "Данные и экспорт"], ["about", "О приложении"]];
 
   A.view("settings", {
     title: (r) => (r.args[0] ? (SECTIONS.find((s) => s[0] === r.args[0]) || [0, "Настройки"])[1] : "Настройки"), tab: "more",
@@ -54,6 +54,11 @@
       const p = A.db().profile, sec = r.args[0];
       if (!sec) return '<div class="card"><div class="list">' + SECTIONS.map((s) => '<a class="item" style="text-decoration:none;color:inherit" href="#/settings/' + s[0] + '"><div class="tx"><b>' + s[1] + '</b></div><span class="muted">›</span></a>').join("") + "</div></div>";
       if (sec === "ai") return A.aiSettingsHtml();
+      if (sec === "crash") {
+        const nat = A.native && A.native.crashLog ? A.native.crashLog() : "", js = A.errLog();
+        return '<div class="card"><p class="small">Если приложение вылетело или зависло, здесь появится запись. Нажмите «Поделиться» и отправьте отчёт — по нему видно, где сбой.</p><div class="btns"><button class="btn primary" data-a="crShare">{{i:send}} Поделиться</button><button class="btn ghost" data-a="crClear">Очистить</button></div></div>' +
+          '<div class="card"><h3>Сбои приложения</h3><pre class="small" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:40vh;overflow:auto">' + esc(nat || "Записей нет") + '</pre></div><div class="card"><h3>Ошибки экранов</h3><pre class="small" style="white-space:pre-wrap;overflow-wrap:anywhere">' + esc(js.join("\n") || "Записей нет") + "</pre></div>";
+      }
       if (sec === "profile") {
         return '<div class="card"><div class="form">' +
           '<div class="fld full"><label>Имя</label><input data-c="p" data-k="name" value="' + esc(p.name) + '"></div>' +
@@ -113,6 +118,13 @@
     bind(el, r) {
       const p = A.db().profile;
       if (r.args[0] === "ai") { A.aiSettingsBind(el); return; }
+      if (r.args[0] === "crash") {
+        A.bind(el, {
+          crShare() { const t = "Путь жизни — отчёт о сбоях\n\n" + (A.native && A.native.crashLog ? A.native.crashLog() : "") + "\nОшибки экранов:\n" + A.errLog().join("\n"); if (A.native && A.native.shareText) A.native.shareText("Отчёт о сбоях", t); else A.download("crash-report.txt", "text/plain", t); },
+          crClear() { if (A.native && A.native.crashClear) A.native.crashClear(); try { localStorage.removeItem("pz-err"); localStorage.removeItem("pz-crash-seen"); } catch (e) {} A.refresh(); }
+        });
+        return;
+      }
       A.bind(el, {
         p(b) { p[b.dataset.k] = b.value.trim(); A.save(); },
         plist(b) { p[b.dataset.k] = b.value.split("\n").map((x) => x.trim()).filter(Boolean); A.save(); },

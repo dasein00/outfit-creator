@@ -32,6 +32,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CrashLog.install(this)
         Notifications.ensureChannel(this)
 
         web = WebView(this)
@@ -70,6 +71,15 @@ class MainActivity : Activity() {
                     WebResourceResponse("text/plain", "utf-8", 404, "Not Found", emptyMap(),
                         ByteArrayInputStream(ByteArray(0)))
                 }
+            }
+
+            // Процесс отрисовки WebView упал (чаще всего — нехватка памяти). Без этого обработчика Android
+            // закрывает всё приложение; вместо этого записываем причину и пересоздаём экран.
+            override fun onRenderProcessGone(view: WebView, detail: android.webkit.RenderProcessGoneDetail): Boolean {
+                CrashLog.write(this@MainActivity, "WebView: процесс отрисовки завершён (" + (if (detail.didCrash()) "сбой" else "нехватка памяти") + ")")
+                try { (view.parent as? android.view.ViewGroup)?.removeView(view); view.destroy() } catch (_: Exception) {}
+                recreate()
+                return true
             }
 
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {

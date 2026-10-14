@@ -131,7 +131,7 @@ class Bridge(private val act: MainActivity) {
             val day = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
             File(dir, "day-$day.json").writeText(json)
             dir.listFiles { f -> f.name.startsWith("day-") }?.sortedBy { it.name }?.dropLast(14)?.forEach { it.delete() }
-        } catch (_: Exception) {}
+        } catch (e: Throwable) { CrashLog.write(act, "Резервная копия не записана: " + e) }
     }
 
     @JavascriptInterface fun readBackup(): String = try {
@@ -222,6 +222,9 @@ class Bridge(private val act: MainActivity) {
     @JavascriptInterface fun deletePhoto(id: String) = Photos.delete(act, id)
 
     @JavascriptInterface fun backupNow(json: String) = backup(json)
+    @JavascriptInterface fun crashLog(): String = CrashLog.read(act)
+    @JavascriptInterface fun crashClear() = CrashLog.clear(act)
+    @JavascriptInterface fun crashNote(text: String) = CrashLog.write(act, "JS: " + text.take(2000))
 
     // ---------- Виджет ----------
 

@@ -69,6 +69,7 @@
     title: "Питание",
     actions(el) { el.innerHTML = '<button class="icon-btn" onclick="App.go(\'food/base\')" aria-label="База продуктов" title="База продуктов">{{i:clipboard-list}}</button>'; },
     render(el, r) {
+      if (!window.DASEIN_RECIPES) { App.need("js/content-dasein-recipes.js").then(() => A.refresh()); return '<div class="card"><p class="muted">Загружаю рецепты…</p></div>'; }
       const p = A.db().profile;
       if (r.args[0] === "base") {
         const fs = A.col("foods").slice().sort((a, b) => a.name.localeCompare(b.name));
@@ -91,6 +92,7 @@
       return h;
     },
     bind(el, r) {
+      if (!window.DASEIN_RECIPES) return;
       const d = () => A.route().params.d || today();
       A.bind(el, {
         dnav(b) { if (b.dataset.v === "pick") return A.pickDate(d(), (v) => A.go("food?d=" + v, true)); A.go("food?d=" + addDays(d(), +b.dataset.v), true); },

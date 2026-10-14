@@ -149,7 +149,8 @@
   /* ---------- «Слово дня» на экране «Сегодня» ---------- */
   A.CARD_NAMES.word = "Слово дня";
   const wodPick = (l, i) => {
-    const D = dict(l), core = D.w.filter((x) => x[4] && x[2]);
+    // короткий список слова дня — без загрузки словаря на тысячи слов
+    const core = (window.TUTOR_WOD && window.TUTOR_WOD[l]) || (dict(l) ? dict(l).w.filter((x) => x[4] && x[2]) : []);
     const n = i != null ? i : (A.diffDays("2026-01-01", today()) * 37) % core.length;
     return [W(core[((n % core.length) + core.length) % core.length]), n];
   };
@@ -162,15 +163,13 @@
   A.todayCards.word = () => {
     const l = curLang(), L = LANGS[l];
     const head = '<h3>{{i:languages}} Слово дня<span class="sp"></span><button class="link" data-a="wodLang" aria-label="Сменить язык">' + L.flag + " " + esc(L.name) + "</button></h3>";
-    if (dict(l)) return '<div class="card tw-cardbox">' + head + '<div id="wodBox">' + wodHtml(l) + "</div></div>";
-    loadLang(l).then(() => { const b = document.getElementById("wodBox"); if (b) b.innerHTML = wodHtml(l); }).catch(() => {});
-    return '<div class="card tw-cardbox">' + head + '<div id="wodBox"><p class="small muted">Загружаю словарь…</p></div></div>';
+    return '<div class="card tw-cardbox">' + head + '<div id="wodBox">' + wodHtml(l) + "</div></div>";
   };
   const baseHandlers = A.dayHandlers;
   A.dayHandlers = (getD) => Object.assign(baseHandlers(getD), {
     tSay(b) { A.say(b.dataset.t, b.dataset.l); },
     wodNext(b) { const box = document.getElementById("wodBox"); if (box) box.innerHTML = wodHtml(b.dataset.l, +b.dataset.i + 1 + Math.floor(Math.random() * 50)); },
-    wodLang() { const ks = Object.keys(LANGS); st().lang = ks[(ks.indexOf(curLang()) + 1) % ks.length]; A.save(); loadLang(curLang()).then(() => A.refresh()); },
+    wodLang() { const ks = Object.keys(LANGS); st().lang = ks[(ks.indexOf(curLang()) + 1) % ks.length]; A.save(); A.refresh(); },
     wodAdd(b) { startLearning(b.dataset.l, b.dataset.w); A.toast("Слово добавлено в повторения"); }
   });
 
