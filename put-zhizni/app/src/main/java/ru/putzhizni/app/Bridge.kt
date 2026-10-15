@@ -50,7 +50,7 @@ class Bridge(private val act: MainActivity) {
     @JavascriptInterface fun saveFileBase64(name: String, mime: String, b64: String) =
         startSave(name, mime, Base64.decode(b64, Base64.DEFAULT))
 
-    private fun startSave(name: String, mime: String, bytes: ByteArray) = act.runOnUiThread {
+    private fun startSave(name: String, mime: String, bytes: ByteArray) = act.ui {
         pendingSave = bytes
         val i = Intent(Intent.ACTION_CREATE_DOCUMENT)
         i.addCategory(Intent.CATEGORY_OPENABLE)
@@ -73,7 +73,7 @@ class Bridge(private val act: MainActivity) {
         } catch (e: Exception) { callback("save", "error") }
     }
 
-    @JavascriptInterface fun openFile() = act.runOnUiThread {
+    @JavascriptInterface fun openFile() = act.ui {
         val i = Intent(Intent.ACTION_OPEN_DOCUMENT)
         i.addCategory(Intent.CATEGORY_OPENABLE)
         i.type = "*/*"
@@ -91,13 +91,13 @@ class Bridge(private val act: MainActivity) {
         } catch (e: Exception) { callback("open", "") }
     }
 
-    @JavascriptInterface fun print(title: String) = act.runOnUiThread {
+    @JavascriptInterface fun print(title: String) = act.ui {
         val pm = act.getSystemService(Context.PRINT_SERVICE) as PrintManager
         val adapter = act.web.createPrintDocumentAdapter(title)
         pm.print(title, adapter, PrintAttributes.Builder().setMediaSize(PrintAttributes.MediaSize.ISO_A4).build())
     }
 
-    @JavascriptInterface fun shareText(title: String, text: String) = act.runOnUiThread {
+    @JavascriptInterface fun shareText(title: String, text: String) = act.ui {
         val i = Intent(Intent.ACTION_SEND)
         i.type = "text/plain"
         i.putExtra(Intent.EXTRA_SUBJECT, title)
@@ -159,7 +159,7 @@ class Bridge(private val act: MainActivity) {
 
     @JavascriptInterface fun notificationsAllowed(): Boolean = Notifications.allowed(act)
 
-    @JavascriptInterface fun requestNotifications() = act.runOnUiThread {
+    @JavascriptInterface fun requestNotifications() = act.ui {
         if (Build.VERSION.SDK_INT < 33) callback("notif", Notifications.allowed(act).toString())
         else if (act.askPermission(MainActivity.PERM_NOTIF, MainActivity.REQ_NOTIF)) callback("notif", "true")
     }
@@ -179,8 +179,8 @@ class Bridge(private val act: MainActivity) {
         return sm.getDefaultSensor(Sensor.TYPE_STEP_COUNTER) != null
     }
 
-    @JavascriptInterface fun requestSteps() = act.runOnUiThread {
-        if (Build.VERSION.SDK_INT >= 29 && !act.askPermission(MainActivity.PERM_STEPS, MainActivity.REQ_STEPS)) return@runOnUiThread
+    @JavascriptInterface fun requestSteps() = act.ui {
+        if (Build.VERSION.SDK_INT >= 29 && !act.askPermission(MainActivity.PERM_STEPS, MainActivity.REQ_STEPS)) return@ui
         StepCounter.read(act) { steps -> callback("steps", steps.toString()) }
         StepCounter.scheduleMidnight(act)
     }
@@ -196,8 +196,8 @@ class Bridge(private val act: MainActivity) {
             @Suppress("DEPRECATION") (bm.canAuthenticate() == BiometricManager.BIOMETRIC_SUCCESS)
     }
 
-    @JavascriptInterface fun authenticate() = act.runOnUiThread {
-        if (Build.VERSION.SDK_INT < 29) { callback("auth", "false"); return@runOnUiThread }
+    @JavascriptInterface fun authenticate() = act.ui {
+        if (Build.VERSION.SDK_INT < 29) { callback("auth", "false"); return@ui }
         val b = BiometricPrompt.Builder(act).setTitle("Путь жизни").setSubtitle("Подтвердите вход")
         if (Build.VERSION.SDK_INT >= 30) {
             b.setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
@@ -223,6 +223,8 @@ class Bridge(private val act: MainActivity) {
 
     @JavascriptInterface fun backupNow(json: String) = backup(json)
     @JavascriptInterface fun crashLog(): String = CrashLog.read(act)
+    @JavascriptInterface fun liteMode(): Boolean = act.getSharedPreferences("flags", Context.MODE_PRIVATE).getBoolean("lite", false)
+    @JavascriptInterface fun setLiteMode(on: Boolean) = act.setLite(on)
     @JavascriptInterface fun crashClear() = CrashLog.clear(act)
     @JavascriptInterface fun crashNote(text: String) = CrashLog.write(act, "JS: " + text.take(2000))
 
@@ -246,7 +248,7 @@ class Bridge(private val act: MainActivity) {
         if (!HealthSync.available(act)) { callback("hc", JSONObject().put("error", "Health Connect не установлен").toString()); return }
         CoroutineScope(Dispatchers.IO).launch {
             if (HealthSync.hasPermissions(act)) readHc()
-            else act.runOnUiThread {
+            else act.ui {
                 try {
                     @Suppress("DEPRECATION")
                     act.startActivityForResult(HealthSync.permissionIntent(act), MainActivity.REQ_HC)
@@ -274,8 +276,8 @@ class Bridge(private val act: MainActivity) {
     @JavascriptInterface fun smsList(days: Int) {
         smsDays = days
         setFlag("sms", true)
-        act.runOnUiThread {
-            if (!act.askPermission(android.Manifest.permission.READ_SMS, MainActivity.REQ_SMS)) return@runOnUiThread
+        act.ui {
+            if (!act.askPermission(android.Manifest.permission.READ_SMS, MainActivity.REQ_SMS)) return@ui
             if (act.checkSelfPermission(android.Manifest.permission.RECEIVE_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
                 act.requestPermissions(arrayOf(android.Manifest.permission.RECEIVE_SMS), MainActivity.REQ_SMS + 1)
             smsRead()
@@ -299,10 +301,10 @@ class Bridge(private val act: MainActivity) {
     @JavascriptInterface fun bankRebind() {
         try { android.service.notification.NotificationListenerService.requestRebind(android.content.ComponentName(act, BankListener::class.java)) } catch (_: Exception) {}
     }
-    @JavascriptInterface fun openBankAccess() = act.runOnUiThread {
+    @JavascriptInterface fun openBankAccess() = act.ui {
         try { act.startActivity(Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) } catch (_: Exception) {}
     }
-    @JavascriptInterface fun openAppSettings() = act.runOnUiThread {
+    @JavascriptInterface fun openAppSettings() = act.ui {
         try { act.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + act.packageName))) } catch (_: Exception) {}
     }
 
@@ -310,17 +312,17 @@ class Bridge(private val act: MainActivity) {
 
     @JavascriptInterface fun speak(text: String, lang: String, rate: Float) = Speech.speak(act, text, lang, rate)
     @JavascriptInterface fun ttsCheck(lang: String): Int = try { Speech.check(act, lang) } catch (e: Exception) { -2 }
-    @JavascriptInterface fun ttsInstall() = act.runOnUiThread { Speech.installVoices(act) }
+    @JavascriptInterface fun ttsInstall() = act.ui { Speech.installVoices(act) }
     @JavascriptInterface fun mtTranslate(text: String, from: String, to: String, allowDownload: Boolean) {
-        act.runOnUiThread { OnDeviceTranslate.translate(text, from, to, allowDownload) { callback("mt", it) } }
+        act.ui { OnDeviceTranslate.translate(text, from, to, allowDownload) { callback("mt", it) } }
     }
-    @JavascriptInterface fun mtModels() { act.runOnUiThread { OnDeviceTranslate.modelsJson { callback("mtModels", it) } } }
+    @JavascriptInterface fun mtModels() { act.ui { OnDeviceTranslate.modelsJson { callback("mtModels", it) } } }
 
     // ---------- Сон по использованию телефона ----------
 
     @JavascriptInterface fun usageAllowed(): Boolean = SleepDetector.allowed(act)
 
-    @JavascriptInterface fun openUsageSettings() = act.runOnUiThread {
+    @JavascriptInterface fun openUsageSettings() = act.ui {
         try { act.startActivity(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS)) } catch (_: Exception) {}
     }
 

@@ -18,8 +18,15 @@ object CrashLog {
         val prev = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { t, e ->
             try { write(app, "Поток ${t.name}: " + android.util.Log.getStackTraceString(e).take(4000)) } catch (_: Throwable) {}
-            prev?.uncaughtException(t, e)
+            // Ошибка в фоновом потоке (резервная копия, Health Connect, шаги, банк) не должна закрывать
+            // всё приложение: записываем её и продолжаем работу. Падение главного потока передаём системе.
+            if (t === android.os.Looper.getMainLooper().thread) prev?.uncaughtException(t, e)
         }
+    }
+
+    /** Выполнить действие и записать ошибку в журнал вместо падения приложения. */
+    inline fun guard(ctx: Context, where: String, block: () -> Unit) {
+        try { block() } catch (e: Throwable) { write(ctx, where + ": " + android.util.Log.getStackTraceString(e).take(3000)) }
     }
 
     @Synchronized

@@ -57,6 +57,7 @@
       if (sec === "crash") {
         const nat = A.native && A.native.crashLog ? A.native.crashLog() : "", js = A.errLog();
         return '<div class="card"><p class="small">Если приложение вылетело или зависло, здесь появится запись. Нажмите «Поделиться» и отправьте отчёт — по нему видно, где сбой.</p><div class="btns"><button class="btn primary" data-a="crShare">{{i:send}} Поделиться</button><button class="btn ghost" data-a="crClear">Очистить</button></div></div>' +
+          '<div class="card"><label class="switch"><input type="checkbox" id="crLite"' + (A.lite ? " checked" : "") + '><span></span>Облегчённая графика</label><p class="small muted">Без анимаций и теней — меньше нагрузки на видеочип и память. Включается сама, если экран дважды падал за короткое время. Применяется после перезапуска приложения.</p></div>' +
           '<div class="card"><h3>Сбои приложения</h3><pre class="small" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:40vh;overflow:auto">' + esc(nat || "Записей нет") + '</pre></div><div class="card"><h3>Ошибки экранов</h3><pre class="small" style="white-space:pre-wrap;overflow-wrap:anywhere">' + esc(js.join("\n") || "Записей нет") + "</pre></div>";
       }
       if (sec === "profile") {
@@ -119,6 +120,8 @@
       const p = A.db().profile;
       if (r.args[0] === "ai") { A.aiSettingsBind(el); return; }
       if (r.args[0] === "crash") {
+        const lt = el.querySelector("#crLite");
+        if (lt) lt.addEventListener("change", () => { if (A.native && A.native.setLiteMode) A.native.setLiteMode(lt.checked); A.lite = lt.checked; document.documentElement.classList.toggle("lite", lt.checked); A.toast(lt.checked ? "Облегчённая графика включена" : "Обычная графика"); });
         A.bind(el, {
           crShare() { const t = "Путь жизни — отчёт о сбоях\n\n" + (A.native && A.native.crashLog ? A.native.crashLog() : "") + "\nОшибки экранов:\n" + A.errLog().join("\n"); if (A.native && A.native.shareText) A.native.shareText("Отчёт о сбоях", t); else A.download("crash-report.txt", "text/plain", t); },
           crClear() { if (A.native && A.native.crashClear) A.native.crashClear(); try { localStorage.removeItem("pz-err"); localStorage.removeItem("pz-crash-seen"); } catch (e) {} A.refresh(); }

@@ -150,6 +150,8 @@
   A.view("spreads", {
     title: (r) => ({ new: "Новый расклад", show: "Расклад" }[r.args[0]] || "Расклады"), tab: "more",
     render(el, r) {
+      // справочник Солье (140 КБ) подгружается только при открытии раскладов
+      if (!window.LENORMAND_SOLE) { A.need("js/content-lenormand-sole.js").then(() => A.refresh()); return '<div class="card"><p class="muted">Загружаю расклады…</p></div>'; }
       const sub = r.args[0] || "";
       if (sub === "new") {
         if (!D) D = newDraft(r.params.deck || "tarot");
@@ -178,6 +180,7 @@
         '<a class="btn ghost block" href="#/tarot">{{i:book-open}} Учебник Таро и значения 78 карт</a>';
     },
     bind(el, r) {
+      if (!window.LENORMAND_SOLE) return;
       const sub = r.args[0] || "";
       const work = () => el.querySelector("#dWork");
       const sync = () => { if (!D) return; const q = el.querySelector("#dq"); if (q) D.q = q.value.trim(); const rv = el.querySelector("#drev"); if (rv) D.rev = rv.checked; };

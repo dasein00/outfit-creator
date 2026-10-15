@@ -499,3 +499,9 @@ details.lgrp summary { padding: 11px 0; font-weight: 600; cursor: pointer; }
 .sp-rows .sp-lay { margin: 4px 0; }
 .sp-card { flex-shrink: 0; }
 .sp-card.sm .lc-name { overflow-wrap: anywhere; font-size: 7.5px; }
+
+/* Облегчённая графика: меньше работы для видеочипа и памяти */
+.lite *, .lite *::before, .lite *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+.lite .card, .lite .fab, .lite .seg button.on, .lite .sheet { box-shadow: none !important; }
+.lite .card { border: 1px solid var(--line); }
+.lite .hero { background: var(--accent2) !important; }

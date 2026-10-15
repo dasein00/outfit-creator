@@ -152,6 +152,8 @@
   App.refresh = () => App.render(true);
   // загрузка тяжёлых справочников по требованию
   const needs = {};
+  // Освободить подгружаемый справочник (при нехватке памяти); при следующем обращении он загрузится снова.
+  App.dropNeed = (src, globalName) => { delete needs[src]; try { delete window[globalName]; } catch (e) { window[globalName] = undefined; } document.querySelectorAll('script[src="' + src + '"]').forEach((s) => s.remove()); };
   App.need = (src) => needs[src] || (needs[src] = new Promise((res) => { const s = document.createElement("script"); s.src = src; s.onload = () => res(true); s.onerror = () => { delete needs[src]; res(false); }; document.head.appendChild(s); }));
   // ошибки скриптов — в журнал (Настройки → Отчёт о сбоях)
   const logErr = (msg) => { try { const L = JSON.parse(localStorage.getItem("pz-err") || "[]"); L.push(new Date().toISOString().slice(0, 19).replace("T", " ") + " · " + location.hash + " · " + String(msg).slice(0, 400)); localStorage.setItem("pz-err", JSON.stringify(L.slice(-25))); } catch (e) {} };

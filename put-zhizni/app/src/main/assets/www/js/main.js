@@ -70,6 +70,15 @@
     const p = A.db().profile;
     if (A.native && A.native.setFlags && (A._fl !== "" + p.hc + p.smsImport)) { A._fl = "" + p.hc + p.smsImport; try { A.native.setFlags(!!p.hc, !!p.smsImport); } catch (e) {} }
   });
+  // Облегчённая графика: без анимаций, теней и плавной прокрутки — для телефонов, где система
+  // агрессивно выгружает процесс отрисовки (включается сама после повторных сбоев или в настройках).
+  A.lite = /[?&]lite=1/.test(location.search) || !!(A.native && A.native.liteMode && (() => { try { return A.native.liteMode(); } catch (e) { return false; } })());
+  if (A.lite) document.documentElement.classList.add("lite");
+  // Система сообщила о нехватке памяти — выгружаем большие необязательные справочники.
+  window.__onLowMemory = () => {
+    if (!/^#\/(recipes|food)/.test(location.hash)) A.dropNeed("js/content-dasein-recipes.js", "DASEIN_RECIPES");
+    if (!/^#\/spreads/.test(location.hash)) A.dropNeed("js/content-lenormand-sole.js", "LENORMAND_SOLE");
+  };
   window.__onPause = () => { hiddenAt = Date.now(); A.saveNow(true); };
   window.__onResume = () => {
     if (hiddenAt && Date.now() - hiddenAt > 60000) A.lock();
@@ -92,7 +101,7 @@
   A.saveNow();
   setTimeout(daily, 300);
   // большой справочник рецептов — после запуска, когда интерфейс уже отрисован
-  setTimeout(() => A.need("js/content-dasein-recipes.js"), 4000);
+  if (!A.lite) setTimeout(() => A.need("js/content-dasein-recipes.js"), 4000);
   // если прошлый запуск закончился сбоем — сообщаем, где отчёт
   setTimeout(() => {
     try {

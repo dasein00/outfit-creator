@@ -167,7 +167,9 @@ object ReminderScheduler {
 }
 
 class ReminderReceiver : BroadcastReceiver() {
-    override fun onReceive(ctx: Context, intent: Intent) {
+    override fun onReceive(ctx: Context, intent: Intent) = CrashLog.guard(ctx, javaClass.simpleName) { receive(ctx, intent) }
+
+    private fun receive(ctx: Context, intent: Intent) {
         val payload = intent.getStringExtra("r") ?: return
         val r = try { JSONObject(payload) } catch (e: Exception) { return }
         val id = r.optString("id")
@@ -180,7 +182,9 @@ class ReminderReceiver : BroadcastReceiver() {
 }
 
 class BootReceiver : BroadcastReceiver() {
-    override fun onReceive(ctx: Context, intent: Intent) {
+    override fun onReceive(ctx: Context, intent: Intent) = CrashLog.guard(ctx, javaClass.simpleName) { receive(ctx, intent) }
+
+    private fun receive(ctx: Context, intent: Intent) {
         ReminderScheduler.rescheduleAll(ctx)
         StepCounter.scheduleMidnight(ctx)
         Background.schedule(ctx)

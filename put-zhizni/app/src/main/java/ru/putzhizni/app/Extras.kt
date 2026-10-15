@@ -61,7 +61,9 @@ object SmsReader {
 
 /** Мониторинг новых SMS от 900: уведомление о найденной операции, запись — при открытии приложения. */
 class SmsReceiver : BroadcastReceiver() {
-    override fun onReceive(ctx: Context, intent: Intent) {
+    override fun onReceive(ctx: Context, intent: Intent) = CrashLog.guard(ctx, javaClass.simpleName) { receive(ctx, intent) }
+
+    private fun receive(ctx: Context, intent: Intent) {
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
         if (!ctx.getSharedPreferences("flags", Context.MODE_PRIVATE).getBoolean("sms", false)) return
         val msgs = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return
@@ -206,7 +208,9 @@ object Background {
 }
 
 class BgReceiver : BroadcastReceiver() {
-    override fun onReceive(ctx: Context, intent: Intent) {
+    override fun onReceive(ctx: Context, intent: Intent) = CrashLog.guard(ctx, javaClass.simpleName) { receive(ctx, intent) }
+
+    private fun receive(ctx: Context, intent: Intent) {
         val pending = goAsync()
         val prefs = ctx.getSharedPreferences("widget", Context.MODE_PRIVATE)
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
@@ -216,7 +220,7 @@ class BgReceiver : BroadcastReceiver() {
             if (hcOn && HealthSync.available(ctx)) steps = HealthSync.stepsToday(ctx)
             fun finish(s: Long?) {
                 if (s != null && s >= 0) prefs.edit().putString("liveDate", today).putLong("liveSteps", maxOf(s, if (prefs.getString("liveDate", "") == today) prefs.getLong("liveSteps", 0) else 0)).apply()
-                LifeWidget.render(ctx)
+                try { LifeWidget.render(ctx) } catch (e: Throwable) { CrashLog.write(ctx, "Виджет: " + e) }
                 pending.finish()
             }
             if (steps != null) finish(steps)

@@ -90,7 +90,9 @@ object StepCounter {
 }
 
 class StepMidnightReceiver : BroadcastReceiver() {
-    override fun onReceive(ctx: Context, intent: Intent) {
+    override fun onReceive(ctx: Context, intent: Intent) = CrashLog.guard(ctx, javaClass.simpleName) { receive(ctx, intent) }
+
+    private fun receive(ctx: Context, intent: Intent) {
         val pending = goAsync()
         val sm = ctx.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         val sensor = sm.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)

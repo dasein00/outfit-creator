@@ -29,15 +29,44 @@ class MainActivity : Activity() {
     lateinit var web: WebView
     lateinit var bridge: Bridge
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
+    private var webAlive = false
+    private val renderCrashes = ArrayList<Long>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         CrashLog.install(this)
-        Notifications.ensureChannel(this)
-
-        web = WebView(this)
-        setContentView(web)
+        CrashLog.guard(this, "Канал уведомлений") { Notifications.ensureChannel(this) }
         bridge = Bridge(this)
+
+        // Состояние WebView (история переходов) больше не сохраняется в Bundle: при долгой работе оно
+        // разрастается сверх лимита Android в 1 МБ, и при сворачивании приложение падало
+        // (TransactionTooLargeException). Данные и так живут в localStorage — запоминаем только экран.
+        val route = intent?.getStringExtra("route").orEmpty().ifEmpty { savedInstanceState?.getString("route").orEmpty() }
+        try { createWeb(route) } catch (e: Throwable) {
+            // WebView недоступен (например, системный компонент WebView обновляется) — не вылетаем, а объясняем.
+            CrashLog.write(this, "WebView не создан: " + android.util.Log.getStackTraceString(e).take(3000))
+            webAlive = false
+            setContentView(android.widget.TextView(this).apply {
+                setPadding(48, 96, 48, 48); textSize = 17f
+                text = "Не удалось открыть экран: системный компонент Android System WebView недоступен или обновляется.\n\nОбновите «Android System WebView» и «Chrome» в Google Play и откройте приложение снова."
+            })
+        }
+        CrashLog.guard(this, "Фоновое обновление") { Background.schedule(this) }
+    }
+
+    /** Режим облегчённой графики включается сам после повторных падений отрисовки (или вручную в настройках). */
+    private fun lite(): Boolean = getSharedPreferences("flags", MODE_PRIVATE).getBoolean("lite", false)
+    fun setLite(on: Boolean) { getSharedPreferences("flags", MODE_PRIVATE).edit().putBoolean("lite", on).apply() }
+
+    private fun currentRoute(): String = try {
+        val u = web.url ?: ""
+        if (u.contains("index.html") && u.contains("#/")) u.substringAfter("#/") else ""
+    } catch (_: Throwable) { "" }
+
+    private fun createWeb(route: String) {
+        web = WebView(this)
+        webAlive = true
+        setContentView(web)
 
         val s = web.settings
         s.javaScriptEnabled = true
@@ -50,6 +79,9 @@ class MainActivity : Activity() {
         s.textZoom = 100
         web.overScrollMode = View.OVER_SCROLL_NEVER
         web.addJavascriptInterface(bridge, "Android")
+        // Пока экран открыт, система не должна выгружать процесс отрисовки ради памяти (оболочки
+        // Realme/ColorOS делают это агрессивнее других); в фоне — обычный приоритет.
+        try { web.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, true) } catch (_: Throwable) {}
 
         web.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
@@ -76,9 +108,17 @@ class MainActivity : Activity() {
             // Процесс отрисовки WebView упал (чаще всего — нехватка памяти). Без этого обработчика Android
             // закрывает всё приложение; вместо этого записываем причину и пересоздаём экран.
             override fun onRenderProcessGone(view: WebView, detail: android.webkit.RenderProcessGoneDetail): Boolean {
-                CrashLog.write(this@MainActivity, "WebView: процесс отрисовки завершён (" + (if (detail.didCrash()) "сбой" else "нехватка памяти") + ")")
-                try { (view.parent as? android.view.ViewGroup)?.removeView(view); view.destroy() } catch (_: Exception) {}
-                recreate()
+                val route = currentRoute()
+                CrashLog.write(this@MainActivity, "WebView: процесс отрисовки завершён (" + (if (detail.didCrash()) "сбой" else "выгружен системой из-за памяти") + "), экран: " + route)
+                webAlive = false
+                try { (view.parent as? android.view.ViewGroup)?.removeView(view); view.destroy() } catch (_: Throwable) {}
+                // Два падения за 3 минуты — включаем облегчённую графику.
+                val now = System.currentTimeMillis()
+                renderCrashes.removeAll { now - it > 180_000 }
+                renderCrashes.add(now)
+                if (renderCrashes.size >= 2 && !lite()) { setLite(true); CrashLog.write(this@MainActivity, "Включён облегчённый режим графики") }
+                // Новый WebView вместо recreate(): пересоздание Activity с мёртвым WebView само могло падать.
+                if (!isFinishing && !isDestroyed) CrashLog.guard(this@MainActivity, "Перезапуск экрана") { createWeb(route) }
                 return true
             }
 
@@ -121,15 +161,13 @@ class MainActivity : Activity() {
             }
         }
 
-        val route = intent?.getStringExtra("route").orEmpty()
-        if (savedInstanceState != null && route.isEmpty()) web.restoreState(savedInstanceState)
-        else web.loadUrl("https://$HOST/index.html" + if (route.isNotEmpty()) "#/$route" else "")
-        Background.schedule(this)
+        web.loadUrl("https://$HOST/index.html" + (if (lite()) "?lite=1" else "") + if (route.isNotEmpty()) "#/$route" else "")
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        if (!webAlive) return
         val route = intent.getStringExtra("route").orEmpty()
         if (route.isNotEmpty()) {
             if (web.url?.contains("index.html") == true) js("window.__openRoute&&window.__openRoute(" + org.json.JSONObject.quote(route) + ")")
@@ -139,23 +177,45 @@ class MainActivity : Activity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        web.saveState(outState)
+        outState.putString("route", currentRoute().take(200))
     }
 
     override fun onResume() {
         super.onResume()
-        web.onResume()
-        web.evaluateJavascript("window.__onResume&&window.__onResume()", null)
+        if (!webAlive) return
+        CrashLog.guard(this, "onResume") {
+            web.onResume()
+            web.evaluateJavascript("window.__onResume&&window.__onResume()", null)
+        }
     }
 
     override fun onPause() {
-        web.evaluateJavascript("window.__onPause&&window.__onPause()", null)
-        web.onPause()
+        if (webAlive) CrashLog.guard(this, "onPause") {
+            web.evaluateJavascript("window.__onPause&&window.__onPause()", null)
+            web.onPause()
+        }
         super.onPause()
     }
 
+    // Система просит освободить память — интерфейс сбрасывает необязательные справочники.
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (webAlive && level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) CrashLog.guard(this, "onTrimMemory") {
+            web.evaluateJavascript("window.__onLowMemory&&window.__onLowMemory($level)", null)
+        }
+    }
+
+    override fun onDestroy() {
+        if (webAlive) try { webAlive = false; web.destroy() } catch (_: Throwable) {}
+        super.onDestroy()
+    }
+
+    /** Действие в главном потоке; ошибка записывается в журнал сбоев, а не закрывает приложение. */
+    fun ui(block: () -> Unit) = runOnUiThread { CrashLog.guard(this, "UI") { block() } }
+
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
+        if (!webAlive) { @Suppress("DEPRECATION") super.onBackPressed(); return }
         if (web.url?.contains("numerology.html") == true) {
             web.loadUrl("https://$HOST/index.html#/more")
             return
@@ -168,9 +228,9 @@ class MainActivity : Activity() {
         }
     }
 
-    fun js(code: String) = runOnUiThread { web.evaluateJavascript(code, null) }
+    fun js(code: String) = ui { if (webAlive) web.evaluateJavascript(code, null) }
 
-    fun setBars(hex: String, light: Boolean) = runOnUiThread {
+    fun setBars(hex: String, light: Boolean) = ui {
         try {
             val c = Color.parseColor(hex)
             window.statusBarColor = c
@@ -258,10 +318,6 @@ class MainActivity : Activity() {
     return click.call(this);
   };
   window.print=function(){Android.print(document.title||'Путь жизни');};
-  var bar=document.createElement('div');
-  bar.innerHTML='<button style="position:fixed;left:10px;top:10px;z-index:99999;padding:10px 14px;border-radius:20px;border:1px solid #c9b48a;background:#f7efdd;color:#241c15;font:15px sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.15)">← Путь жизни</button>';
-  bar.firstChild.onclick=function(){location.href='https://putzhizni.local/index.html#/more'};
-  document.body.appendChild(bar.firstChild);
 })();
 """
     }
