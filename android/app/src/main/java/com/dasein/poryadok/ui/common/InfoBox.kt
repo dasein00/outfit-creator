@@ -134,7 +134,7 @@ fun FoldTile(
 ) {
     val extra = LocalExtra.current
     var open by rememberUiFlag("fold_$key", true)
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(extra.card)) {
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(com.dasein.poryadok.ui.theme.LocalLook.current.cardRound.dp)).background(extra.card)) {
         Row(
             Modifier.fillMaxWidth().clickable { open = !open }.padding(start = 14.dp, end = 10.dp, top = 12.dp, bottom = if (open) 4.dp else 12.dp),
             verticalAlignment = Alignment.CenterVertically,

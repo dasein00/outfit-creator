@@ -228,6 +228,7 @@ object BackupFiles {
             }
             Alarms.rescheduleAll(ctx)
             Widgets.refresh(ctx)
+            com.dasein.poryadok.ui.theme.Look.reload(ctx)
             files
         }
     }

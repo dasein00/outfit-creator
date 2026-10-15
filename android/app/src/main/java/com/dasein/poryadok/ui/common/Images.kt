@@ -44,6 +44,22 @@ object Images {
 }
 
 @Composable
-fun rememberImage(path: String?, max: Int = 600): State<ImageBitmap?> = produceState<ImageBitmap?>(null, path, max) {
-    value = if (path == null) null else withContext(Dispatchers.IO) { Images.decode(path, max)?.asImageBitmap() }
+fun rememberImage(path: String?, max: Int = 600): State<ImageBitmap?> {
+    // Уже декодированное фото берём из памяти: при прокрутке списков картинки не мигают и не декодируются заново.
+    val key = androidx.compose.runtime.remember(path, max) { path?.let { "$it|$max|${java.io.File(it).lastModified()}" } }
+    return produceState(key?.let { ImageMemory.get(it) }, key) {
+        value = if (path == null || key == null) null else ImageMemory.get(key) ?: withContext(Dispatchers.IO) {
+            Images.decode(path, max)?.asImageBitmap()?.also { ImageMemory.put(key, it) }
+        }
+    }
+}
+
+/** Кэш фото в памяти: до 1/8 доступной приложению памяти. */
+object ImageMemory {
+    private val cache = object : android.util.LruCache<String, ImageBitmap>((Runtime.getRuntime().maxMemory() / 8 / 1024).toInt().coerceAtLeast(8 * 1024)) {
+        override fun sizeOf(key: String, value: ImageBitmap) = (value.width * value.height * 4 / 1024).coerceAtLeast(1)
+    }
+    fun get(k: String): ImageBitmap? = cache.get(k)
+    fun put(k: String, v: ImageBitmap) { cache.put(k, v) }
+    fun clear() = cache.evictAll()
 }

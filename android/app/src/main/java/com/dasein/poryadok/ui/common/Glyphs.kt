@@ -198,6 +198,10 @@ object Glyphs {
         return bmp.asImageBitmap().also { cache.put(key, it) }
     }
 
+    /** Иконка из памяти без декодирования; null — её ещё нет в памяти. */
+    fun peek(key: String, tone: IconTone): ImageBitmap? =
+        if (key.startsWith("dish/") || tone.identity) cache.get(key) else IconTint.peek("g:$key", tone)
+
     fun loadTinted(ctx: Context, key: String, tone: IconTone): ImageBitmap? =
         if (tone.identity) load(ctx, key)
         else IconTint.cached("g:$key", tone) { bitmap(ctx, key) }
@@ -251,7 +255,10 @@ internal fun GlyphRaw(key: String, editKey: String?, size: Dp = 24.dp, modifier0
     // Иконки перекрашиваются под цвет оформления; в светлой теме — тёмные, без плашки. Блюда — как есть.
     val useBadge = (badge ?: false) && !key.startsWith("dish/")
     val tone = iconTone(onPlate = useBadge)
-    val img = remember(key, tone, ver) { if (key.startsWith("dish/")) Glyphs.load(ctx, key) else Glyphs.loadTinted(ctx, key, tone) }
+    // Из памяти — сразу; если иконки там нет, декодируем и перекрашиваем в фоне, а не в главном потоке (иначе рывки при прокрутке).
+    val img = rememberBitmap("$key|${tone.key}|$ver", { Glyphs.peek(key, tone) }) {
+        if (key.startsWith("dish/")) Glyphs.load(ctx, key) else Glyphs.loadTinted(ctx, key, tone)
+    }
     val a = if (dimmed) .5f else 1f
     val inner = @Composable { m: Modifier ->
         if (img != null) Image(img, null, m) else Box(m)
@@ -470,4 +477,14 @@ fun MoodFace(level: Int, size: Dp = 32.dp, modifier: Modifier = Modifier, select
             }
         }
     }
+}
+
+/** Картинка: из памяти сразу, иначе — загрузка в фоновом потоке. */
+@Composable
+internal fun rememberBitmap(cacheKey: String, peek: () -> ImageBitmap?, load: () -> ImageBitmap?): ImageBitmap? {
+    val st = remember(cacheKey) { androidx.compose.runtime.mutableStateOf(peek()) }
+    if (st.value == null) androidx.compose.runtime.LaunchedEffect(cacheKey) {
+        st.value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { runCatching(load).getOrNull() }
+    }
+    return st.value
 }

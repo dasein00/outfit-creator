@@ -29,12 +29,50 @@ import kotlinx.coroutines.launch
 class App : Application() {
     override fun onCreate() {
         super.onCreate()
+        CrashLog.install(this)
         Graph.init(this)
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) = Lock.onStart()
             override fun onStop(owner: LifecycleOwner) = Lock.onStop()
         })
     }
+
+    /** Системе не хватает памяти — отдаём кэши картинок (они загрузятся снова при надобности). */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW || level == android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
+            runCatching { com.dasein.poryadok.ui.common.ImageMemory.clear() }
+        }
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL) {
+            runCatching { com.dasein.poryadok.ui.common.Glyphs.evictAll(); com.dasein.poryadok.ui.common.IconTint.evictAll() }
+        }
+    }
+}
+
+/**
+ * Журнал сбоев: если приложение всё-таки упадёт, причина сохраняется в files/crash.log (последние 5 сбоев).
+ * Её видно в «Настройки» → «О приложении» и можно отправить разработчику; приложение при этом работает как раньше.
+ */
+object CrashLog {
+    fun file(ctx: android.content.Context) = java.io.File(ctx.filesDir, "crash.log")
+
+    fun install(ctx: android.content.Context) {
+        val app = ctx.applicationContext
+        val prev = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { t, e ->
+            runCatching {
+                val f = file(app)
+                val old = if (f.exists()) f.readText().split("\n=====\n").takeLast(4) else emptyList()
+                val now = java.text.SimpleDateFormat("dd.MM.yyyy HH:mm:ss", java.util.Locale("ru")).format(java.util.Date())
+                val ver = runCatching { app.packageManager.getPackageInfo(app.packageName, 0).versionName }.getOrNull()
+                f.writeText((old + "$now · версия $ver · поток ${t.name}\n${Log.getStackTraceString(e).take(6000)}").joinToString("\n=====\n"))
+            }
+            prev?.uncaughtException(t, e)
+        }
+    }
+
+    fun read(ctx: android.content.Context): String = runCatching { file(ctx).readText() }.getOrDefault("")
+    fun clear(ctx: android.content.Context) { file(ctx).delete() }
 }
 
 /** Простой контейнер зависимостей: одна база, одни настройки, общий фоновый scope. */

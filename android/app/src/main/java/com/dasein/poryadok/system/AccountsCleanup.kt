@@ -37,7 +37,9 @@ object AccountsCleanup {
         ui.edit().putBoolean(FLAG, true).apply()
     }
 
-    suspend fun consolidate(ctx: Context): Report = lock.withLock {
+    suspend fun consolidate(ctx: Context): Report = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { consolidateNow(ctx) }
+
+    private suspend fun consolidateNow(ctx: Context): Report = lock.withLock {
         val dao = Graph.dao
         val x = Graph.extra
         val accounts = dao.accountsNow()

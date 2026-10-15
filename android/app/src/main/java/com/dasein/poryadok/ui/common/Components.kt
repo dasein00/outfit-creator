@@ -104,8 +104,9 @@ fun Tile(
 ) {
     // Карточка-кнопка без своего удержания: удержание открывает правку её надписи и иконки.
     val holder = if (onClick != null && onLongClick == null) androidx.compose.runtime.remember { LabelHolder() } else null
+    val round = com.dasein.poryadok.ui.theme.LocalLook.current.cardRound.dp
     Surface(
-        modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).let {
+        modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(round)).let {
             when {
                 onLongClick != null -> it.combinedClickable(onClick = onClick ?: {}, onLongClick = onLongClick)
                 onClick != null -> (if (holder != null && LocalIconEditable.current) it.labelLongPress(holder) else it).clickable(onClick = onClick)
@@ -113,7 +114,7 @@ fun Tile(
             }
         },
         color = color,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(round),
     ) {
         if (holder != null) androidx.compose.runtime.CompositionLocalProvider(LocalLabelHolder provides holder) { Column(Modifier.padding(padding), content = content) }
         else Column(Modifier.padding(padding), content = content)

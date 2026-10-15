@@ -119,6 +119,7 @@ object SectionIndex {
             add(Dest("Запасы", Routes.CRAFT_STASH, "d21/00", craft, "стразы нитки"))
 
             // Прочее
+            add(Dest("Оформление", APPEARANCE_ROUTE, "ui:sliders", "Настройки", "цвет фон тема шрифт размер текста иконки контраст акцент тёмная светлая"))
             add(Dest("Погода", Routes.WEATHER, "ui:sun", keys = "прогноз дождь температура"))
             add(Dest("Колесо баланса", Routes.WHEEL, "ui:wheel", keys = "сферы жизни"))
             add(Dest("Поиск по записям", Routes.SEARCH, "ui:search", keys = "задачи заметки события операции найти"))

@@ -45,17 +45,23 @@ object StatementImport {
     }
 
     /** Что будет с каждой операцией: новая, обновит запись из прошлой выписки или заменит запись из SMS/пуша. */
-    suspend fun plan(ops: List<Statement.Op>, header: Statement.Header, fallback: String, transfers: Boolean, linkedId: Long?): List<Plan> {
+    suspend fun plan(ops: List<Statement.Op>, header: Statement.Header, fallback: String, transfers: Boolean, linkedId: Long?): List<Plan> =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { planNow(ops, header, fallback, transfers, linkedId) }
+
+    private suspend fun planNow(ops: List<Statement.Op>, header: Statement.Header, fallback: String, transfers: Boolean, linkedId: Long?): List<Plan> {
         val x = Graph.extra
         val stmt = x.importRecordsOf(KIND)
         val linked = stmt.associate { it.key to it.targetId }
         val taken = stmt.mapTo(HashSet()) { it.targetId }
         val all = Graph.dao.txnsNow()
+        val ids = all.mapTo(HashSet()) { it.id }
+        // Индекс по сумме в копейках: дубль ищется среди операций с той же суммой, а не среди всех тысяч.
+        val byAmount = all.groupBy { Math.round(it.amount * 100) }
         val used = HashSet<Long>()
         return ops.zip(keys(ops, header, fallback)).map { (op, key) ->
-            linked[key]?.takeIf { id -> all.any { it.id == id } }?.let { return@map Plan(op, key, Status.UPDATE, it) }
+            linked[key]?.takeIf { it in ids }?.let { return@map Plan(op, key, Status.UPDATE, it) }
             val type = typeOf(op, transfers)
-            val twin = all.filter { t ->
+            val twin = byAmount[Math.round(op.amount * 100)].orEmpty().filter { t ->
                 // Перевод мог прийти и из выписки второго счёта — его тоже узнаём, чтобы не задвоить.
                 (t.id !in taken || type == TxnType.TRANSFER) && t.id !in used && abs(t.amount - op.amount) < 0.005 && abs(t.day - op.day) <= 1 &&
                     (t.type == type || (type == TxnType.TRANSFER && linkedId != null && t.accountId == linkedId) || (t.type == TxnType.TRANSFER && op.transfer))
@@ -122,7 +128,10 @@ object StatementImport {
         }
     }
 
-    suspend fun apply(ctx: Context, plans: List<Plan>, accountId: Long, linkedId: Long, transfers: Boolean, header: Statement.Header): Result {
+    suspend fun apply(ctx: Context, plans: List<Plan>, accountId: Long, linkedId: Long, transfers: Boolean, header: Statement.Header): Result =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { applyNow(ctx, plans, accountId, linkedId, transfers, header) }
+
+    private suspend fun applyNow(ctx: Context, plans: List<Plan>, accountId: Long, linkedId: Long, transfers: Boolean, header: Statement.Header): Result {
         val dao = Graph.dao
         val x = Graph.extra
         val cats = dao.categoriesNow().toMutableList()

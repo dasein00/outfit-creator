@@ -55,8 +55,31 @@ object Ai {
             } finally { c.disconnect() }
         }.getOrDefault(emptyList())
         val sorted = list.sortedBy { id -> PREFER.indexOfFirst { it in id.lowercase() }.let { if (it < 0) 99 else it } }
-        if (sorted.isNotEmpty()) sp(ctx).edit().putString("models", sorted.joinToString("\n")).apply()
+        if (sorted.isNotEmpty()) sp(ctx).edit().putString("models", sorted.joinToString("\n")).putLong("models_at", System.currentTimeMillis()).apply()
         sorted
+    }
+
+    /** Список бесплатных моделей обновляется сам раз в 2 дня: модели исчезают и появляются, а приложение должно работать без настройки. */
+    private suspend fun freshModels(ctx: Context): List<String> {
+        val age = System.currentTimeMillis() - sp(ctx).getLong("models_at", 0)
+        val cached = cachedModels(ctx)
+        if (cached.isNotEmpty() && age < 2 * 86_400_000L) return cached
+        return freeModels(ctx).ifEmpty { cached }
+    }
+
+    /** Модели, которые недавно не ответили (нет такой, лимит): на сутки уходят в конец очереди. */
+    private fun badModels(ctx: Context): Set<String> {
+        val now = System.currentTimeMillis()
+        return sp(ctx).getString("bad", "").orEmpty().split('\n').mapNotNull { l ->
+            val (m, t) = l.split('|').takeIf { it.size == 2 } ?: return@mapNotNull null
+            m.takeIf { now - (t.toLongOrNull() ?: 0) < 86_400_000L }
+        }.toSet()
+    }
+
+    private fun markBad(ctx: Context, m: String) {
+        val now = System.currentTimeMillis()
+        val keep = sp(ctx).getString("bad", "").orEmpty().split('\n').filter { it.isNotBlank() && !it.startsWith("$m|") }.takeLast(30)
+        sp(ctx).edit().putString("bad", (keep + "$m|$now").joinToString("\n")).apply()
     }
 
     class AiError(msg: String) : Exception(msg)
@@ -68,13 +91,28 @@ object Ai {
     suspend fun ask(ctx: Context, system: String, user: String): String = withContext(Dispatchers.IO) {
         val k = key(ctx)
         if (k.isBlank()) throw AiError("Нет ключа OpenRouter — добавьте его в «Настройки» → «ИИ-помощник».")
-        val models = (listOf(model(ctx)) + cachedModels(ctx) + FALLBACK).filter { it.isNotBlank() }.distinct()
+        // Порядок: выбранная → та, что ответила последней → свежий список бесплатных → запасной; недавно сбойные — в конце.
+        val bad = badModels(ctx)
+        val lastOk = sp(ctx).getString("last_ok", "").orEmpty()
+        val all = (listOf(model(ctx), lastOk) + freshModels(ctx) + FALLBACK).filter { it.isNotBlank() }.distinct()
+        val models = all.filter { it !in bad } + all.filter { it in bad }
         var last = "нет ответа"
-        for (m in models.take(4)) {
+        var refreshed = false
+        var tried = 0
+        var queue = models
+        while (tried < 6 && queue.isNotEmpty()) {
+            val m = queue.first(); queue = queue.drop(1); tried++
             val r = runCatching { call(k, m, system, user) }
-            r.getOrNull()?.let { if (it.isNotBlank()) return@withContext it }
+            r.getOrNull()?.let { if (it.isNotBlank()) { sp(ctx).edit().putString("last_ok", m).apply(); return@withContext it } }
             last = r.exceptionOrNull()?.message ?: "пустой ответ"
             if ("401" in last) throw AiError("Ключ не подходит (401). Проверьте ключ OpenRouter.")
+            markBad(ctx, m)
+            // Модель исчезла из бесплатных — один раз перечитываем список с сервера и пробуем новые.
+            if (!refreshed && ("404" in last || "No endpoints" in last || "not a valid model" in last)) {
+                refreshed = true
+                val fresh = freeModels(ctx).filter { it !in bad && it != m }
+                if (fresh.isNotEmpty()) queue = (fresh + queue).distinct()
+            }
         }
         throw AiError("ИИ не ответил: $last. Бесплатные модели иногда перегружены — попробуйте чуть позже.")
     }

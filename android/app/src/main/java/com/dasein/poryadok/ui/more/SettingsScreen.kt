@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.more
 
 import com.dasein.poryadok.ui.common.Hint
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.text.font.FontWeight
 import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
@@ -99,17 +100,9 @@ fun SettingsScreen(nav: NavHostController, s: Settings) {
 
             SectionTitle("Оформление")
             Segments(listOf("system" to "Как в системе", "light" to "Светлая", "dark" to "Тёмная"), s.theme, { v -> upd { it.copy(theme = v) } })
-            Gap(12.dp)
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                Palette.accents.forEachIndexed { i, (label, c) ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { upd { it.copy(accent = i) } }) {
-                        Box(
-                            Modifier.size(36.dp).clip(CircleShape).background(c)
-                                .border(if (s.accent == i) 3.dp else 0.dp, extra.dim, CircleShape)
-                        )
-                        Text(label, fontSize = 10.sp, color = extra.dim)
-                    }
-                }
+            Gap(10.dp)
+            Button(onClick = { nav.navigate(APPEARANCE_ROUTE) }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                Text(btnLabel("Цвета, фон, шрифт, размер текста, иконки"))
             }
 
             SectionTitle("Подсказки и инструкции")

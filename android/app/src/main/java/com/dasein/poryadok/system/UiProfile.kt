@@ -135,6 +135,7 @@ object UiProfile {
             val input = ctx.contentResolver.openInputStream(uri) ?: error("Не удалось открыть файл")
             val (data, files) = read(ctx, input)
             Graph.prefs.update { cur -> data.settings?.let { applySettings(cur, it) } ?: cur }
+            com.dasein.poryadok.ui.theme.Look.reload(ctx)
             Widgets.refresh(ctx)
             files
         }

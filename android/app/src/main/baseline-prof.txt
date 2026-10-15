@@ -1,0 +1,8 @@
+HSPLcom/dasein/poryadok/**;->**(**)**
+Lcom/dasein/poryadok/**;
+HSPLandroidx/compose/runtime/**;->**(**)**
+HSPLandroidx/compose/ui/**;->**(**)**
+HSPLandroidx/compose/foundation/**;->**(**)**
+HSPLandroidx/compose/material3/**;->**(**)**
+HSPLandroidx/room/**;->**(**)**
+HSPLkotlinx/coroutines/**;->**(**)**

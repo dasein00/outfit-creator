@@ -40,6 +40,17 @@ object Palette {
         "Небо" to Color(0xFF6FA3C7),
         "Роза" to Color(0xFFC77A8E),
         "Лаванда" to Color(0xFF9C86C9),
+        "Терракота" to Color(0xFFD0704F),
+        "Мята" to Color(0xFF5FB3A3),
+        "Индиго" to Color(0xFF6672D6),
+        "Янтарь" to Color(0xFFE0A526),
+        "Бирюза" to Color(0xFF2FA9C2),
+        "Вишня" to Color(0xFFC2415A),
+        "Оливка" to Color(0xFF9AA14A),
+        "Коралл" to Color(0xFFF07B6B),
+        "Сирень" to Color(0xFFB57BD1),
+        "Графит" to Color(0xFF9AA0A8),
+        "Изумруд" to Color(0xFF3FA06A),
     )
 
     /** Цвета заметок в духе Google Keep, приглушённые под тему. */
@@ -73,57 +84,110 @@ val LocalExtra = staticCompositionLocalOf { DarkExtra }
 
 val Serif = FontFamily.Serif
 
-private val typography = Typography().let { t ->
-    t.copy(
-        displaySmall = t.displaySmall.copy(fontFamily = Serif),
-        headlineLarge = t.headlineLarge.copy(fontFamily = Serif),
-        headlineMedium = t.headlineMedium.copy(fontFamily = Serif),
-        headlineSmall = t.headlineSmall.copy(fontFamily = Serif),
-        titleLarge = TextStyle(fontFamily = Serif, fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Normal),
+/** Шрифты по выбору в «Оформлении»: заголовки и основной текст. */
+private fun typographyFor(font: Int): Typography {
+    val (head, body) = when (font) {
+        1 -> FontFamily.SansSerif to FontFamily.SansSerif
+        2 -> Serif to Serif
+        3 -> FontFamily.Monospace to FontFamily.Monospace
+        4 -> FontFamily.Cursive to FontFamily.SansSerif
+        else -> Serif to FontFamily.Default
+    }
+    val t = Typography()
+    fun TextStyle.b() = copy(fontFamily = body)
+    fun TextStyle.h() = copy(fontFamily = head)
+    return t.copy(
+        displayLarge = t.displayLarge.h(), displayMedium = t.displayMedium.h(), displaySmall = t.displaySmall.h(),
+        headlineLarge = t.headlineLarge.h(), headlineMedium = t.headlineMedium.h(), headlineSmall = t.headlineSmall.h(),
+        titleLarge = TextStyle(fontFamily = head, fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Normal),
+        titleMedium = t.titleMedium.b(), titleSmall = t.titleSmall.b(),
+        bodyLarge = t.bodyLarge.b(), bodyMedium = t.bodyMedium.b(), bodySmall = t.bodySmall.b(),
+        labelLarge = t.labelLarge.b(), labelMedium = t.labelMedium.b(), labelSmall = t.labelSmall.b(),
     )
 }
 
+/** Текущие свои настройки оформления (скругление карточек и т.п.). */
+val LocalLook = staticCompositionLocalOf { LookSettings() }
+
 @Composable
 fun PoryadokTheme(theme: String, accent: Int, content: @Composable () -> Unit) {
-    val dark = when (theme) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    androidx.compose.runtime.remember { Look.load(ctx) }
+    val look = Look.state.value
+    val systemDark = isSystemInDarkTheme()
+    // Свой фон задаёт и светлоту темы: тёмный фон — тёмная тема.
+    val dark = if (look.bgRgb != 0) Look.isDark(Look.color(look.bgRgb)) else when (theme) {
         "dark" -> true
         "light" -> false
-        else -> isSystemInDarkTheme()
+        else -> systemDark
     }
-    val acc = Palette.accents.getOrNull(accent)?.second ?: Palette.Brass
-    val scheme = if (dark) darkColorScheme(
-        primary = acc, onPrimary = Color(0xFF241C0D),
-        primaryContainer = acc.copy(alpha = .25f), onPrimaryContainer = Palette.Text,
-        secondary = Palette.Ok, onSecondary = Color(0xFF1B2A16),
-        secondaryContainer = Palette.Ink3, onSecondaryContainer = Palette.Text,
-        tertiary = Color(0xFF6FA3C7),
-        background = Palette.Ink, onBackground = Palette.Text,
-        surface = Palette.Ink, onSurface = Palette.Text,
-        surfaceVariant = Palette.Ink2, onSurfaceVariant = Palette.Dim,
-        surfaceContainer = Palette.Ink2, surfaceContainerHigh = Palette.Ink3,
-        surfaceContainerLow = Color(0xFF26221C), surfaceContainerLowest = Palette.Ink,
-        surfaceContainerHighest = Color(0xFF443D33),
-        outline = Color(0x40F6F3EC), outlineVariant = Color(0x24F6F3EC),
-        error = Palette.Danger, onError = Color.White,
-    ) else lightColorScheme(
-        primary = lightPrimary(acc), onPrimary = Color.White,
-        primaryContainer = acc.copy(alpha = .22f), onPrimaryContainer = Palette.Ink,
-        secondary = Color(0xFF5E8A4F), onSecondary = Color.White,
-        secondaryContainer = Color(0xFFE6E0D3), onSecondaryContainer = Palette.Ink,
-        tertiary = Color(0xFF3F7AA3),
-        background = Color(0xFFF7F3EB), onBackground = Palette.Ink,
-        surface = Color(0xFFF7F3EB), onSurface = Palette.Ink,
-        surfaceVariant = Color(0xFFEDE7DB), onSurfaceVariant = Color(0xFF4A4237),
-        surfaceContainer = Color(0xFFFFFCF6), surfaceContainerHigh = Color(0xFFEDE7DB),
-        surfaceContainerLow = Color(0xFFFBF8F2), surfaceContainerLowest = Color.White,
-        surfaceContainerHighest = Color(0xFFE3DCCD),
-        outline = Color(0x40211D18), outlineVariant = Color(0x1F211D18),
-        error = Color(0xFFA2432E), onError = Color.White,
-    )
-    val extra = if (dark) DarkExtra else LightExtra
-    androidx.compose.runtime.CompositionLocalProvider(LocalExtra provides extra) {
+    val acc = if (look.accentRgb != 0) Look.color(look.accentRgb) else Palette.accents.getOrNull(accent)?.second ?: Palette.Brass
+    val base = if (dark) baseDark(acc) else baseLight(acc)
+    val bg = if (look.bgRgb != 0) Look.color(look.bgRgb) else base.background
+    val text = when {
+        look.textRgb != 0 -> Look.color(look.textRgb)
+        look.contrast -> if (dark) Color.White else Color.Black
+        else -> base.onBackground
+    }
+    val custom = look.bgRgb != 0 || look.textRgb != 0 || look.contrast
+    val scheme = if (!custom) base else {
+        val card = Look.mix(bg, text, if (dark) .07f else .03f).let { if (!dark && look.bgRgb != 0) Look.mix(bg, Color.White, .6f) else it }
+        val cardHigh = Look.mix(bg, text, if (dark) .13f else .08f)
+        val dim = Look.mix(text, bg, if (look.contrast) .12f else .3f)
+        base.copy(
+            background = bg, onBackground = text, surface = bg, onSurface = text,
+            surfaceVariant = card, onSurfaceVariant = dim,
+            surfaceContainer = card, surfaceContainerHigh = cardHigh, surfaceContainerLow = Look.mix(bg, text, .04f),
+            surfaceContainerLowest = bg, surfaceContainerHighest = Look.mix(bg, text, .18f),
+            outline = text.copy(alpha = if (look.contrast) .6f else .25f), outlineVariant = text.copy(alpha = if (look.contrast) .35f else .14f),
+            onPrimaryContainer = text, secondaryContainer = cardHigh, onSecondaryContainer = text,
+        )
+    }
+    val extra = if (!custom) (if (dark) DarkExtra else LightExtra) else {
+        val e = if (dark) DarkExtra else LightExtra
+        e.copy(dim = scheme.onSurfaceVariant, card = scheme.surfaceContainer, cardHigh = scheme.surfaceContainerHigh, line = scheme.outlineVariant)
+    }
+    val typography = androidx.compose.runtime.remember(look.font) { typographyFor(look.font) }
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    androidx.compose.runtime.CompositionLocalProvider(
+        LocalExtra provides extra,
+        LocalLook provides look,
+        androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, density.fontScale * look.scale),
+    ) {
         MaterialTheme(colorScheme = scheme, typography = typography, content = content)
     }
 }
+
+private fun baseDark(acc: Color) = darkColorScheme(
+    primary = acc, onPrimary = Color(0xFF241C0D),
+    primaryContainer = acc.copy(alpha = .25f), onPrimaryContainer = Palette.Text,
+    secondary = Palette.Ok, onSecondary = Color(0xFF1B2A16),
+    secondaryContainer = Palette.Ink3, onSecondaryContainer = Palette.Text,
+    tertiary = Color(0xFF6FA3C7),
+    background = Palette.Ink, onBackground = Palette.Text,
+    surface = Palette.Ink, onSurface = Palette.Text,
+    surfaceVariant = Palette.Ink2, onSurfaceVariant = Palette.Dim,
+    surfaceContainer = Palette.Ink2, surfaceContainerHigh = Palette.Ink3,
+    surfaceContainerLow = Color(0xFF26221C), surfaceContainerLowest = Palette.Ink,
+    surfaceContainerHighest = Color(0xFF443D33),
+    outline = Color(0x40F6F3EC), outlineVariant = Color(0x24F6F3EC),
+    error = Palette.Danger, onError = Color.White,
+)
+
+private fun baseLight(acc: Color) = lightColorScheme(
+    primary = lightPrimary(acc), onPrimary = Color.White,
+    primaryContainer = acc.copy(alpha = .22f), onPrimaryContainer = Palette.Ink,
+    secondary = Color(0xFF5E8A4F), onSecondary = Color.White,
+    secondaryContainer = Color(0xFFE6E0D3), onSecondaryContainer = Palette.Ink,
+    tertiary = Color(0xFF3F7AA3),
+    background = Color(0xFFF7F3EB), onBackground = Palette.Ink,
+    surface = Color(0xFFF7F3EB), onSurface = Palette.Ink,
+    surfaceVariant = Color(0xFFEDE7DB), onSurfaceVariant = Color(0xFF4A4237),
+    surfaceContainer = Color(0xFFFFFCF6), surfaceContainerHigh = Color(0xFFEDE7DB),
+    surfaceContainerLow = Color(0xFFFBF8F2), surfaceContainerLowest = Color.White,
+    surfaceContainerHighest = Color(0xFFE3DCCD),
+    outline = Color(0x40211D18), outlineVariant = Color(0x1F211D18),
+    error = Color(0xFFA2432E), onError = Color.White,
+)
 
 internal fun Color.darken(f: Float = .78f) = Color(red * f, green * f, blue * f, alpha)

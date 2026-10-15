@@ -101,6 +101,8 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.9.1")
     // Текст PDF-выписок банков (СберБанк Онлайн и др.) — разбор на телефоне.
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
+    // Профиль предкомпиляции (baseline-prof.txt): код приложения компилируется заранее — быстрее запуск и прокрутка.
+    implementation("androidx.profileinstaller:profileinstaller:1.3.1")
 
     testImplementation("junit:junit:4.13.2")
 }
