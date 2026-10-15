@@ -107,7 +107,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 private val WD = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
-internal val MUSCLES = listOf("Ноги", "Ягодицы", "Грудь", "Спина", "Плечи", "Руки", "Пресс", "Всё тело", "Кардио")
 
 private fun days(mask: Int) = WD.filterIndexed { i, _ -> mask and (1 shl i) != 0 }.joinToString(" ")
 private fun w(v: Double) = if (v == Math.floor(v)) v.toInt().toString() else v.toString().replace('.', ',')
@@ -276,9 +275,8 @@ private fun ExerciseLibrary(exercises: List<Exercise>, sets: List<SetLog>, onOpe
     LazyColumn(contentPadding = PaddingValues(12.dp, 8.dp, 12.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         item {
             OutlinedTextField(q, { q = it }, placeholder = { Text(btnLabel("Поиск упражнения")) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 8.dp)) {
-                Pill("Все", muscle == null) { muscle = null }
-                MUSCLES.forEach { m -> Pill(m, muscle == m) { muscle = if (muscle == m) null else m } }
+            Column(Modifier.padding(vertical = 8.dp)) {
+                MusclePills(muscle, { m -> muscle = if (muscle == m) null else m }) { Pill("Все", muscle == null) { muscle = null } }
             }
         }
         items(list, key = { it.id }) { e ->
@@ -571,9 +569,7 @@ fun ExerciseScreen(nav: NavHostController, id: Long) {
                 TextInput(ex.name, { e = ex.copy(name = it) }, "Название", Modifier.weight(1f))
             }
             SectionTitle("Мышцы")
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                MUSCLES.forEach { m -> Pill(m, ex.muscle == m) { e = ex.copy(muscle = m) } }
-            }
+            MusclePills(ex.muscle, { m -> e = ex.copy(muscle = m) })
             Gap(8.dp)
             TextInput(ex.equipment, { e = ex.copy(equipment = it) }, "Инвентарь")
             SectionTitle("Как считать")

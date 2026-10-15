@@ -31,7 +31,7 @@ private data class SeedRecipe(
 @Serializable
 private data class Seed(
     val version: Int, val products: List<SeedProduct>, val recipes: List<SeedRecipe>,
-    /** Прежние иллюстрации встроенных рецептов: ключ рецепта → старая картинка (её меняем на новую). */
+    /** Прежние иллюстрации встроенных рецептов: ключ рецепта → старые картинки через «|» (их меняем на новую). */
     val replaced: Map<String, String> = emptyMap(),
 )
 
@@ -61,7 +61,7 @@ object RecipeRepo {
         }
         // Иллюстрации для встроенных рецептов, добавленных до их появления.
         val images = seed.recipes.associate { it.key to it.image }
-        x.recipesNow().filter { it.seedKey != null && (it.photo.isBlank() || seed.replaced[it.seedKey] == it.photo) }.forEach { r ->
+        x.recipesNow().filter { it.seedKey != null && (it.photo.isBlank() || seed.replaced[it.seedKey]?.split('|')?.contains(it.photo) == true) }.forEach { r ->
             // Пустая картинка или прежняя встроенная — ставим новую. Свои фото и выбранные вручную не трогаем.
             images[r.seedKey]?.takeIf { it.isNotBlank() && it != r.photo }?.let { x.upsertRecipe(r.copy(photo = it)) }
         }

@@ -53,6 +53,7 @@ import com.dasein.poryadok.data.ExKind
 import com.dasein.poryadok.data.Exercise
 import com.dasein.poryadok.data.SetLog
 import com.dasein.poryadok.ui.common.Glyph
+import com.dasein.poryadok.ui.common.Glyphs
 import com.dasein.poryadok.ui.common.Media
 import com.dasein.poryadok.ui.common.MediaView
 import com.dasein.poryadok.ui.common.Pill
@@ -60,12 +61,6 @@ import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.theme.LocalExtra
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-
-/** Иконка группы мышц для плашки на карточке. */
-private val MUSCLE_GLYPH = mapOf(
-    "Ноги" to "sport/06", "Ягодицы" to "sport/06", "Грудь" to "sport/15", "Спина" to "sport/15", "Плечи" to "sport/12",
-    "Руки" to "sport/12", "Пресс" to "sport/04", "Всё тело" to "sport/01", "Кардио" to "sport/01",
-)
 
 private fun favPrefs(ctx: Context) = ctx.getSharedPreferences("ui_state", Context.MODE_PRIVATE)
 
@@ -90,10 +85,11 @@ internal fun ExerciseShorts(exercises: List<Exercise>, sets: List<SetLog>, onAdd
     LazyColumn(contentPadding = PaddingValues(12.dp, 8.dp, 12.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             OutlinedTextField(q, { q = it }, placeholder = { Text(btnLabel("Поиск упражнения")) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
-                Pill("Все", muscle == null && !favOnly) { muscle = null; favOnly = false }
-                Pill("♥ Избранное", favOnly) { favOnly = !favOnly }
-                MUSCLES.forEach { m -> Pill(m, muscle == m) { muscle = if (muscle == m) null else m } }
+            Column(Modifier.padding(top = 8.dp)) {
+                MusclePills(muscle, { m -> muscle = if (muscle == m) null else m }) {
+                    Pill("Все", muscle == null && !favOnly) { muscle = null; favOnly = false }
+                    Pill("Избранное", favOnly, glyph = Glyphs.FAV_ON) { favOnly = !favOnly }
+                }
             }
         }
         if (exercises.isEmpty()) item {
@@ -144,15 +140,15 @@ private fun ShortCard(e: Exercise, index: Int, total: Int, doneSets: Int, fav: B
                 .border(1.dp, Color.White.copy(alpha = .15f), RoundedCornerShape(18.dp)).padding(start = 6.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Glyph(MUSCLE_GLYPH[e.muscle] ?: e.glyph, 22.dp, badge = false)
+            Glyph(Muscles.glyphOf(LocalContext.current, e.muscle) ?: e.glyph, 26.dp, badge = false)
             Text("  ${e.muscle}", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         }
         Text("$index / $total", color = Color.White, fontSize = 13.sp, style = SHADOW, modifier = Modifier.align(Alignment.TopEnd).padding(14.dp))
 
         // Правая колонка: избранное и сколько подходов уже сделано.
         Column(Modifier.align(Alignment.CenterEnd).padding(end = 10.dp, top = 30.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.size(40.dp).clip(CircleShape).clickable(onClick = onFav), contentAlignment = Alignment.Center) {
-                Text(if (fav) "♥" else "♡", color = if (fav) accent else Color.White, fontSize = 26.sp, style = SHADOW)
+            Box(Modifier.size(44.dp).clip(CircleShape).clickable(onClick = onFav), contentAlignment = Alignment.Center) {
+                Glyph(if (fav) Glyphs.FAV_ON else Glyphs.FAV_OFF, 34.dp, badge = false)
             }
             Text(if (fav) "в избранном" else "избранное", color = Color.White, fontSize = 10.sp, style = SHADOW)
             if (doneSets > 0) {

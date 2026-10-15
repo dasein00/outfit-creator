@@ -69,6 +69,7 @@ object Glyphs {
         "Финансы" to "d06", "Категории трат" to "d07", "Здоровье" to "d08", "Давление" to "d09", "Вес и тело" to "d10", "Питание" to "d11", "Рецепты" to "d12",
         "Тренировки" to "d13", "Виды спорта" to "d14", "Сон и самочувствие" to "d15", "Метки дня" to "d16", "Кино и книги" to "d17",
         "Заметки и списки" to "d18", "Гардероб" to "d19", "Английский" to "d20", "Рукоделие" to "d21", "Разговор и погода" to "d22", "Дополнительно" to "d23",
+        "Мышцы" to "muscle", "Избранное" to "fav",
         // Прежние наборы.
         "Спорт" to "sport", "Тренировки (прежние)" to "train", "Сон" to "sleep", "Питание (прежние)" to "food",
         "Календарь" to "cal", "Праздники" to "fest", "Кино и книги (прежние)" to "habit", "Медиа" to "books",
@@ -77,10 +78,14 @@ object Glyphs {
         "Аналитика" to "analytics", "Топы" to "tops", "Давление" to "pressure", "Репетитор" to "tutor",
     )
     val DISH_SETS = listOf(
-        // Новые иллюстрации блюд по разделам книги рецептов.
-        "Завтраки" to "nbreakfast", "Супы" to "nsoup", "Обеды" to "nlunch", "Ужины" to "ndinner",
-        "Гарниры" to "nside", "Салаты" to "nsalad", "Перекусы" to "nsnack", "Кухни мира" to "nworld",
-        "Выпечка" to "nbakery", "Десерты" to "ndessert", "Напитки" to "ndrink", "Заготовки" to "nprep",
+        // Новые минималистичные иллюстрации блюд по разделам книги рецептов.
+        "Завтраки" to "vbreakfast", "Супы" to "vsoup", "Обеды" to "vlunch", "Ужины" to "vdinner",
+        "Гарниры" to "vside", "Салаты" to "vsalad", "Перекусы" to "vsnack", "Кухни мира" to "vworld",
+        "Выпечка" to "vbakery", "Десерты" to "vdessert", "Напитки" to "vdrink", "Заготовки" to "vprep",
+    ) + listOf(
+        "Завтраки (2)" to "nbreakfast", "Супы (2)" to "nsoup", "Обеды (2)" to "nlunch", "Ужины (2)" to "ndinner",
+        "Гарниры (2)" to "nside", "Салаты (2)" to "nsalad", "Перекусы (2)" to "nsnack", "Кухни мира (2)" to "nworld",
+        "Выпечка (2)" to "nbakery", "Десерты (2)" to "ndessert", "Напитки (2)" to "ndrink", "Заготовки (2)" to "nprep",
     ) + listOf(
         "Курица" to "chicken", "Салаты и продукты" to "salads", "Паста и вок" to "pasta", "Блюда мира" to "world",
         "Домашнее" to "own", "Полезное" to "healthy", "Завтраки (прежние)" to "breakfast", "Основные блюда" to "dishes1", "Ещё блюда" to "dishes2",
@@ -127,6 +132,8 @@ object Glyphs {
     const val EVENT = "cal/00"
     const val REMINDER = "cal/23"
     const val REPEAT = "cal/44"
+    const val FAV_ON = "fav/00"
+    const val FAV_OFF = "fav/01"
 
     val WORKOUTS = linkedMapOf(
         "Силовая" to "sport/15", "Бег" to "sport/01", "Вело" to "sport/08", "Плавание" to "sport/09", "Йога" to "sport/04",
