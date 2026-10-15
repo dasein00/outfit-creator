@@ -48,11 +48,15 @@
   };
 
   /* ---------- экран ---------- */
-  const TABS = [["today", "Сегодня"], ["moon", "Луна"], ["wheel", "Колесо года"], ["corr", "Соответствия"], ["runes", "Руны"], ["rituals", "Ритуалы"], ["book", "Книга теней"]];
+  const TABS = [["today", "Сегодня"], ["moon", "Луна"], ["wheel", "Колесо года"], ["corr", "Соответствия"], ["runes", "Руны"], ["rituals", "Ритуалы"], ["cleanse", "Чистки"], ["dreams", "Сонник"], ["book", "Книга теней"]];
+  const G2 = () => window.GRIMOIRE2;
+  const dreamSymbols = (text) => { const t = String(text || "").toLowerCase().replace(/ё/g, "е"); return G2().DREAMS.symbols.filter((s) => s.k.some((k) => t.includes(k.replace(/ё/g, "е")))); };
+  const moonLine = (d) => { const m = A.moon(d), dd = G().DAYS[dow(d)]; return m.ph.name + ", " + m.day + "-й лунный день, Луна в " + m.sign + "; " + dd[0] + " (" + dd[1] + ")"; };
   A.view("grimoire", {
     title: "Мини-гримуар", tab: "more",
     render(el, r) {
       const sec = r.args[0] || "today", d = today(), g = G();
+      if ((sec === "cleanse" || sec === "dreams") && !window.GRIMOIRE2) { A.need("js/content-grimoire2.js").then(() => A.refresh()); return A.seg(TABS, sec, "gSec") + '<div class="card"><p class="muted">Загружаю…</p></div>'; }
       let h = A.seg(TABS, sec, "gSec");
       if (sec === "today") {
         const m = A.moon(d), day = g.DAYS[dow(d)], ns = nextSabbat(d), rn = runeOf(d), rit = g.RITUALS.filter((x) => x.ph === m.ph.k || x.ph === "any");
@@ -82,6 +86,30 @@
         h += '<div class="card"><h3>Старший футарк</h3><div class="list">' + G().RUNES.map((x) => '<div class="item"><div class="gr-rune sm">' + x[1] + '</div><div class="tx"><b>' + x[0] + " · " + x[2] + '</b><small style="white-space:normal">' + esc(x[3]) + " · <i>перевёрнутая: " + esc(x[4]) + "</i></small></div></div>").join("") + "</div></div>";
       } else if (sec === "rituals") {
         h += g.RITUALS.map((x) => '<div class="card"><h3>' + esc(x.t) + ' <small class="muted">· ' + x.time + " мин" + (x.ph !== "any" ? " · " + (g.PHASES.find((p) => p.k === x.ph) || {}).name : "") + '</small></h3><p class="small"><b>Нужно:</b> ' + x.items.map(esc).join(", ") + "</p><ol class=\"small\">" + x.steps.map((s) => "<li>" + esc(s) + "</li>").join("") + "</ol></div>").join("");
+      } else if (sec === "cleanse") {
+        const C = G2().CLEANSE, m = A.moon(d), good = !m.waxing || m.ph.k === "new";
+        h += '<div class="card gr-hero"><h3>{{i:sparkles}} Подобрать чистку под ситуацию</h3><p class="small">Опишите, что происходит: где тяжело, после чего началось, что хочется убрать и что впустить. ИИ составит план по материалам гримуара с учётом Луны сегодня.</p>' +
+          '<textarea id="clQ" rows="4" placeholder="Например: после ссоры с мамой в спальне тяжело, плохо сплю, хочется вернуть покой в дом"></textarea><button class="btn primary block" data-a="clAi" style="margin-top:8px">Составить план чистки</button><div id="clOut" class="ai-out" style="margin-top:10px"></div></div>';
+        h += '<div class="card ' + (good ? "tint" : "") + '"><p class="small"><b>Сегодня:</b> ' + esc(moonLine(d)) + ". " + (good ? "Хорошее время для чисток — Луна убывает." : "Луна растёт: лучше лёгкие чистки (звук, умывание) и наполнение дома; генеральную чистку — на убывающую Луну.") + "</p></div>";
+        h += '<div class="card"><h3>Что такое чистка</h3><p class="small">' + esc(C.intro) + '</p><p class="small"><b>Когда о ней вспоминают:</b></p><ul class="small">' + C.signs.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ul></div>";
+        h += '<div class="card"><h3>Когда проводить</h3>' + C.when.map((x) => '<p class="small"><b>' + esc(x[0]) + ".</b> " + esc(x[1]) + "</p>").join("") + "</div>";
+        h += '<div class="card"><h3>Общие правила</h3><ol class="small">' + C.principles.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ol></div>";
+        ["Дом", "Себя", "Предметы"].forEach((k) => {
+          h += '<div class="card"><h3>' + (k === "Дом" ? "{{i:house}} Чистка дома" : k === "Себя" ? "{{i:droplets}} Чистка себя" : "{{i:gem}} Чистка вещей и камней") + "</h3>" + C.methods.filter((x) => x.kind === k).map((x) => '<div class="item" data-a="clM" data-t="' + esc(x.t) + '"><div class="tx"><b>' + esc(x.t) + "</b><small>" + x.time + " мин · " + esc(x.need.join(", ")) + '</small></div><span class="muted">›</span></div>').join("") + "</div>";
+        });
+        h += '<div class="card"><h3>{{i:shield}} Защита после чистки</h3>' + C.protection.map((x) => '<p class="small"><b>' + esc(x[0]) + ".</b> " + esc(x[1]) + "</p>").join("") + "</div>";
+        h += '<div class="card tint"><p class="small"><b>После чистки.</b> ' + esc(C.after) + '</p><p class="small muted">' + esc(C.care) + "</p></div>";
+      } else if (sec === "dreams") {
+        const D2 = G2().DREAMS, q = (r.params.q || "").toLowerCase(), dreams = A.col("bos").filter((x) => x.kind === "Сон").sort((a, b) => (b.date > a.date ? 1 : -1));
+        h += '<div class="card gr-hero"><h3>{{i:cloud-moon}} Толкование сна</h3><div class="form"><div class="fld"><label>Дата сна (утро)</label><input type="date" id="drD" value="' + d + '"></div>' +
+          '<div class="fld full"><label>Что снилось</label><textarea id="drT" rows="5" placeholder="Опишите сон как можно подробнее: где вы были, кто был рядом, что происходило, чем закончилось"></textarea></div>' +
+          '<div class="fld full"><label>Что чувствовали во сне и после пробуждения</label><input id="drF" placeholder="страх, радость, тревога, облегчение…"></div>' +
+          '<div class="fld full"><label>Что происходит в жизни сейчас (необязательно)</label><input id="drL" placeholder="например: решаю, менять ли работу"></div></div>' +
+          '<div class="btns" style="margin-top:6px"><button class="btn primary" data-a="drAi">{{i:sparkles}} Толковать</button><button class="btn" data-a="drSym">Найти символы</button></div><div id="drOut" class="ai-out" style="margin-top:10px"></div></div>';
+        if (dreams.length) h += '<div class="card"><h3>Мои сны</h3><div class="list">' + dreams.slice(0, 20).map((x) => '<div class="item" data-a="bOpen" data-id="' + x.id + '"><div class="tx"><b>' + esc(x.title || "Сон") + "</b><small>" + A.fmtShort(x.date) + " · " + esc((x.text || "").slice(0, 70)) + '…</small></div><span class="muted">›</span></div>').join("") + "</div></div>";
+        h += '<div class="card"><h3>Как читать сны</h3><p class="small">' + esc(D2.intro) + '</p><ul class="small">' + D2.tips.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ul></div>";
+        const S = D2.symbols.filter((x) => !q || (x.t + " " + x.k.join(" ")).toLowerCase().includes(q));
+        h += '<div class="card"><h3>Словарь символов</h3><input data-c="drQ" placeholder="Поиск: вода, зубы, змея…" value="' + esc(r.params.q || "") + '" style="margin-bottom:8px">' + S.map((x) => '<p class="small"><b>' + esc(x.t) + ".</b> " + esc(x.m) + '. <span class="muted">Психологически: ' + esc(x.p) + ".</span></p>").join("") + "</div>";
       } else if (sec === "book") {
         const B = A.col("bos").slice().sort((a, b) => (b.date > a.date ? 1 : -1));
         h += '<button class="btn primary block" data-a="bNew" style="margin-bottom:12px">{{i:plus}} Новая запись</button>' + (B.length ? '<div class="card"><div class="list">' + B.map((x) => '<div class="item" data-a="bOpen" data-id="' + x.id + '"><div class="tx"><b>' + esc(x.title || "Запись") + "</b><small>" + A.fmtShort(x.date) + " · " + esc(x.moon || "") + (x.kind ? " · " + esc(x.kind) : "") + "</small></div><span class=\"muted\">›</span></div>").join("") + "</div></div>" : A.empty("Книга теней пуста. Записывайте намерения, ритуалы, сны и знаки — через пару месяцев увидите свои закономерности."));
@@ -95,6 +123,42 @@
         rit(b) { const x = G().RITUALS.find((r) => r.t === b.dataset.t); if (x) A.sheet(x.t, '<p class="small"><b>Нужно:</b> ' + x.items.map(esc).join(", ") + "</p><ol>" + x.steps.map((s) => "<li>" + esc(s) + "</li>").join("") + "</ol>"); },
         runeDraw() { const R = G().RUNES, x = R[Math.floor(Math.random() * R.length)], rev = !x[4].startsWith("—") && Math.random() < 0.35; el.querySelector("#runeOut").innerHTML = '<div class="row" style="gap:12px;margin-top:10px"><div class="gr-rune' + (rev ? " rev" : "") + '">' + x[1] + '</div><div class="small"><b>' + x[0] + (rev ? " (перевёрнутая)" : "") + "</b><br>" + esc(rev ? x[4] : x[3]) + "</div></div>"; },
         bNew() { edit(null); },
+        clM(b) { const x = G2().CLEANSE.methods.find((m) => m.t === b.dataset.t); if (x) A.sheet(x.t, '<p class="small"><b>Время:</b> ' + x.time + " мин · <b>Нужно:</b> " + x.need.map(esc).join(", ") + "</p><ol>" + x.steps.map((s) => "<li>" + esc(s) + "</li>").join("") + '</ol><p class="small muted">' + esc(x.note) + "</p>"); },
+        async clAi(b) {
+          const out = el.querySelector("#clOut"), q = el.querySelector("#clQ").value.trim();
+          if (!q) return A.toast("Опишите ситуацию");
+          if (!A.ai.ready()) { out.innerHTML = A.ai.need(); return; }
+          const C = G2().CLEANSE;
+          const prompt = "Ситуация человека: " + q + "\nСегодня: " + moonLine(today()) + ".\n\nМАТЕРИАЛЫ ГРИМУАРА (опирайся на них, можно сочетать):\n" + C.methods.map((m) => "— " + m.t + " (" + m.kind + ", " + m.time + " мин): " + m.steps.join(" ") + " Важно: " + m.note).join("\n") +
+            "\nЗащита: " + C.protection.map((x) => x[0] + " — " + x[1]).join("; ") + "\nПравила: " + C.principles.join(" ") +
+            "\n\nСоставь персональный план чистки.\n## Что происходит\nКак традиция объясняет эту ситуацию (2–3 предложения, без запугивания).\n## План\nПошагово: что сделать сегодня, что — в ближайшую убывающую Луну; какие практики из материалов и почему именно они.\n## Защита и наполнение\nЧем закрепить результат.\n## На что обратить внимание\nКак понять, что стало легче; когда повторить. Если описанное похоже на проблему со здоровьем или тяжёлое состояние — мягко посоветуй обратиться к специалисту.\nПиши по-русски, тепло и конкретно, без воды.";
+          b.disabled = true; out.innerHTML = '<p class="muted">Составляю план… 10–60 секунд.</p>';
+          try { const t = await A.ai.ask(prompt, { system: "Ты — бережная и опытная практикующая ведьма и знаток народных традиций очищения. Даёшь безопасные, конкретные советы.", max: 2600, expect: ["План", "Защита"] }); out.innerHTML = A.ai.fmt(t) + '<button class="btn sm" data-a="clSave">{{i:notebook-pen}} Сохранить в Книгу теней</button>'; el._clAi = { q, t }; }
+          catch (e) { out.innerHTML = A.ai.errHtml(e); }
+          b.disabled = false;
+        },
+        clSave() { const x = el._clAi; if (!x) return; const m = A.moon(today()); A.upsert("bos", { date: today(), kind: "Ритуал", title: "План чистки", text: x.q, result: "", ai: x.t, moon: m.ph.name + ", Луна в " + m.sign }); A.toast("Сохранено в Книгу теней"); },
+        drQ(b) { A.go("grimoire/dreams?q=" + encodeURIComponent(b.value.trim()), true); },
+        drSym() { const t = el.querySelector("#drT").value, S = dreamSymbols(t); el.querySelector("#drOut").innerHTML = S.length ? S.map((x) => '<p class="small"><b>' + esc(x.t) + ".</b> " + esc(x.m) + '. <span class="muted">' + esc(x.p) + ".</span></p>").join("") : '<p class="small muted">Знакомых символов не нашлось — попробуйте «Толковать»: ИИ разберёт сон целиком.</p>'; },
+        async drAi(b) {
+          const out = el.querySelector("#drOut"), t = el.querySelector("#drT").value.trim(), dd = el.querySelector("#drD").value || today(), f = el.querySelector("#drF").value.trim(), life = el.querySelector("#drL").value.trim();
+          if (!t) return A.toast("Опишите сон");
+          if (!A.ai.ready()) { out.innerHTML = A.ai.need(); return; }
+          const S = dreamSymbols(t), prev = A.addDays(dd, -1), wd = G().DAYS[dow(prev)][0] + " → " + G().DAYS[dow(dd)][0];
+          const prompt = "Сон: " + t + "\nЧувства: " + (f || "не указаны") + "\nЖизнь сейчас: " + (life || "не указано") + "\nНочь: " + wd + "; Луна: " + moonLine(prev) +
+            "\n\nСИМВОЛЫ ИЗ СОННИКА ПРИЛОЖЕНИЯ (традиционное значение / психологическое):\n" + (S.length ? S.map((x) => "— " + x.t + ": " + x.m + " / " + x.p).join("\n") : "— в словаре совпадений нет, толкуй образы сам") +
+            "\nНародные приметы о днях: вещими считают сны с четверга на пятницу; в 9-й и 29-й лунные дни сны «пустые»." +
+            "\n\nРастолкуй сон подробно и лично для этого человека.\n## Главный смысл\n3–4 предложения: о чём этот сон.\n## Символы\nКаждый важный образ: традиционное значение и что он говорит о состоянии человека, с учётом чувств.\n## Связь с жизнью\nКак сон перекликается с тем, что происходит сейчас.\n## Вещий ли сон\nЧто говорят приметы об этой ночи и лунном дне.\n## Совет\n2–4 конкретных шага или вопроса к себе.\nПиши по-русски, бережно, без запугивания, без воды.";
+          b.disabled = true; out.innerHTML = '<p class="muted">Толкую сон… 10–60 секунд.</p>';
+          try {
+            const a = await A.ai.ask(prompt, { system: "Ты — бережный толкователь снов, сочетающий народный сонник и психологический взгляд (Юнг).", max: 2600, expect: ["Главный смысл", "Символы", "Совет"] });
+            out.innerHTML = A.ai.fmt(a);
+            const m = A.moon(dd);
+            A.upsert("bos", { date: dd, kind: "Сон", title: (t.split(/[.!?\n]/)[0] || "Сон").slice(0, 60), text: t + (f ? "\n\nЧувства: " + f : ""), ai: a, moon: m.ph.name + ", Луна в " + m.sign });
+            out.insertAdjacentHTML("beforeend", '<p class="small muted">Сон и толкование сохранены в Книгу теней.</p>');
+          } catch (e) { out.innerHTML = A.ai.errHtml(e); }
+          b.disabled = false;
+        },
         bOpen(b) { edit(A.byId("bos", b.dataset.id)); }
       });
     }
@@ -105,6 +169,6 @@
     A.formSheet(isNew ? "Новая запись" : "Запись", [
       { k: "date", label: "Дата", type: "date" }, { k: "kind", label: "Тип", type: "chips", opts: ["Намерение", "Ритуал", "Сон", "Знак", "Расклад", "Благодарность", "Заметка"] },
       { k: "title", label: "Заголовок", full: true }, { k: "text", label: "Текст", type: "textarea", rows: 8 }, { k: "result", label: "Что произошло потом", type: "textarea", rows: 3 }
-    ], x, (o) => { Object.assign(x, o); if (o.date !== today() && isNew) { const mm = A.moon(o.date); x.moon = mm.ph.name + ", Луна в " + mm.sign; } A.upsert("bos", x); A.refresh(); }, isNew ? {} : { onDelete: () => { A.remove("bos", x.id); A.refresh(); } });
+    ].concat(x.ai ? [{ k: "ai", label: "Толкование ИИ", type: "textarea", rows: 12 }] : []), x, (o) => { Object.assign(x, o); if (o.date !== today() && isNew) { const mm = A.moon(o.date); x.moon = mm.ph.name + ", Луна в " + mm.sign; } A.upsert("bos", x); A.refresh(); }, isNew ? {} : { onDelete: () => { A.remove("bos", x.id); A.refresh(); } });
   };
 })();
