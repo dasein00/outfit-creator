@@ -8510,10 +8510,11 @@ async function aiClient(){
     "\n\nЗАДАЧА: проанализируй расчёты и напиши клиенту индивидуальный, чёткий и подробный ответ. Опирайся только на то, что дают расчёты; где несколько систем говорят одно и то же — это главный вывод. Пиши человеческим языком, обращайся на «вы», не называй систем и не используй технических терминов (столпы, божества, арканы и т. п.) — переводи их в смысл для жизни."+
     "\nСТРУКТУРА:\n## Ответ на ваш вопрос\nПрямо и ясно, 4–6 предложений. Если однозначного ответа нет — объясните, от чего он зависит, и всё равно дайте развёрнутый вывод.\n## Почему так\nНа что опирается вывод: ключевые черты и обстоятельства клиента.\n## Ваши сильные стороны в этой ситуации\n## Что мешает и как это обойти\n"+
     (partners.length?"## Совместимость\nДля каждого названного человека: в чём вы совпадаете, где будут трения, как строить отношения или дело, на что договориться заранее. Подробно, без общих фраз.\n":"")+
-    "## Сроки\nКакие периоды благоприятны, когда лучше подождать (по годам и месяцам из расчётов).\n## Ваши шаги\n4–6 конкретных действий.\nБез воды и повторов, без запугивания, без медицинских диагнозов.";
+    "## Сроки\nКакие периоды благоприятны, когда лучше подождать (по годам и месяцам из расчётов).\n## Ваши шаги\n4–6 конкретных действий.\nОбъём всего ответа — 900–1500 слов: каждый раздел раскрывайте полностью, опираясь на конкретные данные расчётов. Без воды и повторов, без запугивания, без медицинских диагнозов. Обязательно допишите все разделы до конца.";
   box.innerHTML='<div class="blk"><h3>Ответ ИИ для клиента</h3><p>Составляю ответ… бесплатной модели нужно 20–90 секунд.</p></div>';
   try{
-    var t=await App.ai.ask(prompt,{system:"Ты — опытный консультант по Ба-цзы и нумерологии. Ты переводишь технический расчёт в ясный, подробный, бережный и индивидуальный ответ для клиента.",max:4000});
+    var expect=["Ответ на ваш вопрос","Почему так","Ваши сильные стороны","Что мешает"].concat(partners.length?["Совместимость"]:[]).concat(["Сроки","Ваши шаги"]);
+    var t=await App.ai.ask(prompt,{system:"Ты — опытный консультант по Ба-цзы и нумерологии. Ты переводишь технический расчёт в ясный, подробный, бережный и индивидуальный ответ для клиента. Отвечаешь развёрнуто: каждый раздел — несколько содержательных абзацев, с конкретикой из расчётов.",max:4000,expect:expect,contMax:5});
     localStorage.setItem("pz-aicl",JSON.stringify({key:aiclKey(),qk:aiclQ(),q:q,text:t,cut:!!App.ai.lastCut,t:Date.now()}));
     aiclShow();
   }catch(e){box.innerHTML='<div class="note">Не удалось получить ответ ИИ: '+(e&&e.message||e)+'</div>'}
@@ -9041,7 +9042,10 @@ function saveClient(silent){
   if(!D.d){alert("Сначала заполните дату рождения.");return null}
   const name=((D.f?D.f+" ":"")+(D.i||"")+(D.o?" "+D.o:"")).trim()||"Клиент";
   const a=clRead();
-  let c=a.find(x=>x.id===window.__CLID)||a.find(x=>x.name===name&&x.d===D.d);
+  // тот же человек — по имени и дате; открытая карточка обновляется, только если это правка того же человека
+  // (поменяли имя или дату), иначе новый человек не затирает предыдущего клиента
+  const cur=a.find(x=>x.id===window.__CLID);
+  let c=a.find(x=>x.name===name&&x.d===D.d)||(cur&&(cur.name===name||cur.d===D.d)?cur:null);
   if(!c){c={id:"c"+Date.now().toString(36),name:name,d:D.d,status:"new",tariff:"full",hist:[]};clLog(c,"создан");a.unshift(c)}
   c.name=name;c.d=D.d;c.data=D;c.upd=new Date().toISOString();
   if(D.tariff&&D.tariff!=="free")c.tariff=D.tariff;
@@ -9067,6 +9071,47 @@ function clientExport(id,kind){
     else{x.status="full";clLog(x,"полный разбор ("+((TARIFFS[x.tariff]||{}).name||"")+")")}
   });
 }
+
+/* ---------- журнал клиентов: автосохранение и сборка участников ---------- */
+// каждый, кого вы вбиваете (основной человек и участники), сохраняется в журнал сам при «Построить карты»
+function clAutoSave(){
+  try{
+    const D=collectData();if(!D.d)return;
+    saveClient(true);
+    const a=clRead();let ch=false;
+    (D.people||[]).forEach(function(p){
+      if(!p.d)return;const nm=(p.n||"").trim()||"Участник";
+      if(a.some(x=>x.name===nm&&x.d===p.d))return;
+      a.push({id:"c"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),name:nm,d:p.d,status:"new",tariff:"full",auto:"участник расчёта",
+        data:{v:1,i:nm,d:p.d,bt:p.t||"12:00",bs:p.s||"f"},hist:[{t:new Date().toISOString(),ev:"добавлен как участник"}],upd:new Date().toISOString()});ch=true;
+    });
+    if(ch)clWrite(a);
+    renderClients();
+  }catch(e){}
+}
+// добавить выбранных людей из журнала участниками текущего расчёта
+function clToPart(ids){
+  if(!ids)ids=Array.prototype.filter.call(document.querySelectorAll(".clpick"),x=>x.checked).map(x=>x.dataset.id);
+  if(!ids.length){alert("Отметьте галочкой хотя бы одного человека.");return}
+  const role=(document.getElementById("clrole")||{}).value||"love";let added=0,skip=0;
+  ids.forEach(function(id){
+    const c=clFind(id);if(!c)return;
+    if(c.id===window.__CLID){skip++;return}
+    const rows=Array.prototype.slice.call(document.querySelectorAll(".prow"));
+    if(rows.some(r=>r.querySelector(".pd").value===c.d&&r.querySelector(".pn").value.trim()===c.name)){skip++;return}
+    if(rows.length>=5){skip++;return}
+    addP();const r=document.querySelectorAll(".prow");const row=r[r.length-1];if(!row)return;
+    const d=c.data||{};
+    row.querySelector(".pn").value=c.name;row.querySelector(".pd").value=c.d;
+    row.querySelector(".pt").value=d.bt||"12:00";row.querySelector(".ps").value=d.bs||"f";
+    const pr=row.querySelector(".pr");if(pr)pr.value=role;
+    added++;
+  });
+  document.querySelectorAll(".clpick").forEach(x=>x.checked=false);
+  alert(added?("Добавлено участников: "+added+(skip?" (пропущено: "+skip+" — уже в расчёте, основной человек или больше пяти)":"")+". Нажмите «Построить карты», чтобы посчитать совместимость."):"Никого не добавлено: эти люди уже в расчёте или достигнут предел в пять участников.");
+  const pl=document.getElementById("plist");if(pl&&added)pl.scrollIntoView({behavior:"smooth",block:"center"});
+}
+
 function delClient(id){
   const c=clFind(id);if(!c)return;
   if(!confirm("Удалить клиента «"+c.name+"» из журнала? Расчёт будет удалён с этого устройства."))return;
@@ -9079,19 +9124,23 @@ function renderClients(){
   const cnt={};clRead().forEach(c=>cnt[c.status]=(cnt[c.status]||0)+1);
   const sum=Object.keys(CL_ST).filter(k=>cnt[k]).map(k=>`<span style="color:${CL_ST[k][1]}">${CL_ST[k][0]}: <b>${cnt[k]}</b></span>`).join(" · ");
   let h=sum?`<div class="hint" style="margin:0 0 10px">${sum}</div>`:"";
-  if(!a.length){box.innerHTML=h+`<div class="hint">${q?"Никого не найдено.":"Журнал пуст. Заполните данные человека, постройте карты и нажмите «Сохранить клиента»."}</div>`;return}
+  if(!a.length){box.innerHTML=h+`<div class="hint">${q?"Никого не найдено.":"Журнал пуст. Заполните данные человека и нажмите «Построить карты» — клиент и все участники сохранятся сами."}</div>`;return}
+  h+=`<div class="clbar" style="align-items:center"><span class="hint" style="margin:0">Отметьте людей галочкой, чтобы собрать расчёт совместимости:</span>
+    <select id="clrole" style="width:auto"><option value="love">как партнёров в отношениях</option><option value="biz">как партнёров по делу</option><option value="team">как команду</option><option value="family">как родственников</option></select>
+    <button type="button" class="mini" onclick="clToPart()">Добавить отмеченных в участники</button></div>`;
   a.forEach(c=>{
     const st=CL_ST[c.status]||CL_ST.new;
     const tar=TARIFF_ORDER.filter(k=>!TARIFFS[k].demo).map(k=>`<option value="${k}"${k===c.tariff?" selected":""}>${TARIFFS[k].name} · ${TARIFFS[k].price}</option>`).join("");
     const last=(c.hist||[]).slice(-1)[0];
     h+=`<div class="clrow${c.id===window.__CLID?" cur":""}" style="border-left-color:${st[1]}">
-      <div class="clhead"><b>${clEsc(c.name)}</b> <span class="hint" style="display:inline">${clEsc(c.d)}</span>
+      <div class="clhead"><input type="checkbox" class="clpick" data-id="${c.id}" style="width:auto;margin-right:6px" title="отметить для совместимости"><b>${clEsc(c.name)}</b>${c.auto?' <span class="hint" style="display:inline">· '+clEsc(c.auto)+'</span>':""} <span class="hint" style="display:inline">${clEsc(c.d)}</span>
         <select class="clst" onchange="clUpdate('${c.id}',x=>{x.status=this.value;clLog(x,'статус: '+CL_ST[this.value][0])})" style="color:${st[1]}">
         ${Object.keys(CL_ST).map(k=>`<option value="${k}"${k===c.status?" selected":""}>${CL_ST[k][0]}</option>`).join("")}</select></div>
       <div class="clmeta">Полная версия: <select class="cltar" onchange="clUpdate('${c.id}',x=>x.tariff=this.value)">${tar}</select>
         ${last?`<span class="hint" style="display:inline">· ${clDate(last.t)}: ${clEsc(last.ev)}</span>`:""}</div>
       <div class="clbtns">
         <button type="button" class="sec mini" onclick="openClient('${c.id}')">Открыть</button>
+        <button type="button" class="sec mini" onclick="clToPart(['${c.id}'])">+ в участники</button>
         <button type="button" class="sec mini" onclick="clientExport('${c.id}','demo')">Демо клиенту</button>
         <button type="button" class="mini" onclick="clientExport('${c.id}','full')">Полный клиенту</button>
         <button type="button" class="sec mini" onclick="delClient('${c.id}')">×</button>
@@ -9790,4 +9839,4 @@ else initUI();
 <script>/* ИИ-модуль приложения работает и здесь: та же страница-источник, тот же ключ OpenRouter */
 window.App=window.App||{esc:function(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})},view:function(){},bind:function(){},toast:function(){},refresh:function(){},confirm:function(){}};</script>
 <script src="js/ai.js"></script>
-<script>try{aiclShow();var _goAi=go;go=function(){var r=_goAi.apply(this,arguments);window.__builtKey=buildKey();try{aiclShow()}catch(e){}return r}}catch(e){}["qtext","qtopic"].forEach(function(id){var e=document.getElementById(id);if(e)e.addEventListener("change",function(){try{aiclShow()}catch(x){}})});</script></body></html>
+<script>try{aiclShow();var _goAi=go;go=function(){var r=_goAi.apply(this,arguments);window.__builtKey=buildKey();try{clAutoSave()}catch(e){}try{aiclShow()}catch(e){}return r}}catch(e){}["qtext","qtopic"].forEach(function(id){var e=document.getElementById(id);if(e)e.addEventListener("change",function(){try{aiclShow()}catch(x){}})});</script></body></html>

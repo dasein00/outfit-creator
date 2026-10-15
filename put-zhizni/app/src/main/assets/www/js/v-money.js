@@ -75,8 +75,8 @@
       const tab = r.args[0] || "overview", mk = r.params.m || today().slice(0, 7);
       const tx = A.monthTx(mk), inc = sum(tx.filter((t) => t.kind === "in").map((t) => t.amt)), out = sum(tx.filter((t) => t.kind === "out").map((t) => t.amt));
       const B = A.db().budgets;
-      let h = A.seg([["overview", "Обзор"], ["ops", "Операции"], ["budget", "Бюджет"], ["reports", "Отчёты"], ["save", "Накопления"], ["rec", "Регулярные"], ["cats", "Категории"], ["import", "Импорт"], ["plan", "План месяца"]], tab, "tab");
-      if (!["save", "rec", "cats", "import", "reports"].includes(tab)) h += monthNav(mk);
+      let h = A.seg([["overview", "Обзор"], ["ops", "Операции"], ["sber", "Сбербанк"], ["budget", "Бюджет"], ["reports", "Отчёты"], ["save", "Накопления"], ["rec", "Регулярные"], ["cats", "Категории"], ["import", "Импорт"], ["plan", "План месяца"]], tab, "tab");
+      if (!["save", "rec", "cats", "import", "reports", "sber"].includes(tab)) h += monthNav(mk);
       const byCat = {}; tx.filter((t) => t.kind === "out").forEach((t) => (byCat[t.cat] = (byCat[t.cat] || 0) + t.amt));
       if (tab === "overview") {
         h += '<div class="grid3"><div class="stat"><small>Доходы</small><b style="color:var(--good)">' + money(inc) + '</b></div><div class="stat"><small>Расходы</small><b style="color:var(--bad)">' + money(out) + '</b></div><div class="stat"><small>Разница</small><b>' + money(inc - out) + "</b></div></div>";
@@ -131,6 +131,8 @@
         h += '<div class="card"><h3>{{i:notebook}} Импорт из тетради или файла</h3><p class="small">Вставьте строки из тетради или загрузите CSV/JSON. Формат строки свободный: сумма, дата и категория в любом порядке, например<br><code>12.09 350 еда Пятёрочка</code> · <code>+50000 зарплата 05.09</code> · <code>такси 420</code>.</p><textarea id="impT" rows="6" placeholder="Каждая операция — с новой строки"></textarea><div class="btns"><button class="btn primary" data-a="impParse">Разобрать</button><button class="btn" data-a="impFile">Загрузить CSV / JSON</button><button class="btn" data-a="impPhoto">{{i:camera}} Фото страницы</button></div><p class="small muted">Фото страницы сохраняется рядом с полем ввода, чтобы удобно переносить записи. Автоматическое распознавание рукописного текста без интернета в приложении недоступно.</p><div id="impPh"></div></div>';
         h += A.bankCard();
         h += '<div class="card"><h3>История импорта</h3>' + (L.length ? L.map((x) => '<div class="item"><div class="tx"><b>' + esc(x.source) + " · " + x.count + " опер.</b><small>" + new Date(x.at).toLocaleString("ru-RU") + " · " + (x.undone ? "отменён" : "сумма " + money(x.total || 0)) + "</small></div>" + (x.undone ? "" : '<button class="btn sm ghost" data-a="impUndo" data-id="' + x.id + '">Отменить</button>') + "</div>").join("") : A.empty("Импорта ещё не было")) + "</div>";
+      } else if (tab === "sber") {
+        h += sberHtml(r);
       } else if (tab === "plan") {
         const P = (A.db().finplan[mk] = A.db().finplan[mk] || {});
         const rows = [["inc", "Доход", inc], ["must", "Обязательные расходы", null], ["save", "Накопления / резерв", null], ["free", "Свободные деньги", null], ["inv", "Инвестиции / крупные цели", null]];
@@ -178,6 +180,9 @@
         },
         bankNow() { A.bankSync(true); if (A.db().profile.smsImport || (A.native.smsAllowed && A.native.smsAllowed())) A.smsImport(false); },
         smsScan() { A.smsImport(true); },
+        sbF(b) { A.go("money/sber?f=" + b.dataset.v + (A.route().params.q ? "&q=" + encodeURIComponent(A.route().params.q) : ""), true); },
+        sbQ(b) { A.go("money/sber?f=" + (A.route().params.f || "all") + "&q=" + encodeURIComponent(b.value.trim()), true); },
+        sbHist(b) { A.smsImport(true, +b.dataset.v); },
         fp(b) { const P = A.db().finplan[mk()]; P[b.dataset.k] = b.type === "number" ? (b.value === "" ? null : A.num(b.value)) : b.value; A.save(); if (b.type === "number") A.refresh(); }
       });
     }
@@ -277,6 +282,34 @@
     }
     return null;
   };
+  /* ---------- Подраздел «Сбербанк»: вся история операций, пришедших из уведомлений и SMS 900 ---------- */
+  const isSber = (t) => t.sub === "Сбербанк" || t.src === "push" || t.src === "sms" || !!t.smsId || !!t.pushId;
+  const sberHtml = (r) => {
+    const f = r.params.f || "all", q = (r.params.q || "").toLowerCase();
+    const all = A.col("tx").filter(isSber);
+    let L = all.filter((t) => f === "all" || (f === "out" ? t.kind === "out" && !/Перевод/.test(t.cat) : f === "in" ? t.kind === "in" : /Перевод/.test(t.cat) || t.kind === "move"));
+    if (q) L = L.filter((t) => [t.cat, t.note, t.sub].join(" ").toLowerCase().includes(q));
+    L.sort((a, b) => (b.date + (b.ts || 0) > a.date + (a.ts || 0) ? 1 : -1));
+    const tin = sum(all.filter((t) => t.kind === "in").map((t) => t.amt)), tout = sum(all.filter((t) => t.kind === "out").map((t) => t.amt));
+    const first = all.reduce((m, t) => (!m || t.date < m ? t.date : m), "");
+    let h = '<div class="card tint"><h3>{{i:landmark}} Сбербанк</h3><p class="small">Все операции, которые пришли из уведомлений СберБанк Онлайн и SMS 900' + (first ? ", с " + fmtDate(first) : "") + '. Всего: <b>' + all.length + "</b>.</p>" +
+      '<div class="grid3"><div class="stat"><small>Поступления</small><b style="color:var(--good)">' + money(tin) + '</b></div><div class="stat"><small>Расходы</small><b style="color:var(--bad)">' + money(tout) + '</b></div><div class="stat"><small>Разница</small><b>' + money(tin - tout) + "</b></div></div>" +
+      '<div class="btns" style="margin-top:10px"><button class="btn sm primary" data-a="bankNow">{{i:refresh-cw}} Синхронизировать</button></div>' +
+      '<p class="small" style="margin:10px 0 4px"><b>Загрузить историю из SMS 900</b> — операции появятся в списке для проверки перед добавлением:</p><div class="chips">' +
+      [[30, "месяц"], [90, "3 месяца"], [180, "полгода"], [365, "год"], [1095, "3 года"]].map(([d, n]) => '<button class="chip" data-a="sbHist" data-v="' + d + '">' + n + "</button>").join("") + "</div></div>";
+    h += A.seg([["all", "Все"], ["out", "Покупки"], ["in", "Поступления"], ["tr", "Переводы"]], f, "sbF");
+    h += '<input data-c="sbQ" placeholder="Поиск: магазин, человек, категория" value="' + esc(r.params.q || "") + '" style="margin:10px 0">';
+    if (!L.length) h += A.empty(all.length ? "Ничего не найдено" : "Операций из Сбербанка пока нет — включите доступ к уведомлениям ниже или загрузите историю SMS");
+    // по месяцам: итог месяца и список операций
+    const byM = {}; L.forEach((t) => (byM[t.date.slice(0, 7)] = byM[t.date.slice(0, 7)] || []).push(t));
+    Object.keys(byM).sort().reverse().forEach((k) => {
+      const M = byM[k], i2 = sum(M.filter((t) => t.kind === "in").map((t) => t.amt)), o2 = sum(M.filter((t) => t.kind === "out").map((t) => t.amt));
+      h += '<div class="card"><h3>' + esc(A.monthTitle(k)) + '<span class="sp"></span><small><span style="color:var(--good)">+' + fmtN(i2) + '</span> · <span style="color:var(--bad)">−' + fmtN(o2) + "</span></small></h3><div class=\"list\">" +
+        M.map((t) => '<div class="item" data-a="tx" data-id="' + t.id + '"><span class="dot" style="background:' + A.catColor(t.cat) + '"></span><div class="tx"><b>' + esc(t.note || t.cat) + "</b><small>" + esc(fmtDate(t.date) + " · " + t.cat) + (t.src === "sms" ? " · SMS" : t.src === "push" ? " · push" : "") + '</small></div><b class="num" style="color:' + (t.kind === "in" ? "var(--good)" : "var(--ink)") + '">' + (t.kind === "in" ? "+" : t.kind === "out" ? "−" : "") + money(t.amt) + "</b></div>").join("") + "</div></div>";
+    });
+    h += A.bankCard();
+    return h;
+  };
   A.bankCard = () => {
     const paste = '<button class="btn sm" data-a="bankPaste">{{i:clipboard-list}} Вставить текст SMS</button>';
     if (!A.native) return '<div class="card"><h3>{{i:landmark}} Синхронизация со Сбербанком</h3><p class="small muted">Автоматическая синхронизация доступна в Android-приложении. Здесь можно вставить текст SMS вручную.</p><div class="btns">' + paste + "</div></div>";
@@ -335,9 +368,10 @@
     A.save();
     return added.length;
   };
-  A.smsImport = async (manual) => {
-    if (!A.native || !A.native.smsList) return;
-    const raw = await A.nativeCall("sms", () => A.native.smsList(manual ? 30 : 3));
+  A.smsImport = async (manual, days) => {
+    if (!A.native || !A.native.smsList) { if (manual) A.toast("История SMS доступна только в приложении на телефоне"); return; }
+    if (manual) A.toast("Читаю SMS 900" + (days ? " за " + days + " дн." : "") + "…");
+    const raw = await A.nativeCall("sms", () => A.native.smsList(days || (manual ? 30 : 3)));
     let list; try { list = JSON.parse(raw); } catch (e) { if (manual) A.toast("Нет доступа к SMS — разрешите чтение SMS"); return; }
     const known = new Set(A.col("tx").map((t) => t.smsId).filter(Boolean));
     const rows = list.filter((m) => !known.has(m.id)).map((m) => { const x = A.parseSberSms(m.body, m.date); if (x) x.smsId = m.id; return x; }).filter(Boolean);

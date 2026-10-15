@@ -90,26 +90,34 @@
         let text = ch.message && ch.message.content;
         if (!text) { tried.push({ model, status: r.status, msg: "пустой ответ", kind: "other" }); continue; }
         text = String(text).trim();
-        // Ответ оборвался на лимите длины (у «думающих» моделей часть лимита уходит на рассуждения) —
-        // просим ту же модель продолжить с места обрыва, до трёх раз, и склеиваем.
-        const cut = (c, t) => /length|max_tokens/i.test(String(c.finish_reason || "") + String(c.native_finish_reason || "")) || (!c.finish_reason && t.length > 400 && !/[.!?…»)\]:]\s*$/.test(t));
+        // Ответ оборвался: модель упёрлась в лимит (у «думающих» моделей часть лимита уходит на рассуждения),
+        // а некоторые бесплатные провайдеры обрезают текст и при этом сообщают «stop». Поэтому проверяем и флаг,
+        // и сам текст (кончается без точки), и — если задан opts.expect — что на месте все обязательные разделы.
+        const lastLine = (t) => (t.trim().split("\n").pop() || "").trim();
+        const cut = (c, t) => /length|max_tokens/i.test(String(c.finish_reason || "") + String(c.native_finish_reason || "")) ||
+          (t.length > 200 && !/[.!?…»")\]:*]\s*$/.test(t) && !/^([-•*]|\d+[.)])\s/.test(lastLine(t)));
+        const missing = (t) => (opts.expect || []).filter((h) => !new RegExp("(^|\\n)\\s*(#+\\s*|\\*\\*)?" + h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(t));
         let last = ch;
-        for (let k = 0; k < 3 && opts.cont !== false && cut(last, text); k++) {
+        for (let k = 0; k < (opts.contMax || 4) && opts.cont !== false; k++) {
+          const isCut = cut(last, text), miss = missing(text);
+          if (!isCut && !miss.length) break;
+          const ask = isCut ? "Ответ оборвался. Продолжи ровно с того места, где остановился (с полуслова, если нужно), не повторяя уже написанное и сохраняя структуру." + (miss.length ? " Обязательно допиши и разделы: " + miss.join(", ") + "." : "")
+            : "Ответ неполный. Допиши недостающие разделы: " + miss.join(", ") + " — подробно, в том же стиле, с заголовками «## …», не повторяя уже написанное.";
           try {
             const r2 = await fetch(API + "/chat/completions", {
               method: "POST",
               headers: { Authorization: "Bearer " + ai.key(), "Content-Type": "application/json", "HTTP-Referer": "https://putzhizni.app", "X-Title": "Put zhizni" },
-              body: JSON.stringify({ model, messages: msgs.concat([{ role: "assistant", content: text }, { role: "user", content: "Ответ оборвался. Продолжи ровно с того места, где остановился (с полуслова, если нужно), не повторяя уже написанное и сохраняя структуру." }]), temperature: opts.temperature ?? 0.7, max_tokens: opts.max || 1800 })
+              body: JSON.stringify({ model, messages: msgs.concat([{ role: "assistant", content: text }, { role: "user", content: ask }]), temperature: opts.temperature ?? 0.7, max_tokens: opts.max || 1800 })
             });
             const j2 = await r2.json().catch(() => ({}));
             const c2 = (j2.choices && j2.choices[0]) || {}, t2 = c2.message && c2.message.content;
-            if (!r2.ok || j2.error || !t2) break;
-            const glue = /[\s-]$/.test(text) || /^[\s,.;:!?)»]/.test(t2) ? "" : " ";
+            if (!r2.ok || j2.error || !t2 || !String(t2).trim()) break;
+            const glue = !isCut ? "\n\n" : /[\s-]$/.test(text) || /^[\s,.;:!?)»]/.test(t2) ? "" : " ";
             text = (text + glue + String(t2).replace(/^\s+/, (m) => (/\n/.test(m) ? "\n\n" : ""))).trim();
             last = c2;
           } catch (e) { break; }
         }
-        ai.lastModel = model; ai.lastTried = tried; ai.lastCut = cut(last, text);
+        ai.lastModel = model; ai.lastTried = tried; ai.lastCut = cut(last, text) || missing(text).length > 0;
         return text;
       } catch (e) { tried.push({ model, status: 0, msg: e.message, kind: kindOf(0, e.message) }); if (tried.length >= 2 && tried.every((t) => t.kind === "network")) break; }
     }
