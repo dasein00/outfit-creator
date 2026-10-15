@@ -660,7 +660,7 @@ svg text{cursor:default}
 .tarbtn.demo.on{background:var(--jade);border-color:var(--jade)}
 .tarn{font-size:12.5px;color:var(--ink);font-weight:normal}
 .tarp{font-size:11px;color:var(--mut)}
-.tarnote{padding:11px 16px;font-size:12.5px;color:var(--ink2);border-bottom:1px solid var(--line2);
+.tarnote{background:var(--soft)!important;padding:11px 16px;font-size:12.5px;color:var(--ink2);border-bottom:1px solid var(--line2);
  background:rgba(201,180,138,.1);line-height:1.6}
 .tarnote b{color:var(--cin);font-weight:normal}
 </style>
@@ -715,6 +715,36 @@ footer{border-top:1px solid var(--line);background:transparent;color:var(--mut)}
 .term{border-bottom-color:var(--cin)}
 .pz-back{display:inline-flex;align-items:center;gap:4px;font:600 14px var(--sans);color:var(--cin);text-decoration:none;margin-bottom:8px}
 html[data-theme="dark"] img,html[data-theme="dark"] svg{filter:none}
+/* цвета элементов управления: рабочие (включённые) — яркие, выключенные — приглушённые */
+:root{--on-acc:#fff;--tab-bg:#fff}
+html[data-theme="dark"]{--on-acc:#1C1A22;--tab-bg:#2A2733}
+html[data-theme="dark"] button{color:var(--on-acc)}
+button.sec,html[data-theme="dark"] button.sec{background:var(--tab-bg);color:var(--cin);border:1px solid var(--cin)}
+button.sec:hover{background:var(--acc2);color:var(--cin)}
+.gtabs{border-bottom:none;gap:8px;margin-bottom:6px}
+.gtab,html[data-theme="dark"] .gtab{background:var(--tab-bg);color:var(--ink);border:1px solid var(--line);border-radius:14px;font-weight:600;letter-spacing:.02em}
+.gtab .han{color:var(--cin)}
+.gtab:hover{background:var(--acc2);color:var(--ink)}
+.gtab.on,html[data-theme="dark"] .gtab.on{background:var(--cin);border-color:var(--cin);color:var(--on-acc)}
+.gtab.on .han{color:var(--on-acc)}
+.stabs{gap:6px;padding-top:8px;border-bottom:1px solid var(--line);padding-bottom:12px}
+.tab,html[data-theme="dark"] .tab{background:var(--tab-bg);color:var(--cin);border:1px solid var(--cin);border-radius:20px;font-weight:600}
+.tab:hover{background:var(--acc2);color:var(--cin)}
+.tab.on,html[data-theme="dark"] .tab.on{background:var(--cin);color:var(--on-acc);border-color:var(--cin)}
+.tab.off{color:var(--mut);border-color:var(--line);font-weight:400;opacity:.75}
+#pickwrap{background:var(--card2);border:none;border-radius:18px;box-shadow:var(--shadow)}
+.pickhead,.pickbody,.pickfoot{border-color:var(--line)}
+.pickfoot{background:var(--soft);border-radius:0 0 18px 18px}
+.pickgrp{border-left-color:var(--line)}
+.pickgl{color:var(--mut);font-weight:600}
+.pickgl:has(input:checked){color:var(--cin)}
+.picki{color:var(--mut);opacity:.8}
+.picki:has(input:checked){color:var(--ink);opacity:1;font-weight:600}
+.tarbtn,html[data-theme="dark"] .tarbtn{background:var(--tab-bg);border:1px solid var(--line);border-radius:12px;color:var(--ink)}
+.tarbtn .tarn{color:var(--ink);font-weight:600}
+.tarbtn.on,html[data-theme="dark"] .tarbtn.on{background:var(--cin);border-color:var(--cin)}
+.tarbtn.on .tarn,.tarbtn.on .tarp{color:var(--on-acc)}
+.tarbtn.demo.on{background:var(--jade);border-color:var(--jade)}
 </style>
 <script>/* тема приложения: светлая/тёмная — как в настройках «Пути» */
 (function(){var t="light";try{var d=JSON.parse(localStorage.getItem("pz.db.v1")||"{}"),p=(d&&d.profile)||{};t=p.theme==="dark"||((!p.theme||p.theme==="system")&&window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light"}catch(e){}document.documentElement.setAttribute("data-theme",t)})();</script></head><body><div class="dragonwrap" id="dragonhost"></div>
@@ -817,6 +847,7 @@ html[data-theme="dark"] img,html[data-theme="dark"] svg{filter:none}
 <button class="sec" onclick="quickPrint()">Печать всего документа</button>
 <button class="sec" onclick="printDoc()">PDF для печати</button>
 <button class="sec" onclick="printPhone()">PDF для телефона</button>
+<button onclick="aiClient()">✨ Ответ ИИ для клиента</button>
 <button class="sec" onclick="exportClient()">Файл для клиента</button>
 <label class="inlchk"><input type="checkbox" id="cnotes"> поля для заметок клиента</label>
 <label class="inlchk">формат файла: <select id="cfmt" style="width:auto;padding:4px 8px;font-size:12.5px"><option value="match" selected>только совпадения систем</option><option value="clear">ясный, по разделам</option><option value="full">полный, с теорией</option></select></label>
@@ -825,6 +856,7 @@ html[data-theme="dark"] img,html[data-theme="dark"] svg{filter:none}
 <button class="sec" onclick="selfTest()">Проверка системы</button>
 <button class="sec" onclick="clr()">Очистить</button></div>
 <div id="editnote">Режим правки включён. Текст отчёта можно менять прямо здесь: исправлять формулировки, удалять лишнее, дописывать свои выводы. Изменения сохраняются до нажатия кнопки «Построить карты» — она пересоберёт документ заново. Для сохранения нажмите «Печать / PDF».</div>
+<div id="aiclient"></div>
 <div id="out"></div>
 <div id="empty" class="empty">Заполните имя и дату рождения, затем нажмите «Построить карты»</div>
 </div>
@@ -8422,6 +8454,79 @@ function exportClient(){
       "\n\nНажмите «Проверка системы» и пришлите результат.");
   }
 }
+
+/* ============================================================
+   ОТВЕТ ИИ ДЛЯ КЛИЕНТА
+   Приложение считает системы, ИИ читает готовый разбор и формулирует ясный, подробный ответ на вопрос
+   клиента, включая совместимость с партнёром. Текст попадает в «Файл для клиента» отдельным разделом.
+   ============================================================ */
+var AICL_TOPIC={sebya:["b14","b13","p7"],rabota:["b5","b17","b20"],dengi:["b5","b17","b20"],otnosheniya:["b4","b9","p6"],
+  biznes:["b10","b17","b5"],zdorovie:["b6","b20"],deti:["b16","b4"],pereezd:["b20","b7","b24"]};
+function aiclKey(){return [($("f")||{}).value,($("i")||{}).value,($("d")||{}).value].join("|")}
+function $(id){return document.getElementById(id)}
+var TABLABEL=new Proxy({},{get:function(o,id){var r="";(window.TABGROUPS||[]).forEach(function(g){g.tabs.forEach(function(t){if(t.id===id)r=t.label})});return r}});
+function aiclPartner(){
+  var list=[];
+  var p2=($("p2d")||{}).value;if(p2)list.push("партнёр, дата рождения "+p2.split("-").reverse().join("."));
+  document.querySelectorAll(".prow").forEach(function(r){var d=(r.querySelector(".pd")||{}).value;if(!d)return;
+    var n=((r.querySelector(".pn")||{}).value||"").trim()||"участник",rl=(r.querySelector(".pr")||{}).value||"";
+    list.push(n+" ("+({love:"партнёр в отношениях",biz:"партнёр по делу",team:"команда",child:"ребёнок"}[rl]||rl||"участник")+"), "+d.split("-").reverse().join("."))});
+  return list;
+}
+function aiclPaneText(id,max){var el=$(id);if(!el)return "";
+  // скрытые вкладки отдают текст без переносов — расставляем их сами по блокам
+  var c=el.cloneNode(true);c.querySelectorAll("script,style,svg,button").forEach(function(n){n.remove()});
+  c.querySelectorAll("p,div,h2,h3,h4,li,tr,section,table").forEach(function(n){n.appendChild(document.createTextNode("\n"))});
+  c.querySelectorAll("td,th").forEach(function(n){n.appendChild(document.createTextNode(" · "))});
+  var t=(c.textContent||"").replace(/[ \t]+/g," ").replace(/ *\n */g,"\n").replace(/\n{3,}/g,"\n\n").trim();return t.length>max?t.slice(0,max)+"…":t}
+function aiclStored(){try{var o=JSON.parse(localStorage.getItem("pz-aicl")||"null");return o&&o.key===aiclKey()?o:null}catch(e){return null}}
+async function aiClient(){
+  var box=$("aiclient"),out=$("out");
+  if(!out||!out.innerHTML.trim()){alert("Сначала нажмите «Построить карты» — ИИ формулирует ответ по готовому разбору.");return}
+  if(!window.App||!App.ai||!App.ai.ready()){box.innerHTML='<div class="note">Нужен бесплатный ключ ИИ: откройте приложение → Настройки → «ИИ-помощник (бесплатно)». После этого вернитесь сюда.</div>';return}
+  var q=(($("qtext")||{}).value||"").trim(),topic=($("qtopic")||{}).value||"sebya";
+  var topicName=(($("qtopic")||{}).selectedOptions||[{}])[0].textContent||"";
+  var partners=aiclPartner();
+  var ids=["b22","b18","b35","p7","p8","p10","p9","b20"].concat(AICL_TOPIC[topic]||[]);
+  if(partners.length)ids=ids.concat(["b9","p6","b4"]);
+  var seen={},parts=[],total=0;
+  ids.forEach(function(id){if(seen[id])return;seen[id]=1;var lab=(TABLABEL[id]||id);var t=aiclPaneText(id,id==="b22"||id==="b35"?4000:2600);if(!t||total>26000)return;total+=t.length;parts.push("### "+lab+"\n"+t)});
+  var F=($("f")||{}).value||"",I=($("i")||{}).value||"",O=($("o")||{}).value||"",D=($("d")||{}).value||"";
+  var prompt="Клиент: "+[F,I,O].filter(Boolean).join(" ")+", дата рождения "+D.split("-").reverse().join(".")+", пол: "+((($("bs")||{}).value==="m")?"мужской":"женский")+".\n"+
+    "Вопрос клиента: "+(q||"общий разбор: кто я, в чём сила, что мешает, куда двигаться")+"\nТема: "+topicName+"\n"+
+    (partners.length?"Клиент просит узнать о совместимости: "+partners.join("; ")+"\n":"")+
+    "\nРАСЧЁТЫ ПРИЛОЖЕНИЯ (Ба-цзы и нумерология: пифагорейская, индийская, Девять звёзд и другие — уже посчитаны, это основа ответа):\n\n"+parts.join("\n\n")+
+    "\n\nЗАДАЧА: проанализируй расчёты и напиши клиенту индивидуальный, чёткий и подробный ответ. Опирайся только на то, что дают расчёты; где несколько систем говорят одно и то же — это главный вывод. Пиши человеческим языком, обращайся на «вы», не называй систем и не используй технических терминов (столпы, божества, арканы и т. п.) — переводи их в смысл для жизни."+
+    "\nСТРУКТУРА:\n## Ответ на ваш вопрос\nПрямо и ясно, 4–6 предложений. Если однозначного ответа нет — объясните, от чего он зависит, и всё равно дайте развёрнутый вывод.\n## Почему так\nНа что опирается вывод: ключевые черты и обстоятельства клиента.\n## Ваши сильные стороны в этой ситуации\n## Что мешает и как это обойти\n"+
+    (partners.length?"## Совместимость\nДля каждого названного человека: в чём вы совпадаете, где будут трения, как строить отношения или дело, на что договориться заранее. Подробно, без общих фраз.\n":"")+
+    "## Сроки\nКакие периоды благоприятны, когда лучше подождать (по годам и месяцам из расчётов).\n## Ваши шаги\n4–6 конкретных действий.\nБез воды и повторов, без запугивания, без медицинских диагнозов.";
+  box.innerHTML='<div class="blk"><h3>Ответ ИИ для клиента</h3><p>Составляю ответ… бесплатной модели нужно 20–90 секунд.</p></div>';
+  try{
+    var t=await App.ai.ask(prompt,{system:"Ты — опытный консультант по Ба-цзы и нумерологии. Ты переводишь технический расчёт в ясный, подробный, бережный и индивидуальный ответ для клиента.",max:4000});
+    localStorage.setItem("pz-aicl",JSON.stringify({key:aiclKey(),q:q,text:t,t:Date.now()}));
+    aiclShow();
+  }catch(e){box.innerHTML='<div class="note">Не удалось получить ответ ИИ: '+(e&&e.message||e)+'</div>'}
+}
+function aiclShow(){
+  var box=$("aiclient"),o=aiclStored();if(!box)return;
+  if(!o){box.innerHTML="";return}
+  box.innerHTML='<div class="blk"><h3>Ответ ИИ для клиента'+(o.q?" — «"+App.esc(o.q)+"»":"")+'</h3>'+App.ai.fmt(o.text)+
+    '<p class="small" style="color:var(--mut)">Этот текст войдёт в «Файл для клиента» отдельным разделом. Можно поправить вопрос или данные и нажать «Ответ ИИ для клиента» ещё раз.</p></div>';
+}
+/* разделы для файла клиента: ответ ИИ и совместимость (если указан партнёр) */
+function aiClientSections(demo){
+  var res=[],o=aiclStored();
+  if(o){var html=App.ai.fmt(o.text);
+    if(demo){var d=document.createElement("div");d.innerHTML=html;var ps=d.querySelectorAll("p");for(var i=3;i<ps.length;i++)ps[i].remove();html=d.innerHTML+'<div class="lockbox"><div class="lockfake"><i></i><i></i><i></i><i></i></div><p>&#128274; Полный ответ на ваш вопрос — в полной версии разбора.</p></div>'}
+    res.push([o.q?"Ответ на ваш вопрос":"Главное для вас","Ваш вопрос",(o.q?'<p class="small"><b>Вопрос:</b> '+App.esc(o.q)+"</p>":"")+html]);}
+  if(aiclPartner().length&&!demo){
+    var ids=[];if(($("p2d")||{}).value)ids.push("p6");if(document.querySelector(".prow .pd")&&Array.prototype.some.call(document.querySelectorAll(".prow .pd"),function(x){return x.value}))ids.push("b9");
+    ids.forEach(function(id){var el=$(id);if(!el||!el.innerText.trim())return;var c=el.cloneNode(true);try{cleanForClient(c)}catch(e){}
+      res.push([TABLABEL[id]||"Совместимость","Совместимость",c.innerHTML.replace(/id="(b|p)\d+"/g,"")])});
+  }
+  return res;
+}
+
 function doExportClient(){
   var out=document.getElementById("out");
   if(!out||!out.innerHTML.trim()){alert("Сначала нажмите «Построить карты» — файл собирается из готового разбора.");return}
@@ -8440,7 +8545,7 @@ function doExportClient(){
   var fmt=(document.getElementById("cfmt")||{}).value||"match";
   var clean=fmt!=="full",matchMode=fmt==="match";
   var groups=(window.TABGROUPS&&window.TABGROUPS.length)?window.TABGROUPS:[];
-  var body="",navcount=0,sumDone=false;
+  var body="",navcount=0,sumDone=false,aiDone=false,aiSecs=aiClientSections(demo);
   groups.forEach(function(g){
     var inner="";
     g.tabs.forEach(function(t){
@@ -8496,6 +8601,12 @@ function doExportClient(){
              '<div class="chead"><div class="cgrp">'+g.name+'</div><h2 class="ctitle">'+lbl+'</h2>'+
              '<span class="carrow">▾</span></div>'+
              '<div class="cbody">'+html+'</div></section>';
+      if(t.id==="b0"&&!aiDone){aiDone=true;
+        aiSecs.forEach(function(ms){navcount++;
+          inner+='<section class="csec csum" id="sec'+navcount+'" data-key="ai'+navcount+'" data-label="'+ms[0]+'">'+
+            '<div class="chead"><div class="cgrp">'+ms[1]+'</div><h2 class="ctitle">'+ms[0]+'</h2><span class="carrow">▾</span></div>'+
+            '<div class="cbody">'+ms[2]+'</div></section>';});
+      }
       if(matchMode&&!sumDone&&t.id==="b0"){
         sumDone=true;
         matchClientSections(demo).forEach(function(ms){navcount++;
@@ -8513,6 +8624,8 @@ function doExportClient(){
     });
     body+=inner;
   });
+  if(!aiDone&&aiSecs.length){aiDone=true;body=aiSecs.map(function(ms){navcount++;
+    return '<section class="csec csum" id="sec'+navcount+'" data-key="ai'+navcount+'" data-label="'+ms[0]+'"><div class="chead"><div class="cgrp">'+ms[1]+'</div><h2 class="ctitle">'+ms[0]+'</h2><span class="carrow">▾</span></div><div class="cbody">'+ms[2]+'</div></section>'}).join("")+body}
   var contact=(document.getElementById("ccontact")||{}).value||"";
   var cl=(typeof contactLink==="function")?contactLink(contact):null;
   var clHtml=cl?(cl.href?'<a class="cbtn" href="'+cl.href+'" target="_blank" rel="noopener">'+cl.label+'</a>'
@@ -8655,7 +8768,7 @@ function doExportClient(){
    "</div>"+
    "<div class=\"dragonwrap\">"+taijiSVG()+"</div>"+
    "<div class=\"cwrap\"><nav id=\"cnav\"></nav><main class=\"cmain\">"+
-   (clean?"<div class=\"note\" style=\"margin-bottom:18px\">Это ваш личный разбор. Начните с раздела «Главное о вас» — там самое важное на одном экране. Остальные разделы раскрывают детали: их можно сворачивать, отмечать прочитанными и оставлять заметки. Всё сохраняется в этом файле на вашем устройстве.</div>":"<div class=\"note\" style=\"margin-bottom:18px\">Это ваш личный разбор. Разделы можно сворачивать, отмечать как прочитанные и оставлять к ним заметки — всё сохраняется в этом файле на вашем устройстве. Слова, подчёркнутые пунктиром, — термины: нажмите, чтобы увидеть объяснение. В разделе с рекомендациями отмечайте шаги, которые взяли в работу, а в проверке карты отвечайте на вопросы — файл сам посчитает, насколько точно построена карта.</div>")+
+   (clean?"<div class=\"note\" style=\"margin-bottom:18px\">Это ваш личный разбор. Начните с раздела «"+(aiSecs.length?aiSecs[0][0]:"Главное о вас")+"» — там самое важное на одном экране. Остальные разделы раскрывают детали: их можно сворачивать, отмечать прочитанными и оставлять заметки. Всё сохраняется в этом файле на вашем устройстве.</div>":"<div class=\"note\" style=\"margin-bottom:18px\">Это ваш личный разбор. Разделы можно сворачивать, отмечать как прочитанные и оставлять к ним заметки — всё сохраняется в этом файле на вашем устройстве. Слова, подчёркнутые пунктиром, — термины: нажмите, чтобы увидеть объяснение. В разделе с рекомендациями отмечайте шаги, которые взяли в работу, а в проверке карты отвечайте на вопросы — файл сам посчитает, насколько точно построена карта.</div>")+
    "<div class=\"cmeet\" style=\"margin:0 0 18px\" id=\"creadcount\"></div>"+
    body+
    (clean?"<div class=\"cfoot\">Разбор описывает склонности и вероятные сюжеты; решения принимаете вы. Вопросы здоровья, денег и права решайте с профильными специалистами.</div>":"")+
@@ -8861,7 +8974,7 @@ function buildTabs(groups){
   groups.forEach((G,i)=>{
     g+=`<div class="stabs" id="stabs${i}" style="display:${i===0?"flex":"none"}">`;
     G.tabs.forEach((t,j)=>{
-      g+=`<button class="tab${j===0?" on":""}" onclick="swTab(this,'${t.id}',${i})">${t.label}</button>`;
+      g+=`<button class="tab${j===0?" on":""}" data-id="${t.id}" onclick="swTab(this,'${t.id}',${i})">${t.label}</button>`;
     });
     g+=`</div>`;
   });
@@ -9096,6 +9209,8 @@ function pickCount(){
   syncGroups();
   const all=document.querySelectorAll(".picksec");
   const on=Array.from(all).filter(c=>c.checked).length;
+  // вкладки разделов, которые не войдут в документ, приглушаем — рабочие остаются яркими
+  all.forEach(c=>{const b=document.querySelector('.tab[data-id="'+c.id.replace("sel_","")+'"]');if(b)b.classList.toggle("off",!c.checked)});
   const el=document.getElementById("pickcount");
   if(el)el.innerHTML=on?`Выбрано разделов: <b>${on}</b> из ${all.length}. В печать и PDF попадут только они.`
     :`<b style="color:var(--cin)">Не выбрано ни одного раздела</b> — документ будет пустым.`;
@@ -9658,4 +9773,8 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
 else initUI();
 
 
-</script></body></html>
+</script>
+<script>/* ИИ-модуль приложения работает и здесь: та же страница-источник, тот же ключ OpenRouter */
+window.App=window.App||{esc:function(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})},view:function(){},bind:function(){},toast:function(){},refresh:function(){},confirm:function(){}};</script>
+<script src="js/ai.js"></script>
+<script>try{aiclShow();var _goAi=go;go=function(){var r=_goAi.apply(this,arguments);try{aiclShow()}catch(e){}return r}}catch(e){}</script></body></html>
