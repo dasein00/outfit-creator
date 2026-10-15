@@ -86,10 +86,31 @@
           if (k === "key" || k === "privacy") break; // другие модели не помогут
           continue;
         }
-        const text = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+        const ch = (j.choices && j.choices[0]) || {};
+        let text = ch.message && ch.message.content;
         if (!text) { tried.push({ model, status: r.status, msg: "пустой ответ", kind: "other" }); continue; }
-        ai.lastModel = model; ai.lastTried = tried;
-        return String(text).trim();
+        text = String(text).trim();
+        // Ответ оборвался на лимите длины (у «думающих» моделей часть лимита уходит на рассуждения) —
+        // просим ту же модель продолжить с места обрыва, до трёх раз, и склеиваем.
+        const cut = (c, t) => /length|max_tokens/i.test(String(c.finish_reason || "") + String(c.native_finish_reason || "")) || (!c.finish_reason && t.length > 400 && !/[.!?…»)\]:]\s*$/.test(t));
+        let last = ch;
+        for (let k = 0; k < 3 && opts.cont !== false && cut(last, text); k++) {
+          try {
+            const r2 = await fetch(API + "/chat/completions", {
+              method: "POST",
+              headers: { Authorization: "Bearer " + ai.key(), "Content-Type": "application/json", "HTTP-Referer": "https://putzhizni.app", "X-Title": "Put zhizni" },
+              body: JSON.stringify({ model, messages: msgs.concat([{ role: "assistant", content: text }, { role: "user", content: "Ответ оборвался. Продолжи ровно с того места, где остановился (с полуслова, если нужно), не повторяя уже написанное и сохраняя структуру." }]), temperature: opts.temperature ?? 0.7, max_tokens: opts.max || 1800 })
+            });
+            const j2 = await r2.json().catch(() => ({}));
+            const c2 = (j2.choices && j2.choices[0]) || {}, t2 = c2.message && c2.message.content;
+            if (!r2.ok || j2.error || !t2) break;
+            const glue = /[\s-]$/.test(text) || /^[\s,.;:!?)»]/.test(t2) ? "" : " ";
+            text = (text + glue + String(t2).replace(/^\s+/, (m) => (/\n/.test(m) ? "\n\n" : ""))).trim();
+            last = c2;
+          } catch (e) { break; }
+        }
+        ai.lastModel = model; ai.lastTried = tried; ai.lastCut = cut(last, text);
+        return text;
       } catch (e) { tried.push({ model, status: 0, msg: e.message, kind: kindOf(0, e.message) }); if (tried.length >= 2 && tried.every((t) => t.kind === "network")) break; }
     }
     ai.lastTried = tried;

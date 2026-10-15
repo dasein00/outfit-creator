@@ -8463,6 +8463,16 @@ function exportClient(){
 var AICL_TOPIC={sebya:["b14","b13","p7"],rabota:["b5","b17","b20"],dengi:["b5","b17","b20"],otnosheniya:["b4","b9","p6"],
   biznes:["b10","b17","b5"],zdorovie:["b6","b20"],deti:["b16","b4"],pereezd:["b20","b7","b24"]};
 function aiclKey(){return [($("f")||{}).value,($("i")||{}).value,($("d")||{}).value].join("|")}
+function aiclQ(){return ((($("qtext")||{}).value||"").trim())+"|"+(($("qtopic")||{}).value||"")}
+function buildKey(){return aiclKey()+"|"+aiclQ()+"|"+(($("p2d")||{}).value||"")+"|"+Array.prototype.map.call(document.querySelectorAll(".prow .pd"),function(x){return x.value}).join(",")}
+/* вопрос, данные или участники поменялись после построения — пересчитываем, сохранив выбор разделов */
+function ensureFresh(){
+  if(window.__builtKey===buildKey())return;
+  var picks={};document.querySelectorAll(".picksec").forEach(function(c){picks[c.id]=c.checked});
+  go();
+  document.querySelectorAll(".picksec").forEach(function(c){if(c.id in picks)c.checked=picks[c.id]});
+  try{pickCount()}catch(e){}
+}
 function $(id){return document.getElementById(id)}
 var TABLABEL=new Proxy({},{get:function(o,id){var r="";(window.TABGROUPS||[]).forEach(function(g){g.tabs.forEach(function(t){if(t.id===id)r=t.label})});return r}});
 function aiclPartner(){
@@ -8479,10 +8489,11 @@ function aiclPaneText(id,max){var el=$(id);if(!el)return "";
   c.querySelectorAll("p,div,h2,h3,h4,li,tr,section,table").forEach(function(n){n.appendChild(document.createTextNode("\n"))});
   c.querySelectorAll("td,th").forEach(function(n){n.appendChild(document.createTextNode(" · "))});
   var t=(c.textContent||"").replace(/[ \t]+/g," ").replace(/ *\n */g,"\n").replace(/\n{3,}/g,"\n\n").trim();return t.length>max?t.slice(0,max)+"…":t}
-function aiclStored(){try{var o=JSON.parse(localStorage.getItem("pz-aicl")||"null");return o&&o.key===aiclKey()?o:null}catch(e){return null}}
+function aiclStored(any){try{var o=JSON.parse(localStorage.getItem("pz-aicl")||"null");if(!o||o.key!==aiclKey())return null;return any||(o.qk===aiclQ())?o:null}catch(e){return null}}
 async function aiClient(){
   var box=$("aiclient"),out=$("out");
   if(!out||!out.innerHTML.trim()){alert("Сначала нажмите «Построить карты» — ИИ формулирует ответ по готовому разбору.");return}
+  ensureFresh();
   if(!window.App||!App.ai||!App.ai.ready()){box.innerHTML='<div class="note">Нужен бесплатный ключ ИИ: откройте приложение → Настройки → «ИИ-помощник (бесплатно)». После этого вернитесь сюда.</div>';return}
   var q=(($("qtext")||{}).value||"").trim(),topic=($("qtopic")||{}).value||"sebya";
   var topicName=(($("qtopic")||{}).selectedOptions||[{}])[0].textContent||"";
@@ -8503,15 +8514,16 @@ async function aiClient(){
   box.innerHTML='<div class="blk"><h3>Ответ ИИ для клиента</h3><p>Составляю ответ… бесплатной модели нужно 20–90 секунд.</p></div>';
   try{
     var t=await App.ai.ask(prompt,{system:"Ты — опытный консультант по Ба-цзы и нумерологии. Ты переводишь технический расчёт в ясный, подробный, бережный и индивидуальный ответ для клиента.",max:4000});
-    localStorage.setItem("pz-aicl",JSON.stringify({key:aiclKey(),q:q,text:t,t:Date.now()}));
+    localStorage.setItem("pz-aicl",JSON.stringify({key:aiclKey(),qk:aiclQ(),q:q,text:t,cut:!!App.ai.lastCut,t:Date.now()}));
     aiclShow();
   }catch(e){box.innerHTML='<div class="note">Не удалось получить ответ ИИ: '+(e&&e.message||e)+'</div>'}
 }
 function aiclShow(){
-  var box=$("aiclient"),o=aiclStored();if(!box)return;
+  var box=$("aiclient"),o=aiclStored(true);if(!box)return;
   if(!o){box.innerHTML="";return}
-  box.innerHTML='<div class="blk"><h3>Ответ ИИ для клиента'+(o.q?" — «"+App.esc(o.q)+"»":"")+'</h3>'+App.ai.fmt(o.text)+
-    '<p class="small" style="color:var(--mut)">Этот текст войдёт в «Файл для клиента» отдельным разделом. Можно поправить вопрос или данные и нажать «Ответ ИИ для клиента» ещё раз.</p></div>';
+  if(o.qk!==aiclQ()){box.innerHTML='<div class="note">Вопрос клиента изменился («'+App.esc(o.q||"без вопроса")+'» → «'+App.esc((($("qtext")||{}).value||"").trim()||"без вопроса")+'»). Нажмите «✨ Ответ ИИ для клиента», чтобы составить ответ на новый вопрос — старый в файл не попадёт.</div>';return}
+  box.innerHTML='<div class="blk aibox" data-pd="1"><h3>Ответ ИИ для клиента'+(o.q?" — «"+App.esc(o.q)+"»":"")+'</h3>'+App.ai.fmt(o.text)+
+    (o.cut?'<p class="small" style="color:var(--cin)">Модель могла не дописать ответ до конца — нажмите «Ответ ИИ для клиента» ещё раз.</p>':"")+'<p class="small" style="color:var(--mut)">Этот текст войдёт в «Файл для клиента» отдельным разделом. Можно поправить вопрос или данные и нажать «Ответ ИИ для клиента» ещё раз.</p></div>';
 }
 /* разделы для файла клиента: ответ ИИ и совместимость (если указан партнёр) */
 function aiClientSections(demo){
@@ -8530,6 +8542,7 @@ function aiClientSections(demo){
 function doExportClient(){
   var out=document.getElementById("out");
   if(!out||!out.innerHTML.trim()){alert("Сначала нажмите «Построить карты» — файл собирается из готового разбора.");return}
+  ensureFresh();
 
   var cons=(document.getElementById("cpseudo").value||"").trim()||"Консультант";
   var ctag=(document.getElementById("ctag").value||"").trim();
@@ -9777,4 +9790,4 @@ else initUI();
 <script>/* ИИ-модуль приложения работает и здесь: та же страница-источник, тот же ключ OpenRouter */
 window.App=window.App||{esc:function(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})},view:function(){},bind:function(){},toast:function(){},refresh:function(){},confirm:function(){}};</script>
 <script src="js/ai.js"></script>
-<script>try{aiclShow();var _goAi=go;go=function(){var r=_goAi.apply(this,arguments);try{aiclShow()}catch(e){}return r}}catch(e){}</script></body></html>
+<script>try{aiclShow();var _goAi=go;go=function(){var r=_goAi.apply(this,arguments);window.__builtKey=buildKey();try{aiclShow()}catch(e){}return r}}catch(e){}["qtext","qtopic"].forEach(function(id){var e=document.getElementById(id);if(e)e.addEventListener("change",function(){try{aiclShow()}catch(x){}})});</script></body></html>
