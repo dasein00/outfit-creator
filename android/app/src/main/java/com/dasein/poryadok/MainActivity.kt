@@ -116,6 +116,11 @@ class MainActivity : FragmentActivity() {
                 else @Suppress("DEPRECATION") intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
                 // Картинка (скриншот из Fitdays и других приложений весов) — в «Вес», файлы таблиц — в тетрадь финансов.
                 val type = intent.type ?: uri?.let { contentResolver.getType(it) }.orEmpty()
+                // Книга (EPUB, FB2, MOBI, PDF, DjVu…) — в читалку.
+                if (uri != null && isBook(uri, type)) {
+                    com.dasein.poryadok.ui.reader.ReaderInbox.pending.value = uri
+                    return com.dasein.poryadok.ui.reader.READER_ROUTE
+                }
                 if (uri != null && type.startsWith("image/")) {
                     com.dasein.poryadok.system.ScaleOcr.process(this, uri)
                     return Routes.health(1)
@@ -126,7 +131,31 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    private fun isBook(uri: Uri, type: String): Boolean {
+        if (type in BOOK_TYPES) return true
+        val name = runCatching {
+            contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+        }.getOrNull() ?: uri.lastPathSegment.orEmpty()
+        val ext = name.lowercase().let { if (it.endsWith(".fb2.zip")) "fb2" else it.substringAfterLast('.', "") }
+        return ext in setOf("epub", "fb2", "fbz", "mobi", "azw", "azw3", "kf8", "prc", "djvu", "djv", "cbz", "rtf", "docx", "odt") ||
+            (ext == "pdf" && type == "application/pdf") || (ext == "txt" && intent?.action == Intent.ACTION_VIEW)
+    }
+
+    /** Кнопки громкости листают страницы в читалке. */
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        val h = com.dasein.poryadok.ui.reader.ReaderKeys.handler
+        if (h != null && (event.keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN || event.keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP)) {
+            if (event.action == android.view.KeyEvent.ACTION_DOWN) { if (h(if (event.keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN) 1 else -1)) return true }
+            else if (event.action == android.view.KeyEvent.ACTION_UP) return true
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
     companion object {
+        private val BOOK_TYPES = setOf(
+            "application/epub+zip", "application/x-fictionbook+xml", "application/x-fictionbook", "application/x-mobipocket-ebook", "application/vnd.amazon.ebook",
+            "application/x-mobi8-ebook", "image/vnd.djvu", "image/x-djvu", "application/djvu", "application/x-cbz", "application/vnd.comicbook+zip", "application/pdf",
+        )
         const val EXTRA_ROUTE = "route"
         const val EXTRA_DEMO = "demo"
     }

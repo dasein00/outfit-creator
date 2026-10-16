@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body>
+<script src="djvu.js"></script>
+<script>
+// Страницы DjVu для читалки: открывает book.djvu и по запросу отдаёт страницу JPEG-картинкой (base64) и текстовый слой.
+(function () {
+  'use strict';
+  var A = window.A || { opened: function (s) { console.log('opened ' + s); }, page: function (n, d, w, h) { console.log('page ' + n + ' ' + d.length); }, text: function (n, t) {}, fail: function (s) { console.log('fail ' + s); } };
+  var doc = null, queue = Promise.resolve();
+  function flat(list, level, out) {
+    (list || []).forEach(function (b) {
+      var n = null;
+      try { n = doc.getPageNumberByUrl(b.url); } catch (e) {}
+      out.push({ t: b.description || '', p: n || 0, l: level });
+      if (b.children) flat(b.children, level + 1, out);
+    });
+    return out;
+  }
+  window.D = {
+    open: function (url) {
+      fetch(url || 'book.djvu').then(function (r) { return r.arrayBuffer(); }).then(function (buf) {
+        doc = new DjVu.Document(buf);
+        var toc = [];
+        try { toc = flat(doc.getContents(), 0, []); } catch (e) {}
+        var sizes = [];
+        try { sizes = doc.getPagesSizes().map(function (s) { return [s.width, s.height]; }); } catch (e) {}
+        A.opened(JSON.stringify({ pages: doc.getPagesQuantity(), toc: toc, sizes: sizes }));
+      }).catch(function (e) { A.fail(String(e && e.message || e)); });
+    },
+    render: function (n, maxW, q, id) {
+      queue = queue.then(function () {
+        return doc.getPage(n).then(function (page) {
+          var img = page.getImageData();
+          var w = img.width, h = img.height;
+          var c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          c.getContext('2d').putImageData(img, 0, 0);
+          var scale = Math.min(1, (maxW || 1600) / w);
+          var out = c;
+          if (scale < 1) {
+            out = document.createElement('canvas');
+            out.width = Math.max(1, Math.round(w * scale)); out.height = Math.max(1, Math.round(h * scale));
+            var ctx = out.getContext('2d');
+            ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(c, 0, 0, out.width, out.height);
+          }
+          var data = out.toDataURL('image/jpeg', q || 0.88);
+          c.width = c.height = 0;
+          A.page(n, data.substring(data.indexOf(',') + 1), out.width, out.height, id || 0);
+        });
+      }).catch(function (e) { A.fail('page ' + n + ': ' + (e && e.message || e)); });
+    },
+    text: function (n) {
+      queue = queue.then(function () {
+        return doc.getPage(n).then(function (page) { var t = ''; try { t = page.getText() || ''; } catch (e) {} A.text(n, t); });
+      }).catch(function () { A.text(n, ''); });
+    },
+  };
+  setTimeout(function () { if (A.ready) A.ready(); }, 0);
+})();
+</script>
+</body></html>

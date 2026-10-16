@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<style>
+:root {
+  --bg: #ffffff; --fg: #1f1f1f; --dim: #8a8a8a; --link: #b5651d; --accent: #e8913a;
+  --fs: 19px; --lh: 1.5; --m: 20px; --pt: 18px; --pb: 18px; --font: serif; --indent: 1.4em; --align: justify; --para: 0.35em;
+}
+html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--fg); -webkit-tap-highlight-color: transparent; }
+body { font-family: var(--font); font-size: var(--fs); line-height: var(--lh); overflow: hidden; -webkit-text-size-adjust: 100%; }
+#vp { position: fixed; inset: 0; overflow: hidden; }
+body.scroll #vp { overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+#book { box-sizing: border-box; padding: var(--pt) var(--m) var(--pb) var(--m); text-align: var(--align); hyphens: auto; -webkit-hyphens: auto; overflow-wrap: break-word; }
+body.paged #book { height: 100vh; column-width: calc(100vw - 2 * var(--m)); column-gap: calc(2 * var(--m)); column-fill: auto; }
+body.scroll #book { min-height: 100vh; padding-bottom: 40vh; }
+body.nohyph #book { hyphens: manual; -webkit-hyphens: manual; }
+#book p { margin: 0 0 var(--para) 0; text-indent: var(--indent); orphans: 2; widows: 2; }
+#book h1, #book h2, #book h3, #book h4, #book h5, #book h6 { text-align: center; text-indent: 0; line-height: 1.25; margin: 0.8em 0 0.6em; break-after: avoid; hyphens: manual; -webkit-hyphens: manual; }
+#book h1 { font-size: 1.45em; } #book h2 { font-size: 1.3em; } #book h3 { font-size: 1.15em; } #book h4 { font-size: 1.05em; }
+#book img, #book svg, #book video { max-width: 100%; max-height: calc(100vh - var(--pt) - var(--pb) - 8px); height: auto; object-fit: contain; break-inside: avoid; }
+#book .img, #book figure { text-align: center; text-indent: 0; margin: 0.5em 0; break-inside: avoid; }
+#book img { display: inline-block; }
+#book blockquote { margin: 0.6em 0 0.6em 1.2em; font-style: italic; }
+#book blockquote.epigraph { margin-left: 30%; font-size: 0.92em; }
+#book .author, #book .text-author { text-align: right; font-style: italic; text-indent: 0; }
+#book .poem { margin: 0.6em 0 0.6em 1.5em; } #book .stanza { margin-bottom: 0.6em; } #book p.v { text-indent: 0; text-align: left; margin: 0; }
+#book .subtitle { font-size: 1em; font-weight: bold; }
+#book .sep { text-align: center; text-indent: 0; }
+#book li p, #book td p, #book th p { text-indent: 0; }
+#book p.empty { text-indent: 0; }
+#book a { color: var(--link); text-decoration: none; }
+#book a.note, #book sup a { font-size: 0.75em; vertical-align: super; line-height: 0; }
+#book table { border-collapse: collapse; max-width: 100%; font-size: 0.9em; text-indent: 0; }
+#book td, #book th { border: 1px solid var(--dim); padding: 2px 6px; }
+#book pre, #book code { font-family: monospace; font-size: 0.88em; white-space: pre-wrap; }
+#book mark { color: inherit; background: transparent; border-radius: 2px; }
+#book mark.c0 { background: rgba(255, 213, 79, 0.55); } #book mark.c1 { background: rgba(129, 199, 132, 0.55); }
+#book mark.c2 { background: rgba(100, 181, 246, 0.5); } #book mark.c3 { background: rgba(240, 98, 146, 0.45); }
+#book mark.c4 { background: transparent; text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
+#book mark.hasnote { border-bottom: 2px dotted var(--accent); }
+#book mark.tts { background: rgba(232, 145, 58, 0.35); }
+#book mark.found { background: rgba(232, 145, 58, 0.55); }
+body.dark #book img { opacity: 0.88; }
+#end { text-align: center; color: var(--dim); font-size: 0.85em; padding: 2em 0 1em; text-indent: 0; break-before: avoid; }
+#note { position: fixed; left: 10px; right: 10px; bottom: 10px; max-height: 45vh; overflow-y: auto; background: var(--bg); color: var(--fg); border: 1px solid var(--dim);
+  border-radius: 14px; padding: 12px 14px; box-shadow: 0 6px 24px rgba(0,0,0,.25); font-size: 0.9em; display: none; z-index: 9; text-align: left; }
+#note .go { display: block; margin-top: 8px; color: var(--link); font-size: 0.9em; }
+</style>
+</head>
+<body class="paged">
+<div id="vp"><div id="book"></div></div>
+<div id="note"></div>
+<script src="reader.js"></script>
+</body>
+</html>

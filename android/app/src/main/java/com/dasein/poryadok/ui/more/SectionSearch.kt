@@ -82,6 +82,8 @@ object SectionIndex {
             listOf("Фильмы", "Сериалы", "Книги", "Мои топы").forEachIndexed { i, t -> add(Dest(t, Routes.topsHub(i), "d17/03", tops, "кино коллекция рейтинг")) }
             add(Dest("Найти фильм или сериал", Routes.mediaSearch(0), "ui:search", tops, "кинопоиск добавить"))
             add(Dest("Карточка по ссылке", com.dasein.poryadok.ui.media.MEDIA_LINK_ROUTE, "ui:globe", tops, "кинопоиск шикимори ссылка"))
+            add(Dest("Заметки и цитаты из книг", com.dasein.poryadok.ui.reader.READER_NOTES_ROUTE, "d18/00", "Читалка", "выделения закладки цитаты книги читалка"))
+            add(Dest("Читалка", com.dasein.poryadok.ui.reader.READER_ROUTE, "books/08", tops, "читать книги epub fb2 mobi azw3 pdf djvu txt rtf docx библиотека электронные"))
 
             // Здоровье
             listOf(0 to "Питание", 1 to "Вес", 2 to "Замеры", 5 to "Фото прогресса").forEach { (i, t) ->

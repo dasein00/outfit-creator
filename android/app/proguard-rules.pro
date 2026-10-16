@@ -13,3 +13,8 @@
 -keep class com.tom_roush.harmony.** { *; }
 -dontwarn com.gemalto.jp2.**
 -dontwarn org.bouncycastle.**
+
+# Читалка: методы, которые вызывает JavaScript в WebView.
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}

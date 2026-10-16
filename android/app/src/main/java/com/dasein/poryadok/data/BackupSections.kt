@@ -25,6 +25,7 @@ enum class BackupSection(
     TUTOR("Репетитор", "tutor/00", "выученные слова, прогресс, свои слова, настройки", listOf("tutor")),
     PRESSURE("Давление и пульс", "pressure/00", "люди, замеры давления и пульса, заметки", listOf("pressure")),
     CRAFTS("Рукоделие", "minimal/04", "схемы алмазной мозаики, вышивки и бисера: фото, настройки, отмеченные цвета", listOf("crafts")),
+    READER("Читалка", "books/08", "файлы книг, где остановились, закладки, выделения, заметки и время чтения", listOf("books", "reader")),
     SETTINGS(
         "Настройки и оформление", "train/38",
         "тема и цвет, PIN, главная страница и её блоки, свои названия кнопок и разделов, свои иконки, наборы, папки и правки иконок, замены иконок, " +
@@ -75,7 +76,7 @@ enum class BackupSection(
             )
             NOTES -> dst.copy(notes = src.notes, extra = dx.copy(pages = sx.pages, pageBlocks = sx.pageBlocks))
             WARDROBE -> dst.copy(wardrobeItems = src.wardrobeItems, itemFits = src.itemFits, outfits = src.outfits)
-            TUTOR, PRESSURE, CRAFTS, SETTINGS -> dst
+            TUTOR, PRESSURE, CRAFTS, READER, SETTINGS -> dst
         }
     }
 
@@ -94,7 +95,7 @@ enum class BackupSection(
             MEDIA -> x.media.size + x.mediaLists.size + b.topLists.size + b.topItems.size
             NOTES -> b.notes.size + x.pages.size + x.pageBlocks.size
             WARDROBE -> b.wardrobeItems.size + b.outfits.size
-            TUTOR, PRESSURE, CRAFTS, SETTINGS -> 0
+            TUTOR, PRESSURE, CRAFTS, READER, SETTINGS -> 0
         }
     }
 

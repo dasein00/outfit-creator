@@ -238,6 +238,7 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
                 FloatingActionButton(onClick = { menu = true }, containerColor = MaterialTheme.colorScheme.primary) { Icon(Icons.Default.Add, "Добавить") }
                 DropdownMenu(menu, { menu = false }) {
                     DropdownMenuItem(text = { Text(btnLabel("Найти в каталоге")) }, leadingIcon = { Glyph("habit/24", 20.dp) }, onClick = { menu = false; nav.navigate(Routes.mediaSearch(kind)) })
+                    if (kind == MediaKind.BOOK) DropdownMenuItem(text = { Text(btnLabel("Читалка: мои файлы книг")) }, leadingIcon = { Glyph("books/08", 20.dp) }, onClick = { menu = false; nav.navigate(com.dasein.poryadok.ui.reader.READER_ROUTE) })
                     if (kind != MediaKind.BOOK) DropdownMenuItem(text = { Text("По ссылке (Кинопоиск, Шикимори)") }, leadingIcon = { Glyph("ui:globe", 20.dp) }, onClick = { menu = false; nav.navigate(MEDIA_LINK_ROUTE) })
                     DropdownMenuItem(text = { Text(btnLabel("Заполнить карточку самому")) }, leadingIcon = { Glyph("habit/23", 20.dp) }, onClick = { menu = false; nav.navigate(Routes.media(0, kind)) })
                     if (kind != MediaKind.BOOK) DropdownMenuItem(text = { Text(btnLabel("Импорт с Кинопоиска")) }, leadingIcon = { Glyph("habit/01", 20.dp) }, onClick = { menu = false; nav.navigate(Routes.kpImport(kind)) })
@@ -791,6 +792,7 @@ fun MediaCardScreen(nav: NavHostController, id: Long, kind0: Int) {
                     if (m.externalRating != null) Text("${m.source}: ★ %.1f".format(m.externalRating), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
                 }
             }
+            if (book && !editing) com.dasein.poryadok.ui.reader.MediaReadButton(nav, m)
             if (m.externalId.isBlank() && m.title.isNotBlank()) TextButton(onClick = { searching = true }) { Text(btnLabel("Дополнить из каталога…")) }
 
             SectionTitle("Моё")

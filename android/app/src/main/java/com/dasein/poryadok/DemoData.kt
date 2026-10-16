@@ -56,6 +56,7 @@ object DemoData {
     /** Разделы, появившиеся позже: добавляются, даже если остальной пример уже есть. */
     private suspend fun fillNewSections() {
         val x = Graph.extra
+        runCatching { com.dasein.poryadok.system.ReaderDemo.add(Graph.app) }
         if (x.allMedia().isEmpty()) {
             val now = System.currentTimeMillis()
             listOf(

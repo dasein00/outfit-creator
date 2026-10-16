@@ -139,6 +139,7 @@ fun BackupScreen(nav: NavHostController) {
                         s == BackupSection.CRAFTS -> "схем ${counts.second / 2}"
                         s == BackupSection.PRESSURE -> if (counts.second > 0) "дневник давления" else "пусто"
                         s == BackupSection.TUTOR -> if (counts.second > 0) "прогресс обучения" else "пусто"
+                        s == BackupSection.READER -> if (counts.second > 0) "файлов ${counts.second}" else "пусто"
                         else -> "записей ${counts.first}" + if (counts.second > 0) " · файлов ${counts.second}" else ""
                     },
                 ) { on -> picked = if (on) picked + s else picked - s }

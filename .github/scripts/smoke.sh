@@ -41,7 +41,7 @@ routes=(
   "bodyDetail/0" "weightTrend" "bodyCompare" "kpImport?kind=0" "topsHub?tab=0" "recipeEdit/1"
   "bodyScience" "widgetEditor" "plan?tab=2" "notes" "page/1" "page/2"
   "training?tab=0" "training?tab=1" "training?tab=2" "training?tab=3" "trainingPlan/1" "exercise/1" "session/1"
-  "calendar?tab=2" "holiday/ru_newyear" "holiday/arm_vardavar" "health?tab=2" "bodyScience" "weightTrend" "recipe/3" "recipe/140" "recipe/170" "weather" "widgetEditor" "smallTalk" "sber" "tasks" "backup" "steps" "craft" "pressure" "tutor" "tutorWords" "tutorDict" "tutorTranslate?tab=0" "tutorTranslate?tab=1" "calendar?tab=3" "calendar?tab=4" "likes" "craftMine" "craftPbn" "craftPencils" "iconManager" "training?tab=4" "whatToCook" "tutorCards" "tutorChat?tab=0" "tutorChat?tab=1" "mediaLink" "finImport" "finAi" "finInfo" "appearance"
+  "calendar?tab=2" "holiday/ru_newyear" "holiday/arm_vardavar" "health?tab=2" "bodyScience" "weightTrend" "recipe/3" "recipe/140" "recipe/170" "weather" "widgetEditor" "smallTalk" "sber" "tasks" "backup" "steps" "craft" "pressure" "tutor" "tutorWords" "tutorDict" "tutorTranslate?tab=0" "tutorTranslate?tab=1" "calendar?tab=3" "calendar?tab=4" "likes" "craftMine" "craftPbn" "craftPencils" "iconManager" "training?tab=4" "whatToCook" "tutorCards" "tutorChat?tab=0" "tutorChat?tab=1" "mediaLink" "finImport" "finAi" "finInfo" "appearance" "reader" "readerBook/1" "readerBook/2" "readerNotes"
 )
 i=1
 for r in "${routes[@]}"; do
@@ -51,6 +51,22 @@ for r in "${routes[@]}"; do
   adb exec-out screencap -p > "shots/$name.png"
   i=$((i + 1))
 done
+
+# Читалка: книга, следующая страница, меню, PDF.
+adb shell am start -n $PKG/.MainActivity --es route "readerBook/1"
+sleep 6
+adb exec-out screencap -p > shots/89_reader.png
+adb shell input tap 1000 1300
+sleep 2
+adb exec-out screencap -p > shots/89_reader_next.png
+adb shell input tap 540 1300
+sleep 2
+adb exec-out screencap -p > shots/89_reader_menu.png
+adb shell input keyevent KEYCODE_BACK
+sleep 1
+adb shell am start -n $PKG/.MainActivity --es route "readerBook/2"
+sleep 6
+adb exec-out screencap -p > shots/89_reader_pdf.png
 
 adb shell am start -n $PKG/.MainActivity --es route "wardrobe"
 sleep 3

@@ -83,6 +83,7 @@ val HUB = listOf(
     Hub("d08/05", "Вода", "норма на день", Routes.wellbeing(2)),
     Hub("d18/00", "Заметки", "страницы, статьи, картинки", Routes.NOTES),
     Hub("d17/00", "Фильмы, сериалы, книги", "коллекция и отзывы", Routes.topsHub(0)),
+    Hub("books/08", "Читалка", "EPUB, FB2, MOBI, PDF, DjVu: закладки, заметки, чтение вслух", com.dasein.poryadok.ui.reader.READER_ROUTE),
     Hub("d19/00", "Гардероб", "образы на манекене", Routes.WARDROBE),
     Hub("d20/00", "Репетитор", "английский: слова на каждый день, тренировки, повторение", com.dasein.poryadok.ui.tutor.TutorRoutes.HOME),
     Hub("d20/04", "Переводчик", "в сети переводит ИИ, без интернета — словарь и модель на телефоне", com.dasein.poryadok.ui.tutor.TutorRoutes.translate(0)),

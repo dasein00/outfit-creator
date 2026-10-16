@@ -66,6 +66,41 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
+            <!-- Книги: «Открыть с помощью» → DASEIN откроет файл в читалке. -->
+            <intent-filter android:label="Читать в DASEIN">
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:mimeType="application/epub+zip" />
+                <data android:mimeType="application/x-fictionbook+xml" />
+                <data android:mimeType="application/x-fictionbook" />
+                <data android:mimeType="application/x-mobipocket-ebook" />
+                <data android:mimeType="application/vnd.amazon.ebook" />
+                <data android:mimeType="application/x-mobi8-ebook" />
+                <data android:mimeType="image/vnd.djvu" />
+                <data android:mimeType="image/x-djvu" />
+                <data android:mimeType="application/x-cbz" />
+                <data android:mimeType="application/vnd.comicbook+zip" />
+                <data android:mimeType="application/pdf" />
+                <data android:mimeType="application/rtf" />
+                <data android:mimeType="text/rtf" />
+            </intent-filter>
+            <!-- Файлы без своего типа (часто FB2 и DjVu из мессенджеров) — по расширению. -->
+            <intent-filter android:label="Читать в DASEIN">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:host="*" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:pathPattern=".*\\.fb2" />
+                <data android:pathPattern=".*\\.epub" />
+                <data android:pathPattern=".*\\.mobi" />
+                <data android:pathPattern=".*\\.azw3" />
+                <data android:pathPattern=".*\\.djvu" />
+            </intent-filter>
             <!-- Файлы тетради финансов можно открыть в приложении напрямую. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
