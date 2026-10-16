@@ -94,7 +94,7 @@ fun MediaFactsSection(m: MediaItem) {
                 runCatching { MediaFacts.askAi(ctx, m) }.onFailure { error = it.message }
                 aiBusy = false
             }
-        }) { Text(if (aiBusy) "ИИ вспоминает…" else "✨ Ещё факты от ИИ") }
+        }) { com.dasein.poryadok.ui.common.AiLabel("Ещё факты от ИИ", aiBusy, "ИИ вспоминает…") }
     }
     saved?.premiere?.let { p ->
         Text(

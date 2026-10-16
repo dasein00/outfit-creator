@@ -39,13 +39,13 @@ fun rememberLikes(): List<Likes.Like> {
 
 /** Кнопка «+»: отметить понравившееся (зелёная галочка) или снять отметку. */
 @Composable
-fun LikeButton(like: Likes.Like, liked: Boolean, size: Int = 34) {
+fun LikeButton(like: Likes.Like, liked: Boolean, size: Int = 34, onToggle: (() -> Unit)? = null) {
     val ctx = LocalContext.current
     Box(
         Modifier.size(size.dp).clip(CircleShape)
             .background(if (liked) LikeGreen else Color.Transparent)
             .border(1.5.dp, if (liked) LikeGreen else LocalExtra.current.dim, CircleShape)
-            .clickable { Likes.toggle(ctx, like) },
+            .clickable { if (onToggle != null) onToggle() else Likes.toggle(ctx, like) },
         contentAlignment = Alignment.Center,
     ) { Text(if (liked) "✓" else "+", fontSize = (size / 1.9).sp, fontWeight = FontWeight.Bold, color = if (liked) Color.White else MaterialTheme.colorScheme.onSurface) }
 }

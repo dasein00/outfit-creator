@@ -492,7 +492,7 @@ private fun UnparsedSms(settings: AppSettings) {
                         .onFailure { error = it.message }
                     busy = false
                 }
-            }) { Text(if (busy) "ИИ думает…" else "Разобрать с ИИ (${picked.size})") }
+            }) { com.dasein.poryadok.ui.common.AiLabel("Разобрать с ИИ (${picked.size})", busy) }
             OutlinedButton(enabled = picked.isNotEmpty(), onClick = { com.dasein.poryadok.system.SmsAi.dismiss(ctx, picked) }) { Text(btnLabel("Скрыть")) }
         }
     } else {

@@ -278,7 +278,7 @@ fun StatementImportScreen(nav: NavHostController, settings: Settings) {
                             }
                         },
                         enabled = busy == null, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    ) { Text(btnLabel("✨ Разобрать с ИИ")) }
+                    ) { com.dasein.poryadok.ui.common.AiLabel("Разобрать с ИИ") }
                     Text("Отправит текст выписки бесплатной модели (OpenRouter) — только по нажатию.", fontSize = 11.sp, color = extra.dim)
                 }
                 if (plans.isNotEmpty()) {
@@ -548,7 +548,7 @@ fun FinanceAiScreen(nav: NavHostController, settings: Settings) {
             SectionTitle("ИИ-анализ")
             if (!Ai.enabled(ctx)) Text(btnLabel("Нужен бесплатный ключ OpenRouter: «Ещё» → «Настройки» → «ИИ-помощник»."), fontSize = 13.sp, color = extra.warn)
             else Button(onClick = { analyze() }, enabled = !busy && period.isNotEmpty(), modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp)) {
-                Text(if (busy) "ИИ анализирует…" else "✨ Проанализировать с ИИ")
+                com.dasein.poryadok.ui.common.AiLabel("Проанализировать с ИИ", busy, "ИИ анализирует…")
             }
             if (busy) Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) { CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Text(btnLabel("  Это занимает до минуты"), fontSize = 13.sp) }
             error?.let { Text(it, color = extra.danger, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp)) }

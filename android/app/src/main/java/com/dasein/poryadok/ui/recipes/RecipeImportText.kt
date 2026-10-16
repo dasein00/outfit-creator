@@ -265,7 +265,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                                 .onFailure { aiError = it.message ?: "ошибка"; aiBusy = false }
                         }
                     },
-                ) { Text(if (aiBusy) "ИИ думает…" else btnLabel("✨ Сгенерировать рецепт")) }
+                ) { com.dasein.poryadok.ui.common.AiLabel("Сгенерировать рецепт", aiBusy) }
                 OutlinedButton(
                     enabled = preview != null && !aiBusy,
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 48.dp),

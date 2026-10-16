@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -168,6 +169,7 @@ fun TalkFactCard(onOpen: () -> Unit) {
     val fact = SmallTalk.current(facts, deck) ?: return
     val read = SmallTalk.read(facts, deck)
 
+    var aiOpen by remember { mutableStateOf(false) }
     val like = com.dasein.poryadok.system.Likes.Like(com.dasein.poryadok.system.Likes.FACT, fact.text, tags = listOf(fact.tag))
     val liked = com.dasein.poryadok.system.Likes.isLiked(com.dasein.poryadok.ui.common.rememberLikes(), like)
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(com.dasein.poryadok.ui.common.likedColor(liked)).padding(14.dp)) {
@@ -179,7 +181,13 @@ fun TalkFactCard(onOpen: () -> Unit) {
             }
             Text("$read из ${facts.size}  ", fontSize = 12.sp, color = extra.dim)
             com.dasein.poryadok.ui.common.LikeButton(like, liked)
+            // Волшебная палочка: 3 факта от ИИ — случайных или на тему.
+            Box(
+                Modifier.padding(start = 6.dp).size(36.dp).clip(androidx.compose.foundation.shape.CircleShape).clickable { aiOpen = true },
+                contentAlignment = Alignment.Center,
+            ) { Glyph(com.dasein.poryadok.ui.common.Glyphs.AI, 26.dp, badge = false) }
         }
+        if (aiOpen) AiFactsDialog { aiOpen = false }
         AnimatedContent(fact, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "fact") { f ->
             Text(
                 f.text, fontSize = 15.sp, lineHeight = 21.sp,
@@ -360,6 +368,7 @@ private fun FactsTab(data: TalkRepo.Data, s: AppSettings, favorites: List<Int>) 
     TabList(0, listState) {
         factOfTheDay(data, s, favorites)
         item(key = "facts_head") {
+            AiFactsPanel(Modifier.padding(bottom = 10.dp))
             TopicOfDay()
             SectionTitle("Каталог фактов · ${pool.size}")
             OnlineFactsLine()
@@ -779,7 +788,7 @@ private fun TopicOfDay() {
                 topic, { topic = it }, Modifier.weight(1f), singleLine = true, shape = RoundedCornerShape(14.dp),
                 placeholder = { Text("Например: Хэллоуин, чемпионат мира, Армения") },
             )
-            com.dasein.poryadok.ui.common.Button(onClick = { go(topic) }, enabled = topic.isNotBlank() && !busy, modifier = Modifier.padding(start = 8.dp)) { Text(if (busy) "…" else "Найти") }
+            com.dasein.poryadok.ui.common.Button(onClick = { go(topic) }, enabled = topic.isNotBlank() && !busy, modifier = Modifier.padding(start = 8.dp)) { com.dasein.poryadok.ui.common.AiLabel("Найти", busy, "…") }
         }
         if (busy) Text("ИИ подбирает факты…", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
         error?.let { Text(it, fontSize = 12.sp, color = extra.danger) }

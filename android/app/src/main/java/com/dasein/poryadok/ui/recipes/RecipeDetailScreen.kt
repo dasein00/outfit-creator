@@ -728,7 +728,7 @@ private fun RecipeDescription(r: Recipe) {
                         .onFailure { android.widget.Toast.makeText(ctx, it.message ?: "Не получилось", android.widget.Toast.LENGTH_LONG).show() }
                     busy = false
                 }
-            }) { Text(if (busy) "ИИ оформляет…" else "✨ Оформить с ИИ") }
+            }) { com.dasein.poryadok.ui.common.AiLabel("Оформить с ИИ", busy, "ИИ оформляет…") }
         }
     }
 }

@@ -289,7 +289,7 @@ fun FinanceInfographicScreen(nav: NavHostController, settings: Settings) {
             }
 
             Gap(14.dp)
-            Button(onClick = { nav.navigate(FIN_AI_ROUTE) }, modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp)) { Text(btnLabel("✨ ИИ-разбор: итоги, дубли, советы")) }
+            Button(onClick = { nav.navigate(FIN_AI_ROUTE) }, modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp)) { com.dasein.poryadok.ui.common.AiLabel("ИИ-разбор: итоги, дубли, советы") }
             Gap(40.dp)
         }
     }

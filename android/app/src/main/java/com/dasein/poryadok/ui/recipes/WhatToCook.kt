@@ -144,7 +144,7 @@ fun WhatToCookScreen(nav: NavHostController) {
                             aiText = runCatching { aiIdea(ctx, have.toList()) }.getOrElse { "Не получилось: ${it.message}" }
                             aiBusy = false
                         }
-                    }) { Text(if (aiBusy) "ИИ придумывает…" else "✨ ИИ: придумать блюдо из этих продуктов") }
+                    }) { com.dasein.poryadok.ui.common.AiLabel("Придумать блюдо из этих продуктов", aiBusy, "ИИ придумывает…") }
                     aiText?.let { t ->
                         Column(Modifier.fillMaxWidth().padding(top = 8.dp).clip(RoundedCornerShape(16.dp)).background(extra.card).padding(12.dp)) {
                             RichText(t)

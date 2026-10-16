@@ -414,7 +414,7 @@ internal fun AiExamples(word: String, sp: Speaker) {
                 }.onFailure { error = it.message }
                 busy = false
             }
-        }) { Text(if (busy) "ИИ подбирает примеры…" else "Примеры из живой речи (ИИ)") }
+        }) { com.dasein.poryadok.ui.common.AiLabel("Примеры из живой речи (ИИ)", busy, "ИИ подбирает примеры…") }
         error?.let { Text(it, color = extra.danger, fontSize = 12.sp) }
         return
     }
