@@ -46,6 +46,30 @@ class UiTextEngine(val entries: List<Entry>, private val user: Map<String, Strin
 
     fun userValue(e: Entry): String? = user[e.orig]
 
+    /** Правки с экрана по тексту, которого нет в каталоге (удержание кнопки, режим редактора). */
+    val extraEdits: Map<String, String> by lazy { val known = entries.mapTo(HashSet()) { it.orig }; user.filterKeys { it !in known } }
+
+    private class Probe(val e: Entry, val regex: Regex, val chunk: String)
+    private val byOrig by lazy { entries.associateBy { it.orig } }
+    private val probes by lazy {
+        entries.filter { it.hasSlots }.mapNotNull { e -> rule(e.orig, "")?.let { Probe(e, it.regex, it.chunk) } }
+    }
+
+    /**
+     * Какие строки каталога составляют текст на экране: целиком, по шаблону или частями составной фразы.
+     * Пусто — такого текста в каталоге нет (его можно править как есть).
+     */
+    fun find(s: String): List<Entry> {
+        byOrig[s]?.let { return listOf(it) }
+        val parts = entries.filter { it.fragment && !it.hasSlots && it.orig.isNotBlank() && s.contains(it.orig) } +
+            probes.filter { it.e.fragment && (it.chunk.isEmpty() || s.contains(it.chunk)) && it.regex.containsMatchIn(s) }.map { it.e }
+        // Шаблон целиком (последняя подстановка может «съесть» приклеенные части — их тоже предлагаем).
+        probes.firstOrNull { !it.e.fragment && (it.chunk.isEmpty() || s.contains(it.chunk)) && it.regex.matches(s) }?.let { return listOf(it.e) + parts }
+        if (parts.isNotEmpty()) return parts
+        // Составная фраза, где первая часть — обычная строка каталога («Выкладывать {1} …» + « · круглые …»).
+        return probes.filter { !it.e.fragment && it.chunk.length >= 4 && s.contains(it.chunk) && Regex("^" + it.regex.pattern).containsMatchIn(s) }.map { it.e }.take(3)
+    }
+
     fun translate(s: String): String {
         if (s.isEmpty() || s.none { it.isLetter() }) return s
         exact[s]?.let { return it }

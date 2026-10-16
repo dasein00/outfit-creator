@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.dasein.poryadok.Graph
 import com.dasein.poryadok.data.Settings
+import com.dasein.poryadok.data.UiTexts
+import kotlinx.coroutines.launch
 import com.dasein.poryadok.ui.common.Button
 import com.dasein.poryadok.ui.common.Gap
 import com.dasein.poryadok.ui.common.Glyph
@@ -77,6 +79,27 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
     val look = Look.state.value
     fun set(f: (LookSettings) -> LookSettings) = Look.save(ctx, f(Look.state.value))
     var pick by remember { mutableStateOf<Pick?>(null) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var profileMsg by remember { mutableStateOf<String?>(null) }
+    var needRestart by remember { mutableStateOf(false) }
+    val profileExport = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        if (uri != null) scope.launch {
+            profileMsg = "Сохраняю оформление…"
+            profileMsg = com.dasein.poryadok.system.UiProfile.export(ctx, uri).fold(
+                { "Файл оформления сохранён (иконок и служебных файлов: $it). Пришлите его в чат с Claude, чтобы сделать это оформление стандартным." },
+                { "Не удалось сохранить: ${it.message}" },
+            )
+        }
+    }
+    val profileImport = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch {
+            profileMsg = "Применяю оформление…"
+            profileMsg = com.dasein.poryadok.system.UiProfile.import(ctx, uri).fold(
+                { needRestart = true; "Оформление загружено (файлов: $it). Перезапустите приложение, чтобы всё применилось." },
+                { "Не удалось загрузить: ${it.message}" },
+            )
+        }
+    }
 
     Screen("Оформление", onBack = { nav.popBackStack() }) { pad ->
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
@@ -182,6 +205,29 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
                 fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
             )
             Button(onClick = { nav.navigate(UI_TEXTS_ROUTE) }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 48.dp)) { Text(btnLabel("Редактировать тексты")) }
+            Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(btnLabel("Режим редактора"), fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Удерживайте любой текст в приложении 3 секунды — откроется окно, где можно изменить формулировку. Правки видны в «Редактировать тексты».",
+                        fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
+                    )
+                }
+                Switch(UiTexts.editorMode.value, { UiTexts.setEditorMode(it) })
+            }
+
+            SectionTitle("Файл оформления")
+            Text(
+                "Всё оформление одним файлом: тема, цвета, шрифт, тексты и названия кнопок, свои иконки, главная и виджет. Записей, PIN и ключей в нём нет. " +
+                    "Загрузите файл на другом телефоне или пришлите его в чат с Claude — тогда ваше оформление станет стандартным и появится сразу после установки.",
+                fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
+            )
+            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { profileExport.launch("DASEIN-оформление.zip") }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text(btnLabel("Экспорт оформления")) }
+                OutlinedButton(onClick = { profileImport.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text(btnLabel("Импорт оформления")) }
+            }
+            profileMsg?.let { Text(it, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp)) }
+            if (needRestart) OutlinedButton(onClick = { restartApp(ctx) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(min = 48.dp)) { Text(btnLabel("Перезапустить приложение")) }
 
             Gap(16.dp)
             OutlinedButton(onClick = { set { LookSettings() } }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(btnLabel("Вернуть оформление по умолчанию")) }
@@ -214,6 +260,17 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
             pick = null
         }
     }
+}
+
+/** Перезапуск после загрузки оформления — иконки, тексты и главная перечитываются с нуля. */
+private fun restartApp(ctx: android.content.Context) {
+    val i = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
+    if (i != null) {
+        i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ctx.startActivity(i)
+    }
+    (ctx as? android.app.Activity)?.finishAffinity()
+    Runtime.getRuntime().exit(0)
 }
 
 /** Живой пример: заголовок, текст, кнопки и иконки в текущем оформлении. */

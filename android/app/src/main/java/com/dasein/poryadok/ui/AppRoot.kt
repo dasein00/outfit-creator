@@ -1,6 +1,8 @@
 package com.dasein.poryadok.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -417,6 +419,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable(com.dasein.poryadok.ui.more.UI_TEXTS_ROUTE) { com.dasein.poryadok.ui.more.UiTextsScreen(nav) }
             composable(com.dasein.poryadok.ui.finance.FIN_INFO_ROUTE) { com.dasein.poryadok.ui.finance.FinanceInfographicScreen(nav, settings) }
         }
+        if (com.dasein.poryadok.data.UiTexts.editorMode.value) EditorModeStrip()
         if (showBar) {
             var editTab by remember { mutableStateOf<Pair<Int, Tab>?>(null) }
             // В нижней панели долгое нажатие — своё меню вкладки (там же меняется иконка раздела).
@@ -431,6 +434,19 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
         }
         com.dasein.poryadok.ui.common.IconEditHost()
         com.dasein.poryadok.ui.common.LabelEditHost()
+        com.dasein.poryadok.ui.more.TextEditHost()
+    }
+}
+
+/** Полоса «Режим редактора» над нижней панелью: напоминает, как править текст, и выключает режим. */
+@Composable
+private fun EditorModeStrip() {
+    Row(
+        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary.copy(alpha = .12f)).padding(start = 14.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("✎ Режим редактора: удерживайте любой текст 3 секунды", Modifier.weight(1f), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+        androidx.compose.material3.TextButton(onClick = { com.dasein.poryadok.data.UiTexts.setEditorMode(false) }) { Text("Выключить", fontSize = 12.sp) }
     }
 }
 

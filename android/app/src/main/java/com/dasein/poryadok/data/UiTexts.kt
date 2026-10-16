@@ -55,6 +55,19 @@ object UiTexts {
         version.intValue++
     }
 
+    private const val EDITOR_KEY = "text_editor_mode"
+    /** Режим редактора: удержание любого текста 3 секунды открывает окно правки. */
+    val editorMode = androidx.compose.runtime.mutableStateOf(
+        runCatching { Graph.app.getSharedPreferences("ui_state", Context.MODE_PRIVATE).getBoolean(EDITOR_KEY, false) }.getOrDefault(false)
+    )
+    /** Текст (как в коде), который сейчас правят в режиме редактора. */
+    val editTarget = androidx.compose.runtime.mutableStateOf<String?>(null)
+
+    fun setEditorMode(on: Boolean) {
+        editorMode.value = on
+        runCatching { Graph.app.getSharedPreferences("ui_state", Context.MODE_PRIVATE).edit().putBoolean(EDITOR_KEY, on).apply() }
+    }
+
     /** Прогрев в фоне при старте, чтобы первый экран не ждал чтения каталога. */
     fun warmUp() { runCatching { engine() } }
 }

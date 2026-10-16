@@ -54,6 +54,40 @@ const val UI_TEXTS_ROUTE = "uiTexts"
 
 private enum class TextFilter(val title: String) { ALL("Все"), CHANGED("Изменённые"), MINE("Мои правки"), SAME("Без изменений"), SUGGESTED("Есть предложение") }
 
+/** Текст с экрана, которого нет в каталоге (динамический или составной), — правится как есть. */
+private const val SCREEN_SECTION = "Правки с экрана"
+private fun screenEntry(raw: String) = UiTextEngine.Entry(-(raw.hashCode().and(0x7fffffff)) - 1, SCREEN_SECTION, "с экрана", false, raw, "", "")
+
+/**
+ * Окно режима редактора: удержали текст 3 секунды — правим его. Если текст собран из нескольких строк каталога,
+ * сначала выбираем, какую часть менять. Правка сразу видна в «Текстах интерфейса».
+ */
+@Composable
+fun TextEditHost() {
+    val raw = UiTexts.editTarget.value ?: return
+    val engine = remember(UiTexts.version.intValue) { UiTexts.engine() }
+    val found = remember(raw, engine) { engine.find(raw) }
+    var pick by remember(raw) { mutableStateOf(found.singleOrNull() ?: if (found.isEmpty()) screenEntry(raw) else null) }
+    val close = { UiTexts.editTarget.value = null }
+    androidx.compose.runtime.CompositionLocalProvider(com.dasein.poryadok.ui.common.LocalIconEditable provides false) {
+        val p = pick
+        if (p != null) EditTextDialog(p, engine, close)
+        else AlertDialog(
+            onDismissRequest = close,
+            title = { Text("Какую часть изменить?") },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    RawText(shownLine(raw), fontSize = 13.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(bottom = 8.dp))
+                    (found + screenEntry(raw)).forEach { e ->
+                        Variant(if (e.section == SCREEN_SECTION) "Весь текст целиком" else e.section, engine.effective(e)) { pick = e }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = close) { Text("Отмена") } },
+        )
+    }
+}
+
 private fun norm(s: String) = s.lowercase().replace('ё', 'е')
 
 /**
@@ -66,7 +100,7 @@ fun UiTextsScreen(nav: NavHostController) {
     val extra = LocalExtra.current
     val ver = UiTexts.version.intValue
     val engine = remember(ver) { UiTexts.engine() }
-    val all = engine.entries
+    val all = remember(engine) { engine.entries + engine.extraEdits.keys.map { screenEntry(it) } }
     val sections = remember(all) { all.map { it.section }.distinct() }
     var query by rememberSaveable { mutableStateOf("") }
     var section by rememberSaveable { mutableStateOf<String?>(null) }
@@ -194,7 +228,7 @@ private fun TextRow(e: UiTextEngine.Entry, engine: UiTextEngine, onClick: () -> 
 }
 
 @Composable
-private fun EditTextDialog(e: UiTextEngine.Entry, engine: UiTextEngine, onClose: () -> Unit) {
+internal fun EditTextDialog(e: UiTextEngine.Entry, engine: UiTextEngine, onClose: () -> Unit) {
     val extra = LocalExtra.current
     var value by remember(e) { mutableStateOf(engine.effective(e)) }
     val lead = e.orig.takeWhile { it.isWhitespace() }
@@ -204,7 +238,8 @@ private fun EditTextDialog(e: UiTextEngine.Entry, engine: UiTextEngine, onClose:
         title = { Text("Текст интерфейса") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                Variant("Как в коде", e.orig) { value = e.orig }
+                Text("Нажмите на вариант, чтобы взять его, или напишите свой.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(bottom = 6.dp))
+                Variant(if (e.section == SCREEN_SECTION) "Текст на экране" else "Как в коде", e.orig) { value = e.orig }
                 if (e.suggestion.isNotEmpty()) Variant("Предложение дизайнера", e.suggestion) { value = e.suggestion }
                 if (e.final.isNotEmpty()) Variant("Ваш вариант из документа", e.final) { value = e.final }
                 OutlinedTextField(
@@ -217,6 +252,10 @@ private fun EditTextDialog(e: UiTextEngine.Entry, engine: UiTextEngine, onClose:
                 )
                 if (e.fragment) Text(
                     "Это часть составной фразы — заменяется внутри строки, пробелы по краям сохранятся.",
+                    fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
+                )
+                if (e.section == SCREEN_SECTION) Text(
+                    "Этого текста нет в общем списке (он собирается из чисел и слов) — правка сработает, когда на экране будет ровно такой текст.",
                     fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
                 )
                 Text(e.section + " · " + e.ref, fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
@@ -243,7 +282,7 @@ private fun Variant(title: String, text: String, onTake: () -> Unit) {
         Modifier.fillMaxWidth().padding(bottom = 6.dp).clip(RoundedCornerShape(10.dp)).background(extra.card)
             .clickable(onClick = onTake).padding(horizontal = 10.dp, vertical = 7.dp),
     ) {
-        Text("$title — нажмите, чтобы взять", fontSize = 11.sp, color = extra.dim)
+        Text(title, fontSize = 11.sp, color = extra.dim)
         RawText(shownLine(text), fontSize = 14.sp, lineHeight = 19.sp)
     }
 }

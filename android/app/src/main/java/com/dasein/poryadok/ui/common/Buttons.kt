@@ -113,6 +113,8 @@ fun Modifier.labelLongPress(holder: LabelHolder): Modifier = pointerInput(holder
         val down = awaitFirstDown(requireUnconsumed = false)
         // Внутренний элемент получает касание раньше внешнего: если он уже взял его, внешний молчит.
         if (holder.label == null && holder.icon == null) return@awaitEachGesture
+        // В режиме редактора текстов удержание — правка текста (3 секунды), окно кнопки не мешает.
+        if (UiTexts.editorMode.value) return@awaitEachGesture
         if (LabelEdit.claimed == down.id) return@awaitEachGesture
         LabelEdit.claimed = down.id
         val slop = viewConfiguration.touchSlop

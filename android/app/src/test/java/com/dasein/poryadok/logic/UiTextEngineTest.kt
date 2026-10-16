@@ -50,6 +50,15 @@ class UiTextEngineTest {
         assertEquals("Вы прочитали все 3 фактов! Начинаем новый круг.", en.translate("Вы прочитали все 3 фактов! Начинаем новый круг."))
     }
 
+    @Test fun findsCatalogRowsForScreenText() {
+        val en = UiTextEngine(entries, mapOf("Кнопка 5" to "Пятая"))
+        assertEquals(listOf(1), en.find("Стереть").map { it.id })
+        assertEquals(listOf(4), en.find("Пульс 64, давление 120/80").map { it.id })
+        assertEquals(listOf(3), en.find("Выкладывать 900 страз · круглые стразы 2,8 мм").map { it.id })
+        assertEquals(emptyList<Int>(), en.find("Кнопка 5").map { it.id })
+        assertEquals(mapOf("Кнопка 5" to "Пятая"), en.extraEdits)
+    }
+
     @Test fun parsesCatalog() {
         val l = UiTextEngine.parse(sequenceOf("9\tРаздел\tA.kt:1\tL\tСтрока\\nвторая\t\tСтрока 2", "плохая строка"))
         assertEquals(1, l.size)
