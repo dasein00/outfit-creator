@@ -89,7 +89,7 @@ class BookWriter(val dir: File) {
                 pos = c
             }
             if (cut < 0 || cut >= html.length - 100) break
-            outList += prefix + html.substring(start, cut) + stack.reversed().joinToString("") { "</${it.first}>" }
+            outList += prefix + html.substring(start, cut) + stack.asReversed().joinToString("") { "</${it.first}>" }
             prefix = stack.joinToString("") { it.second.replace(Regex("\\sid\\s*=\\s*(\"[^\"]*\"|'[^']*')"), "") }
             start = cut
         }

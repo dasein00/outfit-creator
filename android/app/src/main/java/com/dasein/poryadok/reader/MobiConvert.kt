@@ -250,7 +250,7 @@ object MobiConvert {
     private fun mobi6Chapters(raw: ByteArray, h: Header, image: (Int) -> String?): List<String> {
         var s = String(raw, Charsets.ISO_8859_1)
         // Якоря для filepos: вставляем <a id="fpN"> в нужные места (с конца, чтобы смещения не сдвигались).
-        val targets = Regex("filepos\\s*=\\s*[\"']?0*(\\d+)").findAll(s).mapNotNull { it.groupValues[1].toIntOrNull() }.filter { it in 0..s.length }.toSortedSet().reversed()
+        val targets = Regex("filepos\\s*=\\s*[\"']?0*(\\d+)").findAll(s).mapNotNull { it.groupValues[1].toIntOrNull() }.filter { it in 0..s.length }.distinct().sortedDescending()
         val sb = StringBuilder(s)
         targets.forEach { pos ->
             var p = pos
