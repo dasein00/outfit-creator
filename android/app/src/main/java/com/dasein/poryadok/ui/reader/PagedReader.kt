@@ -483,6 +483,7 @@ private fun PageNoteDialog(page: Int, onDismiss: () -> Unit, onSave: (String) ->
 }
 
 /** Страница в режиме листания: щипок — увеличение, двойное нажатие — приблизить. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun ZoomPage(src: PageSource, cache: LruCache<String, Bitmap>, i: Int, w: Int, crop: Boolean, filter: ColorFilter?, onTap: (Offset) -> Unit) {
     val bmp by produceState<Bitmap?>(cache.get("$i:$w:$crop"), i, w, crop) {
