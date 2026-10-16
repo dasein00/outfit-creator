@@ -278,7 +278,7 @@ fun PencilsScreen(nav: NavHostController) {
                 }
             }
             SectionTitle("Свои цвета")
-            Text("Если оттенка нет в списке — добавьте его: ползунками, HEX-кодом или касанием «Подобрать по номеру DMC».", fontSize = 12.sp, color = extra.dim)
+            Text("Если оттенка нет в списке — добавьте его: ползунками, HEX-кодом, касанием «Подобрать по номеру DMC» или пипеткой по фото ниже.", fontSize = 12.sp, color = extra.dim)
             custom.forEach { c ->
                 Row(Modifier.fillMaxWidth().clickable { edit = c }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(28.dp).clip(RoundedCornerShape(6.dp)).background(sw(c.rgb)).border(1.dp, extra.line, RoundedCornerShape(6.dp)))
@@ -287,6 +287,8 @@ fun PencilsScreen(nav: NavHostController) {
                 }
             }
             OutlinedButton(onClick = { edit = MyPencil(0, 0x9E9E9E) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text(btnLabel("+ Добавить свой цвет")) }
+            SectionTitle("Цвет по фото")
+            PencilPhotoPicker { rgb -> edit = MyPencil(0, rgb) }
             Gap(40.dp)
         }
     }
