@@ -83,12 +83,12 @@ object CraftStore {
     fun delete(ctx: Context, id: Long) { listOf(photo(ctx, id), original(ctx, id), meta(ctx, id), cellsFile(ctx, id)).forEach { it.delete() } }
 
     /** Копирует фото к себе (не больше 2000 px, с учётом поворота из EXIF) и заводит работу. */
-    suspend fun create(ctx: Context, uri: Uri): CraftProject = withContext(Dispatchers.IO) {
+    suspend fun create(ctx: Context, uri: Uri, kind: CraftPattern.Kind = CraftPattern.Kind.DIAMOND): CraftProject = withContext(Dispatchers.IO) {
         val bmp = decode(ctx, uri, 2000) ?: error("Не удалось открыть фото")
         val id = System.currentTimeMillis()
         original(ctx, id).outputStream().use { bmp.compress(Bitmap.CompressFormat.JPEG, 92, it) }
         original(ctx, id).copyTo(photo(ctx, id), overwrite = true)
-        val p = CraftProject(id = id, name = "Схема ${java.text.SimpleDateFormat("d.MM HH:mm", java.util.Locale("ru")).format(java.util.Date(id))}", createdAt = id)
+        val p = CraftProject(id = id, name = "${kind.title} ${java.text.SimpleDateFormat("d.MM HH:mm", java.util.Locale("ru")).format(java.util.Date(id))}", createdAt = id, kind = kind.name)
         save(ctx, p)
         p
     }

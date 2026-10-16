@@ -71,6 +71,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.navigation.NavHostController
 import com.dasein.poryadok.logic.CraftPattern
+import com.dasein.poryadok.system.PbnStore
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.dasein.poryadok.system.CraftProject
 import com.dasein.poryadok.system.CraftStore
 import com.dasein.poryadok.ui.Routes
@@ -107,75 +109,112 @@ fun ColorChip(t: CraftPattern.Thread, index: Int, size: Int = 28) {
     }
 }
 
-/** «Рукоделие»: схемы для алмазной мозаики, вышивки крестом и бисера из любой фотографии. */
+/** Вкладки «Рукоделия» — как в приложениях-органайзерах рукоделия: у каждой техники свои работы и материалы. */
+private enum class CraftTab(val title: String, val kind: CraftPattern.Kind?) {
+    DIAMOND("Алмазная мозаика", CraftPattern.Kind.DIAMOND),
+    CROSS("Вышивка крестиком", CraftPattern.Kind.CROSS),
+    BEADS("Бисер", CraftPattern.Kind.BEADS),
+    PBN("Картины по номерам", null),
+}
+
+/** «Рукоделие»: алмазная мозаика, вышивка крестиком, бисер и картины по номерам — схемы из любой фотографии. */
 @Composable
 fun CraftHomeScreen(nav: NavHostController) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     val scope = rememberCoroutineScope()
+    val sp = remember { ctx.getSharedPreferences("ui_state", android.content.Context.MODE_PRIVATE) }
+    var tab by rememberSaveable { mutableStateOf(CraftTab.entries.getOrElse(sp.getInt("craft_tab", 0)) { CraftTab.DIAMOND }) }
     var refresh by remember { mutableStateOf(0) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var toDelete by remember { mutableStateOf<CraftProject?>(null) }
-    val projects = remember(refresh) { CraftStore.list(ctx) }
+    val all = remember(refresh) { CraftStore.list(ctx) }
+    val pbnCount = remember(refresh, tab) { PbnStore.list(ctx).size }
+    val kind = tab.kind
+    val projects = all.filter { it.kindEnum == kind }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) scope.launch {
             busy = true
-            runCatching { CraftStore.create(ctx, uri) }
+            runCatching { CraftStore.create(ctx, uri, kind ?: CraftPattern.Kind.DIAMOND) }
                 .onSuccess { nav.navigate(Routes.craft(it.id)) }
                 .onFailure { error = it.message }
             busy = false; refresh++
         }
     }
+    fun newPattern() = picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
     Screen(
         "Рукоделие", onBack = { nav.popBackStack() },
         fab = {
-            FloatingActionButton(onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, containerColor = MaterialTheme.colorScheme.primary) {
+            if (kind != null) FloatingActionButton(onClick = { newPattern() }, containerColor = MaterialTheme.colorScheme.primary) {
                 Icon(Icons.Default.Add, "Новая схема")
             }
         },
     ) { pad ->
-        Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            Text(
-                "Выберите любое фото — приложение превратит его в схему для алмазной мозаики, вышивки крестом или бисера: " +
-                    "подберёт цвета по самой картинке и каталогу DMC, даст каждому цвету свой символ (1, 2, 3… A, B, C…), посчитает материалы " +
-                    "и сделает схему для печати на A4–A0 или в натуральную величину.",
-                fontSize = 14.sp, color = extra.dim, lineHeight = 20.sp,
-            )
-            Gap(10.dp)
-            Button(onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                Text(btnLabel("Схема из фото"))
-            }
-            Button(onClick = { nav.navigate(Routes.CRAFT_PBN) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                Text("🖍 Картины по номерам — раскраска для карандашей")
-            }
-            OutlinedButton(onClick = { nav.navigate(Routes.CRAFT_MINE) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                Text("📷 Мои стразы по фото (${CraftStore.mine(ctx).size} цветов)")
-            }
-            OutlinedButton(onClick = { nav.navigate(Routes.CRAFT_STASH) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                Text("Мои запасы DMC (${CraftStore.stash(ctx).size} цветов)")
-            }
-            if (busy) Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Text(btnLabel("  Готовлю фото…"))
-            }
-            error?.let { Text(it, color = extra.danger, modifier = Modifier.padding(top = 8.dp)) }
-            SectionTitle("Мои схемы")
-            if (projects.isEmpty()) Empty(Ic.image, "Пока нет схем", "Лучше всего получаются фото с крупным объектом и чётким контрастом: портрет, питомец, цветы, пейзаж.")
-            projects.forEach { p ->
-                Tile(Modifier.padding(bottom = 8.dp), onClick = { nav.navigate(Routes.craft(p.id)) }, onLongClick = { toDelete = p }) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        val thumb = remember(p.id) { runCatching { BitmapFactory.decodeFile(CraftStore.photo(ctx, p.id).absolutePath, BitmapFactory.Options().apply { inSampleSize = 8 }) }.getOrNull() }
-                        thumb?.let { Image(it.asImageBitmap(), null, Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop) }
-                        Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                            Text(p.name, fontWeight = FontWeight.SemiBold)
-                            Text("${p.kindEnum.title} · ${p.width} клеток в ширину · до ${p.colors} цветов", fontSize = 12.sp, color = extra.dim)
-                        }
-                        IconAction(Ic.trash, "Удалить") { toDelete = p }
-                    }
+        Column(Modifier.padding(pad).verticalScroll(rememberScrollState())) {
+            androidx.compose.foundation.lazy.LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+            ) {
+                items(CraftTab.entries.size) { i ->
+                    val t = CraftTab.entries[i]
+                    val n = if (t.kind == null) pbnCount else all.count { it.kindEnum == t.kind }
+                    Pill(if (n > 0) "${t.title} · $n" else t.title, tab == t) { tab = t; sp.edit().putInt("craft_tab", t.ordinal).apply() }
                 }
             }
-            HowTo("craft")
-            Gap(96.dp)
+            Column(Modifier.padding(horizontal = 16.dp)) {
+                Gap(10.dp)
+                if (kind == null) PbnHomeContent(nav) else {
+                    Text(
+                        when (kind) {
+                            CraftPattern.Kind.DIAMOND -> "Алмазная мозаика по любому фото: квадратные или круглые стразы, цвета по каталогу DMC, у каждого цвета свой символ. " +
+                                "Приложение посчитает стразы с запасом и сделает схему для печати на A4–A0 или в натуральную величину."
+                            CraftPattern.Kind.CROSS -> "Схема вышивки крестиком по фото: канва Аида 11–18, мулине по каталогу DMC, символы на клетках, " +
+                                "сколько мотков каждого цвета купить и схема по листам с номерами рядов и сеткой через 10."
+                            CraftPattern.Kind.BEADS -> "Схема для вышивки бисером 10/0 по фото: цвета по каталогу DMC, символы на клетках, " +
+                                "сколько граммов каждого цвета нужно и схема для печати."
+                        },
+                        fontSize = 14.sp, color = extra.dim, lineHeight = 20.sp,
+                    )
+                    Gap(10.dp)
+                    Button(onClick = { newPattern() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                        Text(btnLabel(when (kind) { CraftPattern.Kind.DIAMOND -> "Новая мозаика из фото"; CraftPattern.Kind.CROSS -> "Новая вышивка из фото"; else -> "Новая схема из фото" }))
+                    }
+                    if (kind == CraftPattern.Kind.DIAMOND) OutlinedButton(onClick = { nav.navigate(Routes.CRAFT_MINE) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                        Text("📷 Мои стразы по фото (${CraftStore.mine(ctx).size} цветов)")
+                    }
+                    OutlinedButton(onClick = { nav.navigate(Routes.CRAFT_STASH) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                        Text(
+                            when (kind) {
+                                CraftPattern.Kind.DIAMOND -> "Мои запасы страз DMC"
+                                CraftPattern.Kind.CROSS -> "Мои нитки мулине DMC"
+                                else -> "Мои запасы DMC"
+                            } + " (${CraftStore.stash(ctx).size} цветов)",
+                        )
+                    }
+                    if (busy) Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Text(btnLabel("  Готовлю фото…"))
+                    }
+                    error?.let { Text(it, color = extra.danger, modifier = Modifier.padding(top = 8.dp)) }
+                    SectionTitle(when (kind) { CraftPattern.Kind.DIAMOND -> "Мои мозаики"; CraftPattern.Kind.CROSS -> "Мои вышивки"; else -> "Мои схемы" })
+                    if (projects.isEmpty()) Empty(Ic.image, "Пока нет работ", "Лучше всего получаются фото с крупным объектом и чётким контрастом: портрет, питомец, цветы, пейзаж.")
+                    projects.forEach { p ->
+                        Tile(Modifier.padding(bottom = 8.dp), onClick = { nav.navigate(Routes.craft(p.id)) }, onLongClick = { toDelete = p }) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                val thumb = remember(p.id) { runCatching { BitmapFactory.decodeFile(CraftStore.photo(ctx, p.id).absolutePath, BitmapFactory.Options().apply { inSampleSize = 8 }) }.getOrNull() }
+                                thumb?.let { Image(it.asImageBitmap(), null, Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop) }
+                                Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                                    Text(p.name, fontWeight = FontWeight.SemiBold)
+                                    Text("${p.width} клеток в ширину · до ${p.colors} цветов", fontSize = 12.sp, color = extra.dim)
+                                }
+                                IconAction(Ic.trash, "Удалить") { toDelete = p }
+                            }
+                        }
+                    }
+                    HowTo("craft")
+                }
+                Gap(96.dp)
+            }
         }
     }
     toDelete?.let { p ->

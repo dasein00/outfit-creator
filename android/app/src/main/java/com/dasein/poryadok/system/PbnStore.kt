@@ -34,11 +34,13 @@ data class PbnProject(
     /** Размер листа: 0 — A4, 1 — A3. */
     val paper: Int = 0,
     val createdAt: Long = 0,
+    /** Чем раскрашивать: 0 — карандаши, 1 — маркеры, 2 — краски. */
+    val medium: Int = 0,
 )
 
 /** Свой карандаш, которого нет в стандартном списке. */
 @Serializable
-data class MyPencil(val n: Int, val rgb: Int, val name: String = "")
+data class MyPencil(val n: Int, val rgb: Int, val name: String = "", val medium: Int = 0)
 
 object PbnStore {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -59,7 +61,7 @@ object PbnStore {
         val bmp = CraftStore.decode(ctx, uri, 1400) ?: error("Не удалось открыть фото")
         photo(ctx, id).outputStream().use { bmp.compress(Bitmap.CompressFormat.JPEG, 92, it) }
         val n = list(ctx).size + 1
-        PbnProject(id, "Картина $n", createdAt = id).also { save(ctx, it) }
+        PbnProject(id, "Картина $n", createdAt = id, medium = lastMedium(ctx)).also { save(ctx, it) }
     }
 
     // ---------- Мои карандаши ----------
@@ -69,24 +71,42 @@ object PbnStore {
     private fun sp(ctx: Context) = ctx.getSharedPreferences("ui_state", Context.MODE_PRIVATE)
     private fun customFile(ctx: Context) = File(root(ctx), "pencils.palette")
 
-    /** Отмеченные стандартные карандаши. По умолчанию — набор из 24 цветов. */
-    fun owned(ctx: Context): Set<String> = sp(ctx).getString("pbn_owned", null)?.split(',')?.filter { it.isNotBlank() }?.toSet()
-        ?: PaintByNumbers.SETS[1].second.toSet()
+    private fun ownedKey(m: PaintByNumbers.Medium) = when (m) {
+        PaintByNumbers.Medium.PENCIL -> "pbn_owned"; PaintByNumbers.Medium.MARKER -> "pbn_owned_marker"; PaintByNumbers.Medium.PAINT -> "pbn_owned_paint"
+    }
 
-    fun setOwned(ctx: Context, s: Set<String>) { sp(ctx).edit().putString("pbn_owned", s.joinToString(",")).apply(); version.intValue++ }
+    /** Отмеченные цвета из каталога материала. По умолчанию — средний набор (24 карандаша, 24 маркера, 12 красок). */
+    fun owned(ctx: Context, m: PaintByNumbers.Medium = PaintByNumbers.Medium.PENCIL): Set<String> =
+        sp(ctx).getString(ownedKey(m), null)?.split(',')?.filter { it.isNotBlank() }?.toSet()
+            ?: (if (m == PaintByNumbers.Medium.PAINT) m.sets[0] else m.sets[1]).second.toSet()
 
-    fun custom(ctx: Context): List<MyPencil> = runCatching {
+    fun setOwned(ctx: Context, s: Set<String>, m: PaintByNumbers.Medium = PaintByNumbers.Medium.PENCIL) {
+        sp(ctx).edit().putString(ownedKey(m), s.joinToString(",")).apply(); version.intValue++
+    }
+
+    /** Свои цвета всех материалов (у каждого — свой [MyPencil.medium]). */
+    fun customAll(ctx: Context): List<MyPencil> = runCatching {
         json.decodeFromString(ListSerializer(MyPencil.serializer()), customFile(ctx).readText())
     }.getOrDefault(emptyList())
 
-    fun setCustom(ctx: Context, l: List<MyPencil>) { runCatching { customFile(ctx).writeText(json.encodeToString(ListSerializer(MyPencil.serializer()), l)) }; version.intValue++ }
+    fun custom(ctx: Context, m: PaintByNumbers.Medium = PaintByNumbers.Medium.PENCIL): List<MyPencil> = customAll(ctx).filter { it.medium == m.ordinal }
 
-    /** Все карандаши, которые есть: отмеченные из списка + свои («К1», «К2»…). */
-    fun pencils(ctx: Context): List<PaintByNumbers.Pencil> {
-        val own = owned(ctx)
-        return PaintByNumbers.CATALOG.filter { it.code in own } +
-            custom(ctx).map { PaintByNumbers.Pencil("К${it.n}", it.name.ifBlank { "Свой цвет ${it.n}" }, it.rgb) }
+    /** Сохранить свои цвета материала [m], не трогая остальные. */
+    fun setCustom(ctx: Context, l: List<MyPencil>, m: PaintByNumbers.Medium = PaintByNumbers.Medium.PENCIL) {
+        val all = customAll(ctx).filter { it.medium != m.ordinal } + l.map { it.copy(medium = m.ordinal) }
+        runCatching { customFile(ctx).writeText(json.encodeToString(ListSerializer(MyPencil.serializer()), all)) }; version.intValue++
     }
+
+    /** Всё, что есть из материала: отмеченные из каталога + свои («С1», «С2»…). */
+    fun pencils(ctx: Context, m: PaintByNumbers.Medium = PaintByNumbers.Medium.PENCIL): List<PaintByNumbers.Pencil> {
+        val own = owned(ctx, m)
+        return m.catalog.filter { it.code in own } +
+            custom(ctx, m).map { PaintByNumbers.Pencil("С${it.n}", it.name.ifBlank { "Свой цвет ${it.n}" }, it.rgb) }
+    }
+
+    /** Какой материал выбран последним — с него начинается новая раскраска. */
+    fun lastMedium(ctx: Context): Int = sp(ctx).getInt("pbn_medium", 0)
+    fun setLastMedium(ctx: Context, m: Int) { sp(ctx).edit().putInt("pbn_medium", m).apply() }
 
     // ---------- Расчёт ----------
 
@@ -98,7 +118,8 @@ object PbnStore {
         val w = maxOf(40, (bmp.width * k).roundToInt()); val h = maxOf(40, (bmp.height * k).roundToInt())
         val small = Bitmap.createScaledBitmap(bmp, w, h, true)
         val px = IntArray(w * h).also { small.getPixels(it, 0, w, 0, 0, w, h) }.map { it and 0xFFFFFF }.toIntArray()
-        val pencils = pencils(ctx).takeIf { it.size >= 2 } ?: PaintByNumbers.CATALOG
+        val m = PaintByNumbers.Medium.of(p.medium)
+        val pencils = pencils(ctx, m).takeIf { it.size >= 2 } ?: m.catalog
         PaintByNumbers.build(px, w, h, pencils, p.colors, p.detail)
     }
 
@@ -184,7 +205,7 @@ object PbnStore {
                 num.color = if (PaintByNumbers.dark(pc.rgb)) Color.WHITE else Color.BLACK
                 c.drawText("${i + 1}", x + 11, y + 10.2f, num)
                 c.drawText(pc.name.take(18), x + 25, y + 6, txt)
-                c.drawText(if (pc.code.startsWith("К")) "свой" else "№ ${pc.code}", x + 25, y + 13, txt)
+                c.drawText(if (pc.code.startsWith("С")) "свой" else "№ ${pc.code}", x + 25, y + 13, txt)
             }
             doc.finishPage(pg)
         }

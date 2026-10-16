@@ -9,13 +9,23 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -65,9 +75,9 @@ private class PencilShot(val bmp: Bitmap, val px: IntArray, val paper: Int?)
 private fun sw(rgb: Int) = Color(rgb or (0xFF shl 24))
 
 /** Ближайший карандаш каталога — подсказка, на какой номер похож цвет. */
-private fun nearestPencil(rgb: Int): PaintByNumbers.Pencil? {
+private fun nearestPencil(rgb: Int, medium: PaintByNumbers.Medium): PaintByNumbers.Pencil? {
     val l = CraftPattern.lab(rgb)
-    return PaintByNumbers.CATALOG.minByOrNull { StoneColors.deltaE(l, CraftPattern.lab(it.rgb)) }
+    return medium.catalog.minByOrNull { StoneColors.deltaE(l, CraftPattern.lab(it.rgb)) }
 }
 
 /**
@@ -76,7 +86,7 @@ private fun nearestPencil(rgb: Int): PaintByNumbers.Pencil? {
  * [onAdd] — выбранный цвет (дальше открывается окно с названием).
  */
 @Composable
-internal fun PencilPhotoPicker(onAdd: (Int) -> Unit) {
+internal fun PencilPhotoPicker(medium: PaintByNumbers.Medium = PaintByNumbers.Medium.PENCIL, onAdd: (Int) -> Unit) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     val scope = rememberCoroutineScope()
@@ -84,7 +94,6 @@ internal fun PencilPhotoPicker(onAdd: (Int) -> Unit) {
     var shot by remember { mutableStateOf<PencilShot?>(null) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    var point by remember { mutableStateOf<Offset?>(null) }
     var color by remember { mutableStateOf<Int?>(null) }
     var balance by remember { mutableStateOf(true) }
     var radius by remember { mutableStateOf(3f) }
@@ -100,7 +109,7 @@ internal fun PencilPhotoPicker(onAdd: (Int) -> Unit) {
                 }.getOrNull()
             }
             busy = false
-            if (s == null) error = "Не удалось открыть фото." else { shot = s; point = null; color = null }
+            if (s == null) error = "Не удалось открыть фото." else { shot = s; color = null }
         }
     }
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { it?.let(::load) }
@@ -110,7 +119,11 @@ internal fun PencilPhotoPicker(onAdd: (Int) -> Unit) {
 
     Column {
         Text(
-            "Сфотографируйте карандаш или штрих на белой бумаге при дневном свете без вспышки — и возьмите цвет пипеткой.",
+            when (medium) {
+                PaintByNumbers.Medium.PENCIL -> "Сфотографируйте карандаш или штрих на белой бумаге"
+                PaintByNumbers.Medium.MARKER -> "Сфотографируйте выкрас маркера (закрашенный квадратик) на белой бумаге"
+                PaintByNumbers.Medium.PAINT -> "Сфотографируйте мазок или выкрас краски на белой бумаге"
+            } + " при дневном свете без вспышки — и возьмите цвет пипеткой. Двумя пальцами фото можно увеличить.",
             fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
         )
         Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -125,38 +138,96 @@ internal fun PencilPhotoPicker(onAdd: (Int) -> Unit) {
         error?.let { Text(it, color = extra.danger, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp)) }
 
         shot?.let { s ->
-            fun sampleAt(o: Offset, w: Int, h: Int) {
-                val x = (o.x / w * s.bmp.width).roundToInt().coerceIn(0, s.bmp.width - 1)
-                val y = (o.y / h * s.bmp.height).roundToInt().coerceIn(0, s.bmp.height - 1)
-                val rad = maxOf(1, (s.bmp.width / 400f * radius).roundToInt())
-                point = o
+            val boxH = (LocalConfiguration.current.screenHeightDp / 3).dp
+            var zoom by remember(s) { mutableFloatStateOf(1f) }
+            var pan by remember(s) { mutableStateOf(Offset.Zero) }
+            /** Точка пипетки — в долях картинки (0..1), чтобы оставаться на месте при масштабе. */
+            var at by remember(s) { mutableStateOf<Offset?>(null) }
+            var boxSize by remember { mutableStateOf(IntSize.Zero) }
+            // Где лежит картинка внутри рамки (вписана целиком, по центру).
+            fun fit(): Rect {
+                val bw = boxSize.width.toFloat(); val bh = boxSize.height.toFloat()
+                val k = minOf(bw / s.bmp.width, bh / s.bmp.height)
+                val w = s.bmp.width * k; val h = s.bmp.height * k
+                return Rect((bw - w) / 2, (bh - h) / 2, (bw + w) / 2, (bh + h) / 2)
+            }
+            fun center() = Offset(boxSize.width / 2f, boxSize.height / 2f)
+            fun toImage(p: Offset): Offset? {
+                val q = (p - center() - pan) / zoom + center()
+                val r = fit()
+                if (r.width <= 0f) return null
+                return Offset(((q.x - r.left) / r.width).coerceIn(0f, 1f), ((q.y - r.top) / r.height).coerceIn(0f, 1f))
+            }
+            fun toScreen(f: Offset): Offset {
+                val r = fit()
+                val q = Offset(r.left + f.x * r.width, r.top + f.y * r.height)
+                return (q - center()) * zoom + center() + pan
+            }
+            fun sampleAt(p: Offset) {
+                val f = toImage(p) ?: return
+                val x = (f.x * s.bmp.width).roundToInt().coerceIn(0, s.bmp.width - 1)
+                val y = (f.y * s.bmp.height).roundToInt().coerceIn(0, s.bmp.height - 1)
+                // Размер пипетки — в точках экрана: при увеличении берётся меньший участок фото.
+                val rad = maxOf(1, (radius * 2.5f / zoom * s.bmp.width / maxOf(1f, fit().width)).roundToInt())
+                at = f
                 color = StoneColors.sample(s.px, s.bmp.width, s.bmp.height, x, y, rad, if (balance) s.paper else null)
             }
             Text(
-                "Коснитесь нужного места или ведите пальцем — пипетка над пальцем покажет цвет.",
+                "Коснитесь нужного места или ведите пальцем — пипетка над пальцем покажет цвет. Двумя пальцами — увеличить и сдвинуть.",
                 fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp),
             )
             Box(
-                Modifier.fillMaxWidth().aspectRatio(s.bmp.width.toFloat() / s.bmp.height).clip(RoundedCornerShape(12.dp))
-                    .pointerInput(s, balance, radius) { detectTapGestures { o -> sampleAt(o, size.width, size.height) } }
+                Modifier.fillMaxWidth().height(boxH).clip(RoundedCornerShape(12.dp)).background(extra.card)
+                    .onSizeChanged { boxSize = it }
                     .pointerInput(s, balance, radius) {
-                        detectDragGestures(
-                            onDragStart = { o -> sampleAt(o.copy(y = (o.y - lift).coerceAtLeast(0f)), size.width, size.height) },
-                        ) { change, _ ->
-                            change.consume()
-                            val o = change.position
-                            sampleAt(Offset(o.x.coerceIn(0f, size.width - 1f), (o.y - lift).coerceIn(0f, size.height - 1f)), size.width, size.height)
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            var multi = false
+                            var moved = false
+                            var last = down.position
+                            while (true) {
+                                val ev = awaitPointerEvent()
+                                val pressed = ev.changes.filter { it.pressed }
+                                if (pressed.isEmpty()) break
+                                if (pressed.size >= 2) {
+                                    multi = true
+                                    val z = ev.calculateZoom()
+                                    val c = ev.calculateCentroid(useCurrent = true)
+                                    val nz = (zoom * z).coerceIn(1f, 8f)
+                                    // Масштаб вокруг точки между пальцами + сдвиг.
+                                    val k = nz / zoom
+                                    pan = (pan + center() - c) * k + c - center() + ev.calculatePan()
+                                    zoom = nz
+                                    if (zoom == 1f) pan = Offset.Zero
+                                    ev.changes.forEach { it.consume() }
+                                } else if (!multi) {
+                                    val ch = pressed.first()
+                                    if ((ch.position - down.position).getDistance() > viewConfiguration.touchSlop) moved = true
+                                    if (moved) { last = ch.position; sampleAt(Offset(ch.position.x, ch.position.y - lift)); ch.consume() }
+                                } else ev.changes.forEach { it.consume() }
+                            }
+                            if (!multi && !moved) sampleAt(last)
                         }
                     },
             ) {
-                Image(s.bmp.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.FillBounds)
-                val p = point; val c = color
-                if (p != null && c != null) Canvas(Modifier.fillMaxSize()) {
+                Image(
+                    s.bmp.asImageBitmap(), null,
+                    Modifier.fillMaxSize().graphicsLayer { scaleX = zoom; scaleY = zoom; translationX = pan.x; translationY = pan.y },
+                    contentScale = ContentScale.Fit,
+                )
+                val f = at; val c = color
+                if (f != null && c != null) Canvas(Modifier.fillMaxSize()) {
+                    val p = toScreen(f)
                     drawCircle(Color.Black.copy(alpha = .55f), 17.dp.toPx(), p, style = Stroke(1.5.dp.toPx()))
                     drawCircle(Color.White, 15.dp.toPx(), p, style = Stroke(3.dp.toPx()))
                     drawCircle(sw(c), 12.dp.toPx(), p)
                     drawCircle(Color.White, 1.5.dp.toPx(), p)
                 }
+                if (zoom > 1f) Text(
+                    "×${"%.1f".format(zoom)}  ·  сбросить", fontSize = 11.sp, color = Color.White,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).clip(RoundedCornerShape(8.dp)).background(Color.Black.copy(alpha = .5f))
+                        .clickable { zoom = 1f; pan = Offset.Zero }.padding(horizontal = 8.dp, vertical = 4.dp),
+                )
             }
             Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(btnLabel("Размер пипетки"), fontSize = 12.sp)
@@ -170,10 +241,10 @@ internal fun PencilPhotoPicker(onAdd: (Int) -> Unit) {
                         fontSize = 11.sp, color = extra.dim,
                     )
                 }
-                Switch(balance, { balance = it; color = null; point = null }, enabled = s.paper != null)
+                Switch(balance, { balance = it; color = null; at = null }, enabled = s.paper != null)
             }
             color?.let { c ->
-                val near = remember(c) { nearestPencil(c) }
+                val near = remember(c, medium) { nearestPencil(c, medium) }
                 Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)).background(sw(c)).border(1.dp, extra.line, RoundedCornerShape(8.dp)))
                     Column(Modifier.weight(1f).padding(start = 10.dp)) {
@@ -183,7 +254,7 @@ internal fun PencilPhotoPicker(onAdd: (Int) -> Unit) {
                     TextButton(onClick = { onAdd(c) }) { Text(btnLabel("+ Добавить")) }
                 }
             }
-            TextButton(onClick = { shot = null; point = null; color = null }) { Text(btnLabel("Убрать фото")) }
+            TextButton(onClick = { shot = null; color = null }) { Text(btnLabel("Убрать фото")) }
         }
     }
 }

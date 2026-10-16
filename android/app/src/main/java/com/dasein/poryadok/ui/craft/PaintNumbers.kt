@@ -73,12 +73,24 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import kotlin.math.roundToInt
 
 private fun sw(rgb: Int) = Color(rgb or (0xFF shl 24))
 
-/** «Картины по номерам»: свои фото → раскраска с контурами и номерами для цветных карандашей. */
+/** «Картины по номерам» отдельным экраном (старые ссылки и поиск) — то же, что вкладка в «Рукоделии». */
 @Composable
 fun PbnHomeScreen(nav: NavHostController) {
+    Screen("Картины по номерам", onBack = { nav.popBackStack() }) { pad ->
+        Column(Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+            PbnHomeContent(nav)
+            Gap(40.dp)
+        }
+    }
+}
+
+/** Картины по номерам: свои фото → раскраска с контурами и номерами под ваши карандаши, маркеры или краски. */
+@Composable
+fun PbnHomeContent(nav: NavHostController) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     val scope = rememberCoroutineScope()
@@ -87,7 +99,8 @@ fun PbnHomeScreen(nav: NavHostController) {
     var toDelete by remember { mutableStateOf<PbnProject?>(null) }
     val list = remember(refresh) { PbnStore.list(ctx) }
     val ver = PbnStore.version.intValue
-    val pencils = remember(ver) { PbnStore.pencils(ctx) }
+    var medium by remember { mutableIntStateOf(PbnStore.lastMedium(ctx)) }
+    val counts = remember(ver) { PaintByNumbers.Medium.entries.map { PbnStore.pencils(ctx, it).size } }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) scope.launch {
             busy = true
@@ -95,36 +108,38 @@ fun PbnHomeScreen(nav: NavHostController) {
             busy = false; refresh++
         }
     }
-    Screen("Картины по номерам", onBack = { nav.popBackStack() }) { pad ->
-        Column(Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            Text(
-                "Загрузите любую картинку — приложение превратит её в раскраску: тонкие контуры и номера цветов, а внизу листа — какой карандаш брать " +
-                    "для каждого номера. Цвета подбираются только из ваших карандашей. Распечатайте PDF и раскрашивайте.",
-                fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
-            )
-            Gap(8.dp)
-            Button(onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                Text(if (busy) "Открываю…" else "Новая раскраска из фото")
-            }
-            OutlinedButton(onClick = { nav.navigate(Routes.CRAFT_PENCILS) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                Text("✏️ Мои карандаши (${pencils.size})")
-            }
-            SectionTitle("Мои раскраски")
-            if (list.isEmpty()) Text("Пока нет раскрасок. Лучше всего получаются картинки с крупными предметами: пейзажи, цветы, животные.", color = extra.dim, fontSize = 13.sp)
-            list.forEach { p ->
-                Tile(Modifier.padding(bottom = 8.dp), onClick = { nav.navigate(Routes.pbn(p.id)) }, onLongClick = { toDelete = p }) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        val thumb = remember(p.id) { runCatching { BitmapFactory.decodeFile(PbnStore.photo(ctx, p.id).absolutePath, BitmapFactory.Options().apply { inSampleSize = 8 }) }.getOrNull() }
-                        if (thumb != null) Image(thumb.asImageBitmap(), null, Modifier.size(56.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop)
-                        Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                            Text(p.name, fontWeight = FontWeight.SemiBold)
-                            Text("до ${p.colors} цветов · ${listOf("крупно", "средне", "подробно")[p.detail.coerceIn(0, 2)]}", fontSize = 12.sp, color = extra.dim)
-                        }
-                        TextButton(onClick = { toDelete = p }) { Text(btnLabel("Удалить"), color = extra.danger, fontSize = 12.sp) }
+    Column {
+        Text(
+            "Загрузите любую картинку — приложение превратит её в раскраску: тонкие контуры и номера цветов, а внизу листа — каким цветом " +
+                "закрашивать каждый номер. Цвета подбираются только из того, что у вас есть: карандашей, маркеров или красок.",
+            fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
+        )
+        Text(btnLabel("Чем раскрашивать"), fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
+        Segments(PaintByNumbers.Medium.entries.map { it.ordinal to it.title }, medium, { medium = it; PbnStore.setLastMedium(ctx, it) })
+        Gap(8.dp)
+        Button(onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+            Text(if (busy) "Открываю…" else "Новая раскраска из фото")
+        }
+        OutlinedButton(onClick = { nav.navigate(Routes.CRAFT_PENCILS) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+            Text("🎨 Мои материалы · ✏️ ${counts[0]} · 🖊 ${counts[1]} · 🖌 ${counts[2]}")
+        }
+        SectionTitle("Мои раскраски")
+        if (list.isEmpty()) Text("Пока нет раскрасок. Лучше всего получаются картинки с крупными предметами: пейзажи, цветы, животные.", color = extra.dim, fontSize = 13.sp)
+        list.forEach { p ->
+            Tile(Modifier.padding(bottom = 8.dp), onClick = { nav.navigate(Routes.pbn(p.id)) }, onLongClick = { toDelete = p }) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val thumb = remember(p.id) { runCatching { BitmapFactory.decodeFile(PbnStore.photo(ctx, p.id).absolutePath, BitmapFactory.Options().apply { inSampleSize = 8 }) }.getOrNull() }
+                    if (thumb != null) Image(thumb.asImageBitmap(), null, Modifier.size(56.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop)
+                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                        Text(p.name, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "${PaintByNumbers.Medium.of(p.medium).title} · до ${p.colors} цветов · ${listOf("крупно", "средне", "подробно")[p.detail.coerceIn(0, 2)]}",
+                            fontSize = 12.sp, color = extra.dim,
+                        )
                     }
+                    TextButton(onClick = { toDelete = p }) { Text(btnLabel("Удалить"), color = extra.danger, fontSize = 12.sp) }
                 }
             }
-            Gap(40.dp)
         }
     }
     toDelete?.let { p ->
@@ -149,7 +164,8 @@ fun PbnScreen(nav: NavHostController, id: Long) {
         return
     }
     val ver = PbnStore.version.intValue
-    val pencils = remember(ver) { PbnStore.pencils(ctx) }
+    val medium = PaintByNumbers.Medium.of(p0.medium)
+    val pencils = remember(ver, medium) { PbnStore.pencils(ctx, medium) }
     var result by remember { mutableStateOf<PaintByNumbers.Result?>(null) }
     var outline by remember { mutableStateOf<Bitmap?>(null) }
     var colored by remember { mutableStateOf<Bitmap?>(null) }
@@ -158,7 +174,7 @@ fun PbnScreen(nav: NavHostController, id: Long) {
     var message by remember { mutableStateOf<String?>(null) }
     fun save(n: PbnProject) { project = n; PbnStore.save(ctx, n) }
 
-    LaunchedEffect(p0.colors, p0.detail, ver) {
+    LaunchedEffect(p0.colors, p0.detail, p0.medium, ver) {
         busy = true
         val r = PbnStore.build(ctx, p0)
         result = r
@@ -211,11 +227,14 @@ fun PbnScreen(nav: NavHostController, id: Long) {
             Text("Раскраску можно увеличить в PDF — контуры и цифры векторные, печатаются чётко.", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
 
             SectionTitle("Настройки")
+            Text(btnLabel("Чем раскрашивать"), fontSize = 14.sp)
+            Segments(PaintByNumbers.Medium.entries.map { it.ordinal to it.title }, p0.medium, { save(p0.copy(medium = it)); PbnStore.setLastMedium(ctx, it) })
+            Gap(8.dp)
             Text(btnLabel("Детализация"), fontSize = 14.sp)
             Segments(listOf(0 to "Крупно", 1 to "Средне", 2 to "Подробно"), p0.detail, { save(p0.copy(detail = it)) })
             Text("Крупно — большие области, удобно детям; подробно — мелкие детали, дольше раскрашивать.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
             Gap(8.dp)
-            Text("Цветов: до ${p0.colors} (карандашей у вас: ${pencils.size})", fontSize = 14.sp)
+            Text("Цветов: до ${p0.colors} (${medium.many} у вас: ${pencils.size})", fontSize = 14.sp)
             var k by remember(p0.id) { mutableFloatStateOf(p0.colors.toFloat()) }
             Slider(k, { k = it }, valueRange = 4f..maxOf(5f, minOf(48f, pencils.size.toFloat())), onValueChangeFinished = { save(p0.copy(colors = k.toInt())) })
             Text(btnLabel("Лист для печати"), fontSize = 14.sp)
@@ -223,19 +242,24 @@ fun PbnScreen(nav: NavHostController, id: Long) {
             var title by remember(p0.id) { mutableStateOf(p0.name) }
             Gap(6.dp)
             TextInput(title, { title = it; save(p0.copy(name = it.ifBlank { p0.name })) }, "Название")
-            if (pencils.size < 2) Text("Отметьте свои карандаши — пока подбираю из стандартного набора.", color = extra.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+            if (pencils.size < 2) Text("Отметьте, какие ${medium.many} у вас есть, — пока подбираю из всего каталога.", color = extra.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+            if (medium == PaintByNumbers.Medium.PAINT) Text(
+                "Для красок: доля — какую часть картины занимает цвет, по ней видно, какой краски понадобится больше. Цвета берутся из тюбика без смешивания.",
+                fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp),
+            )
 
             result?.let { r ->
-                SectionTitle("Карандаши для этой картины · ${r.colors.size}")
+                SectionTitle("${medium.title} для этой картины · ${r.colors.size}")
                 val counts = r.counts()
+                val share = remember(r) { IntArray(r.colors.size).also { a -> r.cells.forEach { a[it]++ } }.map { it * 100f / r.cells.size } }
                 r.colors.forEachIndexed { i, pc ->
                     Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(30.dp).clip(RoundedCornerShape(6.dp)).background(sw(pc.rgb)).border(1.dp, extra.line, RoundedCornerShape(6.dp)), contentAlignment = Alignment.Center) {
                             Text("${i + 1}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (PaintByNumbers.dark(pc.rgb)) Color.White else Color.Black)
                         }
                         Text("  ${pc.name}", Modifier.weight(1f), fontSize = 14.sp)
-                        Text(if (pc.code.startsWith("К")) "свой" else "№ ${pc.code}", fontSize = 12.sp, color = extra.dim)
-                        Text("  · ${counts[i]} обл.", fontSize = 12.sp, color = extra.dim)
+                        Text(if (pc.code.startsWith("С")) "свой" else "№ ${pc.code}", fontSize = 12.sp, color = extra.dim)
+                        Text("  · ${counts[i]} обл. · ${if (share[i] < 1) "<1" else share[i].roundToInt().toString()}%", fontSize = 12.sp, color = extra.dim)
                     }
                 }
                 SectionTitle("Печать")
@@ -249,55 +273,65 @@ fun PbnScreen(nav: NavHostController, id: Long) {
     }
 }
 
-/** «Мои карандаши»: отметить, какие цвета есть (готовые наборы 12–48), и добавить свои. */
+/** «Мои материалы»: карандаши, маркеры и краски — отметить, что есть (готовые наборы), добавить свои цвета по фото. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PencilsScreen(nav: NavHostController) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     val ver = PbnStore.version.intValue
-    val owned = remember(ver) { PbnStore.owned(ctx) }
-    val custom = remember(ver) { PbnStore.custom(ctx) }
+    var mi by rememberSaveable { mutableIntStateOf(PbnStore.lastMedium(ctx)) }
+    val medium = PaintByNumbers.Medium.of(mi)
+    val owned = remember(ver, medium) { PbnStore.owned(ctx, medium) }
+    val custom = remember(ver, medium) { PbnStore.custom(ctx, medium) }
     var edit by remember { mutableStateOf<MyPencil?>(null) }
-    Screen("Мои карандаши", onBack = { nav.popBackStack() }) { pad ->
+    Screen("Мои материалы", onBack = { nav.popBackStack() }) { pad ->
         Column(Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            Text("Отметьте карандаши, которые у вас есть. Раскраски подбирают цвета только из них.", fontSize = 13.sp, color = extra.dim)
+            Segments(PaintByNumbers.Medium.entries.map { it.ordinal to it.title }, mi, { mi = it; PbnStore.setLastMedium(ctx, it) })
+            Gap(8.dp)
+            // Свой цвет по фото — первым делом: так быстрее всего добавить то, что лежит на столе.
+            Text("${medium.one} по фото", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+            PencilPhotoPicker(medium) { rgb -> edit = MyPencil(0, rgb) }
+
+            SectionTitle("Какие ${medium.many} у вас есть")
+            Text("Отметьте, что есть. Раскраски подбирают цвета только из отмеченного и своих цветов.", fontSize = 13.sp, color = extra.dim)
             Gap(6.dp)
             Text(btnLabel("Быстро выбрать набор:"), fontSize = 13.sp)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
-                PaintByNumbers.SETS.forEach { (t, codes) -> Pill(t, owned == codes.toSet()) { PbnStore.setOwned(ctx, codes.toSet()) } }
-                Pill("Снять все", false) { PbnStore.setOwned(ctx, emptySet()) }
+                medium.sets.forEach { (t, codes) -> Pill(t, owned == codes.toSet()) { PbnStore.setOwned(ctx, codes.toSet(), medium) } }
+                Pill("Снять все", false) { PbnStore.setOwned(ctx, emptySet(), medium) }
             }
-            Text("Отмечено: ${owned.size} из ${PaintByNumbers.CATALOG.size} + своих ${custom.size}", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(vertical = 4.dp))
-            PaintByNumbers.CATALOG.forEach { pc ->
-                val on = pc.code in owned
-                Row(Modifier.fillMaxWidth().clickable { PbnStore.setOwned(ctx, if (on) owned - pc.code else owned + pc.code) }.padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(28.dp).clip(RoundedCornerShape(6.dp)).background(sw(pc.rgb)).border(1.dp, extra.line, RoundedCornerShape(6.dp)))
-                    Text("  № ${pc.code} · ${pc.name}", Modifier.weight(1f), fontSize = 14.sp)
-                    Checkbox(on, { PbnStore.setOwned(ctx, if (it) owned + pc.code else owned - pc.code) })
-                }
-            }
+            Text("Отмечено: ${owned.size} из ${medium.catalog.size} + своих ${custom.size}", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(vertical = 4.dp))
+
             SectionTitle("Свои цвета")
-            Text("Если оттенка нет в списке — добавьте его: ползунками, HEX-кодом, касанием «Подобрать по номеру DMC» или пипеткой по фото ниже.", fontSize = 12.sp, color = extra.dim)
+            Text("Если оттенка нет в списке — добавьте его пипеткой по фото выше, ползунками, HEX-кодом или по номеру DMC.", fontSize = 12.sp, color = extra.dim)
             custom.forEach { c ->
                 Row(Modifier.fillMaxWidth().clickable { edit = c }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(28.dp).clip(RoundedCornerShape(6.dp)).background(sw(c.rgb)).border(1.dp, extra.line, RoundedCornerShape(6.dp)))
                     Text("  ${c.name.ifBlank { "Свой цвет ${c.n}" }}", Modifier.weight(1f), fontSize = 14.sp)
-                    TextButton(onClick = { PbnStore.setCustom(ctx, custom.filter { it.n != c.n }) }) { Text(btnLabel("Удалить"), color = extra.danger, fontSize = 12.sp) }
+                    TextButton(onClick = { PbnStore.setCustom(ctx, custom.filter { it.n != c.n }, medium) }) { Text(btnLabel("Удалить"), color = extra.danger, fontSize = 12.sp) }
                 }
             }
             OutlinedButton(onClick = { edit = MyPencil(0, 0x9E9E9E) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text(btnLabel("+ Добавить свой цвет")) }
-            SectionTitle("Цвет по фото")
-            PencilPhotoPicker { rgb -> edit = MyPencil(0, rgb) }
+
+            SectionTitle("Каталог · ${medium.title}")
+            medium.catalog.forEach { pc ->
+                val on = pc.code in owned
+                Row(Modifier.fillMaxWidth().clickable { PbnStore.setOwned(ctx, if (on) owned - pc.code else owned + pc.code, medium) }.padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(28.dp).clip(RoundedCornerShape(6.dp)).background(sw(pc.rgb)).border(1.dp, extra.line, RoundedCornerShape(6.dp)))
+                    Text("  № ${pc.code} · ${pc.name}", Modifier.weight(1f), fontSize = 14.sp)
+                    Checkbox(on, { PbnStore.setOwned(ctx, if (it) owned + pc.code else owned - pc.code, medium) })
+                }
+            }
             Gap(40.dp)
         }
     }
     edit?.let { c ->
-        ColorPickDialog(if (c.n == 0) "Новый карандаш" else c.name.ifBlank { "Свой цвет" }, c.rgb, c.name, c.n != 0, onDismiss = { edit = null }) { rgb, nm ->
-            val cur = PbnStore.custom(ctx)
+        ColorPickDialog(if (c.n == 0) "Новый цвет · ${medium.one.lowercase()}" else c.name.ifBlank { "Свой цвет" }, c.rgb, c.name, c.n != 0, onDismiss = { edit = null }) { rgb, nm ->
+            val cur = PbnStore.custom(ctx, medium)
             val n = if (c.n == 0) (cur.maxOfOrNull { it.n } ?: 0) + 1 else c.n
-            val out = MyPencil(n, rgb, nm)
-            PbnStore.setCustom(ctx, if (c.n == 0) cur + out else cur.map { if (it.n == c.n) out else it })
+            val out = MyPencil(n, rgb, nm, medium.ordinal)
+            PbnStore.setCustom(ctx, if (c.n == 0) cur + out else cur.map { if (it.n == c.n) out else it }, medium)
             edit = null
         }
     }
