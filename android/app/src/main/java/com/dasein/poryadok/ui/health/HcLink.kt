@@ -16,7 +16,7 @@ import com.dasein.poryadok.ui.common.rememberUiFlag
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import com.dasein.poryadok.ui.common.OutlinedButton
-import androidx.compose.material3.Text
+import com.dasein.poryadok.ui.common.Text
 import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect

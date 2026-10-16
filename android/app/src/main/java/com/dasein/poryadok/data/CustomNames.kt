@@ -26,5 +26,6 @@ object CustomNames {
         if (value.isNullOrBlank()) e.remove(PREFIX + key) else e.putString(PREFIX + key, value.trim())
         e.apply()
         version.intValue++
+        if (key.startsWith("btn:")) UiTexts.invalidate()
     }
 }

@@ -105,6 +105,7 @@ object Graph {
         // Встроенный файл оформления (если есть) — до первого экрана, только на новой установке.
         com.dasein.poryadok.system.UiProfile.applyBundled(app)
         Alarms.createChannels(app)
+        scope.launch { com.dasein.poryadok.data.UiTexts.warmUp() }
         scope.launch {
             Repo.seed()
             runCatching { Repo.migrateGlyphs() }.onFailure { Log.e("DASEIN", "glyphs", it) }

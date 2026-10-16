@@ -42,7 +42,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import com.dasein.poryadok.ui.common.Text
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -238,7 +238,7 @@ fun Pill(text: String, selected: Boolean, glyph: String? = null, onClick: () -> 
     // Удержание — правка иконки и названия (подписи с числами меняются сами и не переименовываются).
     val holder = androidx.compose.runtime.remember { LabelHolder() }
     holder.label = text.takeIf { t -> t.none { it.isDigit() } }
-    val shownText = holder.label?.let { com.dasein.poryadok.data.CustomNames.get("btn:$it", it) } ?: text
+    val shownText = text
     Surface(
         onClick = onClick,
         modifier = if (LocalIconEditable.current) Modifier.labelLongPress(holder) else Modifier,

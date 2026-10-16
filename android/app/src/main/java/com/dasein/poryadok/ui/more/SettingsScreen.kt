@@ -29,7 +29,7 @@ import com.dasein.poryadok.ui.common.OutlinedButton
 import com.dasein.poryadok.ui.common.Button
 import com.dasein.poryadok.ui.common.HGap
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
+import com.dasein.poryadok.ui.common.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf

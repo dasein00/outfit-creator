@@ -23,7 +23,7 @@ import androidx.compose.material3.AlertDialog
 import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.MaterialTheme
 import com.dasein.poryadok.ui.common.OutlinedButton
-import androidx.compose.material3.Text
+import com.dasein.poryadok.ui.common.Text
 import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect

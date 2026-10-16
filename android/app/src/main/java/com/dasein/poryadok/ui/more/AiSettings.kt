@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import com.dasein.poryadok.ui.common.Button
 import com.dasein.poryadok.ui.common.OutlinedButton
-import androidx.compose.material3.Text
+import com.dasein.poryadok.ui.common.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf

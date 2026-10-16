@@ -23,7 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
+import com.dasein.poryadok.ui.common.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -175,6 +175,13 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
             SectionTitle("Скругление карточек")
             Slider(look.cardRound.toFloat(), { v -> set { it.copy(cardRound = v.roundToInt()) } }, valueRange = 4f..32f)
             Text("${look.cardRound} dp", fontSize = 12.sp, color = extra.dim)
+
+            SectionTitle("Тексты интерфейса")
+            Text(
+                "Названия кнопок, плашек, заголовков и подсказок во всех разделах: поиск по всему приложению, разделы и свой вариант для любого текста.",
+                fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
+            )
+            Button(onClick = { nav.navigate(UI_TEXTS_ROUTE) }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 48.dp)) { Text(btnLabel("Редактировать тексты")) }
 
             Gap(16.dp)
             OutlinedButton(onClick = { set { LookSettings() } }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(btnLabel("Вернуть оформление по умолчанию")) }

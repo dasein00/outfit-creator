@@ -1,7 +1,7 @@
 package com.dasein.poryadok.ui.common
 
 import androidx.compose.material3.LocalTextStyle
-import androidx.compose.material3.Text
+import com.dasein.poryadok.ui.common.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf

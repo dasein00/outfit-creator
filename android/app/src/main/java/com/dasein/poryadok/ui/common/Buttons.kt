@@ -18,7 +18,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonElevation
-import androidx.compose.material3.Text
+import com.dasein.poryadok.ui.common.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
@@ -36,6 +36,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dasein.poryadok.data.CustomNames
+import com.dasein.poryadok.data.UiTexts
 import com.dasein.poryadok.ui.theme.LocalExtra
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.abs
@@ -59,7 +60,8 @@ val LocalLabelHolder = compositionLocalOf<LabelHolder?> { null }
 fun btnLabel(text: String): String {
     if (text.none { it.isLetter() }) return text
     LocalLabelHolder.current?.let { if (it.label == null) it.label = text }
-    return CustomNames.get("btn:$text", text)
+    // Сам перевод делает Text — иначе надпись подменялась бы дважды.
+    return text
 }
 
 object LabelEdit {
@@ -211,8 +213,8 @@ fun LabelEditHost() {
     val extra = LocalExtra.current
     CompositionLocalProvider(LocalIconEditable provides false) {
         val label = t.label
-        var name by remember(t) { mutableStateOf(label?.let { CustomNames.get("btn:$it", it) }.orEmpty()) }
-        val renamed = label != null && CustomNames.get("btn:$label", label) != label
+        var name by remember(t) { mutableStateOf(label?.let { UiTexts.tr(it) }.orEmpty()) }
+        val renamed = label != null && UiTexts.tr(label) != label
         AlertDialog(
             onDismissRequest = { LabelEdit.target.value = null },
             title = { Text("Кнопка") },
@@ -235,12 +237,17 @@ fun LabelEditHost() {
             },
             confirmButton = {
                 androidx.compose.material3.TextButton(onClick = {
-                    if (label != null) CustomNames.set("btn:$label", name.trim().takeIf { it.isNotEmpty() && it != label })
+                    if (label != null) {
+                        val v = name.trim()
+                        // Совпало с вариантом по умолчанию — своя правка не нужна.
+                        CustomNames.set("btn:$label", null)
+                        if (v.isNotEmpty() && v != UiTexts.tr(label)) CustomNames.set("btn:$label", v)
+                    }
                     LabelEdit.target.value = null
                 }) { Text(if (label != null) "Сохранить" else "Закрыть") }
             },
             dismissButton = {
-                if (renamed) androidx.compose.material3.TextButton(onClick = { CustomNames.set("btn:$label", null); LabelEdit.target.value = null }) { Text("Вернуть исходное") }
+                if (renamed) androidx.compose.material3.TextButton(onClick = { CustomNames.set("btn:$label", label); LabelEdit.target.value = null }) { Text("Вернуть исходное") }
                 else androidx.compose.material3.TextButton(onClick = { LabelEdit.target.value = null }) { Text("Отмена") }
             },
         )

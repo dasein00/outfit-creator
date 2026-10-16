@@ -22,7 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Text
+import com.dasein.poryadok.ui.common.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -414,6 +414,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
                 com.dasein.poryadok.ui.reader.ReaderBookScreen(nav, it.arguments?.getLong("id") ?: 0L)
             }
             composable(com.dasein.poryadok.ui.more.APPEARANCE_ROUTE) { com.dasein.poryadok.ui.more.AppearanceScreen(nav, settings) }
+            composable(com.dasein.poryadok.ui.more.UI_TEXTS_ROUTE) { com.dasein.poryadok.ui.more.UiTextsScreen(nav) }
             composable(com.dasein.poryadok.ui.finance.FIN_INFO_ROUTE) { com.dasein.poryadok.ui.finance.FinanceInfographicScreen(nav, settings) }
         }
         if (showBar) {
