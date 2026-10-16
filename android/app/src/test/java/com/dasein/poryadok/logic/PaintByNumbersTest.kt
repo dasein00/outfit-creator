@@ -37,8 +37,15 @@ class PaintByNumbersTest {
     }
 
     @Test fun setsUseCatalogCodes() {
-        val codes = PaintByNumbers.CATALOG.map { it.code }.toSet()
+        val codes = PaintByNumbers.PENCILS_ALL.map { it.code }.toSet()
         PaintByNumbers.SETS.forEach { (_, l) -> assertTrue(codes.containsAll(l)) }
         assertEquals(48, PaintByNumbers.CATALOG.size)
+        assertEquals(200, codes.size)
+        assertEquals(listOf(12, 24, 36, 48, 72, 120, 200), PaintByNumbers.SETS.map { it.second.size })
+        PaintByNumbers.Medium.entries.forEach { m ->
+            val mc = m.catalog.map { it.code }.toSet()
+            assertEquals(m.catalog.size, mc.size)
+            m.sets.forEach { (_, l) -> assertTrue(mc.containsAll(l)) }
+        }
     }
 }

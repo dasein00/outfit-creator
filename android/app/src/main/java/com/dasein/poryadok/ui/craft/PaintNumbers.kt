@@ -236,7 +236,7 @@ fun PbnScreen(nav: NavHostController, id: Long) {
             Gap(8.dp)
             Text("Цветов: до ${p0.colors} (${medium.many} у вас: ${pencils.size})", fontSize = 14.sp)
             var k by remember(p0.id) { mutableFloatStateOf(p0.colors.toFloat()) }
-            Slider(k, { k = it }, valueRange = 4f..maxOf(5f, minOf(48f, pencils.size.toFloat())), onValueChangeFinished = { save(p0.copy(colors = k.toInt())) })
+            Slider(k, { k = it }, valueRange = 4f..maxOf(5f, minOf(60f, pencils.size.toFloat())), onValueChangeFinished = { save(p0.copy(colors = k.toInt())) })
             Text(btnLabel("Лист для печати"), fontSize = 14.sp)
             Segments(listOf(0 to "A4", 1 to "A3"), p0.paper, { save(p0.copy(paper = it)) })
             var title by remember(p0.id) { mutableStateOf(p0.name) }
