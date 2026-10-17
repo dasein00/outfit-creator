@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -452,7 +453,7 @@ private fun Modifier.editorModeHold(): Modifier = pointerInput(Unit) {
         val down = awaitFirstDown(requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial)
         if (com.dasein.poryadok.data.UiTexts.editorMode.value) return@awaitEachGesture
         val slop = viewConfiguration.touchSlop * 2
-        val released = kotlinx.coroutines.withTimeoutOrNull(3000L) {
+        val released = withTimeoutOrNull(3000L) {
             while (true) {
                 val ev = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
                 if (ev.changes.size > 1) return@withTimeoutOrNull true
