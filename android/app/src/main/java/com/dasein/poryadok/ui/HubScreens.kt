@@ -62,7 +62,7 @@ import com.dasein.poryadok.ui.theme.Palette
 @Composable
 private fun TabbedHost(options: List<Pair<Int, String>>, tab: Int, onTab: (Int) -> Unit, content: @Composable (Int) -> Unit) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Segments(options, tab, onTab, Modifier.statusBarsPadding().padding(horizontal = 12.dp, vertical = 6.dp))
+        Segments(options, tab, onTab, Modifier.statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp))
         Box(Modifier.weight(1f).consumeWindowInsets(WindowInsets.statusBars)) { content(tab) }
     }
 }
@@ -140,7 +140,7 @@ fun HealthHubScreen(nav: NavHostController) {
     Screen(title = "Здоровье") { pad ->
         LazyVerticalGrid(
             GridCells.Fixed(2), Modifier.padding(pad),
-            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item(span = { GridItemSpan(2) }) {

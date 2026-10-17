@@ -60,7 +60,7 @@ fun FilterButton(title: String, value: String?, onClick: () -> Unit) {
         color = if (active) scheme.primary else scheme.surface,
         border = if (active) null else BorderStroke(1.dp, scheme.outline.copy(alpha = .6f)),
     ) {
-        Row(Modifier.padding(start = 14.dp, end = 10.dp, top = 9.dp, bottom = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.heightIn(min = 40.dp).padding(start = 14.dp, end = 10.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 value ?: title, fontSize = 14.sp, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.widthIn(max = 180.dp),
@@ -137,7 +137,7 @@ fun OptionSheet(
 @Composable
 fun SheetHeader(title: String, onClose: () -> Unit, onReset: (() -> Unit)? = null) {
     Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
         if (onReset != null) TextButton(onClick = onReset) { Text(btnLabel("Сбросить")) }
         IconButton(onClick = onClose) { Icon(Icons.Default.Close, "Закрыть") }
     }

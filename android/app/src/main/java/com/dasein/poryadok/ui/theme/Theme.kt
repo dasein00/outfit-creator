@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
 object Palette {
@@ -94,15 +95,24 @@ private fun typographyFor(font: Int): Typography {
         else -> Serif to FontFamily.Default
     }
     val t = Typography()
-    fun TextStyle.b() = copy(fontFamily = body)
     fun TextStyle.h() = copy(fontFamily = head)
+    // Высота строки — в долях кегля (em): текст с любым fontSize получает ровный интерлиньяж,
+    // а не 24 sp на мелкой подписи. Кириллице не нужна разрядка, поэтому трекинг почти нулевой.
+    fun b(size: Int, line: Double, weight: FontWeight = FontWeight.Normal, track: Double = 0.0) = TextStyle(
+        fontFamily = body, fontSize = size.sp, lineHeight = line.em, fontWeight = weight, letterSpacing = track.sp,
+    )
     return t.copy(
         displayLarge = t.displayLarge.h(), displayMedium = t.displayMedium.h(), displaySmall = t.displaySmall.h(),
         headlineLarge = t.headlineLarge.h(), headlineMedium = t.headlineMedium.h(), headlineSmall = t.headlineSmall.h(),
-        titleLarge = TextStyle(fontFamily = head, fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Normal),
-        titleMedium = t.titleMedium.b(), titleSmall = t.titleSmall.b(),
-        bodyLarge = t.bodyLarge.b(), bodyMedium = t.bodyMedium.b(), bodySmall = t.bodySmall.b(),
-        labelLarge = t.labelLarge.b(), labelMedium = t.labelMedium.b(), labelSmall = t.labelSmall.b(),
+        titleLarge = TextStyle(fontFamily = head, fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.sp),
+        titleMedium = b(16, 1.4, FontWeight.SemiBold),
+        titleSmall = b(14, 1.4, FontWeight.SemiBold),
+        bodyLarge = b(16, 1.45),
+        bodyMedium = b(14, 1.45),
+        bodySmall = b(12, 1.4),
+        labelLarge = b(14, 1.3, FontWeight.SemiBold, .1),
+        labelMedium = b(12, 1.3, FontWeight.SemiBold, .2),
+        labelSmall = b(11, 1.3, FontWeight.Medium, .2),
     )
 }
 

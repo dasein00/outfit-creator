@@ -504,7 +504,8 @@ private fun RowScope.TabButton(t: Tab, selected: Boolean, onClick: () -> Unit, o
         ) { Glyph(look.icon, 24.dp, dimmed = !selected) }
         Text(
             look.name, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            color = if (selected) primary else MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 4.dp),
+            fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.SemiBold else androidx.compose.ui.text.font.FontWeight.Medium,
+            color = if (selected) primary else com.dasein.poryadok.ui.theme.LocalExtra.current.dim, modifier = Modifier.padding(top = 4.dp),
         )
     }
 }

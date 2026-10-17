@@ -143,7 +143,7 @@ fun NotesScreen(nav: NavHostController) {
             if (shown.isEmpty()) Empty(Ic.notebook, if (query.isBlank()) "Заметок нет" else "Ничего не нашлось", "Мысли, списки покупок, идеи — всё сюда.")
             else LazyVerticalStaggeredGrid(
                 columns = StaggeredGridCells.Fixed(2),
-                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 96.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalItemSpacing = 8.dp,
             ) {

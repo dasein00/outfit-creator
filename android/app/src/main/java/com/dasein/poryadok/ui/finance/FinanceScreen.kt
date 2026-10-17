@@ -203,7 +203,7 @@ private fun Operations(nav: NavHostController, month: List<Txn>, cats: List<Cate
     val extra = LocalExtra.current
     val inc = month.filter { it.type == TxnType.INCOME }.sumOf { it.amount }
     val exp = month.filter { it.type == TxnType.EXPENSE }.sumOf { it.amount }
-    LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 96.dp)) {
+    LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Stat(Money.format(inc, cur), "доход", Modifier.weight(1f), extra.ok)
@@ -279,7 +279,7 @@ private fun Overview(all: List<Txn>, month: List<Txn>, cats: List<Category>, ym:
     val total = exp.sumOf { it.amount }
     val byCat = exp.groupBy { it.categoryId }.map { (id, l) -> cats.firstOrNull { it.id == id } to l.sumOf { it.amount } }.sortedByDescending { it.second }
     val months = (5 downTo 0).map { ym.minusMonths(it.toLong()) }
-    Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 12.dp)) {
+    Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         Tile {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Donut(byCat.mapIndexed { i, (c, v) -> v.toFloat() to Palette.item(c?.color ?: i) }, size = 150.dp) {
@@ -352,7 +352,7 @@ private fun Budgets(month: List<Txn>, cats: List<Category>, budgets: List<Budget
     val today = Dates.today()
     val range = Dates.monthRange(ym)
     val daysLeft = if (today in range) (range.last - today + 1).toInt() else if (today < range.first) (range.last - range.first + 1).toInt() else 0
-    LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 96.dp)) {
+    LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
         if (budgets.isEmpty()) item {
             Empty(Ic.target, "Бюджетов нет", "Задайте лимит на месяц — общий или по категориям. Приложение подскажет, сколько можно тратить в день.")
         }
@@ -388,7 +388,7 @@ private fun RecurringList(list: List<Recurring>, cats: List<Category>, accounts:
     val monthlyOut = list.filter { it.active && !it.income }.sumOf {
         when (Repeat.of(it.repeat)) { Repeat.WEEKLY -> it.amount * 52 / 12; Repeat.YEARLY -> it.amount / 12; Repeat.DAILY -> it.amount * 30; else -> it.amount }
     }
-    LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 96.dp)) {
+    LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
         item {
             Tile {
                 Text(btnLabel("Подписки и регулярные платежи"), color = extra.dim, fontSize = 13.sp)
@@ -429,7 +429,7 @@ private fun Accounts(accounts: List<Account>, txns: List<Txn>, cur: String, onAl
     val saving = accounts.filter { AccountMeta.savings(ctx, it.id) }
     val savingSum = saving.sumOf { balanceOf(it, txns) }
     val interest = saving.sumOf { AccountMeta.monthly(balanceOf(it, txns), AccountMeta.rate(ctx, it.id)) }
-    LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 96.dp)) {
+    LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
         item {
             Tile {
                 Text(btnLabel("Всего на счетах"), color = extra.dim, fontSize = 13.sp)

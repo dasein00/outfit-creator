@@ -28,6 +28,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.unit.sp
 import com.dasein.poryadok.ui.theme.LocalExtra
 
@@ -94,20 +96,23 @@ fun InfoBox(
     if (hint && !UiState.hintsOn(ctx)) return
     val extra = LocalExtra.current
     var open by rememberUiFlag("info_$key", UiState.infoDefault(ctx))
+    val tint = MaterialTheme.colorScheme.primary
     Column(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.primary.copy(alpha = .07f)),
+        modifier.fillMaxWidth().clip(RoundedCornerShape(Space.fieldRound))
+            .background(tint.copy(alpha = .08f))
+            .border(1.dp, tint.copy(alpha = .14f), RoundedCornerShape(Space.fieldRound)),
     ) {
         Row(
-            Modifier.fillMaxWidth().clickable { open = !open }.padding(horizontal = 12.dp, vertical = 10.dp),
+            Modifier.fillMaxWidth().heightIn(min = Space.touch).clickable { open = !open }
+                .padding(start = 14.dp, end = 10.dp, top = 10.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (glyph != null) { Glyph(glyph, 18.dp, badge = false); HGap(8.dp) }
-            Text(title, Modifier.weight(1f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            if (glyph != null) { Glyph(glyph, 20.dp, badge = false); HGap(10.dp) }
+            Text(title, Modifier.weight(1f), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Icon(if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore, if (open) "Свернуть" else "Развернуть", tint = extra.dim)
         }
         AnimatedVisibility(open) {
-            Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp), content = content)
+            Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, bottom = 14.dp), content = content)
         }
     }
 }
@@ -116,7 +121,7 @@ fun InfoBox(
 @Composable
 fun Hint(key: String, text: String, modifier: Modifier = Modifier, title: String = "Подсказка") {
     val extra = LocalExtra.current
-    InfoBox(key, title, modifier) { Text(text, fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp) }
+    InfoBox(key, title, modifier) { Text(text, fontSize = 14.sp, color = extra.dim, lineHeight = 20.sp) }
 }
 
 /**
@@ -134,17 +139,19 @@ fun FoldTile(
 ) {
     val extra = LocalExtra.current
     var open by rememberUiFlag("fold_$key", true)
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(com.dasein.poryadok.ui.theme.LocalLook.current.cardRound.dp)).background(extra.card)) {
+    val shape = RoundedCornerShape(com.dasein.poryadok.ui.theme.LocalLook.current.cardRound.dp)
+    Column(modifier.fillMaxWidth().clip(shape).background(extra.card).let { m -> cardBorder()?.let { m.border(it, shape) } ?: m }) {
         Row(
-            Modifier.fillMaxWidth().clickable { open = !open }.padding(start = 14.dp, end = 10.dp, top = 12.dp, bottom = if (open) 4.dp else 12.dp),
+            Modifier.fillMaxWidth().heightIn(min = Space.touch).clickable { open = !open }
+                .padding(start = Space.card, end = 10.dp, top = Space.m, bottom = if (open) Space.xs else Space.m),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(title, Modifier.weight(1f), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+            Text(title, Modifier.weight(1f), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
             if (summary != null) Text(summary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = summaryColor ?: MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(start = 8.dp))
             Icon(if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore, if (open) "Свернуть" else "Развернуть", tint = extra.dim)
         }
         AnimatedVisibility(open) {
-            Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, bottom = 14.dp), content = content)
+            Column(Modifier.fillMaxWidth().padding(start = Space.card, end = Space.card, bottom = Space.card), content = content)
         }
     }
 }

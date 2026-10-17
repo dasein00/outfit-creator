@@ -107,7 +107,7 @@ fun MoreScreen(nav: NavHostController) {
     Screen(title = "Все разделы") { pad ->
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 24.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.padding(pad),
@@ -302,7 +302,7 @@ fun SearchScreen(nav: NavHostController) {
     val txns by observe(emptyList()) { dao.txns() }
     val tops by observe(emptyList()) { dao.topItems() }
     Screen(title = "Поиск", onBack = { nav.popBackStack() }) { pad ->
-        Column(Modifier.padding(pad).padding(horizontal = 12.dp)) {
+        Column(Modifier.padding(pad).padding(horizontal = 16.dp)) {
             OutlinedTextField(
                 q, { q = it }, placeholder = { Text(btnLabel("Раздел, задача, заметка, операция…")) }, singleLine = true,
                 modifier = Modifier.fillMaxWidth().focusRequester(focus), shape = RoundedCornerShape(14.dp),

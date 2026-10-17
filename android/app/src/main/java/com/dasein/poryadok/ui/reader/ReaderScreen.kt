@@ -108,7 +108,7 @@ fun ReaderNotesScreen(nav: NavHostController) {
             }
         },
     ) { pad ->
-        LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 14.dp, end = 14.dp, bottom = 32.dp)) {
+        LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp)) {
             item {
                 OutlinedTextField(q, { q = it }, placeholder = { Text(btnLabel("Поиск по заметкам")) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))
                 Row(Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {

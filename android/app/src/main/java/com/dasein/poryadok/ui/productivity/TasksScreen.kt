@@ -183,7 +183,7 @@ fun TasksScreen(nav: NavHostController, onBack: (() -> Unit)? = null) {
                             if (list == L_DONE) "Пока ничего не выполнено" else "Здесь чисто",
                             if (list == L_DONE) "Отмечайте задачи — они появятся здесь." else "Добавьте задачу кнопкой «+». Можно писать «завтра в 10 !2 #работа».",
                         )
-                    } else LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 96.dp)) {
+                    } else LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
                         groups.forEach { (title, group) ->
                             if (title.isNotEmpty()) item(key = "h$title") {
                                 SectionTitle("$title  ${group.size}")

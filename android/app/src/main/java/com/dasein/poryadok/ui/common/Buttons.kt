@@ -79,8 +79,8 @@ object LabelEdit {
 @Composable
 fun ButtonsRow(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     androidx.compose.foundation.layout.FlowRow(
-        modifier, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp, Alignment.End),
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(2.dp),
+        modifier, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(Space.s, Alignment.End),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(Space.xs),
     ) { content() }
 }
 
@@ -88,7 +88,12 @@ fun ButtonsRow(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
 private val ButtonText = androidx.compose.ui.text.TextStyle(
     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
     lineBreak = androidx.compose.ui.text.style.LineBreak.Heading,
+    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
 )
+
+/** Поля кнопки: высота около 48 dp (удобно попасть пальцем), по бокам чуть уже стандарта — длинные подписи влезают. */
+private val ButtonPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
+private val TextButtonPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
 
 @Composable
 private fun ButtonContent(holder: LabelHolder, scope: RowScope, content: @Composable RowScope.() -> Unit) {
@@ -153,7 +158,7 @@ fun Button(
     colors: ButtonColors = ButtonDefaults.buttonColors(),
     elevation: ButtonElevation? = ButtonDefaults.buttonElevation(),
     border: BorderStroke? = null,
-    contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
+    contentPadding: PaddingValues = ButtonPadding,
     interactionSource: MutableInteractionSource? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
@@ -175,7 +180,7 @@ fun OutlinedButton(
     colors: ButtonColors = ButtonDefaults.outlinedButtonColors(),
     elevation: ButtonElevation? = null,
     border: BorderStroke? = DefaultOutline,
-    contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
+    contentPadding: PaddingValues = ButtonPadding,
     interactionSource: MutableInteractionSource? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
@@ -198,7 +203,7 @@ fun TextButton(
     colors: ButtonColors = ButtonDefaults.textButtonColors(),
     elevation: ButtonElevation? = null,
     border: BorderStroke? = null,
-    contentPadding: PaddingValues = ButtonDefaults.TextButtonContentPadding,
+    contentPadding: PaddingValues = TextButtonPadding,
     interactionSource: MutableInteractionSource? = null,
     content: @Composable RowScope.() -> Unit,
 ) {

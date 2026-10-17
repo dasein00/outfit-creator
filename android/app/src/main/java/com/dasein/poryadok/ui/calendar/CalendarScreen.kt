@@ -176,7 +176,7 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
     }
     val red = Color(0xFFD25B4B)
 
-    LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 96.dp)) {
+    LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
         item {
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { ym = ym.minusMonths(1) }) { Icon(Icons.Default.ChevronLeft, "Назад") }
@@ -336,7 +336,7 @@ private fun RemindersList(onEdit: (Reminder) -> Unit) {
         Empty(Ic.bell, "Напоминалок нет", "Добавьте через «+» — придёт уведомление в нужное время, даже если приложение закрыто.")
         return
     }
-    LazyColumn(contentPadding = PaddingValues(12.dp, 8.dp, 12.dp, 96.dp)) {
+    LazyColumn(contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp)) {
         val open = reminders.filter { !it.done }
         val done = reminders.filter { it.done }
         if (open.isNotEmpty()) item { Tile(padding = 10.dp) { open.forEach { r -> ReminderRow(r) { onEdit(r) } } } }

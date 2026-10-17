@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -64,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dasein.poryadok.logic.Dates
 import com.dasein.poryadok.ui.theme.LocalExtra
+import com.dasein.poryadok.data.UiTexts
 import com.dasein.poryadok.ui.theme.Palette
 
 @Composable
@@ -84,7 +87,11 @@ fun Screen(
                     }
                 },
                 actions = actions,
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                // Цвет шапки не меняется при прокрутке: экран остаётся одним спокойным полотном.
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                ),
             )
         },
         floatingActionButton = { Editable { fab() } },
@@ -98,7 +105,7 @@ fun Tile(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     color: Color = LocalExtra.current.card,
-    padding: Dp = 14.dp,
+    padding: Dp = Space.card,
     onLongClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -115,6 +122,8 @@ fun Tile(
         },
         color = color,
         shape = RoundedCornerShape(round),
+        // Рамка — только у обычной карточки: цветные плашки и так отделены от фона.
+        border = if (color == LocalExtra.current.card) cardBorder() else null,
     ) {
         if (holder != null) androidx.compose.runtime.CompositionLocalProvider(LocalLabelHolder provides holder) { Column(Modifier.padding(padding), content = content) }
         else Column(Modifier.padding(padding), content = content)
@@ -124,17 +133,25 @@ fun Tile(
 @Composable
 fun SectionTitle(text: String, modifier: Modifier = Modifier, action: String? = null, onAction: () -> Unit = {}) {
     Row(
-        modifier.fillMaxWidth().padding(top = 18.dp, bottom = 8.dp),
+        modifier.fillMaxWidth().padding(top = Space.xl, bottom = Space.s).heightIn(min = 32.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text.uppercase(), style = MaterialTheme.typography.labelMedium, letterSpacing = 1.2.sp,
-            color = LocalExtra.current.dim, modifier = Modifier.weight(1f),
+        // Заголовок пишется капителью, но правится и переводится по исходному тексту (раньше «Тексты
+        // интерфейса» не находили его из-за заглавных). Старые правки, сделанные по заглавному варианту, сохраняются.
+        UiTexts.version.intValue
+        val upper = text.uppercase()
+        val legacy = UiTexts.tr(upper)
+        androidx.compose.material3.Text(
+            if (legacy != upper) legacy else UiTexts.tr(text).uppercase(),
+            style = MaterialTheme.typography.labelMedium, letterSpacing = 1.sp,
+            color = LocalExtra.current.dim, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            modifier = (if (UiTexts.editorMode.value) Modifier.textEditPress(if (legacy != upper) upper else text) else Modifier).weight(1f),
         )
         if (action != null) Editable {
             Text(
                 btnLabel(action), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onAction).padding(6.dp),
+                modifier = Modifier.padding(start = Space.s).clip(RoundedCornerShape(10.dp)).clickable(onClick = onAction)
+                    .heightIn(min = 36.dp).padding(horizontal = Space.s, vertical = Space.s),
             )
         }
     }
@@ -143,14 +160,14 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier, action: String? = 
 @Composable
 fun Empty(emoji: String, title: String, text: String, modifier: Modifier = Modifier) {
     Column(
-        modifier.fillMaxWidth().padding(vertical = 48.dp, horizontal = 24.dp),
+        modifier.fillMaxWidth().padding(vertical = 56.dp, horizontal = Space.xxl),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Glyph(emoji, 44.dp, badge = true)
-        Spacer(Modifier.height(12.dp))
+        Glyph(emoji, 48.dp, badge = true)
+        Spacer(Modifier.height(Space.l))
         Text(title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(4.dp))
-        Text(text, color = LocalExtra.current.dim, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+        Spacer(Modifier.height(Space.s))
+        Text(text, color = LocalExtra.current.dim, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.widthIn(max = 320.dp))
     }
 }
 
@@ -241,13 +258,13 @@ fun Pill(text: String, selected: Boolean, glyph: String? = null, onClick: () -> 
     val shownText = text
     Surface(
         onClick = onClick,
-        modifier = if (LocalIconEditable.current) Modifier.labelLongPress(holder) else Modifier,
-        shape = RoundedCornerShape(20.dp),
+        modifier = (if (LocalIconEditable.current) Modifier.labelLongPress(holder) else Modifier).heightIn(min = 36.dp),
+        shape = RoundedCornerShape(50),
         color = if (selected) scheme.onSurface else Color.Transparent,
         border = if (selected) null else BorderStroke(1.dp, scheme.outline),
     ) {
         Row(
-            Modifier.padding(start = if (glyph != null) 8.dp else 14.dp, end = 14.dp, top = if (glyph != null) 5.dp else 8.dp, bottom = if (glyph != null) 5.dp else 8.dp),
+            Modifier.padding(start = if (glyph != null) 10.dp else 14.dp, end = 14.dp, top = if (glyph != null) 6.dp else 8.dp, bottom = if (glyph != null) 6.dp else 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             androidx.compose.runtime.CompositionLocalProvider(LocalLabelHolder provides holder) {
@@ -256,8 +273,8 @@ fun Pill(text: String, selected: Boolean, glyph: String? = null, onClick: () -> 
             // Подпись в одну строку: слово не должно переноситься по слогам («Последн-яя»).
             Text(
                 shownText, fontSize = 14.sp, maxLines = 1, softWrap = false,
-                color = if (selected) scheme.surface else LocalExtra.current.dim,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                color = if (selected) scheme.surface else scheme.onSurface.copy(alpha = .8f),
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
             )
         }
     }
@@ -280,7 +297,7 @@ fun NumberField(
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = if (decimal) KeyboardType.Decimal else KeyboardType.Number),
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(Space.fieldRound),
     )
 }
 
@@ -295,7 +312,7 @@ fun TextInput(
 ) {
     OutlinedTextField(
         value = value, onValueChange = onChange, label = { Text(label) }, singleLine = singleLine, minLines = minLines,
-        modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
+        modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(Space.fieldRound),
     )
 }
 
@@ -343,7 +360,7 @@ fun ConfirmDialog(title: String, text: String, confirm: String = "Удалить
         title = { Text(title) },
         text = { Text(text) },
         confirmButton = {
-            TextButton(onClick = { onConfirm(); onDismiss() }) { Text(confirm, color = LocalExtra.current.danger) }
+            TextButton(onClick = { onConfirm(); onDismiss() }) { Text(btnLabel(confirm), color = LocalExtra.current.danger) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
@@ -358,13 +375,15 @@ fun FieldButton(label: String, value: String, modifier: Modifier = Modifier, gly
 @Composable
 private fun FieldButtonBody(label: String, value: String, modifier: Modifier, glyph: String?, onClick: () -> Unit) {
     Row(
-        modifier.clip(RoundedCornerShape(14.dp)).border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 9.dp),
+        // Та же высота, скругление и рамка, что у полей ввода: форма читается одним столбцом.
+        modifier.heightIn(min = Space.field).clip(RoundedCornerShape(Space.fieldRound))
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(Space.fieldRound))
+            .clickable(onClick = onClick).padding(horizontal = Space.l, vertical = Space.s),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (glyph != null) { Glyph(glyph, 20.dp); Spacer(Modifier.width(10.dp)) }
+        if (glyph != null) { Glyph(glyph, 22.dp); Spacer(Modifier.width(Space.m)) }
         Column {
-            Text(btnLabel(label), fontSize = 12.sp, color = LocalExtra.current.dim)
+            Text(btnLabel(label), fontSize = 12.sp, color = LocalExtra.current.dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(value, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
@@ -372,9 +391,9 @@ private fun FieldButtonBody(label: String, value: String, modifier: Modifier, gl
 
 @Composable
 fun Stat(value: String, label: String, modifier: Modifier = Modifier, color: Color = Color.Unspecified) {
-    Tile(modifier, padding = 12.dp) {
+    Tile(modifier, padding = Space.m) {
         FitText(value, Modifier.fillMaxWidth(), style = MaterialTheme.typography.titleLarge, color = color, textAlign = TextAlign.Center)
-        Text(label, fontSize = 11.sp, color = LocalExtra.current.dim, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+        Text(label, fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.fillMaxWidth().padding(top = Space.xxs), textAlign = TextAlign.Center)
     }
 }
 

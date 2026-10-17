@@ -69,7 +69,7 @@ fun OutfitsScreen(nav: NavHostController) {
     Screen(title = "Мои луки", onBack = { nav.popBackStack() }) { pad ->
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 40.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 40.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.padding(pad),

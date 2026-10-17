@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import com.dasein.poryadok.ui.common.Text
@@ -36,7 +37,7 @@ fun SectionTabs(labels: List<String>, glyphs: List<String>, selected: Int, count
             labels.forEachIndexed { i, label ->
                 val on = i == selected
                 Column(
-                    Modifier.weight(1f).clickable { onSelect(i) }.padding(top = 8.dp),
+                    Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable { onSelect(i) }.padding(top = 10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Box {
@@ -58,6 +59,6 @@ fun SectionTabs(labels: List<String>, glyphs: List<String>, selected: Int, count
                 }
             }
         }
-        HorizontalDivider(color = scheme.outline.copy(alpha = .25f))
+        HorizontalDivider(color = extra.line)
     }
 }

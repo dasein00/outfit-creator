@@ -147,7 +147,7 @@ fun HabitsScreen(nav: NavHostController) {
         }
         val todays = habits.filter { it.schedule().isScheduled(today) }
         val doneCount = todays.count { h -> (logs.firstOrNull { it.habitId == h.id && it.day == today }?.value ?: 0) >= h.target }
-        LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 96.dp)) {
+        LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
             item {
                 Tile {
                     Row(verticalAlignment = Alignment.CenterVertically) {

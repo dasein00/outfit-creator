@@ -95,7 +95,7 @@ fun FinanceAnalytics(all: List<Txn>, cats: List<Category>, accounts: List<Accoun
     val health = FinanceStats.health(m.savingsRate, runway, budgetUse, pace)
     val tips = FinanceStats.tips(m, avg, runway, pace, trends, split, totalBudget != null) { rub(it, cur) }
 
-    Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 12.dp)) {
+    Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         // ---------- Оценка ----------
         Tile {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -327,7 +327,7 @@ fun FinanceCalculators(cur: String) {
     val extra = LocalExtra.current
     var which by rememberSaveable { mutableStateOf(0) }
     val names = listOf("Вклад", "Кредит", "Накопить на цель", "Погасить долг", "Инфляция", "Бюджет 50/30/20")
-    Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 12.dp)) {
+    Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
             names.forEachIndexed { i, n -> Pill(n, which == i) { which = i } }
         }

@@ -156,7 +156,7 @@ fun ReaderLibraryScreen(nav: NavHostController) {
         val cols = if (s.grid) 3 else 1
         LazyVerticalGrid(
             GridCells.Fixed(cols), Modifier.padding(pad),
-            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 96.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {

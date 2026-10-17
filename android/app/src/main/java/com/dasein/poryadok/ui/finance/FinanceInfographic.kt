@@ -93,7 +93,7 @@ fun FinanceInfographicScreen(nav: NavHostController, settings: Settings) {
     fun catOf(t: Txn): Category? = catName[t.categoryId]
 
     Screen("Инфографика финансов", onBack = { nav.popBackStack() }) { pad ->
-        Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 14.dp)) {
+        Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             Segments(listOf(1 to "Месяц", 3 to "3 мес", 12 to "Год", 0 to "Всё"), months, { months = it })
             Gap(10.dp)
 

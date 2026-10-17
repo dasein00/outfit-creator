@@ -82,7 +82,7 @@ internal fun ExerciseShorts(exercises: List<Exercise>, sets: List<SetLog>, onAdd
         (muscle == null || it.muscle == muscle) && (!favOnly || fav(it.id)) &&
             (q.isBlank() || it.name.contains(q, true) || it.equipment.contains(q, true) || it.muscle.contains(q, true))
     }
-    LazyColumn(contentPadding = PaddingValues(12.dp, 8.dp, 12.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyColumn(contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             OutlinedTextField(q, { q = it }, placeholder = { Text(btnLabel("Поиск упражнения")) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))
             Column(Modifier.padding(top = 8.dp)) {

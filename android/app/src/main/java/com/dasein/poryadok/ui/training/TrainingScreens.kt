@@ -162,7 +162,7 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
                 }
             }
             when (tab) {
-                0 -> LazyColumn(contentPadding = PaddingValues(12.dp, 8.dp, 12.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                0 -> LazyColumn(contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     item {
                         Hint(
                             "training_intro",
@@ -215,7 +215,7 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
                     com.dasein.poryadok.ui.health.WorkoutTab(nav, inTraining = true)
                     Gap(80.dp)
                 }
-                2 -> LazyColumn(contentPadding = PaddingValues(12.dp, 8.dp, 12.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                2 -> LazyColumn(contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     item {
                         OutlinedButton(onClick = { tab = 4 }, Modifier.fillMaxWidth()) { Text(btnLabel("Бег, йога, прогулки — быстрая запись")) }
                     }
@@ -236,7 +236,7 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
                     }
                     item { HowTo("training") }
                 }
-                else -> LazyColumn(contentPadding = PaddingValues(12.dp, 8.dp, 12.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                else -> LazyColumn(contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     val used = exercises.filter { e -> sets.any { it.exerciseId == e.id && it.done } }
                     if (used.isEmpty()) item { Text("Здесь появятся графики, когда вы отметите первые подходы.", color = extra.dim, modifier = Modifier.padding(8.dp)) }
                     items(used, key = { it.id }) { e ->
@@ -272,7 +272,7 @@ private fun ExerciseLibrary(exercises: List<Exercise>, sets: List<SetLog>, onOpe
     var q by remember { mutableStateOf("") }
     var muscle by remember { mutableStateOf<String?>(null) }
     val list = exercises.filter { (muscle == null || it.muscle == muscle) && (q.isBlank() || it.name.contains(q, true) || it.equipment.contains(q, true)) }
-    LazyColumn(contentPadding = PaddingValues(12.dp, 8.dp, 12.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    LazyColumn(contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         item {
             OutlinedTextField(q, { q = it }, placeholder = { Text(btnLabel("Поиск упражнения")) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))
             Column(Modifier.padding(vertical = 8.dp)) {
@@ -688,7 +688,7 @@ fun SessionScreen(nav: NavHostController, id: Long) {
                 HGap(12.dp)
                 Text("подходов $done из ${sets.size} · тоннаж ${w(sets.filter { it.done }.sumOf { it.weight * it.reps })} кг", fontSize = 13.sp, color = extra.dim)
             }
-            LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(12.dp, 4.dp, 12.dp, 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp, 4.dp, 16.dp, 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(order, key = { it.key }) { (exId, list) ->
                     val e = byId[exId]
                     val kind = e?.kind ?: ExKind.WEIGHT

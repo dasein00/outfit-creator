@@ -253,7 +253,7 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
         if (items == null) { Box(Modifier.padding(pad).fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return@Screen }
         LazyVerticalGrid(
             GridCells.Adaptive(110.dp), Modifier.padding(pad),
-            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 96.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
