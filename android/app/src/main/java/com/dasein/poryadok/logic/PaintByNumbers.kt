@@ -135,7 +135,7 @@ object PaintByNumbers {
             val dl = labs[i * 3] - labs[j * 3]; val da = labs[i * 3 + 1] - labs[j * 3 + 1]; val db = labs[i * 3 + 2] - labs[j * 3 + 2]
             return dl * dl + da * da + db * db
         }
-        val minLen = maxOf(6, (minArea / 3.0 * (1.2 - sv)).toInt())
+        val minLen = maxOf(14, (minArea / 3.0 * (1.2 - sv)).toInt())
         // Рядом с уже существующей границей цветов края не ищем — иначе контур удвоится по размытому переходу.
         val near = BooleanArray(c.size)
         for (y in 0 until h) for (x in 0 until w) {
