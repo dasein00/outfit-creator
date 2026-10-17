@@ -95,6 +95,21 @@ object UiProfile {
         walkPace = p.walkPace, walkPaceAuto = p.walkPaceAuto, talkSpheres = p.talkSpheres,
     )
 
+    /** Это файл оформления (а не полная копия): внутри profile.json и нет manifest.json. */
+    fun isProfile(ctx: Context, uri: Uri): Boolean = runCatching {
+        var profile = false; var manifest = false
+        ctx.contentResolver.openInputStream(uri)?.use { ins ->
+            ZipInputStream(ins.buffered()).use { z ->
+                while (true) {
+                    val e = z.nextEntry ?: break
+                    if (e.name == "profile.json") profile = true
+                    if (e.name == "manifest.json") manifest = true
+                }
+            }
+        }
+        profile && !manifest
+    }.getOrDefault(false)
+
     /** Сохраняет файл оформления. Возвращает число файлов-иконок внутри. */
     suspend fun export(ctx: Context, uri: Uri): Result<Int> = withContext(Dispatchers.IO) {
         runCatching {

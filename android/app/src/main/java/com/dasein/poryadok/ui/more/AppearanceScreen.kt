@@ -209,7 +209,7 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
                 Column(Modifier.weight(1f)) {
                     Text(btnLabel("Режим редактора"), fontWeight = FontWeight.SemiBold)
                     Text(
-                        "Удерживайте любой текст в приложении 3 секунды — откроется окно, где можно изменить формулировку. Правки видны в «Редактировать тексты».",
+                        "Включается и так: удерживайте палец на экране 3 секунды. В режиме удерживайте любой текст 1 секунду — откроется окно, где можно изменить формулировку. Правки видны в «Редактировать тексты».",
                         fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
                     )
                 }
@@ -222,8 +222,18 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
                     "Загрузите файл на другом телефоне или пришлите его в чат с Claude — тогда ваше оформление станет стандартным и появится сразу после установки.",
                 fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
             )
-            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { profileExport.launch("DASEIN-оформление.zip") }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text(btnLabel("Экспорт оформления")) }
+            Button(
+                onClick = {
+                    scope.launch {
+                        profileMsg = "Готовлю оформление…"
+                        profileMsg = shareFile(ctx, "DASEIN-оформление.zip", "Оформление DASEIN") { com.dasein.poryadok.system.UiProfile.export(ctx, it) }
+                            .fold({ null }, { "Не удалось: ${it.message}" })
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 48.dp),
+            ) { Text(btnLabel("Отправить в чат")) }
+            Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { profileExport.launch("DASEIN-оформление.zip") }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text(btnLabel("Экспорт оформления")) }
                 OutlinedButton(onClick = { profileImport.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text(btnLabel("Импорт оформления")) }
             }
             profileMsg?.let { Text(it, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp)) }

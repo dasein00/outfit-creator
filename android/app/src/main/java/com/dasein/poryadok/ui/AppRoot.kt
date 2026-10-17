@@ -1,6 +1,10 @@
 package com.dasein.poryadok.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.background
@@ -220,7 +224,9 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
         }
     }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().editorModeHold()) {
+        // Полоса режима редактора — сверху, подальше от системных кнопок Android внизу.
+        if (com.dasein.poryadok.data.UiTexts.editorMode.value) EditorModeStrip()
         NavHost(nav, startDestination = Routes.TODAY, modifier = Modifier.weight(1f)) {
             composable(Routes.TODAY) { TodayScreen(nav, settings) }
             composable(Routes.TASKS) { TasksScreen(nav) { nav.popBackStack() } }
@@ -419,7 +425,6 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable(com.dasein.poryadok.ui.more.UI_TEXTS_ROUTE) { com.dasein.poryadok.ui.more.UiTextsScreen(nav) }
             composable(com.dasein.poryadok.ui.finance.FIN_INFO_ROUTE) { com.dasein.poryadok.ui.finance.FinanceInfographicScreen(nav, settings) }
         }
-        if (com.dasein.poryadok.data.UiTexts.editorMode.value) EditorModeStrip()
         if (showBar) {
             var editTab by remember { mutableStateOf<Pair<Int, Tab>?>(null) }
             // В нижней панели долгое нажатие — своё меню вкладки (там же меняется иконка раздела).
@@ -438,14 +443,42 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
     }
 }
 
-/** Полоса «Режим редактора» над нижней панелью: напоминает, как править текст, и выключает режим. */
+/**
+ * Удержание пальца на экране 3 секунды без движения включает режим редактора текстов. Касание только наблюдаем
+ * (не забираем): нажатия, прокрутка и меню работают как обычно.
+ */
+private fun Modifier.editorModeHold(): Modifier = pointerInput(Unit) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+        if (com.dasein.poryadok.data.UiTexts.editorMode.value) return@awaitEachGesture
+        val slop = viewConfiguration.touchSlop * 2
+        val released = kotlinx.coroutines.withTimeoutOrNull(3000L) {
+            while (true) {
+                val ev = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                if (ev.changes.size > 1) return@withTimeoutOrNull true
+                val c = ev.changes.firstOrNull { it.id == down.id } ?: return@withTimeoutOrNull true
+                if (!c.pressed) return@withTimeoutOrNull true
+                if ((c.position - down.position).getDistance() > slop) return@withTimeoutOrNull true
+            }
+        }
+        if (released == null) {
+            com.dasein.poryadok.data.UiTexts.setEditorMode(true)
+            runCatching {
+                android.widget.Toast.makeText(com.dasein.poryadok.Graph.app, "Режим редактора: удерживайте текст 1 секунду, чтобы изменить его", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+}
+
+/** Полоса «Режим редактора» сверху экрана: напоминает, как править текст, и выключает режим. */
 @Composable
 private fun EditorModeStrip() {
     Row(
-        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary.copy(alpha = .12f)).padding(start = 14.dp, end = 4.dp),
+        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary.copy(alpha = .14f))
+            .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBars).padding(start = 14.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("✎ Режим редактора: удерживайте любой текст 3 секунды", Modifier.weight(1f), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+        Text("✎ Режим редактора: удерживайте текст 1 секунду", Modifier.weight(1f), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
         androidx.compose.material3.TextButton(onClick = { com.dasein.poryadok.data.UiTexts.setEditorMode(false) }) { Text("Выключить", fontSize = 12.sp) }
     }
 }

@@ -59,6 +59,15 @@ class UiTextEngineTest {
         assertEquals(mapOf("Кнопка 5" to "Пятая"), en.extraEdits)
     }
 
+    @Test fun keepWordMeansUnchanged() {
+        // В документе «оставить» в графе своего варианта — значит «не менять», а не новое название.
+        val l = UiTextEngine.parse(sequenceOf("1\tРаздел\tA.kt:1\tL\tГардероб\t\tоставить", "2\tРаздел\tA.kt:2\tL\tЧиталка\t\t Оставить "))
+        val en = UiTextEngine(l, mapOf("Кнопка" to "оставить"))
+        assertEquals("Гардероб", en.translate("Гардероб"))
+        assertEquals("Читалка", en.translate("Читалка"))
+        assertEquals("Кнопка", en.translate("Кнопка"))
+    }
+
     @Test fun parsesCatalog() {
         val l = UiTextEngine.parse(sequenceOf("9\tРаздел\tA.kt:1\tL\tСтрока\\nвторая\t\tСтрока 2", "плохая строка"))
         assertEquals(1, l.size)

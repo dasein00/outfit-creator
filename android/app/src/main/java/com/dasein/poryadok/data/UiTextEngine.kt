@@ -38,11 +38,11 @@ class UiTextEngine(val entries: List<Entry>, private val user: Map<String, Strin
             }
         }
         // Правки удержанием кнопки — по тексту, который был на экране.
-        for ((k, v) in user) if (k !in known && v.isNotBlank() && v != k) exact[k] = v
+        for ((k, v) in user) if (k !in known && v.isNotBlank() && v != k && !isKeep(v)) exact[k] = v
         plainFragments.sortByDescending { it.first.length }
     }
 
-    fun effective(e: Entry): String = user[e.orig]?.takeIf { it.isNotEmpty() } ?: e.default
+    fun effective(e: Entry): String = user[e.orig]?.takeIf { it.isNotEmpty() && !isKeep(it) } ?: e.default
 
     fun userValue(e: Entry): String? = user[e.orig]
 
@@ -94,6 +94,9 @@ class UiTextEngine(val entries: List<Entry>, private val user: Map<String, Strin
     companion object {
         val SLOT = Regex("""\{(\d+)\}""")
 
+        /** «оставить» в графе своего варианта значит «как было», а не новое название. */
+        fun isKeep(v: String) = v.trim().trimEnd('.', '!').lowercase() in setOf("оставить", "оставить как есть", "без изменений")
+
         private fun rule(orig: String, value: String): Rule? {
             val chunks = SLOT.split(orig)
             // Шаблон без слов вокруг подстановки («{1}») совпал бы с любым текстом.
@@ -116,7 +119,7 @@ class UiTextEngine(val entries: List<Entry>, private val user: Map<String, Strin
         fun parse(lines: Sequence<String>): List<Entry> = lines.mapNotNull { line ->
             val p = line.split('\t')
             if (p.size < 7) return@mapNotNull null
-            Entry(p[0].toIntOrNull() ?: return@mapNotNull null, p[1], p[2], p[3] == "F", unesc(p[4]), unesc(p[5]), unesc(p[6]))
+            Entry(p[0].toIntOrNull() ?: return@mapNotNull null, p[1], p[2], p[3] == "F", unesc(p[4]), unesc(p[5]), unesc(p[6]).takeUnless { isKeep(it) } ?: "")
         }.toList()
 
         private fun unesc(s: String): String {
