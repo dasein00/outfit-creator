@@ -205,6 +205,36 @@ object RecipeText {
         )
     }
 
+    /**
+     * Рецепт из двух источников без интернета: подпись к посту (обычно ингредиенты с граммовками) и речь из видео
+     * (обычно — как готовить). Продукты — из поста, плюс те, что прозвучали только в речи; этапы — из поста,
+     * а если их там нет — из речи по предложениям.
+     */
+    fun merge(post: String, speech: String): Parsed {
+        val pp = parse(post)
+        val sp = parse(speech)
+        val have = pp.ingredients.flatMap { keyWords(it.name) }.toMutableSet()
+        val extra = sp.ingredients.filter { ing ->
+            val w = keyWords(ing.name)
+            (w.isNotEmpty() && w.none { k -> have.any { h -> h.startsWith(k.take(maxOf(3, k.length - 1))) || k.startsWith(h.take(maxOf(3, h.length - 1))) } }).also { if (it) have += w }
+        }
+        val ings = if (pp.ingredients.isNotEmpty()) pp.ingredients + extra else sp.ingredients
+        val steps = when {
+            pp.steps.size >= 2 -> pp.steps
+            sp.steps.size >= 2 -> sp.steps
+            else -> splitParagraph(speech.replace(HASHTAG, "").replace(Regex("""\s+"""), " ").trim())
+                .filter { it.length >= 20 }.map { Step(it, minutesIn(it)) }.ifEmpty { pp.steps + sp.steps }
+        }
+        return Parsed(
+            title = pp.title ?: sp.title,
+            servings = pp.servings ?: sp.servings,
+            ingredients = ings,
+            steps = steps,
+            totalMinutes = pp.totalMinutes ?: sp.totalMinutes,
+            tags = (pp.tags + sp.tags).distinct(),
+        )
+    }
+
     private val ADJ = Regex("""(ый|ий|ой|ая|яя|ое|ее|ые|ие)$""")
 
     /** Слова продукта, по которым его узнать в тексте: существительные («сулугуни», «масло», «лук»), без прилагательных. */

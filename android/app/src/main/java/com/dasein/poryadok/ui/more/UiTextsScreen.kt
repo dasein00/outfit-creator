@@ -238,7 +238,7 @@ internal fun EditTextDialog(e: UiTextEngine.Entry, engine: UiTextEngine, onClose
         title = { Text("Текст интерфейса") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                Text("Нажмите на вариант, чтобы взять его, или напишите свой.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(bottom = 6.dp))
+                Text("Нажмите на вариант, чтобы взять его, или напишите свой. «Скрыть с экрана» убирает текст совсем — например, ненужную подсказку.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(bottom = 6.dp))
                 Variant(if (e.section == SCREEN_SECTION) "Текст на экране" else "Как в коде", e.orig) { value = e.orig }
                 if (e.suggestion.isNotEmpty()) Variant("Предложение дизайнера", e.suggestion) { value = e.suggestion }
                 if (e.final.isNotEmpty()) Variant("Ваш вариант из документа", e.final) { value = e.final }
@@ -271,7 +271,14 @@ internal fun EditTextDialog(e: UiTextEngine.Entry, engine: UiTextEngine, onClose
                 onClose()
             }) { Text("Сохранить") }
         },
-        dismissButton = { TextButton(onClick = onClose) { Text("Отмена") } },
+        dismissButton = {
+            com.dasein.poryadok.ui.common.ButtonsRow {
+                // Убрать текст с экрана (подсказку, пояснение) — и вернуть так же.
+                if (UiTextEngine.isHide(engine.effective(e))) TextButton(onClick = { UiTexts.set(e.orig, null); onClose() }) { Text("Показать снова") }
+                else TextButton(onClick = { UiTexts.set(e.orig, UiTextEngine.HIDE); onClose() }) { Text("Скрыть с экрана", color = extra.danger) }
+                TextButton(onClick = onClose) { Text("Отмена") }
+            }
+        },
     )
 }
 

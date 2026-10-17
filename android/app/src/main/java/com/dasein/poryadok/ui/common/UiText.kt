@@ -80,10 +80,24 @@ fun Text(
     style: TextStyle = LocalTextStyle.current,
 ) {
     UiTexts.version.intValue
+    var shown = UiTexts.tr(text)
+    var decoration = textDecoration
+    if (com.dasein.poryadok.data.UiTextEngine.isHide(shown)) {
+        // Скрытый текст не показывается; в режиме редактора виден зачёркнутым — удержанием его можно вернуть.
+        if (!UiTexts.editorMode.value) return
+        shown = text
+        decoration = TextDecoration.LineThrough
+    }
+    // Одно слово в узком месте раньше рвалось посреди («Описани-е»). Короткую надпись из одного слова
+    // не переносим: если места мало, она сокращается многоточием. Абзацы и подписи из нескольких слов
+    // переносятся как обычно — по словам.
+    val oneWord = maxLines == Int.MAX_VALUE && softWrap && shown.length in 2..24 && shown.none { it.isWhitespace() } && shown.any { it.isLetter() }
     androidx.compose.material3.Text(
-        text = UiTexts.tr(text), modifier = if (UiTexts.editorMode.value) modifier.textEditPress(text) else modifier, color = color, fontSize = fontSize, fontStyle = fontStyle,
-        fontWeight = fontWeight, fontFamily = fontFamily, letterSpacing = letterSpacing, textDecoration = textDecoration,
-        textAlign = textAlign, lineHeight = lineHeight, overflow = overflow, softWrap = softWrap, maxLines = maxLines,
+        text = shown, modifier = if (UiTexts.editorMode.value) modifier.textEditPress(text) else modifier, color = color, fontSize = fontSize, fontStyle = fontStyle,
+        fontWeight = fontWeight, fontFamily = fontFamily, letterSpacing = letterSpacing, textDecoration = decoration,
+        textAlign = textAlign, lineHeight = lineHeight,
+        overflow = if (oneWord && overflow == TextOverflow.Clip) TextOverflow.Ellipsis else overflow,
+        softWrap = if (oneWord) false else softWrap, maxLines = if (oneWord) 1 else maxLines,
         minLines = minLines, onTextLayout = onTextLayout, style = style,
     )
 }

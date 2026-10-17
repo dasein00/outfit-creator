@@ -65,7 +65,7 @@ object RecipeRepo {
             // Пустая картинка или прежняя встроенная — ставим новую. Свои фото и выбранные вручную не трогаем.
             images[r.seedKey]?.takeIf { it.isNotBlank() && it != r.photo }?.let { x.upsertRecipe(r.copy(photo = it)) }
         }
-        val have = x.recipeSeedKeys().toSet()
+        val have = x.recipeSeedKeys().toSet() + deletedSeeds()
         val now = System.currentTimeMillis()
         Graph.extraDb.withTransaction {
             seed.recipes.filter { it.key !in have }.forEach { s ->
@@ -128,7 +128,13 @@ object RecipeRepo {
         return saveRecipe(r.copy(id = 0, name = r.name + " (копия)", custom = true, seedKey = null, favorite = false, createdAt = 0, archived = false), ing, steps)
     }
 
+    /** Встроенные рецепты, которые удалили: при обновлении каталога они не возвращаются. */
+    private const val DELETED_SEEDS = "recipe_deleted_seeds"
+    private fun ui() = Graph.app.getSharedPreferences("ui_state", android.content.Context.MODE_PRIVATE)
+    private fun deletedSeeds(): Set<String> = ui().getString(DELETED_SEEDS, "").orEmpty().lines().filter { it.isNotBlank() }.toSet()
+
     suspend fun deleteRecipe(id: Long) {
+        x.recipeNow(id)?.seedKey?.let { key -> ui().edit().putString(DELETED_SEEDS, (deletedSeeds() + key).joinToString("\n")).apply() }
         Graph.extraDb.withTransaction {
             x.deleteIngredientsOf(id)
             x.deleteStepsOf(id)

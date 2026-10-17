@@ -28,7 +28,8 @@ class UiTextEngine(val entries: List<Entry>, private val user: Map<String, Strin
         val known = HashSet<String>()
         for (e in entries) {
             known += e.orig
-            val v = effective(e)
+            // «Скрыть» у части составной фразы — просто убрать её из строки.
+            val v = effective(e).let { if (e.fragment && isHide(it)) "" else it }
             if (v == e.orig) continue
             when {
                 e.fragment && !e.hasSlots -> plainFragments += e.orig to v
@@ -93,6 +94,10 @@ class UiTextEngine(val entries: List<Entry>, private val user: Map<String, Strin
 
     companion object {
         val SLOT = Regex("""\{(\d+)\}""")
+
+        /** Свой вариант «[скрыть]» убирает текст с экрана (подсказку, пояснение). В документе можно написать так же. */
+        const val HIDE = "[скрыть]"
+        fun isHide(v: String) = v.trim().lowercase() == HIDE
 
         /** «оставить» в графе своего варианта значит «как было», а не новое название. */
         fun isKeep(v: String) = v.trim().trimEnd('.', '!').lowercase() in setOf("оставить", "оставить как есть", "без изменений")

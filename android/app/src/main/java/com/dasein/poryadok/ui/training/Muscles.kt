@@ -108,6 +108,27 @@ internal fun MusclePills(selected: String?, onSelect: (String) -> Unit, leading:
     if (edit) MusclesDialog { edit = false }
 }
 
+/**
+ * Фильтр «Мышцы ▾»: все группы собраны в одну кнопку, по нажатию — список снизу с галочками,
+ * можно выбрать несколько групп сразу. Рядом — «+ Мышцы» для правки самого списка.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun MuscleFilter(selected: Set<String>, exercises: List<com.dasein.poryadok.data.Exercise>, onChange: (Set<String>) -> Unit, leading: @Composable () -> Unit = {}) {
+    val ctx = LocalContext.current
+    var edit by remember { mutableStateOf(false) }
+    val names = Muscles.all(ctx).map { it.name }
+    // Группы из упражнений, которых уже нет в списке, тоже можно выбрать.
+    val all = (names + exercises.map { it.muscle }.filter { it.isNotBlank() }).distinct()
+    val options = all.map { m -> com.dasein.poryadok.ui.common.FilterOption(m, m, exercises.count { it.muscle == m }) }
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        leading()
+        com.dasein.poryadok.ui.common.MultiFilter("Мышцы", options, selected, onChange)
+        Pill("+ Мышцы", false) { edit = true }
+    }
+    if (edit) MusclesDialog { edit = false }
+}
+
 /** Список групп мышц: нажмите на группу, чтобы сменить иконку или название; «+ Новая группа» — своя. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

@@ -230,6 +230,7 @@ object BackupFiles {
             Widgets.refresh(ctx)
             com.dasein.poryadok.ui.theme.Look.reload(ctx)
             com.dasein.poryadok.data.VacationStore.reload()
+            com.dasein.poryadok.data.TrainingArchive.reload()
             ReaderStore.reload(ctx)
             files
         }

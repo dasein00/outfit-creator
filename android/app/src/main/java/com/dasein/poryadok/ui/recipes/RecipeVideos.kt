@@ -109,7 +109,7 @@ fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolea
                     }) { Text(btnLabel("Смотреть")) }
                 }
             } else if (File(v).exists()) {
-                LocalVideo(v, Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(12.dp)).background(Color.Black))
+                LocalVideo(v, Modifier.fillMaxWidth())
             } else {
                 Text(btnLabel("Файл видео не найден"), color = extra.dim)
             }

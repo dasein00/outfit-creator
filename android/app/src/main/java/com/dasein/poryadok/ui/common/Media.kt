@@ -31,6 +31,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -195,46 +197,89 @@ fun MediaView(path: String, modifier: Modifier = Modifier, crop: Boolean = false
 
 /**
  * Видео со звуком: не стартует само, касание показывает кнопки плеера (пуск, пауза, перемотка),
- * «⛶» открывает ролик на весь экран.
+ * «⛶» открывает ролик на весь экран. Ролик идёт по кругу. Окно плеера повторяет пропорции видео —
+ * без чёрных полос; вертикальные ролики ограничены по высоте и стоят по центру.
+ * Переход на весь экран продолжает с того же места, а маленький плеер на это время ставится на паузу
+ * (раньше ролик начинался заново и звучал дважды); после закрытия маленький продолжает оттуда же.
  */
 @Composable
-fun VideoPlayer(path: String, modifier: Modifier = Modifier) = androidx.compose.runtime.key(path) {
+fun VideoPlayer(path: String, modifier: Modifier = Modifier, maxHeight: androidx.compose.ui.unit.Dp = 520.dp) = androidx.compose.runtime.key(path) {
     // key(path): при удалении или замене ролика проигрыватель создаётся заново, а не показывает прежний файл.
     var full by remember { mutableStateOf(false) }
-    Box(modifier.background(Color.Black)) {
-        AndroidView(
-            factory = { c -> playerView(c, path, autoplay = false) },
-            onRelease = { it.stopPlayback() },
-            modifier = Modifier.fillMaxSize(),
-        )
-        Text(
-            "⛶", color = Color.White, fontSize = 18.sp,
-            modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).clip(RoundedCornerShape(10.dp))
-                .background(Color.Black.copy(alpha = .55f)).clickable { full = true }.padding(horizontal = 9.dp, vertical = 2.dp),
-        )
-    }
-    if (full) Dialog(onDismissRequest = { full = false }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        Box(Modifier.fillMaxSize().background(Color.Black).systemBarsPadding()) {
+    var mini by remember { mutableStateOf<VideoView?>(null) }
+    var startAt by remember { mutableStateOf(0) }
+    val ratio by produceState(16f / 9f, path) { value = withContext(Dispatchers.IO) { videoRatio(path) } ?: 16f / 9f }
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.heightIn(max = maxHeight).aspectRatio(ratio, matchHeightConstraintsFirst = true)
+                .clip(RoundedCornerShape(12.dp)).background(Color.Black),
+        ) {
             AndroidView(
-                factory = { c -> playerView(c, path, autoplay = true) },
+                factory = { c -> playerView(c, path, autoplay = false, startAt = 0).also { mini = it } },
                 onRelease = { it.stopPlayback() },
-                modifier = Modifier.align(Alignment.Center).fillMaxWidth(),
+                modifier = Modifier.fillMaxSize(),
             )
             Text(
-                "✕", color = Color.White, fontSize = 22.sp,
-                modifier = Modifier.align(Alignment.TopEnd).padding(14.dp).clip(RoundedCornerShape(12.dp))
-                    .background(Color.Black.copy(alpha = .55f)).clickable { full = false }.padding(horizontal = 12.dp, vertical = 4.dp),
+                "⛶", color = Color.White, fontSize = 18.sp,
+                modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).clip(RoundedCornerShape(10.dp))
+                    .background(Color.Black.copy(alpha = .55f)).clickable {
+                        mini?.let { v -> startAt = v.currentPosition; v.pause() }
+                        full = true
+                    }.padding(horizontal = 9.dp, vertical = 2.dp),
             )
+        }
+    }
+    if (full) {
+        var big by remember { mutableStateOf<VideoView?>(null) }
+        fun close() {
+            val b = big
+            val pos = b?.currentPosition ?: startAt
+            val playing = b?.isPlaying == true
+            b?.stopPlayback()
+            full = false
+            mini?.let { v -> v.seekTo(pos); if (playing) v.start() }
+        }
+        Dialog(onDismissRequest = { close() }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+            Box(Modifier.fillMaxSize().background(Color.Black).systemBarsPadding(), contentAlignment = Alignment.Center) {
+                AndroidView(
+                    factory = { c -> playerView(c, path, autoplay = true, startAt = startAt).also { big = it } },
+                    onRelease = { it.stopPlayback() },
+                    modifier = Modifier.fillMaxWidth().aspectRatio(ratio, matchHeightConstraintsFirst = ratio < 1f),
+                )
+                Text(
+                    "✕", color = Color.White, fontSize = 22.sp,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(14.dp).clip(RoundedCornerShape(12.dp))
+                        .background(Color.Black.copy(alpha = .55f)).clickable { close() }.padding(horizontal = 12.dp, vertical = 4.dp),
+                )
+            }
         }
     }
 }
 
-private fun playerView(c: Context, path: String, autoplay: Boolean) = VideoView(c).apply {
+/** Пропорции кадра (ширина / высота) с учётом поворота — по ним строится окно плеера. */
+private fun videoRatio(path: String): Float? = runCatching {
+    val r = android.media.MediaMetadataRetriever()
+    try {
+        r.setDataSource(path)
+        val w = r.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toFloatOrNull() ?: return@runCatching null
+        val h = r.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toFloatOrNull() ?: return@runCatching null
+        val rot = r.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+        if (w <= 0f || h <= 0f) null else if (rot == 90 || rot == 270) h / w else w / h
+    } finally { runCatching { r.release() } }
+}.getOrNull()?.coerceIn(.3f, 3f)
+
+private fun playerView(c: Context, path: String, autoplay: Boolean, startAt: Int) = VideoView(c).apply {
     val mc = MediaController(c)
     mc.setAnchorView(this)
     setMediaController(mc)
     setVideoPath(path)
-    setOnPreparedListener { mp -> mp.setVolume(1f, 1f); if (autoplay) { start(); mc.show(2500) } else seekTo(1) }
+    setOnPreparedListener { mp ->
+        mp.setVolume(1f, 1f)
+        // Ролик рецепта или упражнения повторяется сам — не нужно тянуться к кнопке на каждом круге.
+        mp.isLooping = true
+        if (startAt > 0) seekTo(startAt) else if (!autoplay) seekTo(1)
+        if (autoplay) { start(); mc.show(2500) }
+    }
 }
 
 /** Кнопка «Сжать» для уже добавленного видео: перекодирует в 480p и заменяет файл. */

@@ -74,20 +74,20 @@ internal fun ExerciseShorts(exercises: List<Exercise>, sets: List<SetLog>, onAdd
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     var q by remember { mutableStateOf("") }
-    var muscle by remember { mutableStateOf<String?>(null) }
+    var muscles by remember { mutableStateOf(emptySet<String>()) }
     var favOnly by remember { mutableStateOf(false) }
     var favVer by remember { mutableIntStateOf(0) }
     fun fav(id: Long): Boolean { favVer; return favPrefs(ctx).getBoolean("ex_fav_$id", false) }
     val list = exercises.filter {
-        (muscle == null || it.muscle == muscle) && (!favOnly || fav(it.id)) &&
+        (muscles.isEmpty() || it.muscle in muscles) && (!favOnly || fav(it.id)) &&
             (q.isBlank() || it.name.contains(q, true) || it.equipment.contains(q, true) || it.muscle.contains(q, true))
     }
     LazyColumn(contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             OutlinedTextField(q, { q = it }, placeholder = { Text(btnLabel("Поиск упражнения")) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))
             Column(Modifier.padding(top = 8.dp)) {
-                MusclePills(muscle, { m -> muscle = if (muscle == m) null else m }) {
-                    Pill("Все", muscle == null && !favOnly) { muscle = null; favOnly = false }
+                MuscleFilter(muscles, exercises, { muscles = it }) {
+                    Pill("Все", muscles.isEmpty() && !favOnly) { muscles = emptySet(); favOnly = false }
                     Pill("Избранное", favOnly, glyph = Glyphs.FAV_ON) { favOnly = !favOnly }
                 }
             }

@@ -145,12 +145,26 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
     var ingrText by remember { mutableStateOf("") }
     /** Всё, что разбирается: речь или описание + ингредиенты из поста. */
     fun source(): String = if (ingrText.isBlank()) text else "Ингредиенты (из поста, точные граммовки):\n" + ingrText.trim() + "\n\nОписание и речь из видео:\n" + text.trim()
-    val preview = remember(text, ingrText) { if (text.isBlank() && ingrText.isBlank()) null else RecipeText.parse(source()) }
+    // Без интернета: продукты — из поста, этапы — из поста или из речи (RecipeText.merge).
+    val preview = remember(text, ingrText) {
+        when {
+            text.isBlank() && ingrText.isBlank() -> null
+            text.isNotBlank() && ingrText.isNotBlank() -> RecipeText.merge(ingrText, text)
+            else -> RecipeText.parse(source())
+        }
+    }
     val aiOn = remember { com.dasein.poryadok.system.Ai.enabled(ctx) }
     var aiBusy by remember { mutableStateOf(false) }
     var aiError by remember { mutableStateOf<String?>(null) }
     var linkBusy by remember { mutableStateOf(false) }
-    var postUrl by remember { mutableStateOf("") }
+    // Ссылка на пост подставляется сама: из прикреплённых к рецепту ссылок или из вставленного текста.
+    var postUrl by remember {
+        mutableStateOf(
+            (d.recipe.videos.lines() + d.recipe.notes.lines()).map { it.trim() }
+                .firstOrNull { it.startsWith("http") && "instagram.com" in it }.orEmpty()
+        )
+    }
+    var bothBusy by remember { mutableStateOf(false) }
     var postBusy by remember { mutableStateOf(false) }
     var videoBusy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
@@ -198,6 +212,42 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
     }
     // Видео, уже прикреплённые к рецепту (файлы на телефоне).
     val ownVideos = remember(d.recipe.videos) { d.recipe.videos.lines().map { it.trim() }.filter { it.startsWith("/") && java.io.File(it).exists() } }
+    /**
+     * Всё за один раз: подпись из поста Instagram + речь из видео рецепта → рецепт.
+     * С ИИ — он сводит оба текста; без интернета или ключа — встроенный разбор (продукты из поста, этапы из речи).
+     */
+    fun fromPostAndVideo() {
+        bothBusy = true; aiError = null
+        scope.launch {
+            if (postUrl.startsWith("http")) {
+                status = "Загружаю описание из поста…"
+                runCatching { com.dasein.poryadok.system.RecipeLink.fetch(postUrl) }
+                    .onSuccess { ingrText = it.trim() }
+                    .onFailure { aiError = "Пост не загрузился (${it.message}) — беру только речь из видео." }
+            }
+            ownVideos.firstOrNull()?.let { v ->
+                runCatching { com.dasein.poryadok.system.VideoSpeech.transcribe(ctx, android.net.Uri.fromFile(java.io.File(v))) { st -> status = st } }
+                    .onSuccess { text = it.trim() }
+                    .onFailure { if (ingrText.isBlank()) aiError = "Речь не распознана: ${it.message}" }
+            }
+            if (text.isBlank() && ingrText.isBlank()) { status = null; bothBusy = false; return@launch }
+            val online = aiOn && com.dasein.poryadok.system.Offline.hasNetwork(ctx)
+            if (online) {
+                status = "ИИ сводит описание поста и речь из видео…"
+                aiBusy = true
+                runCatching { aiParse(ctx, source()) }
+                    .onSuccess { bothBusy = false; applyResult(it, viaAi = true) }
+                    .onFailure {
+                        aiBusy = false; bothBusy = false
+                        val p = if (text.isNotBlank() && ingrText.isNotBlank()) RecipeText.merge(ingrText, text) else RecipeText.parse(source())
+                        applyResult(p, viaAi = false)
+                    }
+            } else {
+                bothBusy = false
+                applyResult(if (text.isNotBlank() && ingrText.isNotBlank()) RecipeText.merge(ingrText, text) else RecipeText.parse(source()), viaAi = false)
+            }
+        }
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(btnLabel("Описание блюда")) },
@@ -208,6 +258,19 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                         "2) Вставьте ссылку на пост Instagram и нажмите «Запарсить рецепт» — подпись под видео (ингредиенты, граммовки) попадёт в поле «Текст из поста». Или вставьте её вручную.\n3) «Сгенерировать рецепт» — ИИ заполнит ингредиенты, подробные этапы и описание. Всё можно править потом.",
                     fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
                 )
+                if (ownVideos.isNotEmpty() || postUrl.startsWith("http")) Button(
+                    enabled = !bothBusy && !videoBusy && !aiBusy,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 52.dp),
+                    onClick = { fromPostAndVideo() },
+                ) {
+                    Text(
+                        if (bothBusy) (status ?: "Заполняю…") else when {
+                            ownVideos.isNotEmpty() && postUrl.startsWith("http") -> "Заполнить из поста и речи видео"
+                            ownVideos.isNotEmpty() -> "Заполнить по речи из видео"
+                            else -> "Заполнить из поста Instagram"
+                        },
+                    )
+                }
                 TextButton(onClick = {
                     val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     cm.primaryClip?.getItemAt(0)?.coerceToText(ctx)?.toString()?.let { text = it }

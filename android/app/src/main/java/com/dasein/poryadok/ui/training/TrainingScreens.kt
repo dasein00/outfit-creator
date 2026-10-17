@@ -124,7 +124,16 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
     val sessions by observe(emptyList()) { t.sessions() }
     val sets by observe(emptyList()) { t.setLogs() }
     val active by observe<WorkoutSession?>(null) { t.activeSession() }
+    val archivedPlans by observe(emptyList()) { t.archivedPlans() }
+    val archivedSessions = com.dasein.poryadok.data.TrainingArchive.sessions.value
     LaunchedEffect(Unit) { runCatching { TrainingRepo.seed() } }
+    // Меню по удержанию карточки и архив: программы и проведённые тренировки сначала уходят в архив, оттуда — удаляются.
+    var planMenu by remember { mutableStateOf<WorkoutPlan?>(null) }
+    var sessionMenu by remember { mutableStateOf<WorkoutSession?>(null) }
+    var planArchiveOpen by rememberSaveable { mutableStateOf(false) }
+    var sessionArchiveOpen by rememberSaveable { mutableStateOf(false) }
+    var deletePlan by remember { mutableStateOf<WorkoutPlan?>(null) }
+    var deleteSession by remember { mutableStateOf<WorkoutSession?>(null) }
 
     // В начале тренировки — вес гантелей и утяжелителей (для подсчёта калорий).
     var gearFor by remember { mutableStateOf<Long?>(null) }
@@ -136,6 +145,51 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
         io {
             val sid = TrainingRepo.start(planId, gear)
             withContext(Dispatchers.Main) { nav.navigate(Routes.session(sid)) }
+        }
+    }
+
+    planMenu?.let { p ->
+        val close = { planMenu = null }
+        AlertDialog(
+            onDismissRequest = close,
+            title = { Text(p.name) },
+            text = {
+                Column {
+                    TextButton(onClick = { close(); nav.navigate(Routes.trainingPlan(p.id)) }, Modifier.fillMaxWidth()) { Text(btnLabel("Открыть программу")) }
+                    TextButton(onClick = { close(); startPlan(p.id) }, Modifier.fillMaxWidth()) { Text(btnLabel("Начать тренировку")) }
+                    TextButton(onClick = { close(); io { t.upsertPlan(p.copy(archived = true)) } }, Modifier.fillMaxWidth()) { Text(btnLabel("Убрать в архив")) }
+                }
+            },
+            confirmButton = { TextButton(onClick = close) { Text(btnLabel("Закрыть")) } },
+        )
+    }
+    sessionMenu?.let { s ->
+        val close = { sessionMenu = null }
+        val inArchive = s.id in archivedSessions
+        AlertDialog(
+            onDismissRequest = close,
+            title = { Text(s.title) },
+            text = {
+                Column {
+                    TextButton(onClick = { close(); nav.navigate(Routes.session(s.id)) }, Modifier.fillMaxWidth()) { Text(btnLabel("Открыть тренировку")) }
+                    if (inArchive) {
+                        TextButton(onClick = { close(); com.dasein.poryadok.data.TrainingArchive.restore(s.id) }, Modifier.fillMaxWidth()) { Text(btnLabel("Вернуть из архива")) }
+                        TextButton(onClick = { close(); deleteSession = s }, Modifier.fillMaxWidth()) { Text(btnLabel("Удалить навсегда"), color = extra.danger) }
+                    } else TextButton(onClick = { close(); com.dasein.poryadok.data.TrainingArchive.archive(s.id) }, Modifier.fillMaxWidth()) { Text(btnLabel("Убрать в архив")) }
+                }
+            },
+            confirmButton = { TextButton(onClick = close) { Text(btnLabel("Закрыть")) } },
+        )
+    }
+    deletePlan?.let { p ->
+        ConfirmDialog("Удалить программу навсегда?", "«${p.name}» исчезнет из архива. История проведённых тренировок останется.", onDismiss = { deletePlan = null }) {
+            io { TrainingRepo.deletePlanForever(p) }
+        }
+    }
+    deleteSession?.let { s ->
+        ConfirmDialog("Удалить тренировку навсегда?", "Подходы и запись в журнале (с калориями) будут удалены.", onDismiss = { deleteSession = null }) {
+            com.dasein.poryadok.data.TrainingArchive.restore(s.id)
+            io { TrainingRepo.discard(s.id) }
         }
     }
 
@@ -196,7 +250,7 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
                     items(plans, key = { it.id }) { p ->
                         val items = planEx.filter { it.planId == p.id }
                         val last = sessions.firstOrNull { it.planId == p.id && it.finishedAt != null }
-                        Tile(onClick = { nav.navigate(Routes.trainingPlan(p.id)) }) {
+                        Tile(onClick = { nav.navigate(Routes.trainingPlan(p.id)) }, onLongClick = { planMenu = p }) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Glyph(p.glyph, 30.dp)
                                 HGap(12.dp)
@@ -215,6 +269,24 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
                             if (p.description.isNotBlank()) Text(p.description, fontSize = 13.sp, color = extra.dim, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
                         }
                     }
+                    if (archivedPlans.isNotEmpty()) item {
+                        TextButton(onClick = { planArchiveOpen = !planArchiveOpen }, Modifier.fillMaxWidth()) {
+                            Text((if (planArchiveOpen) "Скрыть архив программ" else "Архив программ") + " (${archivedPlans.size})")
+                        }
+                    }
+                    if (planArchiveOpen) items(archivedPlans, key = { "a" + it.id }) { p ->
+                        Tile(color = extra.cardHigh) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Glyph(p.glyph, 26.dp)
+                                HGap(10.dp)
+                                Text(p.name, Modifier.weight(1f), fontWeight = FontWeight.Medium, color = extra.dim)
+                            }
+                            Row {
+                                TextButton(onClick = { io { t.upsertPlan(p.copy(archived = false)) } }) { Text(btnLabel("Вернуть")) }
+                                TextButton(onClick = { deletePlan = p }) { Text(btnLabel("Удалить навсегда"), color = extra.danger) }
+                            }
+                        }
+                    }
                     item { HowTo("training") }
                 }
                 1 -> ExerciseShorts(exercises, sets, onAdd = { nav.navigate(Routes.exercise(0)) }) { nav.navigate(Routes.exercise(it)) }
@@ -227,18 +299,34 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
                     item {
                         OutlinedButton(onClick = { tab = 4 }, Modifier.fillMaxWidth()) { Text(btnLabel("Бег, йога, прогулки — быстрая запись")) }
                     }
-                    val done = sessions.filter { it.finishedAt != null }
+                    val done = sessions.filter { it.finishedAt != null && it.id !in archivedSessions }
+                    val archived = sessions.filter { it.finishedAt != null && it.id in archivedSessions }
                     if (done.isEmpty()) item { Text(btnLabel("Завершённых тренировок пока нет."), color = extra.dim, modifier = Modifier.padding(8.dp)) }
                     items(done, key = { it.id }) { s ->
                         val mine = sets.filter { it.sessionId == s.id && it.done }
                         val minutes = ((s.finishedAt!! - s.startedAt) / 60000).toInt()
-                        Tile(onClick = { nav.navigate(Routes.session(s.id)) }) {
+                        Tile(onClick = { nav.navigate(Routes.session(s.id)) }, onLongClick = { sessionMenu = s }) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
                                     Text(s.title, fontWeight = FontWeight.SemiBold)
                                     Text("${Dates.label(s.day)} · $minutes мин · подходов ${mine.size} · тоннаж ${w(mine.sumOf { it.weight * it.reps })} кг", fontSize = 12.sp, color = extra.dim)
                                 }
                                 if (s.feel > 0) MoodFace(s.feel, 26.dp)
+                            }
+                        }
+                    }
+                    if (archived.isNotEmpty()) item {
+                        TextButton(onClick = { sessionArchiveOpen = !sessionArchiveOpen }, Modifier.fillMaxWidth()) {
+                            Text((if (sessionArchiveOpen) "Скрыть архив тренировок" else "Архив тренировок") + " (${archived.size})")
+                        }
+                    }
+                    if (sessionArchiveOpen) items(archived, key = { "a" + it.id }) { s ->
+                        Tile(color = extra.cardHigh, onClick = { nav.navigate(Routes.session(s.id)) }, onLongClick = { sessionMenu = s }) {
+                            Text(s.title, fontWeight = FontWeight.Medium, color = extra.dim)
+                            Text(Dates.label(s.day), fontSize = 12.sp, color = extra.dim)
+                            Row {
+                                TextButton(onClick = { com.dasein.poryadok.data.TrainingArchive.restore(s.id) }) { Text(btnLabel("Вернуть")) }
+                                TextButton(onClick = { deleteSession = s }) { Text(btnLabel("Удалить навсегда"), color = extra.danger) }
                             }
                         }
                     }
@@ -278,13 +366,13 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
 private fun ExerciseLibrary(exercises: List<Exercise>, sets: List<SetLog>, onOpen: (Long) -> Unit) {
     val extra = LocalExtra.current
     var q by remember { mutableStateOf("") }
-    var muscle by remember { mutableStateOf<String?>(null) }
-    val list = exercises.filter { (muscle == null || it.muscle == muscle) && (q.isBlank() || it.name.contains(q, true) || it.equipment.contains(q, true)) }
+    var muscles by remember { mutableStateOf(emptySet<String>()) }
+    val list = exercises.filter { (muscles.isEmpty() || it.muscle in muscles) && (q.isBlank() || it.name.contains(q, true) || it.equipment.contains(q, true)) }
     LazyColumn(contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         item {
             OutlinedTextField(q, { q = it }, placeholder = { Text(btnLabel("Поиск упражнения")) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))
             Column(Modifier.padding(vertical = 8.dp)) {
-                MusclePills(muscle, { m -> muscle = if (muscle == m) null else m }) { Pill("Все", muscle == null) { muscle = null } }
+                MuscleFilter(muscles, exercises, { muscles = it }) { Pill("Все", muscles.isEmpty()) { muscles = emptySet() } }
             }
         }
         items(list, key = { it.id }) { e ->
@@ -352,8 +440,16 @@ fun PlanEditScreen(nav: NavHostController, id: Long) {
     var editing by remember { mutableStateOf<PlanExercise?>(null) }
     var askGear by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
+    // Два режима карточки: просмотр (по умолчанию) и правка — по кнопке «Изменить тренировку».
+    // Только что созданная программа сразу открывается в правке.
+    var edit by rememberSaveable(id) { mutableStateOf(false) }
     val p = plan
-    LaunchedEffect(p?.id) { if (p != null && name == null) { name = p.name; about = p.description } }
+    LaunchedEffect(p?.id) {
+        if (p != null && name == null) {
+            name = p.name; about = p.description
+            if (System.currentTimeMillis() - p.createdAt < 60_000) edit = true
+        }
+    }
     LaunchedEffect(name, about) {
         delay(400)
         val cur = plan ?: return@LaunchedEffect
@@ -362,11 +458,25 @@ fun PlanEditScreen(nav: NavHostController, id: Long) {
         if (cur.name != n || cur.description != a) io { t.upsertPlan(cur.copy(name = n, description = a)) }
     }
 
+    if (askGear) GearDialog(onDismiss = { askGear = false }) { gear ->
+        askGear = false
+        io {
+            val sid = TrainingRepo.start(id, gear)
+            withContext(Dispatchers.Main) { nav.navigate(Routes.session(sid)) }
+        }
+    }
     Screen(
-        "Программа", onBack = { nav.popBackStack(); Unit },
-        actions = { TextButton(onClick = { deleting = true }) { Text(btnLabel("Удалить"), color = extra.danger) } },
+        if (edit) "Изменить тренировку" else "Программа", onBack = { if (edit && p?.archived != true) edit = false else nav.popBackStack(); Unit },
+        actions = {
+            if (edit) TextButton(onClick = { edit = false }) { Text(btnLabel("Готово")) }
+            else TextButton(onClick = { edit = true }) { Text(btnLabel("Изменить")) }
+        },
     ) { pad ->
         if (p == null) return@Screen
+        if (!edit) {
+            PlanView(Modifier.padding(pad), nav, p, items, byId, onStart = { askGear = true }, onEdit = { edit = true }, onArchive = { deleting = true })
+            return@Screen
+        }
         Column(Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 GlyphField(p.glyph, { g -> io { t.upsertPlan(p.copy(glyph = g)) } })
@@ -405,17 +515,8 @@ fun PlanEditScreen(nav: NavHostController, id: Long) {
                 }
             }
             Gap(12.dp)
-            if (askGear) GearDialog(onDismiss = { askGear = false }) { gear ->
-                askGear = false
-                io {
-                    val sid = TrainingRepo.start(id, gear)
-                    withContext(Dispatchers.Main) { nav.navigate(Routes.session(sid)) }
-                }
-            }
-            Button(
-                onClick = { askGear = true },
-                enabled = items.isNotEmpty(), modifier = Modifier.fillMaxWidth(),
-            ) { Text(btnLabel("Начать тренировку")) }
+            Button(onClick = { edit = false }, modifier = Modifier.fillMaxWidth()) { Text(btnLabel("Готово")) }
+            TextButton(onClick = { deleting = true }, Modifier.fillMaxWidth()) { Text(btnLabel("Убрать программу в архив"), color = extra.danger) }
             Gap(40.dp)
         }
     }
@@ -432,9 +533,62 @@ fun PlanEditScreen(nav: NavHostController, id: Long) {
         }
     }
     editing?.let { pe -> TargetDialog(pe, byId[pe.exerciseId], { editing = null }, onDelete = { io { t.deletePlanExercise(pe) } }) { io { t.upsertPlanExercise(it) } } }
-    if (deleting && p != null) ConfirmDialog("Удалить программу?", "История тренировок сохранится.", onDismiss = { deleting = false }) {
+    if (deleting && p != null) ConfirmDialog(
+        "Убрать программу в архив?", "История тренировок сохранится. Вернуть программу или удалить насовсем можно в «Архиве» на вкладке «Программы».",
+        confirm = "В архив", onDismiss = { deleting = false },
+    ) {
         io { t.upsertPlan(p.copy(archived = true)) }
         nav.popBackStack()
+    }
+}
+
+/** Карточка программы в режиме просмотра: что в ней, цели упражнений и кнопки «Начать» / «Изменить тренировку». */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun PlanView(
+    modifier: Modifier, nav: NavHostController, p: WorkoutPlan, items: List<PlanExercise>, byId: Map<Long, Exercise>,
+    onStart: () -> Unit, onEdit: () -> Unit, onArchive: () -> Unit,
+) {
+    val extra = LocalExtra.current
+    Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Glyph(p.glyph, 40.dp)
+            HGap(12.dp)
+            Column(Modifier.weight(1f)) {
+                Text(p.name, style = MaterialTheme.typography.titleLarge)
+                Text(
+                    listOfNotNull("${items.size} упр.", days(p.daysMask).takeIf { it.isNotBlank() }).joinToString(" · "),
+                    fontSize = 13.sp, color = extra.dim,
+                )
+            }
+        }
+        if (p.description.isNotBlank()) Text(p.description, fontSize = 14.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
+        Gap(16.dp)
+        Button(onClick = onStart, enabled = items.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text(btnLabel("Начать тренировку")) }
+        Gap(8.dp)
+        OutlinedButton(onClick = onEdit, modifier = Modifier.fillMaxWidth()) { Text(btnLabel("Изменить тренировку")) }
+        SectionTitle("Упражнения")
+        if (items.isEmpty()) Text("Упражнений пока нет — нажмите «Изменить тренировку» и добавьте их.", fontSize = 13.sp, color = extra.dim)
+        items.forEachIndexed { i, pe ->
+            val e = byId[pe.exerciseId]
+            Tile(Modifier.padding(bottom = 6.dp), onClick = { e?.let { nav.navigate(Routes.exercise(it.id)) } }, padding = 12.dp) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val first = e?.media?.lines()?.firstOrNull { it.isNotBlank() }
+                    if (first != null) MediaView(first, Modifier.size(48.dp).clip(RoundedCornerShape(10.dp)), crop = true)
+                    else Text("${i + 1}", color = extra.dim, modifier = Modifier.width(22.dp))
+                    HGap(10.dp)
+                    Column(Modifier.weight(1f)) {
+                        Text(e?.name ?: "Упражнение удалено", fontWeight = FontWeight.Medium)
+                        Text(
+                            TrainingRepo.describe(e?.kind ?: 0, pe.sets, pe.reps, pe.weight, pe.seconds) + " · отдых ${pe.restSec} с",
+                            fontSize = 12.sp, color = extra.dim,
+                        )
+                    }
+                }
+            }
+        }
+        TextButton(onClick = onArchive, Modifier.fillMaxWidth().padding(top = 8.dp)) { Text(btnLabel("Убрать программу в архив"), color = extra.danger) }
+        Gap(40.dp)
     }
 }
 
@@ -544,7 +698,7 @@ fun ExerciseScreen(nav: NavHostController, id: Long) {
                     items(media, key = { it }) { m ->
                         Column {
                         Box {
-                            if (Media.isVideo(m)) VideoPlayer(m, Modifier.size(260.dp, 220.dp).clip(RoundedCornerShape(14.dp)))
+                            if (Media.isVideo(m)) VideoPlayer(m, Modifier.height(240.dp), maxHeight = 240.dp)
                             else MediaView(m, Modifier.size(220.dp).clip(RoundedCornerShape(14.dp)).background(extra.card), crop = false)
                             Text(
                                 "✕", fontSize = 14.sp,
@@ -750,7 +904,7 @@ fun SessionScreen(nav: NavHostController, id: Long) {
                         }
                         if (showVideo && video != null) {
                             Gap(6.dp)
-                            VideoPlayer(video, Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(12.dp)))
+                            VideoPlayer(video, Modifier.fillMaxWidth(), maxHeight = 420.dp)
                         }
                         Gap(6.dp)
                         Row(Modifier.fillMaxWidth()) {

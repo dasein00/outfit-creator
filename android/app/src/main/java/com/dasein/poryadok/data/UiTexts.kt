@@ -33,6 +33,9 @@ object UiTexts {
 
     fun tr(s: String): String = runCatching { engine().translate(s) }.getOrDefault(s)
 
+    /** Текст скрыт своей правкой «[скрыть]» (подсказка удалена в режиме редактора или в документе). */
+    fun isHidden(s: String): Boolean = s.isNotEmpty() && UiTextEngine.isHide(tr(s))
+
     /** Своя правка: null — вернуть вариант по умолчанию. */
     fun set(key: String, value: String?) {
         val sp = runCatching { Graph.app.getSharedPreferences("ui_state", Context.MODE_PRIVATE) }.getOrNull() ?: return

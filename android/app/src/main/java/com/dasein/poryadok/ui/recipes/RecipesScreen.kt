@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import com.dasein.poryadok.ui.common.ConfirmDialog
+import com.dasein.poryadok.data.RecipeRepo
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -380,6 +382,14 @@ private fun Archive(nav: NavHostController, book: RecipeBook) {
     val ctx = LocalContext.current
     var q by rememberSaveable { mutableStateOf("") }
     var confirmAll by remember { mutableStateOf(false) }
+    var menuFor by remember { mutableStateOf<Recipe?>(null) }
+    var deleteOne by remember { mutableStateOf<Recipe?>(null) }
+    menuFor?.let { RecipeQuickMenu(nav, it) { menuFor = null } }
+    deleteOne?.let { r ->
+        ConfirmDialog("Удалить рецепт навсегда?", "«${r.name}» исчезнет из архива и базы. Уже запланированные блюда останутся в меню.", onDismiss = { deleteOne = null }) {
+            io { RecipeRepo.deleteRecipe(r.id) }
+        }
+    }
     val query = remember(q) { TextQuery.parse(q) }
     val list = book.archived.filter { searchMatch(query, it, book.ingredients[it.id].orEmpty()) }.sortedBy { it.name }
     if (confirmAll) AlertDialog(
@@ -399,7 +409,7 @@ private fun Archive(nav: NavHostController, book: RecipeBook) {
         item {
             Text(
                 "Сюда попадают блюда, которые вам не понравились: они не видны в каталоге и не попадают в подбор меню. " +
-                    "Убрать в архив — удержать рецепт в каталоге или кнопка «Убрать в архив» на странице рецепта.",
+                    "Убрать в архив — удержать рецепт в каталоге или кнопка «Убрать в архив» на странице рецепта. Отсюда рецепт можно вернуть или удалить навсегда.",
                 fontSize = 13.sp, color = LocalExtra.current.dim,
             )
             Gap(8.dp)
@@ -414,11 +424,14 @@ private fun Archive(nav: NavHostController, book: RecipeBook) {
             Empty(Ic.archive, "Архив пуст", "Не понравилось блюдо? Нажмите значок архива рядом с сердечком — оно перестанет попадаться.")
         }
         items(list, key = { it.id }) { r ->
-            RecipeCard(r, book.macros(r.id), onClick = { nav.navigate(Routes.recipe(r.id)) }, onFavorite = { io { Graph.extra.setFavorite(r.id, !r.favorite) } }, onArchive = { toggleArchive(ctx, r) })
-            TextButton(onClick = {
-                io { Graph.extra.setArchived(r.id, false) }
-                Toast.makeText(ctx, "«${r.name}» снова в каталоге", Toast.LENGTH_SHORT).show()
-            }) { Text(btnLabel("Вернуть в каталог")) }
+            RecipeCard(r, book.macros(r.id), onClick = { nav.navigate(Routes.recipe(r.id)) }, onFavorite = { io { Graph.extra.setFavorite(r.id, !r.favorite) } }, onLongClick = { menuFor = r }, onArchive = { toggleArchive(ctx, r) })
+            Row(Modifier.padding(bottom = 4.dp)) {
+                TextButton(onClick = {
+                    io { Graph.extra.setArchived(r.id, false) }
+                    Toast.makeText(ctx, "«${r.name}» снова в каталоге", Toast.LENGTH_SHORT).show()
+                }) { Text(btnLabel("Вернуть в каталог")) }
+                TextButton(onClick = { deleteOne = r }) { Text(btnLabel("Удалить навсегда"), color = LocalExtra.current.danger) }
+            }
         }
         item { HowTo("recipes") }
     }
@@ -492,18 +505,26 @@ internal fun CenterNote(text: String) {
     }
 }
 
-/** Меню по долгому нажатию на рецепт: открыть, избранное, архив. */
+/** Меню по долгому нажатию на рецепт: открыть, изменить, поделиться, избранное, архив (из архива — удалить). */
 @Composable
 private fun RecipeQuickMenu(nav: NavHostController, r: Recipe, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
     var share by remember { mutableStateOf(false) }
+    var delete by remember { mutableStateOf(false) }
     if (share) { ShareRecipesDialog(listOf(r), setOf(r.id)) { share = false; onDismiss() }; return }
+    if (delete) {
+        ConfirmDialog("Удалить рецепт навсегда?", "«${r.name}» исчезнет из архива и базы. Уже запланированные блюда останутся в меню.", onDismiss = { delete = false; onDismiss() }) {
+            io { RecipeRepo.deleteRecipe(r.id) }
+        }
+        return
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(r.name) },
         text = {
             Column {
                 TextButton(onClick = { onDismiss(); nav.navigate(Routes.recipe(r.id)) }, Modifier.fillMaxWidth()) { Text(btnLabel("Открыть рецепт")) }
+                TextButton(onClick = { onDismiss(); nav.navigate(Routes.recipeEdit(r.id)) }, Modifier.fillMaxWidth()) { Text(btnLabel("Изменить рецепт")) }
                 TextButton(onClick = { share = true }, Modifier.fillMaxWidth()) { Text(btnLabel("Поделиться рецептом (файл)")) }
                 TextButton(onClick = { io { Graph.extra.setFavorite(r.id, !r.favorite) }; onDismiss() }, Modifier.fillMaxWidth()) {
                     Text(if (r.favorite) "Убрать из избранного" else "В избранное")
@@ -513,6 +534,9 @@ private fun RecipeQuickMenu(nav: NavHostController, r: Recipe, onDismiss: () -> 
                     Toast.makeText(ctx, if (r.archived) "Рецепт возвращён в каталог" else "Рецепт в архиве — вернуть можно на вкладке «Архив»", Toast.LENGTH_SHORT).show()
                     onDismiss()
                 }, Modifier.fillMaxWidth()) { Text(if (r.archived) "Вернуть из архива" else "Убрать в архив") }
+                if (r.archived) TextButton(onClick = { delete = true }, Modifier.fillMaxWidth()) {
+                    Text(btnLabel("Удалить навсегда"), color = LocalExtra.current.danger)
+                }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Закрыть")) } },

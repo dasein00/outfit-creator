@@ -283,6 +283,9 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
             Gap(8.dp)
             RecipeDescription(r)
 
+            // Видео — между описанием и шагами: посмотрели, как готовят, и сразу к этапам.
+            Column(Modifier.onGloballyPositioned { videoY = it.positionInParent().y.toInt() }) { RecipeVideosSection(r) }
+
             // Шаги: кратко, как в рецепте, или подробно для новичка (расписывает ИИ, сохраняется на телефоне).
             val ingrLines = remember(baseIngr) { baseIngr.map { listOf(it.name, Cooking.label(it.toIngr())).joinToString(" — ") } }
             val srcSteps = remember(steps) { steps.map { it.text } }
@@ -378,8 +381,6 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
             }
             if (shown.isNotEmpty() && doneCount == shown.size) Text(btnLabel("Готово! Приятного аппетита 🍽"), color = green, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
             if (steps.isEmpty()) Text(btnLabel("Шаги не добавлены"), color = extra.dim)
-            Column(Modifier.onGloballyPositioned { videoY = it.positionInParent().y.toInt() }) { RecipeVideosSection(r) }
-
             RecipeRating(r.id)
 
             if (r.tips.isNotBlank()) { SectionTitle("Советы"); Text(r.tips) }
@@ -437,7 +438,8 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                         nav.navigate(Routes.recipe(newId))
                     }
                 }) { Text(btnLabel("Сохранить с заменами")) }
-                if (r.custom) TextButton(onClick = { confirmDelete = true }) { Text(btnLabel("Удалить"), color = extra.danger) }
+                // Удалить можно из архива: сначала рецепт убирают в архив, оттуда — насовсем.
+                if (r.archived) TextButton(onClick = { confirmDelete = true }) { Text(btnLabel("Удалить навсегда"), color = extra.danger) }
             }
             HowTo("recipe")
             Gap(40.dp)
@@ -469,7 +471,7 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
     }
     if (addToMenu) AddToMenuDialog(r.id, r.meals, onDismiss = { addToMenu = false }) { msg -> Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show() }
     if (cook) CookDialog(r.id, serv, r.meals, onDismiss = { cook = false }) { Toast.makeText(ctx, it, Toast.LENGTH_SHORT).show() }
-    if (confirmDelete) ConfirmDialog("Удалить рецепт?", "Рецепт исчезнет из базы. Уже запланированные блюда останутся в меню.", onDismiss = { confirmDelete = false }) {
+    if (confirmDelete) ConfirmDialog("Удалить рецепт навсегда?", "Рецепт исчезнет из архива и базы. Уже запланированные блюда останутся в меню.", onDismiss = { confirmDelete = false }) {
         scope.launch { RecipeRepo.deleteRecipe(r.id); nav.popBackStack() }
     }
 }

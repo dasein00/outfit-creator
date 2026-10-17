@@ -94,6 +94,9 @@ fun InfoBox(
 ) {
     val ctx = LocalContext.current
     if (hint && !UiState.hintsOn(ctx)) return
+    // Подсказку, заголовок которой скрыли в режиме редактора, не показываем вовсе.
+    com.dasein.poryadok.data.UiTexts.version.intValue
+    if (hint && com.dasein.poryadok.data.UiTexts.isHidden(title) && !com.dasein.poryadok.data.UiTexts.editorMode.value) return
     val extra = LocalExtra.current
     var open by rememberUiFlag("info_$key", UiState.infoDefault(ctx))
     val tint = MaterialTheme.colorScheme.primary
@@ -121,6 +124,8 @@ fun InfoBox(
 @Composable
 fun Hint(key: String, text: String, modifier: Modifier = Modifier, title: String = "Подсказка") {
     val extra = LocalExtra.current
+    com.dasein.poryadok.data.UiTexts.version.intValue
+    if (com.dasein.poryadok.data.UiTexts.isHidden(text) && !com.dasein.poryadok.data.UiTexts.editorMode.value) return
     InfoBox(key, title, modifier) { Text(text, fontSize = 14.sp, color = extra.dim, lineHeight = 20.sp) }
 }
 
@@ -146,8 +151,15 @@ fun FoldTile(
                 .padding(start = Space.card, end = 10.dp, top = Space.m, bottom = if (open) Space.xs else Space.m),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(title, Modifier.weight(1f), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-            if (summary != null) Text(summary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = summaryColor ?: MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(start = 8.dp))
+            // Заголовок всегда целиком; длинный итог справа сокращается многоточием, а не сжимает заголовок до переноса по буквам.
+            if (summary != null) {
+                Text(title, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, maxLines = 1, softWrap = false)
+                Text(
+                    summary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = summaryColor ?: MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                    modifier = Modifier.weight(1f).padding(start = 12.dp),
+                )
+            } else Text(title, Modifier.weight(1f), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
             Icon(if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore, if (open) "Свернуть" else "Развернуть", tint = extra.dim)
         }
         AnimatedVisibility(open) {

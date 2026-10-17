@@ -123,6 +123,7 @@ interface TrainingDao {
     @Delete suspend fun deleteExercise(e: Exercise)
 
     @Query("SELECT * FROM workout_plans WHERE archived = 0 ORDER BY sort, id") fun plans(): Flow<List<WorkoutPlan>>
+    @Query("SELECT * FROM workout_plans WHERE archived = 1 ORDER BY name") fun archivedPlans(): Flow<List<WorkoutPlan>>
     @Query("SELECT * FROM workout_plans") suspend fun plansNow(): List<WorkoutPlan>
     @Query("SELECT * FROM workout_plans WHERE id = :id") fun plan(id: Long): Flow<WorkoutPlan?>
     @Query("SELECT * FROM workout_plans WHERE id = :id") suspend fun planNow(id: Long): WorkoutPlan?

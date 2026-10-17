@@ -331,6 +331,12 @@ object TrainingRepo {
         return FinishResult(notes, kcal, exerciseKcal)
     }
 
+    /** Удалить программу насовсем (из архива): её упражнения-цели тоже; история тренировок остаётся. */
+    suspend fun deletePlanForever(p: WorkoutPlan) {
+        Graph.training.deletePlanExercisesOf(p.id)
+        Graph.training.deletePlan(p)
+    }
+
     suspend fun discard(sessionId: Long) {
         TrainingGear.forget(sessionId)
         val t = Graph.training

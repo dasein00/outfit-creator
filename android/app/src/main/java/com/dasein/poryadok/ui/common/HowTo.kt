@@ -54,7 +54,8 @@ fun HowTo(key: String, modifier: Modifier = Modifier.padding(top = 20.dp, bottom
         AnimatedVisibility(open) {
             Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 14.dp)) {
                 Text(g.about, fontSize = 13.sp, lineHeight = 19.sp)
-                g.steps.forEachIndexed { i, s ->
+                // Пункты, скрытые в режиме редактора, убираются вместе с номером.
+                g.steps.filter { !com.dasein.poryadok.data.UiTexts.isHidden(it) || com.dasein.poryadok.data.UiTexts.editorMode.value }.forEachIndexed { i, s ->
                     Row(Modifier.padding(top = 8.dp)) {
                         Text("${i + 1}.", Modifier.padding(end = 8.dp), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
                         Text(s, fontSize = 13.sp, lineHeight = 19.sp)

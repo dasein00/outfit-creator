@@ -74,4 +74,11 @@ class UiTextEngineTest {
         assertEquals("Строка\nвторая", l[0].orig)
         assertEquals("Строка 2", l[0].default)
     }
+
+    @Test fun hideRemovesTextAndFragments() {
+        val list = listOf(e(1, "Подсказка про шаги"), e(2, " · круглые стразы", frag = true))
+        val eng = UiTextEngine(list, mapOf("Подсказка про шаги" to "[скрыть]", " · круглые стразы" to "[Скрыть]"))
+        assertEquals(true, UiTextEngine.isHide(eng.translate("Подсказка про шаги")))
+        assertEquals("Набор", eng.translate("Набор · круглые стразы"))
+    }
 }
