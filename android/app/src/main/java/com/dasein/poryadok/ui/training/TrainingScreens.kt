@@ -755,7 +755,8 @@ fun SessionScreen(nav: NavHostController, id: Long) {
                         Gap(6.dp)
                         Row(Modifier.fillMaxWidth()) {
                             Text(btnLabel("#"), Modifier.width(26.dp), fontSize = 12.sp, color = extra.dim)
-                            if (kind == ExKind.WEIGHT) Text(btnLabel("вес"), Modifier.weight(1f), fontSize = 12.sp, color = extra.dim)
+                            // У упражнений на время вес необязателен: блин на спине в планке, гантели в руках — он идёт в калории.
+                            if (kind != ExKind.REPS) Text(btnLabel("вес"), Modifier.weight(1f), fontSize = 12.sp, color = extra.dim)
                             Text(if (kind == ExKind.TIME) "время" else "повторы", Modifier.weight(1f).padding(start = 8.dp), fontSize = 12.sp, color = extra.dim)
                             Box(Modifier.width(52.dp))
                         }
@@ -763,8 +764,8 @@ fun SessionScreen(nav: NavHostController, id: Long) {
                             val f = fields[set.id] ?: (w(set.weight) to (if (kind == ExKind.TIME) set.seconds else set.reps).toString())
                             Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text("${i + 1}", Modifier.width(26.dp), fontWeight = FontWeight.SemiBold)
-                                if (kind == ExKind.WEIGHT) SetField(f.first, { edit(set, it, null) }, "кг", Modifier.weight(1f), !finished)
-                                if (kind == ExKind.WEIGHT) HGap(8.dp)
+                                if (kind != ExKind.REPS) SetField(f.first, { edit(set, it, null) }, "кг", Modifier.weight(1f), !finished)
+                                if (kind != ExKind.REPS) HGap(8.dp)
                                 SetField(f.second, { edit(set, null, it) }, if (kind == ExKind.TIME) "с" else "раз", Modifier.weight(1f), !finished)
                                 HGap(8.dp)
                                 Box(

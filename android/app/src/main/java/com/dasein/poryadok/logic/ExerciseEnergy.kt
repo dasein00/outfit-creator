@@ -7,7 +7,7 @@ import kotlin.math.roundToInt
  *
  * Повторения: механическая работа подъёма груза (свой вес тела в доле, которую двигает упражнение, + штанга,
  * гантели или утяжелители) на высоту амплитуды, делённая на КПД мышц (~20 %); опускание груза добавляет ещё треть.
- * Упражнения на время: MET упражнения × вес тела (с утяжелителями) × время.
+ * Упражнения на время: MET упражнения × (вес тела + утяжелители + вес в подходе или гантели) × время.
  * Профиль упражнения (доля веса тела, амплитуда, MET) угадывается по названию, иначе — по группе мышц.
  */
 object ExerciseEnergy {
@@ -100,17 +100,19 @@ object ExerciseEnergy {
         val p = profile(name, muscle)
         val body = bodyKg.coerceIn(30.0, 250.0)
         val wear = gear.wearKg.coerceIn(0.0, 50.0)
-        if (kind == KIND_TIME) {
-            val sec = set.seconds.coerceIn(0, 4 * 3600)
-            return p.met * (body + wear) * sec / 3600.0
-        }
-        val reps = set.reps.coerceIn(0, 500)
-        if (reps == 0) return 0.0
         // Вес из подхода важнее; если не указан, а упражнение с гантелями — вес гантелей из начала тренировки.
         val load = when {
             set.weightKg > 0 -> set.weightKg.coerceAtMost(500.0)
             else -> gear.dumbbellKg.coerceIn(0.0, 100.0) * dumbbells(name, equipment)
         }
+        if (kind == KIND_TIME) {
+            // Удержание (планка, стульчик, вис): расход растёт со временем и со всем весом, который держит тело,
+            // — свой вес, утяжелители, блин на спине или гантели в руках.
+            val sec = set.seconds.coerceIn(0, 4 * 3600)
+            return p.met * (body + wear + load) * sec / 3600.0
+        }
+        val reps = set.reps.coerceIn(0, 500)
+        if (reps == 0) return 0.0
         val range = if (p.rangeM > 0) p.rangeM else 0.3
         val mass = p.bodyShare * body + load + wear
         val joules = mass * G * range * reps * ECCENTRIC / EFFICIENCY

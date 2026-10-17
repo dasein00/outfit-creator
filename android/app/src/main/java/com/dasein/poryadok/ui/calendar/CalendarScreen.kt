@@ -80,6 +80,7 @@ import com.dasein.poryadok.ui.common.DatePickDialog
 import com.dasein.poryadok.ui.common.Empty
 import com.dasein.poryadok.ui.common.FieldButton
 import com.dasein.poryadok.ui.common.Gap
+import com.dasein.poryadok.ui.common.HGap
 import com.dasein.poryadok.ui.common.Pill
 import com.dasein.poryadok.ui.common.Screen
 import com.dasein.poryadok.ui.common.SectionTitle
@@ -175,6 +176,10 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
         }
     }
     val red = Color(0xFFD25B4B)
+    val vacations = com.dasein.poryadok.data.VacationStore.list.value
+    val vacationColor = Palette.item(6)
+    var vacationEdit by remember { mutableStateOf<Pair<com.dasein.poryadok.logic.Vacation?, Long>?>(null) }
+    vacationEdit?.let { (v, day) -> VacationDialog(v, day) { vacationEdit = null } }
 
     LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
         item {
@@ -200,6 +205,9 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
                         val info = monthInfo[day]
                         val kind = info?.first
                         val off = kind == com.dasein.poryadok.logic.DayKind.WEEKEND || kind == com.dasein.poryadok.logic.DayKind.HOLIDAY
+                        // Праздник или перенесённый выходной в будни — нерабочий день, который легко пропустить: подсвечиваем фоном.
+                        val holidayOff = kind == com.dasein.poryadok.logic.DayKind.HOLIDAY || (off && Dates.day(day).dayOfWeek.value <= 5)
+                        val onVacation = com.dasein.poryadok.logic.VacationMath.on(vacations, day) != null
                         val dots = buildList {
                             if (info?.third == true) add(info!!.second?.let { Color(it) } ?: Color(0xFFC7A46A))
                             eventsOn(events, day).take(2).forEach { add(Palette.item(it.color)) }
@@ -212,6 +220,8 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
                                     when {
                                         day == selected -> MaterialTheme.colorScheme.primaryContainer
                                         info?.second != null && inMonth -> Color(info!!.second!!).copy(alpha = .22f)
+                                        onVacation && inMonth -> vacationColor.copy(alpha = .26f)
+                                        holidayOff && inMonth -> red.copy(alpha = .12f)
                                         else -> Color.Transparent
                                     },
                                 )
@@ -230,6 +240,7 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
                                     color = when {
                                         !inMonth -> extra.dim.copy(alpha = .5f)
                                         off -> red
+                                        kind == com.dasein.poryadok.logic.DayKind.SHORT -> extra.warn
                                         else -> MaterialTheme.colorScheme.onSurface
                                     },
                                     fontWeight = if (day == today || kind == com.dasein.poryadok.logic.DayKind.HOLIDAY) FontWeight.Bold else FontWeight.Normal,
@@ -249,13 +260,14 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
         val dayReminders = remindersOn(reminders, selected)
         item {
             val k = com.dasein.poryadok.logic.ProdCalendar.kind(Dates.day(selected))
+            val weekday = Dates.day(selected).dayOfWeek.value <= 5
             SectionTitle(
                 "${Dates.weekdayFull(selected)}, ${Dates.label(selected)} · " + when (k) {
                     com.dasein.poryadok.logic.DayKind.WORK -> "рабочий"
-                    com.dasein.poryadok.logic.DayKind.SHORT -> "сокращённый"
-                    com.dasein.poryadok.logic.DayKind.HOLIDAY -> "праздничный"
-                    com.dasein.poryadok.logic.DayKind.WEEKEND -> "выходной"
-                },
+                    com.dasein.poryadok.logic.DayKind.SHORT -> "сокращённый на час"
+                    com.dasein.poryadok.logic.DayKind.HOLIDAY -> "нерабочий праздничный"
+                    com.dasein.poryadok.logic.DayKind.WEEKEND -> if (weekday) "нерабочий (перенос)" else "выходной"
+                } + if (com.dasein.poryadok.logic.VacationMath.on(vacations, selected) != null) " · отпуск" else "",
             )
         }
         val dayHolidays = com.dasein.poryadok.data.HolidayRepo.entries(ctx, Dates.day(selected), custom, marks, hiddenCats(ctx))
@@ -292,6 +304,9 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
             }
         }
         item {
+            VacationTile(vacations, ym, vacationColor, onAdd = { vacationEdit = null to selected }, onEdit = { vacationEdit = it to it.start })
+        }
+        item {
             val st = com.dasein.poryadok.logic.ProdCalendar.month(ym.year, ym.monthValue)
             Tile(Modifier.padding(top = 10.dp), padding = 10.dp) {
                 Text("Производственный календарь · ${Dates.monthTitle(ym)}", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
@@ -301,7 +316,8 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
                     fontSize = 12.sp, color = extra.dim,
                 )
                 Text(
-                    "Красным — выходные и праздники, * — сокращённый на час предпраздничный день. Точкой отмечены ваши дни и праздники, выделенные цветом. " +
+                    "Красным — выходные и праздники; красным фоном — нерабочие дни в будни (праздники и переносы); * — сокращённый на час предпраздничный день; " +
+                        "фоном цвета мяты — ваш отпуск. Точкой отмечены ваши дни и праздники, выделенные цветом. " +
                         if (com.dasein.poryadok.logic.ProdCalendar.exact(ym.year)) "С учётом переносов по постановлению Правительства РФ." else "Переносы на этот год ещё не утверждены — расчёт по общим правилам ТК РФ.",
                     fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 2.dp),
                 )
@@ -309,6 +325,99 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
         }
         item { HowTo("calendar") }
     }
+}
+
+/** Отпуска года: список, сколько дней из 28 уже запланировано, кнопка «+ Отпуск». */
+@Composable
+private fun VacationTile(
+    vacations: List<com.dasein.poryadok.logic.Vacation>, ym: YearMonth, color: Color,
+    onAdd: () -> Unit, onEdit: (com.dasein.poryadok.logic.Vacation) -> Unit,
+) {
+    val extra = LocalExtra.current
+    val year = ym.year
+    val from = java.time.LocalDate.of(year, 1, 1).toEpochDay()
+    val to = java.time.LocalDate.of(year, 12, 31).toEpochDay()
+    val mine = vacations.filter { it.end >= from && it.start <= to }
+    val used = com.dasein.poryadok.logic.VacationMath.daysInYear(vacations, year)
+    val inMonth = com.dasein.poryadok.logic.VacationMath.daysInMonth(vacations, year, ym.monthValue)
+    Tile(Modifier.padding(top = 10.dp), padding = 12.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Отпуск · $year", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(
+                    (if (used > 0) "Запланировано $used из 28 дн." else "Отпуск ещё не запланирован") +
+                        if (inMonth > 0) " · в этом месяце $inMonth дн." else "",
+                    fontSize = 12.sp, color = extra.dim,
+                )
+            }
+            TextButton(onClick = onAdd) { Text(btnLabel("+ Отпуск")) }
+        }
+        mine.forEach { v ->
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { onEdit(v) }.padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.width(4.dp).height(32.dp).clip(RoundedCornerShape(2.dp)).background(color))
+                Column(Modifier.padding(start = 10.dp).weight(1f)) {
+                    Text(v.title.ifBlank { "Отпуск" }, fontWeight = FontWeight.Medium)
+                    Text(
+                        "${Dates.label(v.start)} — ${Dates.label(v.end)} · ${com.dasein.poryadok.logic.VacationMath.days(v)} дн." +
+                            com.dasein.poryadok.logic.VacationMath.holidays(v).let { h -> if (h > 0) " + праздников $h" else "" },
+                        fontSize = 12.sp, color = extra.dim,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Добавить или изменить отпуск: даты начала и конца, название; сразу видно, сколько дней он займёт. */
+@Composable
+private fun VacationDialog(initial: com.dasein.poryadok.logic.Vacation?, day: Long, onDismiss: () -> Unit) {
+    val extra = LocalExtra.current
+    var start by remember { mutableStateOf(initial?.start ?: day) }
+    var end by remember { mutableStateOf(initial?.end ?: (day + 13)) }
+    var title by remember { mutableStateOf(initial?.title.orEmpty()) }
+    var pick by remember { mutableStateOf(0) }
+    var deleting by remember { mutableStateOf(false) }
+    if (pick != 0) DatePickDialog(if (pick == 1) start else end, { pick = 0 }, { d ->
+        if (d != null) {
+            if (pick == 1) { start = d; if (end < d) end = d } else { end = d; if (start > d) start = d }
+        }
+    }, allowClear = false)
+    if (deleting && initial != null) ConfirmDialog("Удалить отпуск?", "${Dates.label(initial.start)} — ${Dates.label(initial.end)}", onDismiss = { deleting = false }) {
+        com.dasein.poryadok.data.VacationStore.remove(initial); onDismiss()
+    }
+    val v = com.dasein.poryadok.logic.Vacation(start, end, title.trim())
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (initial == null) "Новый отпуск" else "Отпуск") },
+        text = {
+            Column {
+                Row {
+                    FieldButton("Начало", Dates.label(start), Modifier.weight(1f)) { pick = 1 }
+                    HGap(8.dp)
+                    FieldButton("Конец", Dates.label(end), Modifier.weight(1f)) { pick = 2 }
+                }
+                Gap(12.dp)
+                TextInput(title, { title = it.take(60) }, "Название (необязательно)")
+                Gap(10.dp)
+                val h = com.dasein.poryadok.logic.VacationMath.holidays(v)
+                Text(
+                    "${com.dasein.poryadok.logic.VacationMath.days(v)} дн. отпуска · рабочих дней ${com.dasein.poryadok.logic.VacationMath.workDays(v)}" +
+                        if (h > 0) ". Праздники ($h) в дни отпуска не входят и продлевают его." else "",
+                    fontSize = 13.sp, color = extra.dim,
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = { com.dasein.poryadok.data.VacationStore.put(initial, v); onDismiss() }) { Text(btnLabel("Сохранить")) } },
+        dismissButton = {
+            com.dasein.poryadok.ui.common.ButtonsRow {
+                if (initial != null) TextButton(onClick = { deleting = true }) { Text(btnLabel("Удалить"), color = extra.danger) }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) }
+            }
+        },
+    )
 }
 
 @Composable

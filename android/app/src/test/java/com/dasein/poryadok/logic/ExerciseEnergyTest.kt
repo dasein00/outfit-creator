@@ -58,6 +58,19 @@ class ExerciseEnergyTest {
         assertTrue(lungesW > lunges)
     }
 
+    @Test fun timedHoldGrowsWithTimeAndLoad() {
+        val short = kcal("Планка", "Пресс", kind = ExerciseEnergy.KIND_TIME, set = SetWork(0, 0.0, 30))
+        val long = kcal("Планка", "Пресс", kind = ExerciseEnergy.KIND_TIME, set = SetWork(0, 0.0, 90))
+        val plate = kcal("Планка", "Пресс", kind = ExerciseEnergy.KIND_TIME, set = SetWork(0, 10.0, 30))
+        assertEquals(short * 3, long, 1e-9)
+        assertEquals(3.8 * 80 * 30 / 3600, plate, 1e-9)
+        // Стульчик с гантелями в руках: без веса в подходе берутся гантели из начала тренировки.
+        val bare = kcal("Стульчик у стены с гантелями", "Ноги", "Гантели", ExerciseEnergy.KIND_TIME, SetWork(0, 0.0, 60))
+        val held = kcal("Стульчик у стены с гантелями", "Ноги", "Гантели", ExerciseEnergy.KIND_TIME, SetWork(0, 0.0, 60), Gear(dumbbellKg = 6.0))
+        assertEquals(4.0 * 82 / 60, held, 1e-9)
+        assertTrue(held > bare)
+    }
+
     @Test fun emptySetBurnsNothing() {
         assertEquals(0.0, kcal("Отжимания", set = SetWork(0, 0.0, 0)), 1e-9)
     }
