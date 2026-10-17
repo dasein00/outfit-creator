@@ -126,9 +126,17 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
     val active by observe<WorkoutSession?>(null) { t.activeSession() }
     LaunchedEffect(Unit) { runCatching { TrainingRepo.seed() } }
 
-    fun startPlan(id: Long?) = io {
-        val sid = TrainingRepo.start(id)
-        withContext(Dispatchers.Main) { nav.navigate(Routes.session(sid)) }
+    // В начале тренировки — вес гантелей и утяжелителей (для подсчёта калорий).
+    var gearFor by remember { mutableStateOf<Long?>(null) }
+    var askGear by remember { mutableStateOf(false) }
+    fun startPlan(id: Long?) { gearFor = id; askGear = true }
+    if (askGear) GearDialog(onDismiss = { askGear = false }) { gear ->
+        askGear = false
+        val planId = gearFor
+        io {
+            val sid = TrainingRepo.start(planId, gear)
+            withContext(Dispatchers.Main) { nav.navigate(Routes.session(sid)) }
+        }
     }
 
     Screen(
@@ -156,7 +164,7 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
                 }
             }
             active?.let { s ->
-                Tile(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), onClick = { nav.navigate(Routes.session(s.id)) }, color = MaterialTheme.colorScheme.primary.copy(alpha = .15f)) {
+                Tile(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), onClick = { nav.navigate(Routes.session(s.id)) }, color = MaterialTheme.colorScheme.primary.copy(alpha = .15f)) {
                     Text("Идёт тренировка: ${s.title}", fontWeight = FontWeight.SemiBold)
                     Text(btnLabel("Нажмите, чтобы продолжить"), fontSize = 12.sp, color = extra.dim)
                 }
@@ -342,6 +350,7 @@ fun PlanEditScreen(nav: NavHostController, id: Long) {
     var about by remember(id) { mutableStateOf<String?>(null) }
     var picking by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<PlanExercise?>(null) }
+    var askGear by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
     val p = plan
     LaunchedEffect(p?.id) { if (p != null && name == null) { name = p.name; about = p.description } }
@@ -396,13 +405,15 @@ fun PlanEditScreen(nav: NavHostController, id: Long) {
                 }
             }
             Gap(12.dp)
+            if (askGear) GearDialog(onDismiss = { askGear = false }) { gear ->
+                askGear = false
+                io {
+                    val sid = TrainingRepo.start(id, gear)
+                    withContext(Dispatchers.Main) { nav.navigate(Routes.session(sid)) }
+                }
+            }
             Button(
-                onClick = {
-                    io {
-                        val sid = TrainingRepo.start(id)
-                        withContext(Dispatchers.Main) { nav.navigate(Routes.session(sid)) }
-                    }
-                },
+                onClick = { askGear = true },
                 enabled = items.isNotEmpty(), modifier = Modifier.fillMaxWidth(),
             ) { Text(btnLabel("Начать тренировку")) }
             Gap(40.dp)
@@ -648,7 +659,7 @@ fun SessionScreen(nav: NavHostController, id: Long) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var restEnd by remember { mutableStateOf<Long?>(null) }
     var finishing by remember { mutableStateOf(false) }
-    var summary by remember { mutableStateOf<List<ProgressNote>?>(null) }
+    var summary by remember { mutableStateOf<com.dasein.poryadok.data.FinishResult?>(null) }
     var adding by remember { mutableStateOf(false) }
     var discard by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -821,8 +832,8 @@ fun SessionScreen(nav: NavHostController, id: Long) {
                     finishing = false
                     restEnd = null
                     io {
-                        val notes = TrainingRepo.finish(id, feel, note)
-                        withContext(Dispatchers.Main) { summary = notes }
+                        val result = TrainingRepo.finish(id, feel, note)
+                        withContext(Dispatchers.Main) { summary = result }
                     }
                 }) { Text(btnLabel("Завершить")) }
             },
@@ -834,13 +845,16 @@ fun SessionScreen(nav: NavHostController, id: Long) {
             },
         )
     }
-    summary?.let { notes ->
+    summary?.let { result ->
+        val notes = result.notes
         AlertDialog(
             onDismissRequest = { summary = null; nav.popBackStack() },
             title = { Text(btnLabel("Тренировка сохранена")) },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
-                    if (notes.isEmpty()) Text("Записана в журнал тренировок и калории дня.")
+                    Text("Сожжено примерно ${result.kcal} ккал", fontWeight = FontWeight.SemiBold)
+                    if (result.exerciseKcal > 0) Text("Из них на упражнения — ${result.exerciseKcal} ккал, остальное — по времени тренировки.", fontSize = 13.sp, color = extra.dim)
+                    if (notes.isEmpty()) Text("Записана в журнал тренировок и калории дня.", modifier = Modifier.padding(top = 8.dp))
                     notes.forEach { n ->
                         Text(n.exercise, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
                         Text("Сделано: ${n.done}", fontSize = 13.sp)
@@ -856,6 +870,34 @@ fun SessionScreen(nav: NavHostController, id: Long) {
         io { TrainingRepo.discard(id) }
         nav.popBackStack()
     }
+}
+
+/**
+ * Перед тренировкой: вес одной гантели и утяжелителей. Прошлые значения подставлены — обычно достаточно нажать «Начать».
+ * По ним считаются калории упражнений с гантелями (если вес в подходе не указан) и всех упражнений в утяжелителях.
+ */
+@Composable
+private fun GearDialog(onDismiss: () -> Unit, onStart: (com.dasein.poryadok.logic.ExerciseEnergy.Gear) -> Unit) {
+    val extra = LocalExtra.current
+    val last = remember { com.dasein.poryadok.data.TrainingGear.last() }
+    var dumbbell by remember { mutableStateOf(w(last.dumbbellKg)) }
+    var wear by remember { mutableStateOf(w(last.wearKg)) }
+    fun num(v: String) = v.replace(',', '.').toDoubleOrNull()?.coerceIn(0.0, 100.0) ?: 0.0
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(btnLabel("С каким весом тренируетесь?")) },
+        text = {
+            Column {
+                Text("Нужно для подсчёта калорий. Оставьте 0, если без гантелей или утяжелителей.", fontSize = 13.sp, color = extra.dim)
+                Gap(16.dp)
+                StepField(dumbbell, { dumbbell = it }, "Одна гантель, кг", 1.0, decimal = true)
+                Gap(12.dp)
+                StepField(wear, { wear = it }, "Утяжелители, всего кг", 0.5, decimal = true)
+            }
+        },
+        confirmButton = { TextButton(onClick = { onStart(com.dasein.poryadok.logic.ExerciseEnergy.Gear(num(dumbbell), num(wear))) }) { Text(btnLabel("Начать")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
+    )
 }
 
 /** Число с кнопками «−» и «+» по бокам: подходы, повторы, вес меняются одним касанием. */

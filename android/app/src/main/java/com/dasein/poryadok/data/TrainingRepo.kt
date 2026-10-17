@@ -5,12 +5,46 @@ import kotlinx.coroutines.sync.withLock
 import com.dasein.poryadok.Graph
 import com.dasein.poryadok.logic.Dates
 import com.dasein.poryadok.logic.DoneSet
+import com.dasein.poryadok.logic.ExerciseEnergy
 import com.dasein.poryadok.logic.Progression
 import com.dasein.poryadok.logic.Target
 import kotlin.math.roundToInt
 
 /** Итог упражнения после тренировки: что сделано и какая цель на следующий раз. */
 data class ProgressNote(val exercise: String, val done: String, val next: String, val reason: String)
+
+/** Итог тренировки: прогресс по упражнениям и калории (всего и из них — на сами упражнения). */
+data class FinishResult(val notes: List<ProgressNote>, val kcal: Int, val exerciseKcal: Int)
+
+/**
+ * Вес гантелей и утяжелителей: спрашивается в начале каждой тренировки, прошлые значения подставляются сами.
+ * Для каждой тренировки запоминается свой набор — по нему считаются калории при завершении.
+ */
+object TrainingGear {
+    private fun sp() = Graph.app.getSharedPreferences("training_gear", android.content.Context.MODE_PRIVATE)
+
+    fun last(): ExerciseEnergy.Gear = runCatching {
+        val p = sp()
+        ExerciseEnergy.Gear(p.getFloat("dumbbell", 0f).toDouble(), p.getFloat("wear", 0f).toDouble())
+    }.getOrDefault(ExerciseEnergy.Gear())
+
+    fun of(sessionId: Long): ExerciseEnergy.Gear = runCatching {
+        val p = sp()
+        if (!p.contains("s_${sessionId}_d")) last()
+        else ExerciseEnergy.Gear(p.getFloat("s_${sessionId}_d", 0f).toDouble(), p.getFloat("s_${sessionId}_w", 0f).toDouble())
+    }.getOrDefault(ExerciseEnergy.Gear())
+
+    fun save(sessionId: Long, g: ExerciseEnergy.Gear) {
+        runCatching {
+            sp().edit()
+                .putFloat("dumbbell", g.dumbbellKg.toFloat()).putFloat("wear", g.wearKg.toFloat())
+                .putFloat("s_${sessionId}_d", g.dumbbellKg.toFloat()).putFloat("s_${sessionId}_w", g.wearKg.toFloat())
+                .apply()
+        }
+    }
+
+    fun forget(sessionId: Long) { runCatching { sp().edit().remove("s_${sessionId}_d").remove("s_${sessionId}_w").apply() } }
+}
 
 object TrainingRepo {
     private data class SeedEx(val key: String, val name: String, val muscle: String, val equipment: String, val kind: Int, val glyph: String, val about: String)
@@ -188,7 +222,7 @@ object TrainingRepo {
     fun target(p: PlanExercise, kind: Int) = Target(kind, p.sets, p.reps, p.weight, p.seconds, p.repMin, p.repMax, p.weightStep, p.maxSets)
 
     /** Создаёт тренировку по программе: подходы заполнены целями. Возвращает id тренировки. */
-    suspend fun start(planId: Long?): Long {
+    suspend fun start(planId: Long?, gear: ExerciseEnergy.Gear? = null): Long {
         val t = Graph.training
         val now = System.currentTimeMillis()
         val plan = planId?.let { t.planNow(it) }
@@ -199,6 +233,7 @@ object TrainingRepo {
             }
             t.upsertSets(sets)
         }
+        gear?.let { TrainingGear.save(sid, it) }
         return sid
     }
 
@@ -242,12 +277,13 @@ object TrainingRepo {
     }
 
     /**
-     * Завершает тренировку: записывает её в общий журнал (минуты и калории по MET) и пересчитывает цели программы
-     * по правилу двойной прогрессии. Возвращает итоги по упражнениям.
+     * Завершает тренировку: записывает её в общий журнал (минуты и калории) и пересчитывает цели программы
+     * по правилу двойной прогрессии. Калории — по времени (MET) плюс расход на сами упражнения: название, группа мышц,
+     * вес штанги, гантелей и утяжелителей, повторы и подходы. Возвращает итоги по упражнениям и калории.
      */
-    suspend fun finish(sessionId: Long, feel: Int, note: String, at: Long = System.currentTimeMillis()): List<ProgressNote> {
+    suspend fun finish(sessionId: Long, feel: Int, note: String, at: Long = System.currentTimeMillis()): FinishResult {
         val t = Graph.training
-        val s = t.sessionNow(sessionId) ?: return emptyList()
+        val s = t.sessionNow(sessionId) ?: return FinishResult(emptyList(), 0, 0)
         val now = at
         val sets = t.setsOfNow(sessionId)
         val exercises = t.exercisesNow().associateBy { it.id }
@@ -255,7 +291,12 @@ object TrainingRepo {
         val weight = Graph.dao.lastWeight()?.kg ?: Graph.dao.profileNow()?.startWeight ?: 70.0
         val doneSets = sets.count { it.done }
         val vigorous = sets.any { it.done && exercises[it.exerciseId]?.muscle in setOf("Кардио", "Всё тело") }
-        val kcal = Progression.kcal(minutes, weight, vigorous)
+        val gear = TrainingGear.of(sessionId)
+        val exerciseKcal = ExerciseEnergy.total(sets.filter { it.done }.mapNotNull { st ->
+            val ex = exercises[st.exerciseId] ?: return@mapNotNull null
+            ExerciseEnergy.setKcal(ex.name, ex.muscle, ex.equipment, ex.kind, ExerciseEnergy.SetWork(st.reps, st.weight, st.seconds), weight, gear)
+        })
+        val kcal = Progression.kcal(minutes, weight, vigorous) + exerciseKcal
         val notes = mutableListOf<ProgressNote>()
 
         Graph.extraDb.withTransaction {
@@ -287,10 +328,11 @@ object TrainingRepo {
             )
             t.upsertSession(s.copy(finishedAt = now, feel = feel, note = note, workoutId = s.workoutId ?: wid))
         }
-        return notes
+        return FinishResult(notes, kcal, exerciseKcal)
     }
 
     suspend fun discard(sessionId: Long) {
+        TrainingGear.forget(sessionId)
         val t = Graph.training
         t.deleteSetsOf(sessionId)
         t.sessionNow(sessionId)?.let { s ->
