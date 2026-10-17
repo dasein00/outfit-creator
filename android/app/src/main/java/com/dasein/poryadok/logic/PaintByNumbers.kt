@@ -18,7 +18,11 @@ object PaintByNumbers {
      * [cells] — номер цвета (индекс в [colors]) для каждого пикселя, [regions] — области с местом для подписи:
      * ([x],[y]) — самая «глубокая» точка области, [room] — расстояние до края в пикселях (размер цифры).
      */
-    class Result(val width: Int, val height: Int, val cells: IntArray, val colors: List<Pencil>, val regions: List<Region>) {
+    class Result(
+        val width: Int, val height: Int, val cells: IntArray, val colors: List<Pencil>, val regions: List<Region>,
+        /** Дополнительные контуры (x0,y0,x1,y1) по резким краям фото внутри областей одного цвета. */
+        val edges: List<IntArray> = emptyList(),
+    ) {
         fun counts(): IntArray = IntArray(colors.size).also { c -> regions.forEach { c[it.color] += 1 } }
     }
 
@@ -37,8 +41,8 @@ object PaintByNumbers {
     private fun d2(a: DoubleArray, b: DoubleArray): Double { val l = a[0] - b[0]; val x = a[1] - b[1]; val y = a[2] - b[2]; return l * l + x * x + y * y }
 
     /** Какие карандаши взять: главные оттенки картинки → ближайшие карандаши без повторов. */
-    fun choose(px: IntArray, pencils: List<Pencil>, maxColors: Int, seed: Long = 7): List<Pencil> {
-        val k = maxColors.coerceIn(2, 60)
+    fun choose(px: IntArray, pencils: List<Pencil>, maxColors: Int, seed: Long = 7, mergeDe: Double = 10.0): List<Pencil> {
+        val k = maxColors.coerceIn(2, 264)
         if (pencils.size <= k) return pencils
         val rnd = java.util.Random(seed)
         val sample = Array(min(px.size, 6000)) { CraftPattern.lab(px[rnd.nextInt(px.size)] and 0xFFFFFF) }
@@ -64,7 +68,7 @@ object PaintByNumbers {
         }
         // Центры одного оттенка (шум фото, плавный переход) склеиваем — иначе схема пестрит соседними карандашами.
         val merged = ArrayList<DoubleArray>()
-        centers.forEach { c -> if (merged.none { sqrt(d2(it, c)) < 10 }) merged += c }
+        centers.forEach { c -> if (merged.none { sqrt(d2(it, c)) < mergeDe }) merged += c }
         val pl = pencils.map { CraftPattern.lab(it.rgb) }
         val chosen = LinkedHashSet<Int>()
         merged.forEach { c ->
@@ -74,35 +78,116 @@ object PaintByNumbers {
         return chosen.map { pencils[it] }
     }
 
-    fun build(px: IntArray, w: Int, h: Int, pencils: List<Pencil>, maxColors: Int, level: Int): Result {
-        val colors0 = choose(px, pencils, maxColors)
+    /**
+     * [sensitivity] 0..100 — чувствительность контуров: чем выше, тем больше различаются близкие оттенки, тем меньше
+     * сглаживание и мельче сохраняемые детали, и тем больше резких краёв фото становятся контурами внутри одного цвета.
+     */
+    fun build(px: IntArray, w: Int, h: Int, pencils: List<Pencil>, maxColors: Int, level: Int, sensitivity: Int = 50): Result {
+        val sv = sensitivity.coerceIn(0, 100) / 100.0
+        val colors0 = choose(px, pencils, maxColors, mergeDe = 12 - 9 * sv)
         val pl = colors0.map { CraftPattern.lab(it.rgb) }
         val det = detail(level, w, h)
         // Лёгкое размытие убирает шум фото до подбора цвета.
         val soft = blur(px, w, h)
+        // Lab всех точек одним плоским массивом (L,a,b подряд) — без миллиона мелких объектов.
+        val labs = FloatArray(px.size * 3)
+        for (i in px.indices) { val l = CraftPattern.lab(soft[i]); labs[i * 3] = l[0].toFloat(); labs[i * 3 + 1] = l[1].toFloat(); labs[i * 3 + 2] = l[2].toFloat() }
+        val pf = FloatArray(pl.size * 3).also { a -> pl.forEachIndexed { j, l -> a[j * 3] = l[0].toFloat(); a[j * 3 + 1] = l[1].toFloat(); a[j * 3 + 2] = l[2].toFloat() } }
         var cells = IntArray(px.size) { i ->
-            val l = CraftPattern.lab(soft[i])
-            var best = 0; var bd = Double.MAX_VALUE
-            for (j in pl.indices) { val d = d2(l, pl[j]); if (d < bd) { bd = d; best = j } }
+            val L = labs[i * 3]; val A = labs[i * 3 + 1]; val B = labs[i * 3 + 2]
+            var best = 0; var bd = Float.MAX_VALUE
+            for (j in pl.indices) {
+                val dl = L - pf[j * 3]; val da = A - pf[j * 3 + 1]; val db = B - pf[j * 3 + 2]
+                val d = dl * dl + da * da + db * db
+                if (d < bd) { bd = d; best = j }
+            }
             best
         }
-        // Цвета, которых меньше 0,4% картинки, отдаём ближайшему другому цвету.
+        // Редкие цвета отдаём ближайшему другому: при низкой чувствительности — меньше 0,4% картинки, при высокой — почти не трогаем.
         val share = IntArray(colors0.size).also { c -> cells.forEach { c[it]++ } }
-        val rare = colors0.indices.filter { share[it] in 1 until cells.size / 250 }.toSet()
+        val rareMax = (cells.size / (250 + 4000 * sv)).toInt()
+        val rare = colors0.indices.filter { share[it] in 1 until rareMax }.toSet()
         if (rare.isNotEmpty() && rare.size < colors0.indices.count { share[it] > 0 }) {
             val keep = colors0.indices.filter { share[it] > 0 && it !in rare }
             val to = IntArray(colors0.size) { j -> if (j in rare) keep.minBy { d2(pl[j], pl[it]) } else j }
             cells = IntArray(cells.size) { to[cells[it]] }
         }
-        repeat(det.smooth) { cells = majority(cells, w, h, colors0.size) }
-        cells = mergeSmall(cells, w, h, det.minArea)
+        val passes = (det.smooth - (sv * 2.2).toInt()).coerceAtLeast(0)
+        repeat(passes) { cells = majority(cells, w, h) }
+        cells = mergeSmall(cells, w, h, maxOf(4, (det.minArea * (1.5 - 1.2 * sv)).toInt()))
         // Убираем неиспользованные карандаши, нумеруем по частоте.
         val count = IntArray(colors0.size).also { c -> cells.forEach { c[it]++ } }
         val order = colors0.indices.filter { count[it] > 0 }.sortedByDescending { count[it] }
         val remap = IntArray(colors0.size) { -1 }.also { m -> order.forEachIndexed { n, o -> m[o] = n } }
         val out = IntArray(cells.size) { remap[cells[it]] }
         val colors = order.map { colors0[it] }
-        return Result(w, h, out, colors, regions(out, w, h))
+        return Result(w, h, out, colors, regions(out, w, h), photoEdges(labs, out, w, h, sv, det.minArea))
+    }
+
+    /**
+     * Контуры по резким краям фото там, где по обе стороны оказался один цвет (лицо на фоне похожего оттенка, складки,
+     * границы предметов). Шум отсекается: край должен быть резким ([sv] задаёт порог) и тянуться линией, а не точкой.
+     */
+    fun photoEdges(labs: FloatArray, c: IntArray, w: Int, h: Int, sv: Double, minArea: Int): List<IntArray> {
+        if (sv <= 0.05) return emptyList()
+        val t2 = (14 - 11 * sv).let { it * it }.toFloat()
+        fun dd(i: Int, j: Int): Float {
+            val dl = labs[i * 3] - labs[j * 3]; val da = labs[i * 3 + 1] - labs[j * 3 + 1]; val db = labs[i * 3 + 2] - labs[j * 3 + 2]
+            return dl * dl + da * da + db * db
+        }
+        val minLen = maxOf(6, (minArea / 3.0 * (1.2 - sv)).toInt())
+        // Рядом с уже существующей границей цветов края не ищем — иначе контур удвоится по размытому переходу.
+        val near = BooleanArray(c.size)
+        for (y in 0 until h) for (x in 0 until w) {
+            val i = y * w + x
+            if ((x < w - 1 && c[i] != c[i + 1]) || (y < h - 1 && c[i] != c[i + w])) {
+                for (dy in -2..2) for (dx in -2..2) {
+                    val xx = x + dx; val yy = y + dy
+                    if (xx in 0 until w && yy in 0 until h) near[yy * w + xx] = true
+                }
+            }
+        }
+        // Пиксель края: резкий перепад с соседом справа или снизу при том же цвете на схеме.
+        val right = BooleanArray(c.size); val down = BooleanArray(c.size); val mark = BooleanArray(c.size)
+        for (y in 0 until h) for (x in 0 until w) {
+            val i = y * w + x
+            if (near[i]) continue
+            // Перепад меряем через точку (i и i+2): размытие растягивает край на два пикселя.
+            if (x < w - 2 && c[i] == c[i + 1] && c[i] == c[i + 2] && dd(i, i + 2) > t2 && dd(i, i + 2) >= maxOf(dd(i - minOf(x, 1), i + 1), dd(i + 1, minOf(i + 3, y * w + w - 1)))) {
+                right[i] = true; mark[i] = true; mark[i + 1] = true
+            }
+            if (y < h - 2 && c[i] == c[i + w] && c[i] == c[i + 2 * w] && dd(i, i + 2 * w) > t2 && dd(i, i + 2 * w) >= maxOf(dd(i - (if (y > 0) w else 0), i + w), dd(i + w, if (y < h - 3) i + 3 * w else i + 2 * w))) {
+                down[i] = true; mark[i] = true; mark[i + w] = true
+            }
+        }
+        // Оставляем только линии: связные (по 8 соседям) группы отмеченных пикселей длиной от minLen.
+        val comp = IntArray(c.size) { -1 }
+        val keep = BooleanArray(c.size)
+        val stack = IntArray(c.size)
+        val members = ArrayList<Int>()
+        for (s in c.indices) {
+            if (!mark[s] || comp[s] >= 0) continue
+            members.clear()
+            var sp = 0; stack[sp++] = s; comp[s] = s
+            while (sp > 0) {
+                val i = stack[--sp]; members += i
+                val x = i % w; val y = i / w
+                for (dy in -1..1) for (dx in -1..1) {
+                    val xx = x + dx; val yy = y + dy
+                    if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue
+                    val j = yy * w + xx
+                    if (mark[j] && comp[j] < 0) { comp[j] = s; stack[sp++] = j }
+                }
+            }
+            if (members.size >= minLen) members.forEach { keep[it] = true }
+        }
+        val out = ArrayList<IntArray>()
+        for (y in 0 until h) for (x in 0 until w) {
+            val i = y * w + x
+            if (right[i] && (keep[i] || keep[i + 1])) out += intArrayOf(x + 1, y, x + 1, y + 1)
+            if (down[i] && (keep[i] || keep[i + w])) out += intArrayOf(x, y + 1, x + 1, y + 1)
+        }
+        return out
     }
 
     /** Размытие 3×3 по каналам. */
@@ -117,20 +202,23 @@ object PaintByNumbers {
         ((r / n) shl 16) or ((g / n) shl 8) or (b / n)
     }
 
-    /** Каждая клетка берёт самый частый цвет в окне 3×3 — исчезают «крапинки». */
-    private fun majority(c: IntArray, w: Int, h: Int, k: Int): IntArray {
+    /** Каждая клетка берёт самый частый цвет в окне 3×3 — исчезают «крапинки». Считаем только 9 соседей, не все цвета. */
+    private fun majority(c: IntArray, w: Int, h: Int): IntArray {
         val out = c.copyOf()
-        val cnt = IntArray(k)
+        val vals = IntArray(9); val cnt = IntArray(9)
         for (y in 0 until h) for (x in 0 until w) {
-            java.util.Arrays.fill(cnt, 0)
+            var n = 0
             for (dy in -1..1) for (dx in -1..1) {
                 val xx = x + dx; val yy = y + dy
                 if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue
-                cnt[c[yy * w + xx]]++
+                val v = c[yy * w + xx]
+                var k = 0
+                while (k < n && vals[k] != v) k++
+                if (k == n) { vals[n] = v; cnt[n] = 1; n++ } else cnt[k]++
             }
-            var best = c[y * w + x]
-            for (j in 0 until k) if (cnt[j] > cnt[best]) best = j
-            if (cnt[best] >= 5) out[y * w + x] = best
+            var best = -1; var bc = 0
+            for (k in 0 until n) if (cnt[k] > bc) { bc = cnt[k]; best = vals[k] }
+            if (bc >= 5) out[y * w + x] = best
         }
         return out
     }
@@ -259,63 +347,15 @@ object PaintByNumbers {
         Pencil("45", "Чёрный", 0x1A1A1A), Pencil("46", "Серо-голубой", 0x7B93A8), Pencil("47", "Бордовый", 0x6E1423), Pencil("48", "Мятный", 0x9DE0C4),
     )
 
-    /** Расширенная линейка до 200 цветов — как в больших наборах (72, 120, 200): самые различимые оттенки идут первыми. */
-    val CATALOG_EXTRA: List<Pencil> = listOf(
-        Pencil("49", "Зелёный насыщенный", 0x19CC37), Pencil("50", "Фуксиевый приглушённый", 0xAC539D), Pencil("51", "Индиговый насыщенный", 0x2819CC),
-        Pencil("52", "Фуксиевый дымчатый", 0x764C6F), Pencil("53", "Золотистый средний", 0xD3BC45), Pencil("54", "Салатовый насыщенный", 0x82CC19),
-        Pencil("55", "Карминный приглушённый", 0xAC535F), Pencil("56", "Мятный насыщенный", 0x19CCAE), Pencil("57", "Малиновый глубокий", 0x620E3F),
-        Pencil("58", "Лимонный светлый", 0xDAE79D), Pencil("59", "Лазурный насыщенный", 0x19A0CC), Pencil("60", "Синий приглушённый", 0x5374AC),
-        Pencil("61", "Изумрудный средний", 0x45D38C), Pencil("62", "Красно-оранжевый насыщенный", 0xCC5B19), Pencil("63", "Лазурный глубокий", 0x0E4D62),
-        Pencil("64", "Золотистый дымчатый", 0x766F4C), Pencil("65", "Аметистовый насыщенный", 0x8B19CC), Pencil("66", "Травяной серый", 0x90AB87),
-        Pencil("67", "Малиновый насыщенный", 0xCC1982), Pencil("68", "Фуксиевый тёмный", 0x93107D), Pencil("69", "Фуксиевый средний", 0xD345BC),
-        Pencil("70", "Фуксиевый серый", 0xAB87A5), Pencil("71", "Жёлтый тёмный", 0x938F10), Pencil("72", "Фиолетовый приглушённый", 0x7453AC),
-        Pencil("73", "Красный дымчатый", 0x764C4C), Pencil("74", "Фуксиевый светлый", 0xE79DDA), Pencil("75", "Малиновый тёмный", 0x93105C),
-        Pencil("76", "Лимонный средний", 0xBCD345), Pencil("77", "Красный светлый", 0xE79D9D), Pencil("78", "Пшеничный", 0xE3C77F),
-        Pencil("79", "Зелёный светлый", 0x9DE7A9), Pencil("80", "Ультрамариновый дымчатый", 0x4C5376), Pencil("81", "Изумрудный дымчатый", 0x4C7661),
-        Pencil("82", "Салатовый глубокий", 0x3F620E), Pencil("83", "Карминный средний", 0xD34558), Pencil("84", "Фиолетовый бледный", 0xDCD0F1),
-        Pencil("85", "Ультрамариновый насыщенный", 0x1937CC), Pencil("86", "Индиговый глубокий", 0x150E62), Pencil("87", "Индиговый тёмный", 0x1B1093),
-        Pencil("88", "Травяной тёмный", 0x319310), Pencil("89", "Кофе с молоком", 0xA88565), Pencil("90", "Бирюзовый светлый", 0x9DE4E7),
-        Pencil("91", "Лазурный тёмный", 0x107293), Pencil("92", "Травяной бледный", 0xD8F1D0), Pencil("93", "Розовый тёмный", 0x93103C),
-        Pencil("94", "Золотистый глубокий", 0x62540E), Pencil("95", "Бирюзовый средний", 0x45CFD3), Pencil("96", "Жёлтый насыщенный", 0xCCC619),
-        Pencil("97", "Пурпурный глубокий", 0x570E62), Pencil("98", "Мятный серый", 0x87ABA5), Pencil("99", "Изумрудный приглушённый", 0x53AC80),
-        Pencil("100", "Лимонный приглушённый", 0x9DAC53), Pencil("101", "Бирюзовый глубокий", 0x0E5F62), Pencil("102", "Алый глубокий", 0x621F0E),
-        Pencil("103", "Красно-оранжевый средний", 0xD37945), Pencil("104", "Красный серый", 0xAB8787), Pencil("105", "Зелёный средний", 0x45D35D),
-        Pencil("106", "Голубой глубокий", 0x0E3C62), Pencil("107", "Янтарный серый", 0xABA087), Pencil("108", "Красно-оранжевый тёмный", 0x934010),
-        Pencil("109", "Алый насыщенный", 0xCC3D19), Pencil("110", "Мятный тёмный", 0x10937D), Pencil("111", "Лазурный дымчатый", 0x4C6C76),
-        Pencil("112", "Бронзовый", 0x9C7A3C), Pencil("113", "Пурпурный насыщенный", 0xB419CC), Pencil("114", "Мятный бледный", 0xD0F1EC),
-        Pencil("115", "Синий светлый", 0x9DB8E7), Pencil("116", "Ультрамариновый средний", 0x455DD3), Pencil("117", "Алый приглушённый", 0xAC6553),
-        Pencil("118", "Голубой тёмный", 0x105893), Pencil("119", "Голубой насыщенный", 0x197CCC), Pencil("120", "Индиговый серый", 0x8A87AB),
-        Pencil("121", "Травяной средний", 0x69D345), Pencil("122", "Ультрамариновый приглушённый", 0x5362AC), Pencil("123", "Салатовый тёмный", 0x5C9310),
-        Pencil("124", "Оранжевый тёмный", 0x935610), Pencil("125", "Янтарный тёмный", 0x936C10), Pencil("126", "Загар", 0xC68B5E),
-        Pencil("127", "Аметистовый тёмный", 0x631093), Pencil("128", "Травяной дымчатый", 0x56764C), Pencil("129", "Голубой приглушённый", 0x5384AC),
-        Pencil("130", "Голубой бледный", 0xD0E2F1), Pencil("131", "Малиновый приглушённый", 0xAC5387), Pencil("132", "Золотой", 0xC9A23A),
-        Pencil("133", "Лазурный приглушённый", 0x5396AC), Pencil("134", "Алый пастельный", 0xE6C5BC), Pencil("135", "Аметистовый средний", 0x9F45D3),
-        Pencil("136", "Салатовый средний", 0x98D345), Pencil("137", "Лимонный тёмный", 0x7D9310), Pencil("138", "Фуксиевый пастельный", 0xE6BCDF),
-        Pencil("139", "Изумрудный тёмный", 0x109352), Pencil("140", "Капучино", 0x8C6A55), Pencil("141", "Фиолетовый средний", 0x7945D3),
-        Pencil("142", "Изумрудный насыщенный", 0x19CC73), Pencil("143", "Ультрамариновый тёмный", 0x102693), Pencil("144", "Изумрудный глубокий", 0x0E6238),
-        Pencil("145", "Оранжевый насыщенный", 0xCC7919), Pencil("146", "Пурпурный средний", 0xC045D3), Pencil("147", "Фуксиевый глубокий", 0x620E54),
-        Pencil("148", "Золотистый тёмный", 0x937D10), Pencil("149", "Розовый светлый", 0xE79DB6), Pencil("150", "Мятный глубокий", 0x0E6254),
-        Pencil("151", "Мятный приглушённый", 0x53AC9D), Pencil("152", "Розовый средний", 0xD34575), Pencil("153", "Золотистый насыщенный", 0xCCAE19),
-        Pencil("154", "Янтарный насыщенный", 0xCC9719), Pencil("155", "Ультрамариновый светлый", 0x9DA9E7), Pencil("156", "Слоновая кость", 0xF4EDDC),
-        Pencil("157", "Ультрамариновый глубокий", 0x0E1C62), Pencil("158", "Малиновый средний", 0xD34598), Pencil("159", "Аметистовый светлый", 0xCC9DE7),
-        Pencil("160", "Красный средний", 0xD34545), Pencil("161", "Лимонный насыщенный", 0xAECC19), Pencil("162", "Золотистый светлый", 0xE7DA9D),
-        Pencil("163", "Графитовый", 0x3A3D40), Pencil("164", "Синий тёмный", 0x104093), Pencil("165", "Голубой средний", 0x4593D3),
-        Pencil("166", "Зелёный глубокий", 0x0E621C), Pencil("167", "Пурпурный приглушённый", 0xA053AC), Pencil("168", "Розовый приглушённый", 0xAC5371),
-        Pencil("169", "Умбра", 0x635147), Pencil("170", "Алый тёмный", 0x932A10), Pencil("171", "Фуксиевый насыщенный", 0xCC19AE),
-        Pencil("172", "Травяной насыщенный", 0x46CC19), Pencil("173", "Жёлтый средний", 0xD3CF45), Pencil("174", "Пурпурный тёмный", 0x811093),
-        Pencil("175", "Бирюзовый приглушённый", 0x53A9AC), Pencil("176", "Розовый глубокий", 0x620E2A), Pencil("177", "Алый светлый", 0xE7AC9D),
-        Pencil("178", "Алый средний", 0xD36245), Pencil("179", "Зелёный приглушённый", 0x53AC62), Pencil("180", "Лимонный глубокий", 0x54620E),
-        Pencil("181", "Индиговый средний", 0x5145D3), Pencil("182", "Травяной приглушённый", 0x69AC53), Pencil("183", "Синий пастельный", 0xBCCCE6),
-        Pencil("184", "Холодный серый", 0x9AA3AC), Pencil("185", "Малиновый светлый", 0xE79DC8), Pencil("186", "Изумрудный пастельный", 0xBCE6D1),
-        Pencil("187", "Индиговый пастельный", 0xC0BCE6), Pencil("188", "Фиолетовый дымчатый", 0x5B4C76), Pencil("189", "Салатовый приглушённый", 0x87AC53),
-        Pencil("190", "Янтарный приглушённый", 0xAC9153), Pencil("191", "Фиолетовый насыщенный", 0x5B19CC), Pencil("192", "Лососевый", 0xF39A80),
-        Pencil("193", "Медный", 0xB86B3C), Pencil("194", "Оранжевый приглушённый", 0xAC8253), Pencil("195", "Синий глубокий", 0x0E2D62),
-        Pencil("196", "Жёлтый пастельный", 0xE6E4BC), Pencil("197", "Телесный тёмный", 0xD9A07A), Pencil("198", "Тёплый серый тёмный", 0x6B645B),
-        Pencil("199", "Синий средний", 0x4579D3), Pencil("200", "Оранжевый средний", 0xD39145),
-    )
+    /** Все карандаши: 48 базовых + расширенная линейка — всего 264. */
+    val PENCILS_ALL: List<Pencil> by lazy { CATALOG + PbnCatalogs.PENCIL_EXTRA }
+    val MARKERS_ALL: List<Pencil> by lazy { MARKERS + PbnCatalogs.MARKER_EXTRA }
+    val PAINTS_ALL: List<Pencil> by lazy { PAINTS + PbnCatalogs.PAINT_EXTRA }
 
-    /** Все карандаши: 48 базовых + расширенная линейка — всего 200. */
-    val PENCILS_ALL: List<Pencil> = CATALOG + CATALOG_EXTRA
+    /** Большие наборы — первые 64 и 128 цветов линейки (самые различимые) и вся линейка. */
+    private fun big(all: List<Pencil>) = listOf(
+        "64 цвета" to all.take(64).map { it.code }, "128 цветов" to all.take(128).map { it.code }, "${all.size} цвета" to all.map { it.code },
+    )
 
     /** Наборы по количеству цветов: какие номера в них обычно есть. */
     val SETS: List<Pair<String, List<String>>> = listOf(
@@ -323,15 +363,12 @@ object PaintByNumbers {
         "24 цвета" to listOf("1", "2", "3", "5", "7", "8", "9", "11", "13", "15", "17", "18", "19", "21", "25", "27", "28", "30", "33", "35", "38", "39", "43", "45"),
         "36 цветов" to listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "13", "14", "15", "17", "18", "19", "20", "21", "23", "25", "26", "27", "28", "30", "31", "33", "34", "35", "37", "38", "39", "42", "43", "44", "45"),
         "48 цветов" to CATALOG.map { it.code },
-        "72 цвета" to PENCILS_ALL.take(72).map { it.code },
-        "120 цветов" to PENCILS_ALL.take(120).map { it.code },
-        "200 цветов" to PENCILS_ALL.map { it.code },
-    )
+    ) + big(PENCILS_ALL)
 
     /** Чем раскрашивать: у каждого материала свой каталог, наборы и свои цвета. */
     enum class Medium(val title: String, val one: String, val many: String) {
         PENCIL("Карандаши", "Карандаш", "карандашей"), MARKER("Маркеры", "Маркер", "маркеров"), PAINT("Краски", "Краска", "красок");
-        val catalog: List<Pencil> get() = when (this) { PENCIL -> PENCILS_ALL; MARKER -> MARKERS; PAINT -> PAINTS }
+        val catalog: List<Pencil> get() = when (this) { PENCIL -> PENCILS_ALL; MARKER -> MARKERS_ALL; PAINT -> PAINTS_ALL }
         val sets: List<Pair<String, List<String>>> get() = when (this) { PENCIL -> SETS; MARKER -> MARKER_SETS; PAINT -> PAINT_SETS }
         companion object { fun of(i: Int) = entries.getOrElse(i) { PENCIL } }
     }
@@ -377,13 +414,12 @@ object PaintByNumbers {
         "24 цвета" to listOf(1, 2, 3, 6, 7, 9, 11, 12, 15, 16, 19, 20, 23, 25, 28, 31, 33, 35, 39, 42, 44, 53, 56, 59),
         "36 цветов" to listOf(1, 2, 3, 4, 6, 7, 9, 10, 11, 12, 14, 15, 16, 18, 19, 20, 22, 23, 25, 27, 28, 30, 31, 32, 33, 35, 36, 38, 39, 42, 44, 49, 52, 54, 56, 59),
         "48 цветов" to (1..60).filter { it !in setOf(5, 8, 13, 17, 21, 26, 29, 34, 37, 41, 47, 60) },
-        "60 цветов" to (1..60).toList(),
-    ).map { (t, l) -> t to l.map { "М$it" } }
+    ).map { (t, l) -> t to l.map { "М$it" } } + big(MARKERS_ALL)
 
     val PAINT_SETS: List<Pair<String, List<String>>> = listOf(
         "12 цветов" to listOf(1, 3, 7, 10, 12, 14, 15, 17, 23, 26, 29, 35),
-        "18 цветов" to listOf(1, 2, 3, 5, 7, 8, 10, 12, 13, 14, 15, 17, 19, 23, 24, 26, 29, 35),
         "24 цвета" to listOf(1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 19, 20, 21, 23, 24, 26, 27, 29, 35),
         "36 цветов" to (1..36).toList(),
-    ).map { (t, l) -> t to l.map { "К$it" } }
+        "48 цветов" to (1..48).toList(),
+    ).map { (t, l) -> t to l.map { "К$it" } } + big(PAINTS_ALL)
 }

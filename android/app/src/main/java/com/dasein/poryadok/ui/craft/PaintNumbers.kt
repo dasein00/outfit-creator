@@ -174,7 +174,7 @@ fun PbnScreen(nav: NavHostController, id: Long) {
     var message by remember { mutableStateOf<String?>(null) }
     fun save(n: PbnProject) { project = n; PbnStore.save(ctx, n) }
 
-    LaunchedEffect(p0.colors, p0.detail, p0.medium, ver) {
+    LaunchedEffect(p0.colors, p0.detail, p0.medium, p0.edges, ver) {
         busy = true
         val r = PbnStore.build(ctx, p0)
         result = r
@@ -234,9 +234,18 @@ fun PbnScreen(nav: NavHostController, id: Long) {
             Segments(listOf(0 to "Крупно", 1 to "Средне", 2 to "Подробно"), p0.detail, { save(p0.copy(detail = it)) })
             Text("Крупно — большие области, удобно детям; подробно — мелкие детали, дольше раскрашивать.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
             Gap(8.dp)
+            Text("Чувствительность контуров: ${p0.edges}%", fontSize = 14.sp)
+            var ev by remember(p0.id) { mutableFloatStateOf(p0.edges.toFloat()) }
+            Slider(ev, { ev = it }, valueRange = 0f..100f, onValueChangeFinished = { save(p0.copy(edges = ev.roundToInt())) })
+            Text(
+                "Выше — различаются близкие оттенки, сохраняются мелкие детали, а резкие края фото внутри одного цвета тоже обводятся контуром. " +
+                    "Ниже — меньше линий и крупнее области.",
+                fontSize = 12.sp, color = extra.dim,
+            )
+            Gap(8.dp)
             Text("Цветов: до ${p0.colors} (${medium.many} у вас: ${pencils.size})", fontSize = 14.sp)
             var k by remember(p0.id) { mutableFloatStateOf(p0.colors.toFloat()) }
-            Slider(k, { k = it }, valueRange = 4f..maxOf(5f, minOf(60f, pencils.size.toFloat())), onValueChangeFinished = { save(p0.copy(colors = k.toInt())) })
+            Slider(k, { k = it }, valueRange = 4f..maxOf(5f, minOf(200f, pencils.size.toFloat())), onValueChangeFinished = { save(p0.copy(colors = k.toInt())) })
             Text(btnLabel("Лист для печати"), fontSize = 14.sp)
             Segments(listOf(0 to "A4", 1 to "A3"), p0.paper, { save(p0.copy(paper = it)) })
             var title by remember(p0.id) { mutableStateOf(p0.name) }

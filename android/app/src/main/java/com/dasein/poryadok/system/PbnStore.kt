@@ -36,6 +36,8 @@ data class PbnProject(
     val createdAt: Long = 0,
     /** Чем раскрашивать: 0 — карандаши, 1 — маркеры, 2 — краски. */
     val medium: Int = 0,
+    /** Чувствительность контуров 0..100: выше — больше границ и мелких деталей. */
+    val edges: Int = 60,
 )
 
 /** Свой карандаш, которого нет в стандартном списке. */
@@ -120,7 +122,7 @@ object PbnStore {
         val px = IntArray(w * h).also { small.getPixels(it, 0, w, 0, 0, w, h) }.map { it and 0xFFFFFF }.toIntArray()
         val m = PaintByNumbers.Medium.of(p.medium)
         val pencils = pencils(ctx, m).takeIf { it.size >= 2 } ?: m.catalog
-        PaintByNumbers.build(px, w, h, pencils, p.colors, p.detail)
+        PaintByNumbers.build(px, w, h, pencils, p.colors, p.detail, p.edges)
     }
 
     /** Картинка для экрана: [colored] — раскрашенная, иначе — контуры с номерами, как на печати. */
@@ -140,7 +142,7 @@ object PbnStore {
 
     private fun drawOutline(c: Canvas, r: PaintByNumbers.Result, s: Float, ox: Float, oy: Float, color: Int, width: Float) {
         val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color; strokeWidth = width; style = Paint.Style.STROKE; strokeCap = Paint.Cap.SQUARE }
-        val segs = PaintByNumbers.outline(r.cells, r.width, r.height)
+        val segs = PaintByNumbers.outline(r.cells, r.width, r.height) + r.edges
         val pts = FloatArray(segs.size * 4)
         segs.forEachIndexed { i, sg -> pts[i * 4] = ox + sg[0] * s; pts[i * 4 + 1] = oy + sg[1] * s; pts[i * 4 + 2] = ox + sg[2] * s; pts[i * 4 + 3] = oy + sg[3] * s }
         c.drawLines(pts, p)
@@ -170,8 +172,31 @@ object PbnStore {
         val pw = if (landscape) base.second else base.first
         val ph = if (landscape) base.first else base.second
         val margin = 22f
-        val legendRows = (r.colors.size + 7) / 8
-        val legendH = legendRows * 22f + 10
+        // Много цветов — таблица уходит на отдельные листы, чтобы картина осталась крупной.
+        val separate = r.colors.size > 40
+        val legendRows = if (separate) 0 else (r.colors.size + 7) / 8
+        val legendH = if (separate) 0f else legendRows * 22f + 10
+        val box = Paint(Paint.ANTI_ALIAS_FLAG)
+        val txt = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 6.5f; color = 0xFF333333.toInt() }
+        val num = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 8f; textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD }
+        /** Таблица цветов: квадрат с номером, название и номер в наборе — по 8 в ряд. */
+        fun legend(c: Canvas, from: Int, to: Int, top: Float) {
+            val cw = (pw - 2 * margin) / 8
+            for (i in from until to) {
+                val pc = r.colors[i]
+                val k = i - from
+                val x = margin + (k % 8) * cw; val y = top + (k / 8) * 22f
+                box.color = pc.rgb or (0xFF shl 24); box.style = Paint.Style.FILL
+                c.drawRect(x, y, x + 22, y + 14, box)
+                box.color = 0xFF999999.toInt(); box.style = Paint.Style.STROKE; box.strokeWidth = 0.4f
+                c.drawRect(x, y, x + 22, y + 14, box)
+                num.color = if (PaintByNumbers.dark(pc.rgb)) Color.WHITE else Color.BLACK
+                num.textSize = if (i + 1 >= 100) 7f else 8f
+                c.drawText("${i + 1}", x + 11, y + 10.2f, num)
+                c.drawText(pc.name.take(18), x + 25, y + 6, txt)
+                c.drawText(if (pc.code.startsWith("С")) "свой" else "№ ${pc.code}", x + 25, y + 13, txt)
+            }
+        }
         fun page(n: Int, colored: Boolean) {
             val pg = doc.startPage(PdfDocument.PageInfo.Builder(pw, ph, n).create())
             val c = pg.canvas
@@ -190,27 +215,23 @@ object PbnStore {
                 drawOutline(c, r, s, ox, oy, 0xFFA0A0A0.toInt(), 0.45f)
                 drawNumbers(c, r, s, ox, oy, false, 3.5f, 9f)
             }
-            // Таблица карандашей: квадрат цвета с номером и название.
-            val ly = oy + r.height * s + 14
-            val cw = availW / 8
-            val box = Paint(Paint.ANTI_ALIAS_FLAG)
-            val txt = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 6.5f; color = 0xFF333333.toInt() }
-            val num = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 8f; textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD }
-            r.colors.forEachIndexed { i, pc ->
-                val x = margin + (i % 8) * cw; val y = ly + (i / 8) * 22f
-                box.color = pc.rgb or (0xFF shl 24); box.style = Paint.Style.FILL
-                c.drawRect(x, y, x + 22, y + 14, box)
-                box.color = 0xFF999999.toInt(); box.style = Paint.Style.STROKE; box.strokeWidth = 0.4f
-                c.drawRect(x, y, x + 22, y + 14, box)
-                num.color = if (PaintByNumbers.dark(pc.rgb)) Color.WHITE else Color.BLACK
-                c.drawText("${i + 1}", x + 11, y + 10.2f, num)
-                c.drawText(pc.name.take(18), x + 25, y + 6, txt)
-                c.drawText(if (pc.code.startsWith("С")) "свой" else "№ ${pc.code}", x + 25, y + 13, txt)
-            }
+            if (!separate) legend(c, 0, r.colors.size, oy + r.height * s + 14)
             doc.finishPage(pg)
         }
         page(1, false)
         page(2, true)
+        if (separate) {
+            val perPage = ((ph - 2 * margin - 20) / 22f).toInt() * 8
+            var from = 0; var n = 3
+            while (from < r.colors.size) {
+                val to = minOf(r.colors.size, from + perPage)
+                val pg = doc.startPage(PdfDocument.PageInfo.Builder(pw, ph, n++).create())
+                pg.canvas.drawText("Таблица цветов · ${from + 1}–$to из ${r.colors.size}", margin, margin + 6, Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 10f; typeface = Typeface.DEFAULT_BOLD })
+                legend(pg.canvas, from, to, margin + 18)
+                doc.finishPage(pg)
+                from = to
+            }
+        }
         doc.writeTo(out)
         doc.close()
     }
