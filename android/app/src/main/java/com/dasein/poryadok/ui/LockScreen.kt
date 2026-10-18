@@ -1,5 +1,6 @@
 package com.dasein.poryadok.ui
 
+import com.dasein.poryadok.ui.common.safeBars
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.background
@@ -79,7 +80,7 @@ fun PinPad(
     var pin by remember { mutableStateOf("") }
     LaunchedEffect(resetKey) { pin = "" }
     Column(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding().padding(24.dp),
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeBars().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

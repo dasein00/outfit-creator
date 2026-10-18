@@ -341,7 +341,7 @@ fun GlyphPickerDialog(
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
         androidx.compose.material3.Surface(
-            Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 12.dp, vertical = 12.dp),
+            Modifier.fillMaxSize().safeBars(extraBottom = 0.dp).padding(horizontal = 12.dp, vertical = 12.dp),
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surface,
         ) {

@@ -82,7 +82,8 @@ private val Panel = Color(0xFF26221C)
  * Монтаж ролика перед добавлением (или уже добавленного): лента с кадрами и шкалой времени, которую можно
  * увеличивать (кнопки «−/+» или щипком двумя пальцами), куски можно разрезать по бегунку, дублировать и удалять,
  * края выбранного куска тянуть ползунками или вписать время цифрами. Скорость 0,5×–2×. «Отменить/Вернуть».
- * Когда тянете конец куска, превью проигрывает последние 2 секунды до него — видно, где обрезается.
+ * Белый бегунок перематывается пальцем по шкале времени над кадрами.
+ * Когда отпускаете конец куска, превью проигрывает последние полсекунды до него — видно, где обрезается.
  * Результат — список кусков исходного файла (мс) и скорость; склейку и сжатие делает VideoCompress.
  */
 @OptIn(ExperimentalLayoutApi::class)
@@ -115,13 +116,20 @@ fun VideoEditor(path: String, addMode: Boolean, onCancel: () -> Unit, onSkip: ()
     var playing by remember { mutableStateOf(false) }
     var srcPos by remember { mutableLongStateOf(0L) }
     var curSeg by remember { mutableIntStateOf(0) }
-    /** Остановить превью на этом месте исходника (проигрывание «последних 2 секунд» до конца куска). */
+    /** Остановить превью на этом месте исходника (проигрывание последних полсекунды до конца куска). */
     var stopAt by remember { mutableStateOf<Long?>(null) }
     var showSpeed by remember { mutableStateOf(false) }
 
     fun seekSrc(ms: Long, seg: Int) { curSeg = seg; srcPos = ms; view?.seekTo(ms.toInt()) }
     fun play() { view?.start(); playing = true }
     fun pause() { view?.pause(); playing = false }
+    /** Перемотка бегунком: время монтажа → кусок и место исходника. */
+    fun scrubTo(editedMs: Long) {
+        val (i, src) = VideoCut.fromEdited(segments, editedMs.coerceIn(0L, VideoCut.total(segments)))
+        stopAt = null
+        if (playing) pause()
+        seekSrc(src, i)
+    }
 
     // Проигрывание по кускам: дошли до конца куска — прыгаем на следующий, после последнего — по кругу.
     LaunchedEffect(view) {
@@ -132,7 +140,7 @@ fun VideoEditor(path: String, addMode: Boolean, onCancel: () -> Unit, onSkip: ()
                 if (playing) srcPos = p
                 val seg = segments.getOrNull(curSeg) ?: segments.first().also { curSeg = 0 }
                 val stop = stopAt
-                if (playing && stop != null && p >= stop - 40) { pause(); stopAt = null }
+                if (playing && stop != null && p >= stop - 40) { pause(); stopAt = null; seekSrc(stop, curSeg) }
                 else if (playing && p >= seg.last - 30) {
                     val next = (curSeg + 1) % segments.size
                     seekSrc(segments[next].first, next)
@@ -150,7 +158,7 @@ fun VideoEditor(path: String, addMode: Boolean, onCancel: () -> Unit, onSkip: ()
     val playhead = VideoCut.toEdited(segments, curSeg, srcPos)
 
     Dialog(onDismissRequest = onCancel, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        Column(Modifier.fillMaxSize().background(Color(0xFF15120E)).systemBarsPadding()) {
+        Column(Modifier.fillMaxSize().background(Color(0xFF15120E)).safeBars(withIme = true)) {
             // Верх: закрыть, отменить/вернуть, готово.
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 TopIcon("✕", "Закрыть") { onCancel() }
@@ -197,7 +205,7 @@ fun VideoEditor(path: String, addMode: Boolean, onCancel: () -> Unit, onSkip: ()
                 ZoomButton("+") { zoom = (zoom * 1.6f).coerceAtMost(40f) }
             }
             // Лента: шкала времени, кадры по кускам, ползунки выбранного куска, бегунок.
-            BoxWithConstraints(Modifier.fillMaxWidth().height(118.dp)) {
+            BoxWithConstraints(Modifier.fillMaxWidth().height(RULER_H + STRIP_H + 14.dp)) {
                 val density = LocalDensity.current
                 val viewW = with(density) { maxWidth.toPx() }
                 val side = viewW / 2f
@@ -232,8 +240,17 @@ fun VideoEditor(path: String, addMode: Boolean, onCancel: () -> Unit, onSkip: ()
                 ) {
                     val widthDp = with(density) { (maxOf(stripW, viewW - 2 * padPx) + 2 * padPx).toDp() }
                     Box(Modifier.width(widthDp).fillMaxHeight().padding(horizontal = 22.dp)) {
-                        // Шкала времени.
-                        Canvas(Modifier.fillMaxWidth().height(22.dp)) {
+                        // Шкала времени. Ведите по ней пальцем — бегунок перематывает видео (лента при этом не прокручивается).
+                        Canvas(
+                            Modifier.fillMaxWidth().height(RULER_H)
+                                .pointerInput(pxPerMs) { detectTapGestures { o -> if (pxPerMs > 0f) scrubTo((o.x / pxPerMs).toLong()) } }
+                                .pointerInput(pxPerMs) {
+                                    detectHorizontalDragGestures(onDragStart = { o -> if (pxPerMs > 0f) scrubTo((o.x / pxPerMs).toLong()) }) { change, _ ->
+                                        change.consume()
+                                        if (pxPerMs > 0f) scrubTo((change.position.x / pxPerMs).toLong())
+                                    }
+                                },
+                        ) {
                             if (pxPerMs <= 0f) return@Canvas
                             val step = VideoCut.tickStep(pxPerMs)
                             var t = 0L
@@ -244,10 +261,15 @@ fun VideoEditor(path: String, addMode: Boolean, onCancel: () -> Unit, onSkip: ()
                                 drawContext.canvas.nativeCanvas.drawText(clockShort(t), x + 3.dp.toPx(), size.height - 8.dp.toPx(), paint)
                                 t += step
                             }
+                            // Шляпка бегунка: за неё (и за любое место шкалы) можно тянуть.
+                            val hx = playhead * pxPerMs
+                            drawLine(Color.White, Offset(hx, 10.dp.toPx()), Offset(hx, size.height), strokeWidth = 2.5.dp.toPx())
+                            drawCircle(Color.White, radius = 8.dp.toPx(), center = Offset(hx, 9.dp.toPx()))
+                            drawCircle(Orange, radius = 3.dp.toPx(), center = Offset(hx, 9.dp.toPx()))
                         }
                         // Кадры кусков.
                         Canvas(
-                            Modifier.padding(top = 26.dp).fillMaxWidth().height(62.dp).pointerInput(segments.toList(), pxPerMs) {
+                            Modifier.padding(top = RULER_H + 4.dp).fillMaxWidth().height(STRIP_H).pointerInput(segments.toList(), pxPerMs) {
                                 detectTapGestures { o ->
                                     if (pxPerMs <= 0f) return@detectTapGestures
                                     val (i, src) = VideoCut.fromEdited(segments, (o.x / pxPerMs).toLong())
@@ -290,7 +312,7 @@ fun VideoEditor(path: String, addMode: Boolean, onCancel: () -> Unit, onSkip: ()
                             val hw = with(density) { handleW.toPx() }
                             val drag = remember { mutableFloatStateOf(0f) }
                             val startDrag = { drag.floatValue = 0f; undo.add(segments.toList()); redo.clear(); stopAt = null; pause() }
-                            Handle(Modifier.offset { IntOffset((segStart - hw).roundToInt(), with(density) { 26.dp.roundToPx() }) }, handleW, left = true, onStart = startDrag, onEnd = {}) { dx ->
+                            Handle(Modifier.offset { IntOffset((segStart - hw).roundToInt(), with(density) { (RULER_H + 4.dp).roundToPx() }) }, handleW, left = true, onStart = startDrag, onEnd = {}) { dx ->
                                 val s = segments.getOrNull(selected) ?: return@Handle
                                 // Доли миллисекунды копим, чтобы медленное движение пальца тоже сдвигало край.
                                 drag.floatValue += dx / pxPerMs
@@ -300,10 +322,10 @@ fun VideoEditor(path: String, addMode: Boolean, onCancel: () -> Unit, onSkip: ()
                                 seekSrc(ns, selected)
                             }
                             Handle(
-                                Modifier.offset { IntOffset((segStart + segW).roundToInt(), with(density) { 26.dp.roundToPx() }) }, handleW, left = false, onStart = startDrag,
+                                Modifier.offset { IntOffset((segStart + segW).roundToInt(), with(density) { (RULER_H + 4.dp).roundToPx() }) }, handleW, left = false, onStart = startDrag,
                                 onEnd = {
-                                    // Отпустили конец — играем последние 2 секунды до него и останавливаемся на нём.
-                                    segments.getOrNull(selected)?.let { s -> seekSrc(maxOf(s.first, s.last - 2000), selected); stopAt = s.last; play() }
+                                    // Отпустили конец — играем последние полсекунды до него и останавливаемся на нём.
+                                    segments.getOrNull(selected)?.let { s -> seekSrc(maxOf(s.first, s.last - END_PREVIEW_MS), selected); stopAt = s.last; play() }
                                 },
                             ) { dx ->
                                 val s = segments.getOrNull(selected) ?: return@Handle
@@ -330,7 +352,7 @@ fun VideoEditor(path: String, addMode: Boolean, onCancel: () -> Unit, onSkip: ()
                     val s = segments.getOrNull(selected) ?: return@TimeField
                     commit { it[selected] = s.first..ms.coerceIn(s.first + 300, duration) }
                     val ne = segments[selected].last
-                    seekSrc(maxOf(s.first, ne - 2000), selected); stopAt = ne; play()
+                    seekSrc(maxOf(s.first, ne - END_PREVIEW_MS), selected); stopAt = ne; play()
                 }
                 Spacer(Modifier.width(10.dp))
                 Text("кусок ${selected + 1}/${segments.size}\n${clock(sel.last - sel.first)}", color = Color.White.copy(alpha = .7f), fontSize = 12.sp)
@@ -369,6 +391,11 @@ fun VideoEditor(path: String, addMode: Boolean, onCancel: () -> Unit, onSkip: ()
         }
     }
 }
+
+private val RULER_H = 30.dp
+private val STRIP_H = 62.dp
+/** Сколько проиграть перед концом куска, когда двигают его край. */
+private const val END_PREVIEW_MS = 500L
 
 private val editorPlayers = java.util.WeakHashMap<VideoView, android.media.MediaPlayer>()
 
@@ -446,7 +473,7 @@ private fun Handle(modifier: Modifier, width: androidx.compose.ui.unit.Dp, left:
     val end = androidx.compose.runtime.rememberUpdatedState(onEnd)
     val drag = androidx.compose.runtime.rememberUpdatedState(onDrag)
     Box(
-        modifier.width(width).height(62.dp)
+        modifier.width(width).height(STRIP_H)
             .clip(RoundedCornerShape(topStart = if (left) 8.dp else 0.dp, bottomStart = if (left) 8.dp else 0.dp, topEnd = if (left) 0.dp else 8.dp, bottomEnd = if (left) 0.dp else 8.dp))
             .background(Cream)
             .pointerInput(Unit) {

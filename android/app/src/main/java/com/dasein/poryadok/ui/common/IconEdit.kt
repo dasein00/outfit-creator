@@ -170,7 +170,7 @@ fun IconSetImportDialog(onDismiss: () -> Unit, onSaved: (String?) -> Unit) {
         }
     }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        Surface(Modifier.fillMaxSize().systemBarsPadding().imePadding().padding(horizontal = 12.dp, vertical = 12.dp), shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface) {
+        Surface(Modifier.fillMaxSize().safeBars(extraBottom = 0.dp, withIme = true).padding(horizontal = 12.dp, vertical = 12.dp), shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(btnLabel("Новый набор иконок"), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
@@ -261,7 +261,7 @@ fun IconEditorDialog(key: String, onDismiss: () -> Unit) {
     fun dragEnd() { dragStart?.let { if (it != e) history.add(it) }; dragStart = null }
     val preview = remember(e, src) { src?.let { IconSets.render(it, e).asImageBitmap() } }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        Surface(Modifier.fillMaxSize().systemBarsPadding().padding(12.dp), shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface) {
+        Surface(Modifier.fillMaxSize().safeBars(extraBottom = 0.dp).padding(12.dp), shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.padding(16.dp).androidxVerticalScroll()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(btnLabel("Правка иконки"), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))

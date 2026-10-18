@@ -117,7 +117,7 @@ fun CropDialog(
     var oy by remember { mutableFloatStateOf(0f) }
     var saving by remember { mutableStateOf(false) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        Column(Modifier.fillMaxSize().background(Color(0xF0101010)).systemBarsPadding().navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 32.dp)) {
+        Column(Modifier.fillMaxSize().background(Color(0xF0101010)).safeBars().padding(16.dp)) {
             Text(title, color = Color.White, fontSize = 18.sp)
             Text("Двигайте и увеличивайте картинку двумя пальцами — в превью попадёт то, что внутри рамки.", color = Color(0xFFBBBBBB), fontSize = 12.sp)
             BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().padding(vertical = 12.dp)) {

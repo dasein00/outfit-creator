@@ -254,7 +254,7 @@ fun VideoPlayer(path: String, modifier: Modifier = Modifier, maxHeight: androidx
             mini?.let { v -> v.seekTo(pos); if (playing) v.start() }
         }
         Dialog(onDismissRequest = { close() }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-            Box(Modifier.fillMaxSize().background(Color.Black).systemBarsPadding(), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxSize().background(Color.Black).safeBars(), contentAlignment = Alignment.Center) {
                 Box(Modifier.fillMaxWidth().aspectRatio(ratio, matchHeightConstraintsFirst = ratio < 1f)) {
                     AndroidView(
                         factory = { c -> playerView(c, path, autoplay = true, startAt = startAt).also { big = it } },
