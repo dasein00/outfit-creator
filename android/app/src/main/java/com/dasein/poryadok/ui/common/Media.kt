@@ -99,13 +99,15 @@ fun VideoAddButtons(dir: String, galleryLabel: String = "+ Видео из га�
     var editing by remember { mutableStateOf<String?>(null) }
     val picked by androidx.compose.runtime.rememberUpdatedState(onPicked)
     // Копирование и сжатие идут в фоне приложения, а не экрана: если уйти со страницы, ролик не потеряется.
-    fun finish(path: String, segments: List<LongRange>?, speed: Float) {
+    fun finish(path: String, edit: VideoEdit?) {
         io {
             var out = path
             val before = File(path).length()
-            if (segments != null || speed != 1f) {
+            if (edit != null) {
                 withContext(Dispatchers.Main) { busy = "Монтирую и сжимаю видео… Не закрывайте приложение" }
-                com.dasein.poryadok.system.VideoCompress.editSegments(ctx, File(path), segments.orEmpty(), speed)?.let { f -> File(path).delete(); out = f.absolutePath }
+                com.dasein.poryadok.system.VideoCompress.editClips(ctx, edit.sources.map { File(it) }, edit.clips, edit.aspect, edit.mute)?.let { f -> File(path).delete(); out = f.absolutePath }
+                // Видео, добавленные в монтаже, уже вклеены — копии больше не нужны.
+                edit.extras.forEach { File(it).delete() }
             } else if (com.dasein.poryadok.system.VideoCompress.worth(path)) {
                 // Сжимаем: 480p и около 1 Мбит/с — звук и картинка остаются, места занимает в разы меньше.
                 withContext(Dispatchers.Main) { busy = "Сжимаю видео (${com.dasein.poryadok.system.VideoCompress.mb(before)})… Не закрывайте приложение" }
@@ -139,8 +141,8 @@ fun VideoAddButtons(dir: String, galleryLabel: String = "+ Видео из га�
         }
     }
     editing?.let { path ->
-        VideoEditor(path, addMode = true, onSkip = { editing = null; finish(path, null, 1f) }, onCancel = { editing = null; io { File(path).delete() } }) { segs, speed ->
-            editing = null; finish(path, segs, speed)
+        VideoEditor(path, dir, addMode = true, onSkip = { editing = null; finish(path, null) }, onCancel = { editing = null; io { File(path).delete() } }) { e ->
+            editing = null; finish(path, e)
         }
     }
     val gallery = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { take(it) }
@@ -471,12 +473,15 @@ fun EditVideoButton(path: String, onDone: (String) -> Unit) {
         return
     }
     com.dasein.poryadok.ui.common.TextButton(onClick = { open = true }) { Text(btnLabel("Монтаж")) }
-    if (open) VideoEditor(path, addMode = false, onCancel = { open = false }, onSkip = { open = false }) { segs, speed ->
+    // Добавленные в монтаже видео копируются в ту же папку, что и этот ролик.
+    val dir = remember(path) { File(path).parentFile?.absolutePath.orEmpty().removePrefix(ctx.filesDir.absolutePath).trimStart('/').ifBlank { "video" } }
+    if (open) VideoEditor(path, dir, addMode = false, onCancel = { open = false }, onSkip = { open = false }) { e ->
         open = false
         busy = true
         // В фоне приложения: если уйти с экрана, монтаж доделается и путь сохранится.
         io {
-            val out = com.dasein.poryadok.system.VideoCompress.replaceEdited(ctx, path, segs, speed)
+            val out = com.dasein.poryadok.system.VideoCompress.replaceEdited(ctx, path, e.sources, e.clips, e.aspect, e.mute)
+            e.extras.forEach { File(it).delete() }
             withContext(Dispatchers.Main) {
                 busy = false
                 if (out != path) done(out)
