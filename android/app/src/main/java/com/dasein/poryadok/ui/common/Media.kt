@@ -229,6 +229,26 @@ fun VideoPlayer(path: String, modifier: Modifier = Modifier, maxHeight: androidx
     var startAt by remember { mutableStateOf(0) }
     var speed by remember { mutableStateOf(1f) }
     val ratio by produceState(16f / 9f, path) { value = withContext(Dispatchers.IO) { videoRatio(path) } ?: 16f / 9f }
+    // Видео рисуется на отдельном слое (SurfaceView), который не гаснет вместе с экраном: при выходе из карточки
+    // кадр «висел» поверх списка, пока шла анимация. Уходим с экрана — плеер сразу прячется и встаёт на паузу,
+    // возвращаемся — показывается с того же места.
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    androidx.compose.runtime.DisposableEffect(lifecycle, mini) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, ev ->
+            val v = mini ?: return@LifecycleEventObserver
+            when (ev) {
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> if (v.visibility == android.view.View.VISIBLE) {
+                    v.tag = v.currentPosition.coerceAtLeast(1)
+                    v.pause()
+                    v.visibility = android.view.View.INVISIBLE
+                }
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> if (v.visibility != android.view.View.VISIBLE) v.visibility = android.view.View.VISIBLE
+                else -> {}
+            }
+        }
+        lifecycle.addObserver(obs)
+        onDispose { lifecycle.removeObserver(obs); mini?.visibility = android.view.View.INVISIBLE }
+    }
     Box(modifier, contentAlignment = Alignment.Center) {
         Box(
             Modifier.heightIn(max = maxHeight).aspectRatio(ratio, matchHeightConstraintsFirst = true)
@@ -236,7 +256,7 @@ fun VideoPlayer(path: String, modifier: Modifier = Modifier, maxHeight: androidx
         ) {
             AndroidView(
                 factory = { c -> playerView(c, path, autoplay = false, startAt = 0).also { mini = it } },
-                onRelease = { it.stopPlayback() },
+                onRelease = { it.visibility = android.view.View.INVISIBLE; it.stopPlayback() },
                 modifier = Modifier.fillMaxSize(),
             )
             PlayerControls(mini, paused = full, speed = speed, onSpeed = { speed = it }, onFull = {
@@ -431,7 +451,10 @@ private fun playerView(c: Context, path: String, autoplay: Boolean, startAt: Int
         playerMp[this] = mp
         // Ролик рецепта или упражнения повторяется сам — не нужно тянуться к кнопке на каждом круге.
         mp.isLooping = true
-        if (startAt > 0) seekTo(startAt) else if (!autoplay) seekTo(1)
+        // Вернулись на экран — плеер открылся заново; продолжаем с того места, где ушли.
+        val resume = tag as? Int
+        tag = null
+        if (resume != null) seekTo(resume) else if (startAt > 0) seekTo(startAt) else if (!autoplay) seekTo(1)
         if (autoplay) start()
     }
 }
