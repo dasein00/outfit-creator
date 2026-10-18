@@ -2,6 +2,8 @@
 
 package com.dasein.poryadok.ui.health
 
+import com.dasein.poryadok.ui.common.swipeTabs
+import com.dasein.poryadok.ui.common.swipeTabsOf
 import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.Hint
@@ -95,7 +97,7 @@ fun WellbeingScreen(nav: NavHostController, initialTab: Int) {
     // Раздел «Настроение» убран: остались «Сон» (1) и «Вода» (2).
     var tab by rememberSaveable(initialTab) { mutableStateOf(initialTab.coerceIn(1, 2)) }
     Screen(title = "Самочувствие", onBack = { nav.popBackStack() }) { pad ->
-        Column(Modifier.padding(pad)) {
+        Column(Modifier.padding(pad).swipeTabsOf(listOf(1, 2), tab) { tab = it }) {
             TabRow(selectedTabIndex = tab - 1, containerColor = MaterialTheme.colorScheme.background) {
                 listOf("Сон", "Вода").forEachIndexed { i, t -> Tab(tab == i + 1, onClick = { tab = i + 1 }, text = { Text(t) }) }
             }

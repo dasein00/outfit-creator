@@ -1,5 +1,7 @@
 package com.dasein.poryadok.ui.tutor
 
+import com.dasein.poryadok.ui.common.swipeTabs
+import com.dasein.poryadok.ui.common.swipeTabsOf
 import android.content.ClipData
 import com.dasein.poryadok.ui.common.btnLabel
 import android.content.ClipboardManager
@@ -78,7 +80,7 @@ fun TranslatorScreen(nav: NavHostController, initialTab: Int) {
     var tab by rememberSaveable(initialTab) { mutableIntStateOf(initialTab) }
     val sp = rememberSpeaker()
     Screen("Переводчик", onBack = { nav.popBackStack() }) { pad ->
-        Column(Modifier.padding(pad)) {
+        Column(Modifier.padding(pad).swipeTabs(tab, 2) { tab = it }) {
             TabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.background) {
                 Tab(tab == 0, onClick = { tab = 0 }, text = { Text(btnLabel("Перевод")) })
                 Tab(tab == 1, onClick = { tab = 1 }, text = { Text(btnLabel("Идиомы и фразы")) })

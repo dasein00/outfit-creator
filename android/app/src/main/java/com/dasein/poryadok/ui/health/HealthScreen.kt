@@ -2,6 +2,8 @@
 
 package com.dasein.poryadok.ui.health
 
+import com.dasein.poryadok.ui.common.swipeTabs
+import com.dasein.poryadok.ui.common.swipeTabsOf
 import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.Hint
@@ -140,7 +142,7 @@ fun HealthScreen(nav: NavHostController, initialTab: Int) {
     val current = weights.lastOrNull()?.kg ?: profile.startWeight
     val plan = Nutrition.plan(profile.input(current))
     Screen(title = "Здоровье и тело", onBack = { nav.popBackStack() }) { pad ->
-        Column(Modifier.padding(pad)) {
+        Column(Modifier.padding(pad).swipeTabsOf(listOf(0, 1, 2, 5), tab) { tab = it }) {
             // Калькулятор КБЖУ убран из вкладок; норма калорий по-прежнему считается по «Замерам».
             if (tab == 4) tab = 0
             // «Тренировки» переехали в раздел «Тренировки» → «Журнал»; старые ссылки ведут туда.

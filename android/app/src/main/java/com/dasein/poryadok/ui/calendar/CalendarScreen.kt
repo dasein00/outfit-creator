@@ -2,6 +2,8 @@
 
 package com.dasein.poryadok.ui.calendar
 
+import com.dasein.poryadok.ui.common.swipeTabs
+import com.dasein.poryadok.ui.common.swipeTabsOf
 import androidx.activity.compose.BackHandler
 import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
@@ -125,7 +127,7 @@ fun CalendarScreen(nav: NavHostController, initialTab: Int, onBack: (() -> Unit)
             }
         },
     ) { pad ->
-        Column(Modifier.padding(pad)) {
+        Column(Modifier.padding(pad).swipeTabsOf(listOf(0, 2, 3, 4, 1), tab) { tab = it }) {
             androidx.compose.material3.ScrollableTabRow(
                 selectedTabIndex = when (tab) { 2 -> 1; 3 -> 2; 4 -> 3; 1 -> 4; else -> 0 }, containerColor = MaterialTheme.colorScheme.background, edgePadding = 8.dp,
             ) {

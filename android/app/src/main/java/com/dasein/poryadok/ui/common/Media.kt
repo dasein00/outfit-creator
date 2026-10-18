@@ -31,6 +31,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.runtime.Composable
@@ -93,34 +94,53 @@ object Media {
 @Composable
 fun VideoAddButtons(dir: String, onPicked: (String) -> Unit) {
     val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf<String?>(null) }
+    // Скопированный в приложение ролик ждёт решения: обрезать, ускорить/замедлить или оставить как есть.
+    var editing by remember { mutableStateOf<String?>(null) }
+    val picked by androidx.compose.runtime.rememberUpdatedState(onPicked)
+    // Копирование и сжатие идут в фоне приложения, а не экрана: если уйти со страницы, ролик не потеряется.
+    fun finish(path: String, clip: LongRange?, speed: Float) {
+        io {
+            var out = path
+            val before = File(path).length()
+            if (clip != null || speed != 1f) {
+                withContext(Dispatchers.Main) { busy = "Обрезаю и сжимаю видео… Не закрывайте приложение" }
+                com.dasein.poryadok.system.VideoCompress.edit(ctx, File(path), clip, speed)?.let { f -> File(path).delete(); out = f.absolutePath }
+            } else if (com.dasein.poryadok.system.VideoCompress.worth(path)) {
+                // Сжимаем: 480p и около 1 Мбит/с — звук и картинка остаются, места занимает в разы меньше.
+                withContext(Dispatchers.Main) { busy = "Сжимаю видео (${com.dasein.poryadok.system.VideoCompress.mb(before)})… Не закрывайте приложение" }
+                out = com.dasein.poryadok.system.VideoCompress.replace(ctx, path)
+            }
+            val after = File(out).length()
+            withContext(Dispatchers.Main) {
+                busy = null
+                if (out != path && after < before) android.widget.Toast.makeText(
+                    ctx, "Видео готово: ${com.dasein.poryadok.system.VideoCompress.mb(before)} → ${com.dasein.poryadok.system.VideoCompress.mb(after)}", android.widget.Toast.LENGTH_LONG,
+                ).show()
+                picked(out)
+            }
+        }
+    }
     fun take(uri: Uri?) {
         if (uri == null) return
-        scope.launch {
+        io {
             if (!Media.isVideoUri(ctx, uri)) {
-                android.widget.Toast.makeText(ctx, "Это не видео. Подходят mp4, mov, 3gp, webm, mkv, avi", android.widget.Toast.LENGTH_LONG).show()
-                return@launch
+                withContext(Dispatchers.Main) { android.widget.Toast.makeText(ctx, "Это не видео. Подходят mp4, mov, 3gp, webm, mkv, avi", android.widget.Toast.LENGTH_LONG).show() }
+                return@io
             }
-            busy = "Копирую видео…"
-            var path = Media.importRaw(ctx, uri, dir)
-            if (path == null) {
+            withContext(Dispatchers.Main) { busy = "Копирую видео…" }
+            // Ролик копируется в память приложения целиком: если удалить оригинал в галерее, видео останется.
+            val path = Media.importRaw(ctx, uri, dir)?.takeIf { File(it).length() > 0 }
+            withContext(Dispatchers.Main) {
                 busy = null
-                android.widget.Toast.makeText(ctx, "Не удалось добавить видео", android.widget.Toast.LENGTH_SHORT).show()
-                return@launch
+                if (path == null) android.widget.Toast.makeText(ctx, "Не удалось добавить видео", android.widget.Toast.LENGTH_SHORT).show()
+                else editing = path
             }
-            // Сжимаем: 480p и около 1 Мбит/с — звук и картинка остаются, места занимает в разы меньше.
-            if (withContext(Dispatchers.IO) { com.dasein.poryadok.system.VideoCompress.worth(path!!) }) {
-                val before = File(path!!).length()
-                busy = "Сжимаю видео (${com.dasein.poryadok.system.VideoCompress.mb(before)})… Не закрывайте экран"
-                path = com.dasein.poryadok.system.VideoCompress.replace(ctx, path!!)
-                val after = File(path!!).length()
-                if (after < before) android.widget.Toast.makeText(
-                    ctx, "Видео сжато: ${com.dasein.poryadok.system.VideoCompress.mb(before)} → ${com.dasein.poryadok.system.VideoCompress.mb(after)}", android.widget.Toast.LENGTH_LONG,
-                ).show()
-            }
-            busy = null
-            onPicked(path!!)
+        }
+    }
+    editing?.let { path ->
+        VideoEditDialog(path, onSkip = { editing = null; finish(path, null, 1f) }, onCancel = { editing = null; io { File(path).delete() } }) { clip, speed ->
+            editing = null; finish(path, clip, speed)
         }
     }
     val gallery = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { take(it) }
@@ -375,6 +395,97 @@ private fun playerView(c: Context, path: String, autoplay: Boolean, startAt: Int
         if (autoplay) start()
     }
 }
+
+/**
+ * Перед добавлением ролика: обрезать (начало и конец — ползунки) и замедлить или ускорить.
+ * Превью сразу играет выбранный отрезок с выбранной скоростью. «Как есть» — без изменений (только сжатие).
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun VideoEditDialog(path: String, onSkip: () -> Unit, onCancel: () -> Unit, onDone: (LongRange?, Float) -> Unit) {
+    val extra = com.dasein.poryadok.ui.theme.LocalExtra.current
+    val duration by produceState(0L, path) {
+        value = withContext(Dispatchers.IO) {
+            runCatching {
+                val r = android.media.MediaMetadataRetriever()
+                try { r.setDataSource(path); r.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L } finally { runCatching { r.release() } }
+            }.getOrDefault(0L)
+        }
+    }
+    val ratio by produceState(9f / 16f, path) { value = withContext(Dispatchers.IO) { videoRatio(path) } ?: 9f / 16f }
+    var range by remember(duration) { mutableStateOf(0f..1f) }
+    var speed by remember { mutableStateOf(1f) }
+    var view by remember { mutableStateOf<VideoView?>(null) }
+    val startMs = (range.start * duration).toLong()
+    val endMs = (range.endInclusive * duration).toLong()
+    // Превью крутит выбранный отрезок по кругу.
+    androidx.compose.runtime.LaunchedEffect(view, startMs, endMs) {
+        val v = view ?: return@LaunchedEffect
+        v.seekTo(startMs.toInt())
+        while (true) {
+            if (duration > 0 && v.currentPosition >= endMs - 50) v.seekTo(startMs.toInt())
+            kotlinx.coroutines.delay(120)
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(view, speed) {
+        val v = view ?: return@LaunchedEffect
+        runCatching { if (Build.VERSION.SDK_INT >= 23) mediaPlayerOf(v)?.let { mp -> mp.playbackParams = mp.playbackParams.setSpeed(speed) } }
+    }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text(btnLabel("Обрезка и скорость")) },
+        text = {
+            androidx.compose.foundation.layout.Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+                Box(Modifier.align(Alignment.CenterHorizontally).heightIn(max = 300.dp).aspectRatio(ratio, matchHeightConstraintsFirst = true).clip(RoundedCornerShape(12.dp)).background(Color.Black)) {
+                    AndroidView(
+                        factory = { c ->
+                            VideoView(c).apply {
+                                setVideoPath(path)
+                                setOnPreparedListener { mp -> mp.isLooping = true; mp.setVolume(1f, 1f); players[this] = mp; start(); view = this }
+                            }
+                        },
+                        onRelease = { players.remove(it); it.stopPlayback() },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                androidx.compose.foundation.layout.Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    PlayerIcon(15, 26.dp)
+                    Text("  Обрезка: ${mmss(startMs.toInt())} — ${mmss(endMs.toInt())} · ${mmss((endMs - startMs).toInt())}", fontSize = 13.sp)
+                }
+                androidx.compose.material3.RangeSlider(value = range, onValueChange = { if (it.endInclusive - it.start > 0.02f) range = it }, enabled = duration > 0)
+                androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
+                    PlayerIcon(if (speed < 1f) 16 else 17, 26.dp)
+                    Text("  Скорость: ${speedLabel(speed)}", fontSize = 13.sp)
+                }
+                androidx.compose.foundation.layout.FlowRow(
+                    Modifier.padding(top = 6.dp),
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
+                ) {
+                    listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f).forEach { sp -> Pill(speedLabel(sp), speed == sp) { speed = sp } }
+                }
+                Text("Медленнее — удобно разобрать технику, быстрее — короче ролик. Звук меняет темп без искажения голоса.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
+            }
+        },
+        confirmButton = {
+            val changed = range.start > 0.001f || range.endInclusive < 0.999f || speed != 1f
+            com.dasein.poryadok.ui.common.TextButton(onClick = {
+                if (changed && duration > 0) onDone(if (range.start > 0.001f || range.endInclusive < 0.999f) startMs..endMs else null, speed) else onSkip()
+            }) { Text(btnLabel(if (changed) "Готово" else "Добавить")) }
+        },
+        dismissButton = {
+            com.dasein.poryadok.ui.common.ButtonsRow {
+                com.dasein.poryadok.ui.common.TextButton(onClick = onCancel) { Text(btnLabel("Отмена")) }
+            }
+        },
+    )
+}
+
+private fun speedLabel(s: Float) = (if (s == Math.floor(s.toDouble()).toFloat()) "${s.toInt()}" else s.toString().replace('.', ',')) + "×"
+
+/** MediaPlayer превью — чтобы менять скорость (VideoView сам этого не умеет). */
+private val players = java.util.WeakHashMap<VideoView, android.media.MediaPlayer>()
+private fun mediaPlayerOf(v: VideoView): android.media.MediaPlayer? = players[v]
 
 /** Кнопка «Сжать» для уже добавленного видео: перекодирует в 480p и заменяет файл. */
 @Composable

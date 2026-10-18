@@ -2,6 +2,8 @@
 
 package com.dasein.poryadok.ui.recipes
 
+import com.dasein.poryadok.ui.common.swipeTabs
+import com.dasein.poryadok.ui.common.swipeTabsOf
 import androidx.compose.foundation.layout.Arrangement
 import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
@@ -97,7 +99,7 @@ fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int, emb
             IconAction("food/28", "Шаблоны меню") { nav.navigate(Routes.PRESETS) }
         },
     ) { pad ->
-        Column(Modifier.padding(pad).fillMaxSize()) {
+        Column(Modifier.padding(pad).fillMaxSize().swipeTabs(tab, RECIPE_TABS.size) { tab = it }) {
             Text(
                 "Кулинарная книга: ${book.recipes.size} рецептов, меню и планирование питания", fontSize = 13.sp, color = LocalExtra.current.dim,
                 modifier = Modifier.padding(horizontal = 16.dp),

@@ -2,6 +2,8 @@
 
 package com.dasein.poryadok.ui.finance
 
+import com.dasein.poryadok.ui.common.swipeTabs
+import com.dasein.poryadok.ui.common.swipeTabsOf
 import com.dasein.poryadok.ui.common.FitText
 import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.clickable
@@ -149,7 +151,7 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
             ) { Icon(Icons.Default.Add, "Добавить") }
         },
     ) { pad ->
-        Column(Modifier.padding(pad)) {
+        Column(Modifier.padding(pad).swipeTabs(tab, 7) { tab = it }) {
             ScrollableTabRow(selectedTabIndex = tab, edgePadding = 12.dp, containerColor = MaterialTheme.colorScheme.background) {
                 listOf("Операции", "Обзор", "Аналитика", "Бюджеты", "Регулярные", "Счета", "Калькуляторы").forEachIndexed { i, t ->
                     Tab(tab == i, onClick = { tab = i }, text = { Text(t) })

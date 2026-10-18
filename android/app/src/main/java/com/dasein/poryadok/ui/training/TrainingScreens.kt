@@ -2,6 +2,8 @@
 
 package com.dasein.poryadok.ui.training
 
+import com.dasein.poryadok.ui.common.swipeTabs
+import com.dasein.poryadok.ui.common.swipeTabsOf
 import android.content.Context
 import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
@@ -212,7 +214,7 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
             }
         },
     ) { pad ->
-        Column(Modifier.padding(pad).fillMaxSize()) {
+        Column(Modifier.padding(pad).fillMaxSize().swipeTabs(tab, 5) { tab = it }) {
             androidx.compose.material3.ScrollableTabRow(selectedTabIndex = tab, edgePadding = 12.dp, containerColor = MaterialTheme.colorScheme.background) {
                 listOf("Программы", "Упражнения", "История", "Прогресс", "Журнал").forEachIndexed { i, label ->
                     androidx.compose.material3.Tab(tab == i, onClick = { tab = i }, text = { Text(label) })

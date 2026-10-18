@@ -121,9 +121,10 @@ fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolea
                 )
                 if (size > 8L * 1024 * 1024) com.dasein.poryadok.ui.common.CompressVideoButton(v) { new ->
                     save(videos.map { if (it == v) new else it })
-                    // Тот же файл мог быть прикреплён к копии рецепта — обновляем путь и там.
+                    // Старый файл уже удалён — путь обновляем во всех сохранённых рецептах с ним (и в этом тоже,
+                    // даже если правка ещё не сохранена), иначе видео «пропало» бы при выходе без сохранения.
                     io {
-                        Graph.extra.recipesNow().filter { it.id != recipeId && v in RecipeVideos.list(it) }
+                        Graph.extra.recipesNow().filter { v in RecipeVideos.list(it) }
                             .forEach { r -> Graph.extra.setVideos(r.id, RecipeVideos.list(r).map { x -> if (x == v) new else x }.joinToString("\n")) }
                     }
                 }

@@ -59,7 +59,18 @@ object VideoCompress {
      * (тогда остаётся исходный). Исходный файл не удаляется — это решает вызывающий.
      */
     @OptIn(UnstableApi::class)
-    suspend fun compress(ctx: Context, input: File): File? {
+    suspend fun compress(ctx: Context, input: File): File? = transform(ctx, input, null, 1f)
+
+    /**
+     * Обрезка [clipMs] (начало..конец, мс) и смена скорости [speed] вместе со сжатием до 480p.
+     * Звук ускоряется или замедляется без «мультяшного» голоса (Sonic). null — не получилось, остаётся исходный.
+     */
+    @OptIn(UnstableApi::class)
+    suspend fun edit(ctx: Context, input: File, clipMs: LongRange?, speed: Float): File? = transform(ctx, input, clipMs, speed)
+
+    @OptIn(UnstableApi::class)
+    private suspend fun transform(ctx: Context, input: File, clipMs: LongRange?, speed: Float): File? {
+        val edited = clipMs != null || speed != 1f
         val i = withContext(Dispatchers.IO) { info(input.absolutePath) } ?: return null
         val out = File(input.parentFile, "v_${System.currentTimeMillis()}.mp4")
         // Высота итогового кадра так, чтобы короткая сторона стала 480 (вертикальное видео — выше).
@@ -86,15 +97,23 @@ object VideoCompress {
                         }
                     })
                     .build()
-                val item = EditedMediaItem.Builder(MediaItem.fromUri(Uri.fromFile(input)))
-                    .setEffects(Effects(emptyList(), if (scale < 1f) listOf(Presentation.createForHeight(height)) else emptyList()))
-                    .build()
+                val media = MediaItem.Builder().setUri(Uri.fromFile(input)).apply {
+                    if (clipMs != null) setClippingConfiguration(
+                        MediaItem.ClippingConfiguration.Builder().setStartPositionMs(clipMs.first).setEndPositionMs(clipMs.last).build(),
+                    )
+                }.build()
+                val audio = if (speed != 1f) listOf(androidx.media3.common.audio.SonicAudioProcessor().apply { setSpeed(speed); setPitch(1f) }) else emptyList()
+                val video = buildList<androidx.media3.common.Effect> {
+                    if (speed != 1f) add(androidx.media3.effect.SpeedChangeEffect(speed))
+                    if (scale < 1f) add(Presentation.createForHeight(height))
+                }
+                val item = EditedMediaItem.Builder(media).setEffects(Effects(audio, video)).build()
                 cont.invokeOnCancellation { runCatching { transformer.cancel() } }
                 runCatching { transformer.start(item, out.absolutePath) }.onFailure { if (cont.isActive) cont.resume(false) }
             }
         }
-        // Если сжатый файл не меньше исходного — оставляем исходный.
-        return if (ok && out.length() > 0 && out.length() < input.length()) out else { out.delete(); null }
+        // Если сжатый файл не меньше исходного — оставляем исходный (кроме обрезки и скорости: там важен сам результат).
+        return if (ok && out.length() > 0 && (edited || out.length() < input.length())) out else { out.delete(); null }
     }
 
     /** Сжимает файл на месте: при успехе исходный удаляется. Возвращает путь к итоговому файлу. */

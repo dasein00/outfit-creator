@@ -2,6 +2,8 @@
 
 package com.dasein.poryadok.ui
 
+import com.dasein.poryadok.ui.common.swipeTabs
+import com.dasein.poryadok.ui.common.swipeTabsOf
 import com.dasein.poryadok.ui.common.FitText
 import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.background
@@ -61,7 +63,7 @@ import com.dasein.poryadok.ui.theme.Palette
 /** Вкладка с переключателем сверху; вложенный экран не получает отступ под статус-бар повторно. */
 @Composable
 private fun TabbedHost(options: List<Pair<Int, String>>, tab: Int, onTab: (Int) -> Unit, content: @Composable (Int) -> Unit) {
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).swipeTabsOf(options.map { it.first }, tab, onTab)) {
         Segments(options, tab, onTab, Modifier.statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp))
         Box(Modifier.weight(1f).consumeWindowInsets(WindowInsets.statusBars)) { content(tab) }
     }
