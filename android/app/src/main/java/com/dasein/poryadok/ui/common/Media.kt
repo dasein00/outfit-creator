@@ -92,7 +92,7 @@ object Media {
  * «Из файлов» — любой файл из «Загрузок», диска, Telegram. Файл копируется в папку [dir].
  */
 @Composable
-fun VideoAddButtons(dir: String, onPicked: (String) -> Unit) {
+fun VideoAddButtons(dir: String, galleryLabel: String = "+ Видео из галереи", filesLabel: String = "+ Из файлов", onPicked: (String) -> Unit) {
     val ctx = LocalContext.current
     var busy by remember { mutableStateOf<String?>(null) }
     // Скопированный в приложение ролик ждёт решения: обрезать, ускорить/замедлить или оставить как есть.
@@ -156,12 +156,12 @@ fun VideoAddButtons(dir: String, onPicked: (String) -> Unit) {
         com.dasein.poryadok.ui.common.OutlinedButton(
             onClick = { gallery.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)) },
             modifier = Modifier.weight(1f),
-        ) { Text(btnLabel("+ Видео из галереи"), maxLines = 1) }
+        ) { Text(btnLabel(galleryLabel), maxLines = 1) }
         androidx.compose.foundation.layout.Spacer(Modifier.padding(4.dp))
         com.dasein.poryadok.ui.common.OutlinedButton(
             onClick = { files.launch(arrayOf("video/*", "application/mp4", "application/octet-stream", "*/*")) },
             modifier = Modifier.weight(1f),
-        ) { Text(btnLabel("+ Из файлов"), maxLines = 1) }
+        ) { Text(btnLabel(filesLabel), maxLines = 1) }
     }
 }
 
@@ -219,6 +219,7 @@ fun MediaView(path: String, modifier: Modifier = Modifier, crop: Boolean = false
  * Кнопки рисуются внутри окна видео (системная плашка MediaController висела поверх экрана и не уезжала
  * при прокрутке). «⛶» открывает ролик на весь экран с того же места; маленький плеер на это время на паузе.
  * Ролик идёт по кругу. Окно повторяет пропорции видео — без чёрных полос; вертикальные ограничены по высоте.
+ * Скорость 0,5×–2× — кнопкой слева вверху (звук без «мультяшного» голоса); на весь экран переходит та же скорость.
  */
 @Composable
 fun VideoPlayer(path: String, modifier: Modifier = Modifier, maxHeight: androidx.compose.ui.unit.Dp = 520.dp) = androidx.compose.runtime.key(path) {
@@ -226,6 +227,7 @@ fun VideoPlayer(path: String, modifier: Modifier = Modifier, maxHeight: androidx
     var full by remember { mutableStateOf(false) }
     var mini by remember { mutableStateOf<VideoView?>(null) }
     var startAt by remember { mutableStateOf(0) }
+    var speed by remember { mutableStateOf(1f) }
     val ratio by produceState(16f / 9f, path) { value = withContext(Dispatchers.IO) { videoRatio(path) } ?: 16f / 9f }
     Box(modifier, contentAlignment = Alignment.Center) {
         Box(
@@ -237,7 +239,7 @@ fun VideoPlayer(path: String, modifier: Modifier = Modifier, maxHeight: androidx
                 onRelease = { it.stopPlayback() },
                 modifier = Modifier.fillMaxSize(),
             )
-            PlayerControls(mini, paused = full, onFull = {
+            PlayerControls(mini, paused = full, speed = speed, onSpeed = { speed = it }, onFull = {
                 mini?.let { v -> startAt = v.currentPosition; v.pause() }
                 full = true
             })
@@ -261,7 +263,7 @@ fun VideoPlayer(path: String, modifier: Modifier = Modifier, maxHeight: androidx
                         onRelease = { it.stopPlayback() },
                         modifier = Modifier.fillMaxSize(),
                     )
-                    PlayerControls(big, paused = false, onFull = null)
+                    PlayerControls(big, paused = false, speed = speed, onSpeed = { speed = it }, onFull = null)
                 }
                 Box(
                     Modifier.align(Alignment.TopEnd).padding(14.dp).clip(RoundedCornerShape(12.dp))
@@ -277,7 +279,8 @@ fun VideoPlayer(path: String, modifier: Modifier = Modifier, maxHeight: androidx
  * [paused] — плеер сейчас не главный (открыт на весь экран), кнопки не показываем.
  */
 @Composable
-private fun androidx.compose.foundation.layout.BoxScope.PlayerControls(view: VideoView?, paused: Boolean, onFull: (() -> Unit)?) {
+private fun androidx.compose.foundation.layout.BoxScope.PlayerControls(view: VideoView?, paused: Boolean, speed: Float, onSpeed: (Float) -> Unit, onFull: (() -> Unit)?) {
+    val wantSpeed by androidx.compose.runtime.rememberUpdatedState(speed)
     var shown by remember { mutableStateOf(true) }
     var playing by remember { mutableStateOf(false) }
     var pos by remember { mutableStateOf(0) }
@@ -290,6 +293,7 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerControls(view: Vid
                 playing = v.isPlaying
                 if (dragging == null) pos = v.currentPosition
                 dur = v.duration.coerceAtLeast(0)
+                applySpeed(v, wantSpeed)
             }
             if (playing && shown && System.currentTimeMillis() - lastTouch > 2500) shown = false
             if (!playing) shown = true
@@ -307,6 +311,19 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerControls(view: Vid
     ) { PlayerIcon(PlayerIcons.FULLSCREEN, 22.dp) }
     androidx.compose.animation.AnimatedVisibility(shown, Modifier.matchParentSize(), enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
         Box(Modifier.fillMaxSize()) {
+            // Слева вверху — скорость: касание переключает 1× → 1,25× → 1,5× → 2× → 0,5× → 0,75× → 1×.
+            if (Build.VERSION.SDK_INT >= 23) androidx.compose.foundation.layout.Row(
+                Modifier.align(Alignment.TopStart).padding(6.dp).clip(RoundedCornerShape(10.dp)).background(Color.Black.copy(alpha = .45f))
+                    .clickable(onClickLabel = "Скорость") {
+                        lastTouch = System.currentTimeMillis()
+                        val i = PLAYER_SPEEDS.indexOf(speed)
+                        onSpeed(PLAYER_SPEEDS[(if (i < 0) 0 else i + 1) % PLAYER_SPEEDS.size])
+                    }.padding(horizontal = 8.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                PlayerIcon(PlayerIcons.SPEED, 20.dp)
+                Text(" " + speedText(speed), color = if (speed == 1f) Color.White else Color(0xFFFBDFAB), fontSize = 13.sp, maxLines = 1)
+            }
             // Центр: −10 с, пуск/пауза, +10 с — фирменные кнопки плеера.
             androidx.compose.foundation.layout.Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically) {
                 fun skip(ms: Int) {
@@ -353,6 +370,27 @@ private object PlayerIcons {
     const val FORWARD = 5
     const val FULLSCREEN = 8
     const val EXIT_FULLSCREEN = 9
+    const val SPEED = 11
+}
+
+private val PLAYER_SPEEDS = listOf(1f, 1.25f, 1.5f, 2f, 0.5f, 0.75f)
+private fun speedText(s: Float) = (if (s == Math.floor(s.toDouble()).toFloat()) "${s.toInt()}" else s.toString().replace('.', ',')) + "×"
+
+/** MediaPlayer каждого плеера (VideoView скорость менять не умеет) и скорость, которая на нём уже стоит. */
+private val playerMp = java.util.WeakHashMap<VideoView, android.media.MediaPlayer>()
+private val playerSpeed = java.util.WeakHashMap<android.media.MediaPlayer, Float>()
+
+private fun applySpeed(v: VideoView, speed: Float) {
+    if (Build.VERSION.SDK_INT < 23) return
+    val mp = playerMp[v] ?: return
+    if ((playerSpeed[mp] ?: 1f) == speed) return
+    runCatching {
+        val was = v.isPlaying
+        mp.playbackParams = mp.playbackParams.setSpeed(speed)
+        // Смена скорости на паузе запускает ролик — возвращаем паузу.
+        if (!was) mp.pause()
+        playerSpeed[mp] = speed
+    }
 }
 
 @Composable
@@ -390,6 +428,7 @@ private fun playerView(c: Context, path: String, autoplay: Boolean, startAt: Int
     setVideoPath(path)
     setOnPreparedListener { mp ->
         mp.setVolume(1f, 1f)
+        playerMp[this] = mp
         // Ролик рецепта или упражнения повторяется сам — не нужно тянуться к кнопке на каждом круге.
         mp.isLooping = true
         if (startAt > 0) seekTo(startAt) else if (!autoplay) seekTo(1)

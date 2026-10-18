@@ -734,6 +734,7 @@ fun ExerciseScreen(nav: NavHostController, id: Long) {
             onStart = { if (setup == null) setupFor = true else startNow(ex, setup) },
             onSetup = { setupFor = false },
             onArchive = { com.dasein.poryadok.data.ExercisePrefs.archive(ex.id); nav.popBackStack() },
+            onEdit = { edit = true },
         )
     }
 }
@@ -754,7 +755,7 @@ internal fun describeSetup(kind: Int, s: com.dasein.poryadok.data.ExerciseSetup)
 @Composable
 private fun ExerciseViewBody(
     modifier: Modifier, nav: NavHostController, ex: Exercise, setup: com.dasein.poryadok.data.ExerciseSetup?, h: List<TrainingRepo.ExerciseDay>,
-    onStart: () -> Unit, onSetup: () -> Unit, onArchive: () -> Unit,
+    onStart: () -> Unit, onSetup: () -> Unit, onArchive: () -> Unit, onEdit: () -> Unit,
 ) {
     val extra = LocalExtra.current
     val ctx = LocalContext.current
@@ -829,6 +830,8 @@ private fun ExerciseViewBody(
             }
         }
         Gap(12.dp)
+        // Всё в карточке правится и после сохранения: название, мышцы, техника и сами видео (монтаж, замена).
+        OutlinedButton(onClick = onEdit, modifier = Modifier.fillMaxWidth()) { Text(btnLabel("Изменить карточку и видео")) }
         TextButton(onClick = onArchive, Modifier.fillMaxWidth()) { Text(btnLabel("Убрать в архив"), color = extra.danger) }
         Gap(40.dp)
     }
@@ -858,17 +861,19 @@ private fun ExerciseEditBody(modifier: Modifier, ex: Exercise, id: Long, onChang
         val media = ex.media.lines().filter { it.isNotBlank() }
         SectionTitle("Видео и фото техники")
         media.forEach { m ->
+            // Видео можно смонтировать заново (обрезка, куски, скорость), заменить другим или убрать — и после сохранения тоже.
+            var replacing by remember(m) { mutableStateOf(false) }
             Tile(Modifier.padding(bottom = 8.dp), padding = 10.dp) {
                 if (Media.isVideo(m)) VideoPlayer(m, Modifier.fillMaxWidth(), maxHeight = 360.dp)
                 else MediaView(m, Modifier.fillMaxWidth().heightIn(max = 300.dp).clip(RoundedCornerShape(12.dp)), crop = false)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Spacer(Modifier.weight(1f))
-                    val swap: (String) -> Unit = { new ->
-                        val upd = ex.copy(media = media.map { if (it == m) new else it }.joinToString("\n"))
-                        onChange(upd)
-                        if (id != 0L) io { t.upsertExercise(upd) }
-                    }
+                val swap: (String) -> Unit = { new ->
+                    val upd = cur.copy(media = cur.media.lines().filter { it.isNotBlank() }.map { if (it == m) new else it }.joinToString("\n"))
+                    onChange(upd)
+                    if (id != 0L) io { t.upsertExercise(upd) }
+                }
+                androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalArrangement = Arrangement.Center) {
                     if (Media.isVideo(m)) com.dasein.poryadok.ui.common.EditVideoButton(m, swap)
+                    if (Media.isVideo(m)) TextButton(onClick = { replacing = !replacing }) { Text(btnLabel(if (replacing) "Не заменять" else "Заменить")) }
                     if (Media.isVideo(m) && java.io.File(m).length() > 8L * 1024 * 1024) com.dasein.poryadok.ui.common.CompressVideoButton(m, swap)
                     TextButton(onClick = {
                         val upd = ex.copy(media = media.filter { it != m }.joinToString("\n"))
@@ -879,6 +884,17 @@ private fun ExerciseEditBody(modifier: Modifier, ex: Exercise, id: Long, onChang
                             if (m.startsWith(ctx.filesDir.absolutePath) && t.exercisesNow().none { x -> x.id != upd.id && m in x.media.lines() }) java.io.File(m).delete()
                         }
                     }) { Text(btnLabel("Убрать"), color = extra.danger) }
+                }
+                if (replacing) {
+                    Text("Новое видео встанет на место этого — сначала откроется монтаж.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(vertical = 4.dp))
+                    VideoAddButtons("training", galleryLabel = "Из галереи", filesLabel = "Из файлов") { new ->
+                        replacing = false
+                        swap(new)
+                        // Прежний файл больше не нужен, если его нет в других упражнениях.
+                        io {
+                            if (m.startsWith(ctx.filesDir.absolutePath) && t.exercisesNow().none { x -> x.id != id && m in x.media.lines() }) java.io.File(m).delete()
+                        }
+                    }
                 }
             }
         }
