@@ -298,12 +298,14 @@ internal fun BodyComposition(r: BodyReading, p: Person) {
 internal fun MetricsList(list: List<BodyMetricView>, openAll: Boolean = false, title: String? = "Показатели тела") {
     val extra = LocalExtra.current
     var open by remember { mutableStateOf<String?>(null) }
+    // Фирменные иконки показателей весов (assets/glyphs/bodym): вес, ИМТ, жир, жировая масса, кость, обмен,
+    // тучность, безжировая масса, возраст, рост.
     val icons = mapOf(
-        "weight" to "sport/11", "bmi" to "train/28", "fat" to "train/26", "fatKg" to "train/27", "skeletal" to "sport/12",
-        "muscleKg" to "train/05", "water" to "ui:drop", "protein" to "train/25", "bone" to "train/16", "visceral" to "sport/32",
-        "subcut" to "train/26", "lean" to "sport/25", "bmr" to "sport/22", "metaAge" to "cal/12",
-        "skeletalKg" to "sport/12", "muscleRate" to "train/05", "waterKg" to "ui:drop", "obesity" to "train/27",
-        "age" to "cal/12", "height" to "train/28",
+        "weight" to "bodym/00", "bmi" to "bodym/01", "fat" to "bodym/02", "fatKg" to "bodym/03", "skeletal" to "sport/12",
+        "muscleKg" to "train/05", "water" to "ui:drop", "protein" to "train/25", "bone" to "bodym/04", "visceral" to "sport/32",
+        "subcut" to "bodym/02", "lean" to "bodym/07", "bmr" to "bodym/05", "metaAge" to "bodym/08",
+        "skeletalKg" to "sport/12", "muscleRate" to "train/05", "waterKg" to "ui:drop", "obesity" to "bodym/06",
+        "age" to "bodym/08", "height" to "bodym/09",
     )
     if (title != null) SectionTitle(title)
     // Показатели без данных не показываем: их нельзя ни измерить, ни вычислить.

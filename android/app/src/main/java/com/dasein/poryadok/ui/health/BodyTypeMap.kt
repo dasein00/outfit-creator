@@ -2,12 +2,17 @@ package com.dasein.poryadok.ui.health
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import com.dasein.poryadok.ui.common.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -45,6 +50,16 @@ private val TYPES = listOf(
     listOf("Телосложение спортсмена", "Крупный, плотный тип", "Ожирение"),
     listOf("Стройный тип", "Здоровый тип", "Скрытое ожирение (живот)"),
     listOf("Дефицит веса", "Худощавый тип", "Жир на животе при малом весе"),
+)
+
+/**
+ * Модели для каждого типа (assets/body_types). Для «Крупного, плотного» отдельной модели нет —
+ * показываем ближайшую по сложению (крупное тело без выраженного живота).
+ */
+private val MODELS = listOf(
+    listOf("athlete", "hidden_obese", "obese"),
+    listOf("slim", "healthy", "hidden_obese"),
+    listOf("deficit", "lean", "belly_low"),
 )
 
 private fun about(row: Int, col: Int): String = when (row to col) {
@@ -95,7 +110,15 @@ internal fun BodyTypeMap(r: BodyReading, p: Person, history: List<BodyMetric>) {
         // След: каждый замер талии с весом на тот день.
         fun weightOn(day: Long) = history.lastOrNull { it.day <= day }?.weight ?: history.firstOrNull()?.weight
         val trail = waists.dropLast(1).takeLast(8).mapNotNull { (d, w, _) -> weightOn(d)?.let { kg -> w / p.heightCm to BodyComp.bmi(kg, p.heightCm) } }
-        TypeCanvas(whtr, bmi, trail)
+        // Модель типа: сначала — ваш тип по последнему замеру; касание по клетке графика показывает другой тип.
+        // При новом заходе снова ваш (выбор не запоминается).
+        var pick by androidx.compose.runtime.remember(row, col) { androidx.compose.runtime.mutableStateOf(row to col) }
+        TypeModelCard(pick, own = row to col)
+        TypeCanvas(whtr, bmi, trail, pick) { r2, c2 -> pick = r2 to c2 }
+        Text(
+            "Нажмите на любой тип на графике — модель покажет, как он выглядит.",
+            fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 2.dp),
+        )
 
         val bmiText = when {
             bmi >= 30 -> "ожирение по ИМТ"
@@ -177,8 +200,51 @@ internal fun BodyTypeMap(r: BodyReading, p: Person, history: List<BodyMetric>) {
     }
 }
 
+/** Модель выбранного типа и пара строк о нём; плавная смена при выборе другой клетки. */
 @Composable
-private fun TypeCanvas(fat: Double, bmi: Double, trail: List<Pair<Double, Double>>) {
+private fun TypeModelCard(pick: Pair<Int, Int>, own: Pair<Int, Int>) {
+    val extra = LocalExtra.current
+    val (row, col) = pick
+    androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+        androidx.compose.animation.Crossfade(MODELS[row][col], label = "bodyType") { key ->
+            TypeModel(key, Modifier.width(104.dp).height(200.dp))
+        }
+        androidx.compose.foundation.layout.Spacer(Modifier.width(12.dp))
+        androidx.compose.foundation.layout.Column(Modifier.weight(1f)) {
+            Text(TYPES[row][col], fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = toneColor(ZONE_TONES[row][col]))
+            Text(
+                if (pick == own) "Ваш тип по последнему замеру" else "Пример типа · ваш — «${TYPES[own.first][own.second]}»",
+                fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 2.dp),
+            )
+            Text(about(row, col), fontSize = 12.sp, lineHeight = 16.sp, modifier = Modifier.padding(top = 6.dp))
+        }
+    }
+}
+
+private val modelCache = android.util.LruCache<String, androidx.compose.ui.graphics.ImageBitmap>(9)
+
+@Composable
+private fun TypeModel(key: String, modifier: Modifier) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val img by androidx.compose.runtime.produceState(modelCache.get(key), key) {
+        if (value == null) value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching {
+                ctx.assets.open("body_types/$key.webp").use { android.graphics.BitmapFactory.decodeStream(it) }?.asImageBitmap()
+            }.getOrNull()
+        }?.also { modelCache.put(key, it) }
+    }
+    androidx.compose.foundation.layout.Box(modifier, contentAlignment = androidx.compose.ui.Alignment.Center) {
+        img?.let { androidx.compose.foundation.Image(it, TYPES.flatten().getOrNull(MODELS.flatten().indexOf(key)), Modifier.fillMaxWidth(), contentScale = androidx.compose.ui.layout.ContentScale.Fit) }
+    }
+}
+
+/** Отступы области графика под оси с подписями. */
+private val AXIS_LEFT = 38.dp
+private val AXIS_BOTTOM = 34.dp
+private val AXIS_TOP = 14.dp
+
+@Composable
+private fun TypeCanvas(fat: Double, bmi: Double, trail: List<Pair<Double, Double>>, picked: Pair<Int, Int>, onPick: (Int, Int) -> Unit) {
     val low = WHTR_LOW
     val top = WHTR_HIGH
     val extra = LocalExtra.current
@@ -192,15 +258,31 @@ private fun TypeCanvas(fat: Double, bmi: Double, trail: List<Pair<Double, Double
     val yMax = maxOf(32.0, all.maxOf { it.second } + 1.5)
     val tick = TextStyle(fontSize = 9.sp, color = extra.dim)
     val cellStyle = TextStyle(fontSize = 9.sp, color = extra.dim, textAlign = TextAlign.Center, lineHeight = 11.sp)
-    Canvas(Modifier.fillMaxWidth().height(250.dp).padding(top = 4.dp)) {
-        val left = 30.dp.toPx()
-        val bottom = 30.dp.toPx()
+    val pickNow by androidx.compose.runtime.rememberUpdatedState(onPick)
+    val xs = listOf(xMin, low, top, xMax)
+    val ys = listOf(yMax, 25.0, 18.5, yMin) // строки сверху вниз: ИМТ выше нормы, норма, ниже
+    Canvas(
+        Modifier.fillMaxWidth().height(270.dp).padding(top = 4.dp).pointerInput(xMin, xMax, yMin, yMax) {
+            // Касание по клетке — показать модель этого типа.
+            detectTapGestures { o ->
+                val left = AXIS_LEFT.toPx(); val topPad = AXIS_TOP.toPx()
+                val w = size.width - left; val h = size.height - AXIS_BOTTOM.toPx() - topPad
+                if (o.x < left || o.y < topPad || o.y > topPad + h) return@detectTapGestures
+                val vx = xMin + (o.x - left) / w * (xMax - xMin)
+                val vy = yMin + (1 - (o.y - topPad) / h) * (yMax - yMin)
+                val col = when { vx < low -> 0; vx < top -> 1; else -> 2 }
+                val row = when { vy >= 25.0 -> 0; vy >= 18.5 -> 1; else -> 2 }
+                pickNow(row, col)
+            }
+        },
+    ) {
+        val left = AXIS_LEFT.toPx()
+        val topPad = AXIS_TOP.toPx()
+        val bottom = AXIS_BOTTOM.toPx()
         val w = size.width - left
-        val h = size.height - bottom
+        val h = size.height - bottom - topPad
         fun x(v: Double) = left + (w * ((v - xMin) / (xMax - xMin))).toFloat()
-        fun y(v: Double) = (h * (1 - (v - yMin) / (yMax - yMin))).toFloat()
-        val xs = listOf(xMin, low, top, xMax)
-        val ys = listOf(yMax, 25.0, 18.5, yMin) // строки сверху вниз: ИМТ выше нормы, норма, ниже
+        fun y(v: Double) = topPad + (h * (1 - (v - yMin) / (yMax - yMin))).toFloat()
         val gap = 2.dp.toPx()
         for (row in 0..2) for (col in 0..2) {
             val x0 = x(xs[col]) + gap
@@ -212,26 +294,46 @@ private fun TypeCanvas(fat: Double, bmi: Double, trail: List<Pair<Double, Double
             val c = toneColor(ZONE_TONES[row][col])
             drawRoundRect(c.copy(alpha = if (on) .30f else .12f), Offset(x0, y0), Size(x1 - x0, y1 - y0), CornerRadius(8.dp.toPx()))
             if (on) drawRoundRect(c, Offset(x0, y0), Size(x1 - x0, y1 - y0), CornerRadius(8.dp.toPx()), style = Stroke(1.5.dp.toPx()))
+            val isPick = picked == row to col
+            // Выбранный для просмотра тип (если это не ваш) — кремовая пунктирная рамка.
+            if (isPick && !on) drawRoundRect(
+                androidx.compose.ui.graphics.Color(0xFFFBDFAB), Offset(x0, y0), Size(x1 - x0, y1 - y0), CornerRadius(8.dp.toPx()),
+                style = Stroke(2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 6f))),
+            )
             val maxW = (x1 - x0 - 6.dp.toPx()).toInt()
             if (maxW > 20) {
-                val t = measurer.measure(TYPES[row][col], if (on) cellStyle.copy(color = onSurface, fontWeight = FontWeight.SemiBold) else cellStyle, constraints = Constraints(maxWidth = maxW))
+                val t = measurer.measure(TYPES[row][col], if (on || isPick) cellStyle.copy(color = onSurface, fontWeight = FontWeight.SemiBold) else cellStyle, constraints = Constraints(maxWidth = maxW))
                 val ty = if (row == 0) y0 + 4.dp.toPx() else if (row == 2) y1 - t.size.height - 4.dp.toPx() else (y0 + y1 - t.size.height) / 2
                 if (t.size.height < y1 - y0) drawText(t, topLeft = Offset((x0 + x1 - t.size.width) / 2, ty))
             }
         }
-        // Подписи осей: границы зон.
-        listOf(25.0, 18.5).forEach { v ->
+        // Оси: ордината — ИМТ, абсцисса — талия / рост; со стрелками, делениями и подписями.
+        val axis = onSurface.copy(alpha = .7f)
+        val ax = left - 4.dp.toPx()
+        val ay = topPad + h + 4.dp.toPx()
+        val sw = 1.4.dp.toPx()
+        val arrow = 6.dp.toPx()
+        drawLine(axis, Offset(ax, ay), Offset(ax, 2.dp.toPx()), strokeWidth = sw)
+        drawPath(Path().apply { moveTo(ax, 0f); lineTo(ax - arrow / 2, arrow); lineTo(ax + arrow / 2, arrow); close() }, axis)
+        drawLine(axis, Offset(ax, ay), Offset(size.width - 2.dp.toPx(), ay), strokeWidth = sw)
+        drawPath(Path().apply { moveTo(size.width, ay); lineTo(size.width - arrow, ay - arrow / 2); lineTo(size.width - arrow, ay + arrow / 2); close() }, axis)
+        val bold = tick.copy(color = onSurface, fontWeight = FontWeight.SemiBold)
+        // Деления ИМТ: границы зон ВОЗ и ожирение (30).
+        listOf(18.5, 25.0, 30.0).filter { it > yMin && it < yMax }.forEach { v ->
+            drawLine(axis, Offset(ax - 4.dp.toPx(), y(v)), Offset(ax, y(v)), strokeWidth = sw)
             val t = measurer.measure(fmt(v), tick)
-            drawText(t, topLeft = Offset(left - t.size.width - 4.dp.toPx(), y(v) - t.size.height / 2))
+            drawText(t, topLeft = Offset(ax - t.size.width - 6.dp.toPx(), y(v) - t.size.height / 2))
         }
-        val yl = measurer.measure("ИМТ", tick)
-        drawText(yl, topLeft = Offset(0f, 0f))
-        listOf(low, top).forEach { v ->
+        val yl = measurer.measure("ИМТ", bold)
+        drawText(yl, topLeft = Offset(ax + 6.dp.toPx(), 0f))
+        // Деления талии/роста: 0,40 и 0,50 — границы нормы, 0,60 — высокий риск.
+        listOf(low, top, 0.6).filter { it > xMin && it < xMax }.forEach { v ->
+            drawLine(axis, Offset(x(v), ay), Offset(x(v), ay + 4.dp.toPx()), strokeWidth = sw)
             val t = measurer.measure(fmt(v, 2), tick)
-            drawText(t, topLeft = Offset(x(v) - t.size.width / 2, h + 3.dp.toPx()))
+            drawText(t, topLeft = Offset(x(v) - t.size.width / 2, ay + 5.dp.toPx()))
         }
-        val xl = measurer.measure("талия / рост →", tick)
-        drawText(xl, topLeft = Offset(size.width - xl.size.width, h + 15.dp.toPx()))
+        val xl = measurer.measure("талия / рост", bold)
+        drawText(xl, topLeft = Offset(size.width - xl.size.width - arrow, ay + 17.dp.toPx()))
 
         // След последних замеров и текущая точка.
         if (trail.size >= 2) {
