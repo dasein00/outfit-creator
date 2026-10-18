@@ -1,5 +1,7 @@
 package com.dasein.poryadok.ui
 
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.verticalScroll
 import com.dasein.poryadok.ui.common.safeBars
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
@@ -79,53 +81,56 @@ fun PinPad(
 ) {
     var pin by remember { mutableStateOf("") }
     LaunchedEffect(resetKey) { pin = "" }
-    Column(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeBars().padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        androidx.compose.foundation.Image(
-            androidx.compose.ui.res.painterResource(com.dasein.poryadok.R.drawable.logo_dasein), "DASEIN",
-            Modifier.size(96.dp),
-        )
-        Spacer(Modifier.height(12.dp))
-        Text(title, style = MaterialTheme.typography.headlineSmall)
-        Text(subtitle, color = if (error) LocalExtra.current.danger else LocalExtra.current.dim)
-        Spacer(Modifier.height(22.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            repeat(4) { i ->
-                Box(
-                    Modifier.size(16.dp).then(
-                        if (i < pin.length) Modifier.background(MaterialTheme.colorScheme.primary, CircleShape)
-                        else Modifier.border(2.dp, LocalExtra.current.dim, CircleShape)
+    // На низком экране или боком клавиатура PIN прокручивается, а не уходит под кнопки Android.
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeBars(), contentAlignment = Alignment.Center) {
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            androidx.compose.foundation.Image(
+                androidx.compose.ui.res.painterResource(com.dasein.poryadok.R.drawable.logo_dasein), "DASEIN",
+                Modifier.size(96.dp),
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(title, style = MaterialTheme.typography.headlineSmall)
+            Text(subtitle, color = if (error) LocalExtra.current.danger else LocalExtra.current.dim)
+            Spacer(Modifier.height(22.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                repeat(4) { i ->
+                    Box(
+                        Modifier.size(16.dp).then(
+                            if (i < pin.length) Modifier.background(MaterialTheme.colorScheme.primary, CircleShape)
+                            else Modifier.border(2.dp, LocalExtra.current.dim, CircleShape)
+                        )
                     )
-                )
+                }
             }
-        }
-        Spacer(Modifier.height(30.dp))
-        val keys = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "bio", "0", "del")
-        keys.chunked(3).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(22.dp), modifier = Modifier.padding(vertical = 8.dp)) {
-                row.forEach { k ->
-                    Surface(
-                        shape = CircleShape,
-                        color = if (k.length == 1) LocalExtra.current.card else Color.Transparent,
-                        modifier = Modifier.size(72.dp).clickable(enabled = k != "bio" || onBiometric != null) {
-                            when (k) {
-                                "del" -> pin = pin.dropLast(1)
-                                "bio" -> onBiometric?.invoke()
-                                else -> if (pin.length < 4) {
-                                    pin += k
-                                    if (pin.length == 4) onComplete(pin)
+            Spacer(Modifier.height(30.dp))
+            val keys = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "bio", "0", "del")
+            keys.chunked(3).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(22.dp), modifier = Modifier.padding(vertical = 8.dp)) {
+                    row.forEach { k ->
+                        Surface(
+                            shape = CircleShape,
+                            color = if (k.length == 1) LocalExtra.current.card else Color.Transparent,
+                            modifier = Modifier.size(72.dp).clickable(enabled = k != "bio" || onBiometric != null) {
+                                when (k) {
+                                    "del" -> pin = pin.dropLast(1)
+                                    "bio" -> onBiometric?.invoke()
+                                    else -> if (pin.length < 4) {
+                                        pin += k
+                                        if (pin.length == 4) onComplete(pin)
+                                    }
                                 }
-                            }
-                        },
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            when (k) {
-                                "del" -> Icon(Icons.AutoMirrored.Filled.Backspace, "Стереть")
-                                "bio" -> if (onBiometric != null) Icon(Icons.Default.Fingerprint, "Отпечаток", tint = MaterialTheme.colorScheme.primary)
-                                else -> Text(k, fontSize = 26.sp)
+                            },
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                when (k) {
+                                    "del" -> Icon(Icons.AutoMirrored.Filled.Backspace, "Стереть")
+                                    "bio" -> if (onBiometric != null) Icon(Icons.Default.Fingerprint, "Отпечаток", tint = MaterialTheme.colorScheme.primary)
+                                    else -> Text(k, fontSize = 26.sp)
+                                }
                             }
                         }
                     }

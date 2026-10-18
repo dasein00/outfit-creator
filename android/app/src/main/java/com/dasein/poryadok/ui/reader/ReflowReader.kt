@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.dasein.poryadok.ui.reader
 
 import android.annotation.SuppressLint
@@ -34,6 +36,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsIgnoringVisibility
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -487,7 +490,7 @@ fun ReflowReader(nav: NavHostController, book: ReaderBook, manifest: BookManifes
         ctl.back.value?.let {
             Text(
                 "← Вернуться", color = theme.link, fontSize = 13.sp,
-                modifier = Modifier.align(Alignment.BottomStart).windowInsetsPadding(WindowInsets.navigationBars).padding(start = 12.dp, bottom = 28.dp)
+                modifier = Modifier.align(Alignment.BottomStart).windowInsetsPadding(WindowInsets.navigationBarsIgnoringVisibility).padding(start = 12.dp, bottom = 28.dp)
                     .clip(RoundedCornerShape(14.dp)).background(theme.bg).clickable { ctl.goBack() }.padding(horizontal = 12.dp, vertical = 6.dp),
             )
         }
@@ -605,7 +608,7 @@ private fun MenuButton(glyph: String, label: String, onClick: () -> Unit) {
 @Composable
 private fun TtsBar(theme: PageTheme, s: ReaderSettings, modifier: Modifier, onRate: (Float) -> Unit, onStop: () -> Unit) {
     Row(
-        modifier.windowInsetsPadding(WindowInsets.navigationBars).padding(bottom = 24.dp).clip(RoundedCornerShape(24.dp))
+        modifier.windowInsetsPadding(WindowInsets.navigationBarsIgnoringVisibility).padding(bottom = 24.dp).clip(RoundedCornerShape(24.dp))
             .background(MaterialTheme.colorScheme.surface.copy(alpha = .96f)).padding(horizontal = 10.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
