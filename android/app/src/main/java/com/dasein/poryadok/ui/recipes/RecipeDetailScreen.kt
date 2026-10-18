@@ -9,6 +9,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -145,7 +146,10 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
         swaps[i]?.let { p -> ing.copy(productId = p.id, name = p.name, kcal100 = p.kcal, protein100 = p.protein, fat100 = p.fat, carbs100 = p.carbs, fiber100 = p.fiber, shopCategory = p.category) } ?: ing
     }
     val calcList = ingr
-    val calcBase = ingr.getOrNull(baseIdx)?.toIngr()
+    // Основной продукт по умолчанию — тот, от которого обычно считают (мясо/рыба или самый весомый).
+    val defaultBase = remember(ingr) { Cooking.mainIndex(ingr.map { it.toIngr() }) }
+    val baseShown = if (baseIdx >= 0) baseIdx else defaultBase
+    val calcBase = ingr.getOrNull(baseShown)?.toIngr()
     val baseFactor = calcBase?.let { b -> baseHave.num()?.let { Cooking.factorFor(b, it) } }
     // С весом порции «порций» в блюде столько, сколько раз порция помещается в вес блюда.
     val exact = RecipeRepo.exactServings(baseIngr, r)
@@ -232,24 +236,39 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
             }
 
             SectionTitle("Калькулятор граммовки")
-            Tile {
-                Hint("recipe_calc", "Сколько у вас основного продукта? Остальное пересчитается в тех же пропорциях, КБЖУ — тоже.", title = "Как работает калькулятор")
-                Gap(6.dp)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    calcList.forEachIndexed { i, ing ->
-                        if (ing.unit != "по вкусу" && (ing.grams > 0 || ing.amount > 0)) Pill(ing.name, baseIdx == i) { baseIdx = if (baseIdx == i) -1 else i }
+            // Компактно: основной продукт (по умолчанию — главный в рецепте) и сколько его есть.
+            // Нажатие на продукт раскрывает список ингредиентов, чтобы считать от другого.
+            if (calcBase != null) Tile(padding = 12.dp) {
+                var pickBase by remember { mutableStateOf(false) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1.2f)) {
+                        com.dasein.poryadok.ui.common.FieldButton("Считаю от  ▾", calcList.getOrNull(baseShown)?.name ?: "", Modifier.fillMaxWidth()) { pickBase = true }
+                        androidx.compose.material3.DropdownMenu(pickBase, onDismissRequest = { pickBase = false }) {
+                            calcList.forEachIndexed { i, ing ->
+                                if (ing.unit != "по вкусу" && (ing.grams > 0 || ing.amount > 0)) androidx.compose.material3.DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(ing.name, Modifier.weight(1f), fontWeight = if (i == baseShown) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                            Text("  " + Cooking.label(ing.toIngr()), fontSize = 13.sp, color = extra.dim)
+                                        }
+                                    },
+                                    onClick = { if (i != baseShown) baseHave = ""; baseIdx = i; pickBase = false },
+                                )
+                            }
+                        }
                     }
+                    HGap(8.dp)
+                    NumberField(baseHave, { baseHave = it }, "У меня есть", Modifier.weight(1f), suffix = if (calcBase.unit == "шт") "шт" else if (calcBase.unit == "мл" || calcBase.unit == "л") "мл" else "г")
                 }
-                if (calcBase != null) {
-                    Gap(6.dp)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        NumberField(baseHave, { baseHave = it }, "У меня есть", Modifier.weight(1f), suffix = if (calcBase.unit == "шт") "шт" else if (calcBase.unit == "мл" || calcBase.unit == "л") "мл" else "г")
-                        TextButton(onClick = { baseIdx = -1; baseHave = "" }) { Text(btnLabel("Сброс")) }
-                    }
+                Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "По рецепту: ${Cooking.label(calcBase)}" + if (calcBase.unit != "г" && calcBase.grams > 0) " (${Cooking.amount(calcBase.grams)} г)" else "",
-                        fontSize = 12.sp, color = extra.dim,
+                        "По рецепту: ${Cooking.label(calcBase)}" + (if (calcBase.unit != "г" && calcBase.grams > 0) " (${Cooking.amount(calcBase.grams)} г)" else "") +
+                            if (baseFactor == null) ". Впишите, сколько есть, — остальное пересчитается." else "",
+                        fontSize = 12.sp, color = extra.dim, modifier = Modifier.weight(1f),
                     )
+                    if (baseHave.isNotEmpty() || baseIdx >= 0) TextButton(onClick = { baseIdx = -1; baseHave = "" }) { Text(btnLabel("Сброс")) }
+                }
+                run {
                     if (baseFactor != null) Text(
                         "Получится ≈ ${Cooking.amount(servD)} порц. · всего ${Cooking.amount(scaled.sumOf { it.grams })} г · ${total.kcal.roundToInt()} ккал",
                         fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp),
