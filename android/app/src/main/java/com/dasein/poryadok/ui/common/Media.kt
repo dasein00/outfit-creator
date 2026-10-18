@@ -1,6 +1,8 @@
 package com.dasein.poryadok.ui.common
 
 import android.content.Context
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import android.graphics.ImageDecoder
 import android.graphics.drawable.AnimatedImageDrawable
 import android.net.Uri
