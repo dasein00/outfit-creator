@@ -475,7 +475,7 @@ private fun BodyParamsForm(nav: NavHostController, p: BodyProfile, current: Doub
             android.widget.Toast.makeText(ctx, "Проверьте возраст (10–110) и рост (100–250 см)", android.widget.Toast.LENGTH_SHORT).show()
             return
         }
-        val v = girths.mapValues { it.value.value.num() }
+        val v = girths.mapValues { it.value.value.num()?.takeIf { x -> x in 10.0..300.0 } }
         io {
             Graph.dao.upsertProfile(p.copy(male = male, age = ageV, heightCm = heightV, activity = activity))
             if (v.values.any { it != null }) {
@@ -605,7 +605,8 @@ private fun MeasureTab(nav: NavHostController, profile: BodyProfile?, current: D
             },
             confirmButton = {
                 TextButton(onClick = {
-                    val v = values.mapValues { it.value.value.num() }
+                    // Ноль и отрицательные обхваты не сохраняем: с талией 0 оценка жира (RFM) уходит в бесконечность.
+                    val v = values.mapValues { it.value.value.num()?.takeIf { x -> x in 10.0..300.0 } }
                     val m = Measurement(day, v["chest"], v["waist"], v["belly"], v["hips"], v["arm"], v["neck"])
                     io { if (day != m0.day) Graph.dao.deleteMeasurement(m0); Graph.dao.upsertMeasurement(m) }
                     edit = null
@@ -731,7 +732,7 @@ private fun ProgressTab(weights: List<WeightEntry>) {
         val rows = buildList {
             add(Triple("Вес, кг", weights.firstOrNull()?.kg, weights.lastOrNull()?.kg))
             MEASURE_FIELDS.forEach { (k, l) ->
-                val with = ms.filter { it.get(k) != null }
+                val with = ms.filter { it.get(k) != null }.sortedBy { it.day }
                 add(Triple("$l, см", with.firstOrNull()?.get(k), with.lastOrNull()?.get(k)))
             }
         }
@@ -747,9 +748,11 @@ private fun ProgressTab(weights: List<WeightEntry>) {
                 Text(s?.plain() ?: "—", Modifier.weight(1f), textAlign = TextAlign.End)
                 Text(n?.plain() ?: "—", Modifier.weight(1f), textAlign = TextAlign.End)
                 val d = if (s != null && n != null) n - s else null
+                // Талия, живот, бёдра и вес — меньше лучше; грудь, плечо и шея — нейтрально (может расти мышцами).
+                val downIsGood = label.startsWith("Вес") || label.startsWith("Талия") || label.startsWith("Низ живота") || label.startsWith("Бёдра")
                 Text(
-                    d?.let { (if (it > 0) "+" else "") + "%.1f".format(it) } ?: "—", Modifier.weight(1f), textAlign = TextAlign.End,
-                    color = when { d == null || d == 0.0 -> extra.dim; d < 0 -> extra.ok; else -> extra.warn },
+                    d?.let { (if (it > 0) "+" else "") + "%.1f".format(it).replace('.', ',') } ?: "—", Modifier.weight(1f), textAlign = TextAlign.End,
+                    color = when { d == null || d == 0.0 || !downIsGood -> extra.dim; d < 0 -> extra.ok; else -> extra.warn },
                 )
             }
         }

@@ -52,18 +52,19 @@ object BodyComp {
 
     fun bmi(weight: Double, heightCm: Double): Double = weight / ((heightCm / 100) * (heightCm / 100))
 
-    /** Границы веса считаются от ИМТ 18,5 / 24,9 / 29,9 — так же, как у весов OKOK. */
+    /** Границы веса — от ИМТ 18,5 / 25 / 30 (ВОЗ), как и во всех остальных разделах (анализ телосложения, научный разбор). */
     fun weightScale(heightCm: Double): Scale {
         val h2 = (heightCm / 100) * (heightCm / 100)
-        return Scale(listOf(18.5, 24.9, 29.9).map { (it * h2 * 100).roundToInt() / 100.0 }, WEIGHT_LABELS, WEIGHT_TONES)
+        return Scale(listOf(18.5, 25.0, 30.0).map { (it * h2 * 100).roundToInt() / 100.0 }, WEIGHT_LABELS, WEIGHT_TONES)
     }
 
-    fun bmiScale() = Scale(listOf(18.5, 24.9, 29.9), WEIGHT_LABELS, WEIGHT_TONES)
+    fun bmiScale() = Scale(listOf(18.5, 25.0, 30.0), WEIGHT_LABELS, WEIGHT_TONES)
 
     /** Здоровые диапазоны жира по возрасту и полу — Gallagher et al., Am J Clin Nutr 2000. */
     fun fatScale(p: Person): Scale = BodyScience.fatScale(p.male, p.age)
 
-    fun waterScale(p: Person) = Scale(if (p.male) listOf(55.0, 65.0) else listOf(45.0, 60.0), listOf("Низкий", "Здоровый", "Высокий"), listOf(Tone.BLUE, Tone.GREEN, Tone.GREEN))
+    /** Вода: мужчины 50–65%, женщины 45–60% (Tanita). */
+    fun waterScale(p: Person) = Scale(if (p.male) listOf(50.0, 65.0) else listOf(45.0, 60.0), listOf("Низкий", "Здоровый", "Высокий"), listOf(Tone.BLUE, Tone.GREEN, Tone.GREEN))
     fun proteinScale() = Scale(listOf(16.0, 20.0), listOf("Низкий", "Здоровый", "Отличный"), listOf(Tone.BLUE, Tone.GREEN, Tone.GREEN))
     fun skeletalMuscleScale(p: Person) = Scale(if (p.male) listOf(33.3, 39.4) else listOf(24.4, 30.3), listOf("Низкий", "Здоровый", "Отличный"), listOf(Tone.BLUE, Tone.GREEN, Tone.GREEN))
     fun visceralScale() = Scale(listOf(10.0, 15.0), listOf("Здоровый", "Высокий", "Очень высокий"), listOf(Tone.GREEN, Tone.YELLOW, Tone.RED))
@@ -89,7 +90,8 @@ object BodyComp {
         return Scale(listOf((e * 0.95).roundToInt().toDouble()), listOf("Ниже нормы", "Здоровый"), listOf(Tone.BLUE, Tone.GREEN))
     }
 
-    fun metabolicAgeScale(p: Person) = Scale(listOf(p.age + 0.5), listOf("Моложе возраста", "Старше возраста"), listOf(Tone.GREEN, Tone.YELLOW))
+    /** Метаболический возраст целый: равный фактическому — «по возрасту», а не «моложе». */
+    fun metabolicAgeScale(p: Person) = Scale(listOf(p.age - 0.5, p.age + 0.5), listOf("Моложе возраста", "По возрасту", "Старше возраста"), listOf(Tone.GREEN, Tone.GREEN, Tone.YELLOW))
 
     /** Все показатели для экрана. Производные (ИМТ, жировая и безжировая масса) считаются из измеренных. */
     fun metrics(r: BodyReading, p: Person): List<BodyMetricView> {
@@ -123,13 +125,26 @@ object BodyComp {
         return list
     }
 
-    /** Состав тела: вес = вода + жир + белок + кость (в килограммах), если весы дали проценты. */
-    data class Composition(val water: Double?, val fat: Double?, val protein: Double?, val bone: Double?)
-
-    fun composition(r: BodyReading) = Composition(
-        r.waterPct?.let { r.weight * it / 100 }, r.fatPct?.let { r.weight * it / 100 },
-        r.proteinPct?.let { r.weight * it / 100 }, r.boneKg,
+    /**
+     * Состав тела: вес = вода + жир + белок + кость (кг). Что не дали весы, оценивается и помечается:
+     * вода ≈ 73% безжировой массы (Pace & Rathbun, 1945; Wang et al., 1999), белок ≈ безжировая масса − вода − кость.
+     */
+    data class Composition(
+        val water: Double?, val fat: Double?, val protein: Double?, val bone: Double?,
+        val waterEstimated: Boolean = false, val proteinEstimated: Boolean = false,
     )
+
+    const val WATER_OF_LEAN = 0.73
+
+    fun composition(r: BodyReading): Composition {
+        val fat = r.fatPct?.let { r.weight * it / 100 }
+        val lean = r.leanKg ?: fat?.let { r.weight - it }
+        val waterMeasured = r.waterPct?.let { r.weight * it / 100 }
+        val water = waterMeasured ?: lean?.let { it * WATER_OF_LEAN }
+        val proteinMeasured = r.proteinPct?.let { r.weight * it / 100 }
+        val protein = proteinMeasured ?: if (lean != null && water != null && r.boneKg != null) (lean - water - r.boneKg).takeIf { it > 0 } else null
+        return Composition(water, fat, protein, r.boneKg, waterEstimated = waterMeasured == null && water != null, proteinEstimated = proteinMeasured == null && protein != null)
+    }
 
     val BODY_TYPES = listOf(
         listOf("Телосложение спортсмена", "Мышечное ожирение", "Ожирение"),
@@ -153,10 +168,15 @@ object BodyComp {
     /** Тучность: насколько вес выше идеального, в процентах. */
     fun obesityPct(weight: Double, p: Person): Double = (weight - idealWeight(p)) / idealWeight(p) * 100
 
+    /**
+     * Границы тучности — те же, что у ИМТ по ВОЗ, пересчитанные от ориентира ИМТ 22: (ИМТ / 22 − 1) × 100%.
+     * ИМТ 18,5 → −15,9%, 25 → +13,6%, 30 → +36,4%, 35 → +59,1%. Раньше были границы 10/20/30/50% по формуле Брока,
+     * и они расходились с ИМТ; а вес ниже нормы показывался зелёной «Нормой».
+     */
     fun obesityScale() = Scale(
-        listOf(10.0, 20.0, 30.0, 50.0),
-        listOf("Норма", "Незначительная", "Умеренная", "Значительная", "Избыточная"),
-        listOf(Tone.GREEN, Tone.YELLOW, Tone.YELLOW, Tone.RED, Tone.RED),
+        listOf(-15.9, 13.6, 36.4, 59.1),
+        listOf("Дефицит", "Норма", "Избыток", "Ожирение I ст.", "Ожирение II+ ст."),
+        listOf(Tone.BLUE, Tone.GREEN, Tone.YELLOW, Tone.RED, Tone.RED),
     )
 
     /** Верхняя граница здорового процента жира (зелёная зона). */
@@ -172,7 +192,8 @@ object BodyComp {
         val muscle = r.muscleKg ?: r.musclePct?.let { r.weight * it / 100 }
         val bone = r.boneKg ?: standardBone(p.male, ideal)
         val targetMuscle = ideal - targetFat - bone
-        return Advice(ideal, ideal - r.weight, fatKg?.let { targetFat - it }, muscle?.let { targetMuscle - it })
+        // Мышцы терять не советуем: если их уже больше ориентира — изменение 0, а не «минус столько-то кг».
+        return Advice(ideal, ideal - r.weight, fatKg?.let { targetFat - it }, muscle?.let { maxOf(0.0, targetMuscle - it) })
     }
 
     /** Описание типа телосложения и что с ним делать. */

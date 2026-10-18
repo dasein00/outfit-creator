@@ -1,6 +1,7 @@
 package com.dasein.poryadok.logic
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -9,12 +10,13 @@ import org.junit.Test
 class BodyCompTest {
     private val man = Person(male = true, heightCm = 173.0, age = 30)
 
-    @Test fun weightScaleMatchesOkok() {
-        // У OKOK при росте 173 см: 55.37 / 74.52 / 89.49.
+    @Test fun weightScaleFollowsWho() {
+        // ИМТ 18,5 / 25 / 30 (ВОЗ) при росте 173 см — как в анализе телосложения и научном разборе.
         val s = BodyComp.weightScale(173.0)
         assertEquals(55.37, s.bounds[0], 0.05)
-        assertEquals(74.52, s.bounds[1], 0.05)
-        assertEquals(89.49, s.bounds[2], 0.05)
+        assertEquals(74.82, s.bounds[1], 0.05)
+        assertEquals(89.79, s.bounds[2], 0.05)
+        assertEquals("Здоровый", BodyComp.bmiScale().labels[BodyComp.bmiScale().zone(24.95)])
         assertEquals("Высокий", s.labels[s.zone(78.4)])
     }
 
@@ -25,7 +27,8 @@ class BodyCompTest {
         assertEquals("Избыточный", m.getValue("fat").label)
         assertEquals(18.03, m.getValue("fatKg").value!!, 0.01)
         assertEquals(60.37, m.getValue("lean").value!!, 0.01)
-        assertEquals("Низкий", m.getValue("water").label)
+        // Вода 53,1% у мужчины — в норме по Tanita (50–65%).
+        assertEquals("Здоровый", m.getValue("water").label)
         assertEquals("Здоровый", m.getValue("visceral").label)
         assertNull(m.getValue("protein").value)
     }
@@ -47,7 +50,8 @@ class BodyCompTest {
         assertEquals(-18.11, a.weightDelta, 0.01)
         assertEquals(-9.92, a.fatDelta!!, 0.05)
         val m = BodyComp.metrics(BodyReading(83.95, fatPct = 27.5, waterPct = 52.0, musclePct = 36.5), p).associateBy { it.key }
-        assertEquals("Умеренная", m.getValue("obesity").label)
+        // Тучность 27,5% ≈ ИМТ 28 — «Избыток», как и по ИМТ.
+        assertEquals("Избыток", m.getValue("obesity").label)
         assertEquals(43.65, m.getValue("waterKg").value!!, 0.01)
         assertEquals(30.64, m.getValue("skeletalKg").value!!, 0.01)
     }
@@ -118,5 +122,39 @@ class SleepDetectTest {
         val g = SleepDetect.detect(use(-60, 30) + use(420, 10), midnight, c)
         assertNotNull(g)
         assertTrue(g!!.sleepAt == midnight - 30 * MIN + 25 * MIN)
+    }
+
+    @Test fun scaleExampleRecomputes() {
+        // Мужчина, 31 год, 175 см, 80,5 кг, жир 25,2% — пример с экрана «Детали».
+        val p = Person(male = true, heightCm = 175.0, age = 31)
+        val r = BodyReading(80.5, fatPct = 25.2, boneKg = 2.6)
+        val m = BodyComp.metrics(r, p).associateBy { it.key }
+        assertEquals(26.3, m.getValue("bmi").value!!, 0.05)
+        assertEquals("Высокий", m.getValue("bmi").label)
+        assertEquals(20.29, m.getValue("fatKg").value!!, 0.01)
+        assertEquals(60.21, m.getValue("lean").value!!, 0.01)
+        assertEquals(19.48, m.getValue("obesity").value!!, 0.05)
+        assertEquals("Избыток", m.getValue("obesity").label)
+        assertEquals("Низкий", m.getValue("bone").label)
+        // Вода и белок — оценка по безжировой массе: 0,73 × 60,2 ≈ 43,95 кг; белок = 60,2 − 43,95 − 2,6 ≈ 13,66 кг.
+        val c = BodyComp.composition(r)
+        assertEquals(43.95, c.water!!, 0.05)
+        assertEquals(13.66, c.protein!!, 0.05)
+        assertTrue(c.waterEstimated && c.proteinEstimated)
+        // Замеренная вода — не оценка.
+        assertFalse(BodyComp.composition(r.copy(waterPct = 55.0)).waterEstimated)
+    }
+
+    @Test fun edgesOfScales() {
+        val p = Person(male = true, heightCm = 175.0, age = 31)
+        // Метаболический возраст, равный фактическому, — «по возрасту».
+        assertEquals("По возрасту", BodyComp.metabolicAgeScale(p).let { it.labels[it.zone(31.0)] })
+        assertEquals("Моложе возраста", BodyComp.metabolicAgeScale(p).let { it.labels[it.zone(29.0)] })
+        // Вес ниже нормы — «Дефицит», а не зелёная «Норма».
+        val under = BodyComp.metrics(BodyReading(52.0), p).associateBy { it.key }.getValue("obesity")
+        assertEquals("Дефицит", under.label)
+        // Совет никогда не предлагает терять мышцы.
+        val a = BodyComp.advice(BodyReading(80.5, fatPct = 15.0, muscleKg = 64.0, boneKg = 3.2), p)
+        assertEquals(0.0, a.muscleDelta!!, 0.001)
     }
 }

@@ -65,11 +65,14 @@ internal fun BodyScienceSection(nav: NavHostController, last: BodyMetric?) {
     val measurements by observe<List<com.dasein.poryadok.data.Measurement>?>(null) { Graph.dao.measurements() }
     val p = profile ?: return
     val ms = measurements ?: return
-    val latest = ms.maxByOrNull { it.day }
     val weight = last?.weight ?: p.startWeight
+    // Каждый обхват — из последнего замера, где он вписан (и не позже взвешивания): строка последнего дня
+    // могла быть без талии, и разбор просил «добавить талию», хотя она есть в прошлом замере.
+    val upTo = last?.day ?: Long.MAX_VALUE
+    fun latestOf(f: (com.dasein.poryadok.data.Measurement) -> Double?) = ms.filter { it.day <= upTo && f(it) != null }.maxByOrNull { it.day }?.let(f)
     val facts = BodyFacts(
         male = p.male, age = p.age, heightCm = p.heightCm, weightKg = weight,
-        waistCm = latest?.waist, hipCm = latest?.hips, neckCm = latest?.neck, scaleFatPct = last?.fatPct, activity = p.activity,
+        waistCm = latestOf { it.waist }, hipCm = latestOf { it.hips }, neckCm = latestOf { it.neck }, scaleFatPct = last?.fatPct, activity = p.activity,
     )
     // Показываем только то, что удалось вычислить из введённых данных.
     val list = remember(facts) { BodyScience.analyze(facts).filter { it.value != null || it.key == "pace" } }

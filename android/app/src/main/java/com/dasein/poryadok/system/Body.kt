@@ -146,6 +146,8 @@ object Body {
                 val filled = existing.copy(
                     fatPct = existing.fatPct ?: fat, boneKg = existing.boneKg ?: bone, leanKg = existing.leanKg ?: lean,
                     bmr = existing.bmr ?: bmr, waterPct = existing.waterPct ?: water,
+                    // Мышечная масса = безжировая − кость, если обе дошли теперь.
+                    muscleKg = existing.muscleKg ?: (existing.leanKg ?: lean)?.let { l -> (existing.boneKg ?: bone)?.let { l - it } },
                 )
                 if (filled != existing) Graph.extra.upsertBodyMetric(filled)
                 return@forEach
@@ -156,6 +158,7 @@ object Body {
                 val filled = twin.copy(
                     extId = ext, fatPct = twin.fatPct ?: fat, boneKg = twin.boneKg ?: bone, leanKg = twin.leanKg ?: lean,
                     bmr = twin.bmr ?: bmr, waterPct = twin.waterPct ?: water,
+                    muscleKg = twin.muscleKg ?: (twin.leanKg ?: lean)?.let { l -> (twin.boneKg ?: bone)?.let { l - it } },
                 )
                 Graph.extra.upsertBodyMetric(filled)
                 known[known.indexOf(twin)] = filled

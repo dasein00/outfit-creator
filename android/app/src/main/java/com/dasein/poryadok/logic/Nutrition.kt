@@ -52,8 +52,11 @@ object Nutrition {
         val b = bmr(i.male, i.heightCm, i.age, i.weightKg)
         val tdee = b * i.activity
         val sign = when (i.goal) { CalorieGoal.DEFICIT -> -1; CalorieGoal.SURPLUS -> 1; CalorieGoal.MAINTAIN -> 0 }
-        val delta = tdee * percent(i.goal, i.intensity) * sign
-        val target = tdee + delta
+        val raw = tdee * percent(i.goal, i.intensity) * sign
+        // При дефиците — не ниже безопасного минимума (NHLBI, 1998: 1500 ккал мужчинам, 1200 женщинам).
+        val floor = if (i.goal == CalorieGoal.DEFICIT) BodyScience.minKcal(i.male).toDouble() else 0.0
+        val target = maxOf(tdee + raw, minOf(floor, tdee))
+        val delta = target - tdee
         val p = (i.weightKg * i.proteinPerKg).roundToInt()
         val f = (i.weightKg * i.fatPerKg).roundToInt()
         val c = ((target - p * 4 - f * 9) / 4).roundToInt().coerceAtLeast(0)

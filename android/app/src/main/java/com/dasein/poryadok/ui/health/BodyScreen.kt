@@ -266,29 +266,43 @@ internal fun BodyComposition(r: BodyReading, p: Person) {
         Text(btnLabel("Вес = Вода + Жир + Белок + Кость"), fontSize = 12.sp, color = extra.dim)
         Gap(8.dp)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            ModelFigure(((r.waterPct ?: 50.0) / 100).toFloat(), Modifier.width(88.dp).height(250.dp))
+            // Заливка — доля воды (измеренная или оценка); без данных о воде фигура без заливки, а не «50%».
+            ModelFigure(c.water?.let { (it / r.weight).toFloat() } ?: 0f, Modifier.width(88.dp).height(250.dp))
             HGap(12.dp)
             Column(Modifier.weight(1f)) {
                 Text(fmt(r.weight) + " кг", style = MaterialTheme.typography.titleLarge, modifier = Modifier.align(Alignment.End))
+                // Оценку (вода по безжировой массе, белок по остатку) оцениваем по той же шкале и помечаем «≈».
+                fun estView(key: String, kg: Double?, est: Boolean): Pair<String?, Tone?> {
+                    val v = m.getValue(key)
+                    if (!est || kg == null) return v.label to v.tone
+                    val pct = kg / r.weight * 100
+                    val sc = if (key == "water") BodyComp.waterScale(p) else BodyComp.proteinScale()
+                    val z = sc.zone(pct)
+                    return "≈ ${fmt(pct)}% · ${sc.labels[z].lowercase()}" to sc.tones[z]
+                }
                 listOf(
-                    Triple("Вода", c.water, m.getValue("water")), Triple("Жиры", c.fat, m.getValue("fat")),
-                    Triple("Белок", c.protein, m.getValue("protein")), Triple("Костная масса", c.bone, m.getValue("bone")),
+                    Triple("Вода", c.water, estView("water", c.water, c.waterEstimated)), Triple("Жиры", c.fat, m.getValue("fat").let { it.label to it.tone }),
+                    Triple("Белок", c.protein, estView("protein", c.protein, c.proteinEstimated)), Triple("Костная масса", c.bone, m.getValue("bone").let { it.label to it.tone }),
                 ).forEach { (title, kg, view) ->
+                    val (label, tone) = view
                     Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
                         Text(title, Modifier.weight(1f), fontSize = 13.sp)
-                        Text(view.label ?: "нет данных", fontSize = 12.sp, color = if (view.tone != null) toneColor(view.tone) else extra.dim)
+                        Text(label ?: "нет данных", fontSize = 12.sp, color = if (tone != null) toneColor(tone) else extra.dim)
                     }
                     val frac = if (kg != null) (kg / r.weight * 2.2).toFloat().coerceIn(.05f, 1f) else 0f
                     Box(Modifier.fillMaxWidth().height(14.dp).clip(RoundedCornerShape(7.dp)).background(extra.line)) {
-                        Box(Modifier.fillMaxWidth(frac).height(14.dp).clip(RoundedCornerShape(7.dp)).background(toneColor(view.tone ?: Tone.BLUE).copy(alpha = .8f))) {
-                            if (kg != null) Text(fmt(kg), fontSize = 10.sp, color = Color(0xFF1B1812), modifier = Modifier.padding(start = 6.dp))
-                        }
+                        Box(Modifier.fillMaxWidth(frac).height(14.dp).clip(RoundedCornerShape(7.dp)).background(toneColor(tone ?: Tone.BLUE).copy(alpha = .8f)))
+                        // Число — поверх всей полосы, а не внутри узкой заливки: раньше «2,6» обрезалось до «2,».
+                        if (kg != null) Text(fmt(kg), fontSize = 10.sp, color = Color(0xFF1B1812), maxLines = 1, softWrap = false, modifier = Modifier.padding(start = 6.dp))
                     }
                 }
             }
         }
         if (c.water == null && c.protein == null) Hint(
             "body_water", "Воду и белок весы OKOK показывают в своём приложении — впишите их в «Изменить», и анализ станет полным. Фигура — ваша модель из гардероба, заливка показывает долю воды.",
+            Modifier.padding(top = 8.dp),
+        ) else if (c.waterEstimated || c.proteinEstimated) Hint(
+            "body_water_est", "«≈» — оценка, а не замер: вода ≈ 73% безжировой массы, белок — то, что остаётся от безжировой массы без воды и кости. Точные значения из приложения весов можно вписать в «Изменить».",
             Modifier.padding(top = 8.dp),
         )
     }

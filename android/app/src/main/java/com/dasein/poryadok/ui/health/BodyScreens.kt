@@ -346,7 +346,8 @@ fun BodyDetailScreen(nav: NavHostController, at: Long, initialTab: Int = 0) {
                     val month = data.readings.filter { it.day in (m.day - 29)..m.day }
                     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                         Text(btnLabel("Лучший вес за 30 дней"), Modifier.weight(1f), fontSize = 14.sp)
-                        Text(month.minByOrNull { it.weight }?.let { fmt(it.weight) } ?: "—", fontWeight = FontWeight.SemiBold)
+                        val surplus = runCatching { CalorieGoal.valueOf(data.profile.goal) }.getOrNull() == CalorieGoal.SURPLUS
+                        Text((if (surplus) month.maxByOrNull { it.weight } else month.minByOrNull { it.weight })?.let { fmt(it.weight) } ?: "—", fontWeight = FontWeight.SemiBold)
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -407,7 +408,7 @@ private fun AdviceCard(r: BodyReading, p: Person) {
         )
         Line("sport/12", "Мышечная масса", a.muscleDelta, "кг")
         Line("train/26", "Жиры", a.fatDelta, "кг")
-        Hint("body_advice", "Цель по жиру — верхняя граница здоровой зоны (${fmt(BodyComp.healthyFatTop(p))}%) при идеальном весе. Мышечная масса — сколько её останется при таком составе. Это ориентир, а не норма: при силовых тренировках нормально весить больше идеального.", title = "Как считается")
+        Hint("body_advice", "Цель по жиру — верхняя граница здоровой зоны (${fmt(BodyComp.healthyFatTop(p))}%) при идеальном весе. Мышечная масса — сколько её нужно добавить до такого состава (терять мышцы не нужно: если их больше — 0). Это ориентир, а не норма: при силовых тренировках нормально весить больше идеального.", title = "Как считается")
     }
 }
 

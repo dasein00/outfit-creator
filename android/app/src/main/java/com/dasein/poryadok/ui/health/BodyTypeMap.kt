@@ -88,12 +88,15 @@ internal fun BodyTypeMap(r: BodyReading, p: Person, history: List<BodyMetric>) {
     val measurements by com.dasein.poryadok.ui.common.observe<List<com.dasein.poryadok.data.Measurement>?>(null) { com.dasein.poryadok.Graph.dao.measurements() }
     val ms = measurements ?: return
     // Все замеры талии: из «Замеров» и из записей веса, где талия вписана.
+    // Открыто прошлое взвешивание — берём замеры не позже его дня, а не более свежие.
+    val upTo = history.lastOrNull()?.day ?: Long.MAX_VALUE
     val waists = (ms.mapNotNull { m -> m.waist?.let { Triple(m.day, it, m.hips) } } +
-        history.mapNotNull { h -> h.waistCm?.let { Triple(h.day, it, h.hipCm) } }).sortedBy { it.first }
+        history.mapNotNull { h -> h.waistCm?.let { Triple(h.day, it, h.hipCm) } }).filter { it.first <= upTo }.sortedBy { it.first }
     val bmi = BodyComp.bmi(r.weight, p.heightCm)
     val last = waists.lastOrNull()
     val waist = last?.second
-    val hip = waists.lastOrNull { it.third != null }?.third
+    // Бёдра — из того же замера, что и талия: отношение двух разных дней не имеет смысла.
+    val hip = last?.third
     val whtr = waist?.let { it / p.heightCm }
     val row = when { bmi >= 25 -> 0; bmi >= 18.5 -> 1; else -> 2 }
     val col = whtr?.let { when { it < WHTR_LOW -> 0; it < WHTR_HIGH -> 1; else -> 2 } }
@@ -141,7 +144,7 @@ internal fun BodyTypeMap(r: BodyReading, p: Person, history: List<BodyMetric>) {
             val whr = waist / hip
             val lim = if (p.male) 0.90 else 0.85
             Text(
-                "Талия/бёдра ${fmt(whr, 2)} — ${if (whr > lim) "выше нормы" else "в норме"} (ВОЗ: до ${fmt(lim, 2)} у ${if (p.male) "мужчин" else "женщин"})",
+                "Талия/бёдра ${fmt(whr, 2)} — ${if (whr >= lim) "выше нормы" else "в норме"} (ВОЗ: меньше ${fmt(lim, 2)} у ${if (p.male) "мужчин" else "женщин"})",
                 fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp),
             )
         }
