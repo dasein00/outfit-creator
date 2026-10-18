@@ -366,15 +366,22 @@ object PaintByNumbers {
     ) + big(PENCILS_ALL)
 
     /** Чем раскрашивать: у каждого материала свой каталог, наборы и свои цвета. */
+    // Новые материалы — только в конец: номер материала хранится в сохранённых картинах.
     enum class Medium(val title: String, val one: String, val many: String) {
-        PENCIL("Карандаши", "Карандаш", "карандашей"), MARKER("Маркеры", "Маркер", "маркеров"), PAINT("Краски", "Краска", "красок");
-        val catalog: List<Pencil> get() = when (this) { PENCIL -> PENCILS_ALL; MARKER -> MARKERS_ALL; PAINT -> PAINTS_ALL }
-        val sets: List<Pair<String, List<String>>> get() = when (this) { PENCIL -> SETS; MARKER -> MARKER_SETS; PAINT -> PAINT_SETS }
+        PENCIL("Карандаши", "Карандаш", "карандашей"), MARKER("Маркеры", "Маркер", "маркеров"), PAINT("Краски", "Краска", "красок"),
+        WATERCOLOR_PENCIL("Акварельные карандаши", "Акварельный карандаш", "акварельных карандашей"),
+        ALCOHOL_MARKER("Спиртовые маркеры", "Спиртовой маркер", "спиртовых маркеров");
+        val catalog: List<Pencil> get() = when (this) {
+            PENCIL -> PENCILS_ALL; MARKER -> MARKERS_ALL; PAINT -> PAINTS_ALL; WATERCOLOR_PENCIL -> WATERCOLOR_PENCILS; ALCOHOL_MARKER -> ALCOHOL_MARKERS
+        }
+        val sets: List<Pair<String, List<String>>> get() = when (this) {
+            PENCIL -> SETS; MARKER -> MARKER_SETS; PAINT -> PAINT_SETS; WATERCOLOR_PENCIL -> WATERCOLOR_SETS; ALCOHOL_MARKER -> ALCOHOL_SETS
+        }
         companion object { fun of(i: Int) = entries.getOrElse(i) { PENCIL } }
     }
 
     /**
-     * Маркеры для скетчинга (спиртовые и на водной основе) — 60 ходовых оттенков, как в наборах на 12–60 цветов.
+     * Маркеры для скетчинга (на водной основе и универсальные) — 60 ходовых оттенков, как в наборах на 12–60 цветов.
      * Номера «М…» — для удобства, не артикулы конкретной марки: если оттенок отличается, добавьте его пипеткой по фото.
      */
     val MARKERS: List<Pencil> = listOf(
@@ -422,4 +429,67 @@ object PaintByNumbers {
         "36 цветов" to (1..36).toList(),
         "48 цветов" to (1..48).toList(),
     ).map { (t, l) -> t to l.map { "К$it" } } + big(PAINTS_ALL)
+
+    /**
+     * Акварельные карандаши — 48 пигментных цветов, как в наборах на 12–48. Цвет — каким он становится после
+     * размывания влажной кистью (ярче и прозрачнее сухого штриха). Номера «А…» — для удобства, не артикулы.
+     */
+    val WATERCOLOR_PENCILS: List<Pencil> = listOf(
+        "Белый" to 0xF8F8F4, "Лимонный" to 0xFFF04A, "Кадмий жёлтый" to 0xFFD11A, "Неаполитанский жёлтый" to 0xF6DC9C,
+        "Жёлтая охра" to 0xD9A33C, "Оранжевый светлый" to 0xFFA23A, "Кадмий оранжевый" to 0xFF7418, "Красный светлый" to 0xF0453A,
+        "Кармин" to 0xC4142F, "Ализарин тёмный" to 0x8E1730, "Розовый" to 0xF49AB9, "Маджента" to 0xC3247A,
+        "Пурпурный" to 0x8E2A7E, "Фиолетовый светлый" to 0xA27BC9, "Фиолетовый" to 0x5C3492, "Ультрамарин" to 0x2C3DA6,
+        "Кобальт синий" to 0x2652AE, "Лазурь (церулеум)" to 0x2E8CCB, "Небесно-голубой" to 0x8ACCF0, "Прусская синь" to 0x123A66,
+        "Индиго" to 0x23305E, "Бирюзовый" to 0x13A6AE, "Кобальт бирюзовый" to 0x0F8C88, "Изумрудный" to 0x0C8060,
+        "Фталоцианин зелёный" to 0x0E5D4A, "Зелёный светлый" to 0x7EC64B, "Майский зелёный" to 0x9AD14C, "Травяной" to 0x45953A,
+        "Сок-зелёный" to 0x5C8A2B, "Хвойный" to 0x234B32, "Оливковый" to 0x77772F, "Земля зелёная" to 0x7E8655,
+        "Телесный" to 0xF5CBAA, "Персиковый" to 0xF0A47F, "Сиена натуральная" to 0xC47B3B, "Сиена жжёная" to 0x8D3C21,
+        "Умбра натуральная" to 0x725C3C, "Умбра жжёная" to 0x4F3122, "Ван Дик коричневый" to 0x3E2A1E, "Венецианский красный" to 0xA9402D,
+        "Терракота" to 0xB8573D, "Бежевый" to 0xE6D4B4, "Тёплый серый" to 0xB1A99C, "Холодный серый" to 0x9AA2AB,
+        "Пейнс серый" to 0x404857, "Графит" to 0x3A3B3E, "Чёрный" to 0x181818, "Серо-голубой" to 0x7F95A9,
+    ).mapIndexed { i, (n, c) -> Pencil("А${i + 1}", n, c) }
+
+    /**
+     * Спиртовые маркеры — 76 оттенков: у каждого цвета светлый, средний и тёмный тон (ими строят объём), телесные,
+     * тёплые и холодные серые — как в наборах для скетчинга. Цвет — один ровный слой; второй слой темнее.
+     * Номера «СМ…» — для удобства, не артикулы конкретной марки.
+     */
+    val ALCOHOL_MARKERS: List<Pencil> = listOf(
+        "Пастельно-жёлтый" to 0xFFF6B0, "Лимонный" to 0xFFF04D, "Жёлтый" to 0xFFDD22, "Тёмно-жёлтый" to 0xFFC61A, "Горчичный" to 0xDDAA2C,
+        "Светлый абрикос" to 0xFFD3A3, "Абрикос" to 0xFFB066, "Оранжевый" to 0xFF8524, "Тыквенный" to 0xF26B1D,
+        "Лососевый" to 0xFF9B85, "Коралл" to 0xFF6B5E, "Алый" to 0xEC3B3B, "Красный" to 0xD42232, "Кармин" to 0xB0182E, "Бордо" to 0x7A1A2C,
+        "Бледно-розовый" to 0xFBD3DE, "Розовый" to 0xF7A1C1, "Ярко-розовый" to 0xF0629E, "Маджента" to 0xD02A80, "Сливовый" to 0x8E2D6A,
+        "Бледная лаванда" to 0xE2D6F2, "Лаванда" to 0xC2A9E3, "Сирень" to 0xA27CD0, "Фиолетовый" to 0x6B42A8, "Тёмный фиолет" to 0x3F2466,
+        "Бледно-голубой" to 0xD6ECF8, "Небесный" to 0xA6D5F2, "Голубой" to 0x5DB2E6, "Лазурь" to 0x2589D4, "Синий" to 0x1E5CB8,
+        "Кобальт" to 0x2A47A6, "Ультрамарин" to 0x2C34A0, "Тёмно-синий" to 0x18234F, "Серо-синий" to 0x5C7392,
+        "Бледная мята" to 0xD3F1E6, "Мята" to 0x9EE0C9, "Бирюза" to 0x1FB5B0, "Морская волна" to 0x168681, "Тёмная бирюза" to 0x0E5C5A,
+        "Бледно-салатовый" to 0xE6F4B8, "Салатовый" to 0xBADF63, "Лайм" to 0x8CCB3E, "Травяной" to 0x55AE48, "Зелёный" to 0x2C9A50,
+        "Изумруд" to 0x107E5D, "Хвоя" to 0x1E4F37, "Оливковый" to 0x7F8036, "Хаки" to 0xA7A16D, "Мох" to 0x5E6A35,
+        "Светлая кожа" to 0xFCE6D6, "Кожа светлая 2" to 0xF8D6BF, "Телесный" to 0xF2C2A0, "Бежево-розовый" to 0xEDB497, "Загар" to 0xD8976D,
+        "Карамель" to 0xB9773F, "Медный" to 0x9A5A35, "Кожа тёмная" to 0x7A4A2E, "Кожа очень тёмная" to 0x5A3524,
+        "Песочный" to 0xDCC393, "Бежевый" to 0xEBDCC0, "Охра" to 0xC9913E, "Коричневый" to 0x7B4B2C, "Шоколад" to 0x4B2D1D, "Кофейный" to 0x3A241A,
+        "Тёплый серый 1" to 0xE6E1DA, "Тёплый серый 3" to 0xC7C0B6, "Тёплый серый 5" to 0xA39B90, "Тёплый серый 7" to 0x7A736A, "Тёплый серый 9" to 0x4F4A44,
+        "Холодный серый 1" to 0xE1E5E9, "Холодный серый 3" to 0xBCC3CA, "Холодный серый 5" to 0x949CA5, "Холодный серый 7" to 0x6B737C, "Холодный серый 9" to 0x454B53,
+        "Нейтральный серый" to 0x9A9A9A, "Чёрный" to 0x151515,
+    ).mapIndexed { i, (n, c) -> Pencil("СМ${i + 1}", n, c) }
+
+    /** Равномерная выборка из каталога — набор на [n] цветов с самыми разными оттенками. */
+    private fun spread(all: List<Pencil>, n: Int): List<String> =
+        if (n >= all.size) all.map { it.code } else (0 until n).map { all[(it * all.size) / n].code }.distinct()
+
+    val WATERCOLOR_SETS: List<Pair<String, List<String>>> = listOf(
+        "12 цветов" to listOf(2, 3, 7, 9, 12, 16, 18, 24, 28, 36, 38, 47).map { "А$it" },
+        "24 цвета" to listOf(1, 2, 3, 5, 7, 8, 9, 11, 12, 15, 16, 18, 19, 22, 24, 26, 28, 30, 33, 35, 36, 38, 45, 47).map { "А$it" },
+        "36 цветов" to spread(WATERCOLOR_PENCILS, 36),
+        "48 цветов" to WATERCOLOR_PENCILS.map { it.code },
+    )
+
+    val ALCOHOL_SETS: List<Pair<String, List<String>>> = listOf(
+        "12 цветов" to listOf(3, 8, 13, 18, 24, 29, 37, 44, 53, 63, 72, 76).map { "СМ$it" },
+        "24 цвета" to spread(ALCOHOL_MARKERS, 24),
+        "36 цветов" to spread(ALCOHOL_MARKERS, 36),
+        "48 цветов" to spread(ALCOHOL_MARKERS, 48),
+        "60 цветов" to spread(ALCOHOL_MARKERS, 60),
+        "${ALCOHOL_MARKERS.size} цветов" to ALCOHOL_MARKERS.map { it.code },
+    )
 }

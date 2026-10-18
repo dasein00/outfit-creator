@@ -46,8 +46,15 @@ class PaintByNumbersTest {
             val mc = m.catalog.map { it.code }.toSet()
             assertEquals(m.catalog.size, mc.size)
             m.sets.forEach { (_, l) -> assertTrue(mc.containsAll(l)) }
-            assertEquals(listOf(12, 24, 36, 48, 64, 128, 264), m.sets.map { it.second.size })
+            // Наборы: 12, 24, 36, 48 цветов, дальше — по возрастанию, последний — весь каталог.
+            val sizes = m.sets.map { it.second.size }
+            assertEquals("$m", listOf(12, 24, 36, 48), sizes.take(4))
+            assertEquals("$m", sizes.sorted(), sizes)
+            assertEquals("$m", m.catalog.size, sizes.last())
+            m.sets.forEach { (_, l) -> assertEquals("$m", l.size, l.toSet().size) }
         }
+        assertEquals(48, PaintByNumbers.WATERCOLOR_PENCILS.size)
+        assertEquals(76, PaintByNumbers.ALCOHOL_MARKERS.size)
     }
 
     @Test fun sharpPhotoEdgesInsideOneColorBecomeContours() {

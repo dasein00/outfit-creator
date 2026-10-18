@@ -123,6 +123,8 @@ internal fun PencilPhotoPicker(medium: PaintByNumbers.Medium = PaintByNumbers.Me
                 PaintByNumbers.Medium.PENCIL -> "Сфотографируйте карандаш или штрих на белой бумаге"
                 PaintByNumbers.Medium.MARKER -> "Сфотографируйте выкрас маркера (закрашенный квадратик) на белой бумаге"
                 PaintByNumbers.Medium.PAINT -> "Сфотографируйте мазок или выкрас краски на белой бумаге"
+                PaintByNumbers.Medium.WATERCOLOR_PENCIL -> "Заштрихуйте квадратик, размойте влажной кистью и сфотографируйте на белой бумаге"
+                PaintByNumbers.Medium.ALCOHOL_MARKER -> "Сфотографируйте выкрас маркера в один слой на белой бумаге"
             } + " при дневном свете без вспышки — и возьмите цвет пипеткой. Двумя пальцами фото можно увеличить.",
             fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
         )

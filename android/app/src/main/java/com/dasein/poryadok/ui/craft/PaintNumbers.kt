@@ -111,11 +111,11 @@ fun PbnHomeContent(nav: NavHostController) {
     Column {
         Text(
             "Загрузите любую картинку — приложение превратит её в раскраску: тонкие контуры и номера цветов, а внизу листа — каким цветом " +
-                "закрашивать каждый номер. Цвета подбираются только из того, что у вас есть: карандашей, маркеров или красок.",
+                "закрашивать каждый номер. Цвета подбираются только из того, что у вас есть: карандашей, акварельных карандашей, маркеров, спиртовых маркеров или красок.",
             fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
         )
         Text(btnLabel("Чем раскрашивать"), fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
-        Segments(PaintByNumbers.Medium.entries.map { it.ordinal to it.title }, medium, { medium = it; PbnStore.setLastMedium(ctx, it) })
+        MediumPicker(medium) { medium = it; PbnStore.setLastMedium(ctx, it) }
         Gap(8.dp)
         Button(onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
             Text(if (busy) "Открываю…" else "Новая раскраска из фото")
@@ -228,7 +228,7 @@ fun PbnScreen(nav: NavHostController, id: Long) {
 
             SectionTitle("Настройки")
             Text(btnLabel("Чем раскрашивать"), fontSize = 14.sp)
-            Segments(PaintByNumbers.Medium.entries.map { it.ordinal to it.title }, p0.medium, { save(p0.copy(medium = it)); PbnStore.setLastMedium(ctx, it) })
+            MediumPicker(p0.medium) { save(p0.copy(medium = it)); PbnStore.setLastMedium(ctx, it) }
             Gap(8.dp)
             Text(btnLabel("Детализация"), fontSize = 14.sp)
             Segments(listOf(0 to "Крупно", 1 to "Средне", 2 to "Подробно"), p0.detail, { save(p0.copy(detail = it)) })
@@ -252,10 +252,12 @@ fun PbnScreen(nav: NavHostController, id: Long) {
             Gap(6.dp)
             TextInput(title, { title = it; save(p0.copy(name = it.ifBlank { p0.name })) }, "Название")
             if (pencils.size < 2) Text("Отметьте, какие ${medium.many} у вас есть, — пока подбираю из всего каталога.", color = extra.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
-            if (medium == PaintByNumbers.Medium.PAINT) Text(
-                "Для красок: доля — какую часть картины занимает цвет, по ней видно, какой краски понадобится больше. Цвета берутся из тюбика без смешивания.",
-                fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp),
-            )
+            when (medium) {
+                PaintByNumbers.Medium.PAINT -> "Для красок: доля — какую часть картины занимает цвет, по ней видно, какой краски понадобится больше. Цвета берутся из тюбика без смешивания."
+                PaintByNumbers.Medium.WATERCOLOR_PENCIL -> "Акварельные карандаши: цвета подобраны такими, какими они становятся после воды. Заштрихуйте номер ровным слоем и пройдитесь влажной кистью — от светлых участков к тёмным, чтобы соседние цвета не смешались."
+                PaintByNumbers.Medium.ALCOHOL_MARKER -> "Спиртовые маркеры: цвет — один ровный слой, каждый следующий темнее. Закрашивайте сначала светлые номера, крупные участки ведите быстро и без остановок — так не останется полос. Бумага — плотная, для маркеров: спирт пропитывает тонкую насквозь."
+                else -> null
+            }?.let { tip -> Text(tip, fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp)) }
 
             result?.let { r ->
                 SectionTitle("${medium.title} для этой картины · ${r.colors.size}")
@@ -296,7 +298,7 @@ fun PencilsScreen(nav: NavHostController) {
     var edit by remember { mutableStateOf<MyPencil?>(null) }
     Screen("Мои материалы", onBack = { nav.popBackStack() }) { pad ->
         Column(Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            Segments(PaintByNumbers.Medium.entries.map { it.ordinal to it.title }, mi, { mi = it; PbnStore.setLastMedium(ctx, it) })
+            MediumPicker(mi) { mi = it; PbnStore.setLastMedium(ctx, it) }
             Gap(8.dp)
             // Свой цвет по фото — первым делом: так быстрее всего добавить то, что лежит на столе.
             Text("${medium.one} по фото", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
@@ -343,5 +345,17 @@ fun PencilsScreen(nav: NavHostController) {
             PbnStore.setCustom(ctx, if (c.n == 0) cur + out else cur.map { if (it.n == c.n) out else it }, medium)
             edit = null
         }
+    }
+}
+
+/** Чем раскрашивать: материалы плашками в несколько строк — длинные названия в один ряд не помещаются. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun MediumPicker(selected: Int, onSelect: (Int) -> Unit) {
+    androidx.compose.foundation.layout.FlowRow(
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
+    ) {
+        PaintByNumbers.Medium.entries.forEach { m -> com.dasein.poryadok.ui.common.Pill(m.title, selected == m.ordinal) { onSelect(m.ordinal) } }
     }
 }
