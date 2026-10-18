@@ -93,14 +93,16 @@ fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int, emb
     // Один раз: свои иконки, у которых прозрачный фон стал белым, переделываются из сохранённого исходника.
     LaunchedEffect(Unit) {
         val sp = com.dasein.poryadok.Graph.app.getSharedPreferences("ui_state", android.content.Context.MODE_PRIVATE)
-        if (!sp.getBoolean("recipe_icons_alpha_v1", false)) io {
-            RecipeIcons.repairWhiteBackgrounds()
-            sp.edit().putBoolean("recipe_icons_alpha_v1", true).apply()
-        }
-        // Иконки моих блюд собираются в папку «Мои рецепты» библиотеки иконок.
-        if (!sp.getBoolean("recipe_icons_folder_v1", false)) io {
-            RecipeIcons.collectMine()
-            sp.edit().putBoolean("recipe_icons_folder_v1", true).apply()
+        // По порядку: сначала починка белого фона (меняет пути), потом сбор иконок моих блюд в папку «Мои рецепты».
+        io {
+            if (!sp.getBoolean("recipe_icons_alpha_v1", false)) {
+                RecipeIcons.repairWhiteBackgrounds()
+                sp.edit().putBoolean("recipe_icons_alpha_v1", true).apply()
+            }
+            if (!sp.getBoolean("recipe_icons_folder_v1", false)) {
+                RecipeIcons.collectMine()
+                sp.edit().putBoolean("recipe_icons_folder_v1", true).apply()
+            }
         }
     }
     Screen(
