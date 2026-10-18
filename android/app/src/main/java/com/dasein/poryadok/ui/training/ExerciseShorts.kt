@@ -78,18 +78,46 @@ internal fun ExerciseShorts(exercises: List<Exercise>, sets: List<SetLog>, onAdd
     var favOnly by remember { mutableStateOf(false) }
     var favVer by remember { mutableIntStateOf(0) }
     fun fav(id: Long): Boolean { favVer; return favPrefs(ctx).getBoolean("ex_fav_$id", false) }
-    val list = exercises.filter {
+    val archivedIds = com.dasein.poryadok.data.ExercisePrefs.archived.value
+    val onlyMine = com.dasein.poryadok.data.ExercisePrefs.onlyMine.value
+    val gear = com.dasein.poryadok.data.ExercisePrefs.myGear.value
+    var gearEdit by remember { mutableStateOf(false) }
+    var archiveOpen by remember { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf<Exercise?>(null) }
+    val active = exercises.filter { it.id !in archivedIds }
+    // «Мой инвентарь»: только упражнения с тем, что есть дома, и со своим весом.
+    val fitting = if (onlyMine) active.filter { com.dasein.poryadok.logic.HomeGear.fits(it.equipment, gear) } else active
+    val hiddenByGear = active.size - fitting.size
+    val list = fitting.filter {
         (muscles.isEmpty() || it.muscle in muscles) && (!favOnly || fav(it.id)) &&
             (q.isBlank() || it.name.contains(q, true) || it.equipment.contains(q, true) || it.muscle.contains(q, true))
+    }
+    val archivedList = exercises.filter { it.id in archivedIds }
+    if (gearEdit) GearSetDialog { gearEdit = false }
+    deleting?.let { e ->
+        com.dasein.poryadok.ui.common.ConfirmDialog(
+            "Удалить упражнение навсегда?", "«${e.name}» исчезнет из библиотеки и программ. Прошлые подходы останутся в истории.",
+            onDismiss = { deleting = null },
+        ) { com.dasein.poryadok.ui.common.io { com.dasein.poryadok.data.ExercisePrefs.deleteForever(e) } }
     }
     LazyColumn(contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             OutlinedTextField(q, { q = it }, placeholder = { Text(btnLabel("Поиск упражнения")) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))
             Column(Modifier.padding(top = 8.dp)) {
-                MuscleFilter(muscles, exercises, { muscles = it }) {
+                MuscleFilter(muscles, fitting, { muscles = it }) {
                     Pill("Все", muscles.isEmpty() && !favOnly) { muscles = emptySet(); favOnly = false }
                     Pill("Избранное", favOnly, glyph = Glyphs.FAV_ON) { favOnly = !favOnly }
                 }
+                Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Pill(if (onlyMine) "Мой инвентарь ✓" else "Мой инвентарь", onlyMine) { com.dasein.poryadok.data.ExercisePrefs.setOnlyMine(!onlyMine) }
+                    Text(
+                        btnLabel("Изменить"), color = MaterialTheme.colorScheme.primary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(start = 6.dp).clip(RoundedCornerShape(10.dp)).clickable { gearEdit = true }.padding(8.dp),
+                    )
+                }
+                if (onlyMine && hiddenByGear > 0) Text(
+                    "Скрыто $hiddenByGear упр. с другим инвентарём", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 2.dp, start = 4.dp),
+                )
             }
         }
         if (exercises.isEmpty()) item {
@@ -109,17 +137,57 @@ internal fun ExerciseShorts(exercises: List<Exercise>, sets: List<SetLog>, onAdd
             ShortCard(
                 e, i + 1, list.size, sets.count { it.exerciseId == e.id && it.done }, fav(e.id),
                 onFav = { favPrefs(ctx).edit().putBoolean("ex_fav_${e.id}", !fav(e.id)).apply(); favVer++ },
+                onArchive = { com.dasein.poryadok.data.ExercisePrefs.archive(e.id) },
                 onOpen = { onOpen(e.id) },
             )
         }
+        // Архив: упражнения, убранные значком коробки. Отсюда — вернуть или удалить насовсем (даже встроенные).
+        if (archivedList.isNotEmpty()) item {
+            com.dasein.poryadok.ui.common.TextButton(onClick = { archiveOpen = !archiveOpen }, Modifier.fillMaxWidth()) {
+                Text((if (archiveOpen) "Скрыть архив упражнений" else "Архив упражнений") + " (${archivedList.size})")
+            }
+        }
+        if (archiveOpen) itemsIndexed(archivedList, key = { _, e -> "a" + e.id }) { _, e ->
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(extra.cardHigh).padding(horizontal = 14.dp, vertical = 10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Glyph(e.glyph, 24.dp)
+                    Text("  " + e.name, color = extra.dim, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Row {
+                    com.dasein.poryadok.ui.common.TextButton(onClick = { com.dasein.poryadok.data.ExercisePrefs.restore(e.id) }) { Text(btnLabel("Вернуть")) }
+                    com.dasein.poryadok.ui.common.TextButton(onClick = { deleting = e }) { Text(btnLabel("Удалить навсегда"), color = extra.danger) }
+                }
+            }
+        }
     }
+}
+
+/** «Мой инвентарь»: что есть дома. Упражнения с другим инвентарём скрываются (кроме упражнений со своим весом). */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun GearSetDialog(onDismiss: () -> Unit) {
+    var pick by remember { mutableStateOf(com.dasein.poryadok.data.ExercisePrefs.myGear.value) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(btnLabel("Мой инвентарь")) },
+        text = {
+            Column {
+                Text("Отметьте, что есть дома. Упражнения со своим весом показываются всегда.", fontSize = 13.sp, color = LocalExtra.current.dim)
+                FlowRow(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    com.dasein.poryadok.data.ExercisePrefs.ALL_GEAR.forEach { g -> Pill(g, g in pick) { pick = if (g in pick) pick - g else pick + g } }
+                }
+            }
+        },
+        confirmButton = { com.dasein.poryadok.ui.common.TextButton(onClick = { com.dasein.poryadok.data.ExercisePrefs.setGear(pick); onDismiss() }) { Text(btnLabel("Сохранить")) } },
+        dismissButton = { com.dasein.poryadok.ui.common.TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
+    )
 }
 
 private val SHADOW = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), blurRadius = 8f))
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ShortCard(e: Exercise, index: Int, total: Int, doneSets: Int, fav: Boolean, onFav: () -> Unit, onOpen: () -> Unit) {
+private fun ShortCard(e: Exercise, index: Int, total: Int, doneSets: Int, fav: Boolean, onFav: () -> Unit, onArchive: () -> Unit, onOpen: () -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
     val media = e.media.lines().firstOrNull { it.isNotBlank() && java.io.File(it).exists() }
     Box(
@@ -151,6 +219,11 @@ private fun ShortCard(e: Exercise, index: Int, total: Int, doneSets: Int, fav: B
                 Glyph(if (fav) Glyphs.FAV_ON else Glyphs.FAV_OFF, 34.dp, badge = false)
             }
             Text(if (fav) "в избранном" else "избранное", color = Color.White, fontSize = 10.sp, style = SHADOW)
+            // Под сердечком — архив: упражнение уходит из списка, вернуть или удалить можно в «Архиве упражнений» внизу.
+            Box(Modifier.padding(top = 8.dp).size(44.dp).clip(CircleShape).clickable(onClick = onArchive), contentAlignment = Alignment.Center) {
+                com.dasein.poryadok.ui.common.AppIcon(com.dasein.poryadok.ui.common.Ic.archive, 30.dp, badge = false)
+            }
+            Text(btnLabel("в архив"), color = Color.White, fontSize = 10.sp, style = SHADOW)
             if (doneSets > 0) {
                 Text("$doneSets", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, style = SHADOW, modifier = Modifier.padding(top = 10.dp))
                 Text(btnLabel("подходов"), color = Color.White, fontSize = 10.sp, style = SHADOW)

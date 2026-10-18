@@ -7,7 +7,6 @@ import android.net.Uri
 import android.os.Build
 import android.webkit.MimeTypeMap
 import android.widget.ImageView
-import android.widget.MediaController
 import android.widget.VideoView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -196,11 +195,10 @@ fun MediaView(path: String, modifier: Modifier = Modifier, crop: Boolean = false
 }
 
 /**
- * Видео со звуком: не стартует само, касание показывает кнопки плеера (пуск, пауза, перемотка),
- * «⛶» открывает ролик на весь экран. Ролик идёт по кругу. Окно плеера повторяет пропорции видео —
- * без чёрных полос; вертикальные ролики ограничены по высоте и стоят по центру.
- * Переход на весь экран продолжает с того же места, а маленький плеер на это время ставится на паузу
- * (раньше ролик начинался заново и звучал дважды); после закрытия маленький продолжает оттуда же.
+ * Видео со звуком: не стартует само, касание показывает свои кнопки — пуск/пауза и перемотка по полосе.
+ * Кнопки рисуются внутри окна видео (системная плашка MediaController висела поверх экрана и не уезжала
+ * при прокрутке). «⛶» открывает ролик на весь экран с того же места; маленький плеер на это время на паузе.
+ * Ролик идёт по кругу. Окно повторяет пропорции видео — без чёрных полос; вертикальные ограничены по высоте.
  */
 @Composable
 fun VideoPlayer(path: String, modifier: Modifier = Modifier, maxHeight: androidx.compose.ui.unit.Dp = 520.dp) = androidx.compose.runtime.key(path) {
@@ -219,14 +217,10 @@ fun VideoPlayer(path: String, modifier: Modifier = Modifier, maxHeight: androidx
                 onRelease = { it.stopPlayback() },
                 modifier = Modifier.fillMaxSize(),
             )
-            Text(
-                "⛶", color = Color.White, fontSize = 18.sp,
-                modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).clip(RoundedCornerShape(10.dp))
-                    .background(Color.Black.copy(alpha = .55f)).clickable {
-                        mini?.let { v -> startAt = v.currentPosition; v.pause() }
-                        full = true
-                    }.padding(horizontal = 9.dp, vertical = 2.dp),
-            )
+            PlayerControls(mini, paused = full, onFull = {
+                mini?.let { v -> startAt = v.currentPosition; v.pause() }
+                full = true
+            })
         }
     }
     if (full) {
@@ -241,11 +235,14 @@ fun VideoPlayer(path: String, modifier: Modifier = Modifier, maxHeight: androidx
         }
         Dialog(onDismissRequest = { close() }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
             Box(Modifier.fillMaxSize().background(Color.Black).systemBarsPadding(), contentAlignment = Alignment.Center) {
-                AndroidView(
-                    factory = { c -> playerView(c, path, autoplay = true, startAt = startAt).also { big = it } },
-                    onRelease = { it.stopPlayback() },
-                    modifier = Modifier.fillMaxWidth().aspectRatio(ratio, matchHeightConstraintsFirst = ratio < 1f),
-                )
+                Box(Modifier.fillMaxWidth().aspectRatio(ratio, matchHeightConstraintsFirst = ratio < 1f)) {
+                    AndroidView(
+                        factory = { c -> playerView(c, path, autoplay = true, startAt = startAt).also { big = it } },
+                        onRelease = { it.stopPlayback() },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    PlayerControls(big, paused = false, onFull = null)
+                }
                 Text(
                     "✕", color = Color.White, fontSize = 22.sp,
                     modifier = Modifier.align(Alignment.TopEnd).padding(14.dp).clip(RoundedCornerShape(12.dp))
@@ -255,6 +252,80 @@ fun VideoPlayer(path: String, modifier: Modifier = Modifier, maxHeight: androidx
         }
     }
 }
+
+/**
+ * Кнопки плеера поверх кадра: касание показывает/прячет их, во время воспроизведения они сами скрываются через 2,5 с.
+ * [paused] — плеер сейчас не главный (открыт на весь экран), кнопки не показываем.
+ */
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.PlayerControls(view: VideoView?, paused: Boolean, onFull: (() -> Unit)?) {
+    var shown by remember { mutableStateOf(true) }
+    var playing by remember { mutableStateOf(false) }
+    var pos by remember { mutableStateOf(0) }
+    var dur by remember { mutableStateOf(0) }
+    var dragging by remember { mutableStateOf<Float?>(null) }
+    var lastTouch by remember { mutableStateOf(System.currentTimeMillis()) }
+    androidx.compose.runtime.LaunchedEffect(view) {
+        while (true) {
+            view?.let { v ->
+                playing = v.isPlaying
+                if (dragging == null) pos = v.currentPosition
+                dur = v.duration.coerceAtLeast(0)
+            }
+            if (playing && shown && System.currentTimeMillis() - lastTouch > 2500) shown = false
+            if (!playing) shown = true
+            kotlinx.coroutines.delay(250)
+        }
+    }
+    if (paused) return
+    // Касание по кадру — показать или спрятать кнопки.
+    Box(Modifier.fillMaxSize().clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) {
+        shown = !shown; lastTouch = System.currentTimeMillis()
+    })
+    if (onFull != null) Text(
+        "⛶", color = Color.White, fontSize = 18.sp,
+        modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).clip(RoundedCornerShape(10.dp))
+            .background(Color.Black.copy(alpha = .55f)).clickable { onFull() }.padding(horizontal = 9.dp, vertical = 2.dp),
+    )
+    androidx.compose.animation.AnimatedVisibility(shown, Modifier.matchParentSize(), enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
+        Box(Modifier.fillMaxSize()) {
+            Box(
+                Modifier.align(Alignment.Center).size(56.dp).clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(Color.Black.copy(alpha = .55f))
+                    .clickable {
+                        lastTouch = System.currentTimeMillis()
+                        view?.let { v -> if (v.isPlaying) v.pause() else v.start(); playing = v.isPlaying }
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                androidx.compose.material3.Icon(
+                    if (playing) androidx.compose.material.icons.Icons.Default.Pause else androidx.compose.material.icons.Icons.Default.PlayArrow,
+                    if (playing) "Пауза" else "Смотреть", tint = Color.White, modifier = Modifier.size(34.dp),
+                )
+            }
+            androidx.compose.foundation.layout.Row(
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                    .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .6f))))
+                    .padding(horizontal = 10.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(mmss(pos), color = Color.White, fontSize = 12.sp)
+                androidx.compose.material3.Slider(
+                    value = dragging ?: if (dur > 0) pos.toFloat() / dur else 0f,
+                    onValueChange = { dragging = it; lastTouch = System.currentTimeMillis() },
+                    onValueChangeFinished = { dragging?.let { f -> view?.seekTo((f * dur).toInt()); pos = (f * dur).toInt() }; dragging = null },
+                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                    colors = androidx.compose.material3.SliderDefaults.colors(
+                        thumbColor = Color.White, activeTrackColor = Color.White, inactiveTrackColor = Color.White.copy(alpha = .35f),
+                    ),
+                )
+                Text(mmss(dur), color = Color.White, fontSize = 12.sp)
+            }
+        }
+    }
+}
+
+private fun mmss(ms: Int): String { val s = ms / 1000; return "%d:%02d".format(s / 60, s % 60) }
 
 /** Пропорции кадра (ширина / высота) с учётом поворота — по ним строится окно плеера. */
 private fun videoRatio(path: String): Float? = runCatching {
@@ -269,16 +340,13 @@ private fun videoRatio(path: String): Float? = runCatching {
 }.getOrNull()?.coerceIn(.3f, 3f)
 
 private fun playerView(c: Context, path: String, autoplay: Boolean, startAt: Int) = VideoView(c).apply {
-    val mc = MediaController(c)
-    mc.setAnchorView(this)
-    setMediaController(mc)
     setVideoPath(path)
     setOnPreparedListener { mp ->
         mp.setVolume(1f, 1f)
         // Ролик рецепта или упражнения повторяется сам — не нужно тянуться к кнопке на каждом круге.
         mp.isLooping = true
         if (startAt > 0) seekTo(startAt) else if (!autoplay) seekTo(1)
-        if (autoplay) { start(); mc.show(2500) }
+        if (autoplay) start()
     }
 }
 

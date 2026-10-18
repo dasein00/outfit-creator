@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -405,7 +406,8 @@ internal fun ExercisePickerDialog(exercises: List<Exercise>, onDismiss: () -> Un
             Column {
                 OutlinedTextField(q, { q = it }, placeholder = { Text(btnLabel("Поиск")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 LazyColumn(Modifier.heightIn(max = 420.dp).padding(top = 8.dp)) {
-                    items(exercises.filter { q.isBlank() || it.name.contains(q, true) || it.muscle.contains(q, true) }, key = { it.id }) { e ->
+                    val archivedIds = com.dasein.poryadok.data.ExercisePrefs.archived.value
+                    items(exercises.filter { it.id !in archivedIds && (q.isBlank() || it.name.contains(q, true) || it.muscle.contains(q, true)) }, key = { it.id }) { e ->
                         Row(
                             Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { onPick(e); onDismiss() }.padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -523,11 +525,14 @@ fun PlanEditScreen(nav: NavHostController, id: Long) {
     if (picking) ExercisePickerDialog(exercises, { picking = false }) { e ->
         io {
             val last = Graph.training.allSets().filter { it.exerciseId == e.id && it.done }.maxByOrNull { it.at }
+            // Мой подход из карточки упражнения — сразу целью в программе, чтобы не набирать заново.
+            val st = com.dasein.poryadok.data.ExercisePrefs.setup(e.id)
             t.upsertPlanExercise(
                 PlanExercise(
-                    planId = id, exerciseId = e.id, pos = items.size,
-                    reps = if (e.kind == ExKind.REPS) 10 else 10, repMin = 8, repMax = if (e.kind == ExKind.REPS) 15 else 12,
-                    weight = last?.weight ?: 0.0, seconds = if (e.kind == ExKind.TIME) 30 else 0, restSec = if (e.kind == ExKind.WEIGHT) 90 else 60,
+                    planId = id, exerciseId = e.id, pos = items.size, sets = st?.sets ?: 3,
+                    reps = st?.reps ?: 10, repMin = 8, repMax = maxOf(st?.reps ?: 0, if (e.kind == ExKind.REPS) 15 else 12),
+                    weight = last?.weight ?: if (st?.usesDumbbells == true && e.kind == ExKind.WEIGHT) (st?.dumbbellKg ?: 0.0) else 0.0,
+                    seconds = if (e.kind == ExKind.TIME) st?.seconds ?: 30 else 0, restSec = if (e.kind == ExKind.WEIGHT) 90 else 60,
                 )
             )
         }
@@ -664,20 +669,24 @@ private fun TargetDialog(pe: PlanExercise, e: Exercise?, onDismiss: () -> Unit, 
     )
 }
 
-/** Карточка упражнения: описание, фото/GIF/видео и история с графиком. id = 0 — новое упражнение. */
+/**
+ * Карточка упражнения. Два режима: просмотр (по умолчанию) — видео на всю ширину, как в рецептах, мышцы и инвентарь,
+ * «Мой подход» с кнопкой «Начать», техника и история; правка — по кнопке «Изменить». id = 0 — новое упражнение (сразу правка).
+ */
 @Composable
 fun ExerciseScreen(nav: NavHostController, id: Long) {
     val t = Graph.training
     val ctx = LocalContext.current
-    val extra = LocalExtra.current
     val existing by observe<Exercise?>(null, id) { t.exercise(id) }
     val sets by observe(emptyList(), id) { t.setsOfExercise(id) }
     val sessions by observe(emptyList()) { t.sessions() }
     var e by remember(id) { mutableStateOf<Exercise?>(if (id == 0L) Exercise(name = "", createdAt = System.currentTimeMillis()) else null) }
     LaunchedEffect(existing) { if (e == null && existing != null) e = existing }
-    var deleting by remember { mutableStateOf(false) }
+    var edit by rememberSaveable(id) { mutableStateOf(id == 0L) }
+    var setupFor by remember { mutableStateOf<Boolean?>(null) } // true — настроить и начать, false — только настроить
+    val setupVer = com.dasein.poryadok.data.ExercisePrefs.version.intValue
+    val setup = remember(id, setupVer) { if (id != 0L) com.dasein.poryadok.data.ExercisePrefs.setup(id) else null }
     val ex = e
-    val addMedia = rememberMediaPicker("training", video = true) { path -> e = e?.copy(media = (e?.media.orEmpty().lines().filter { it.isNotBlank() } + path).joinToString("\n")) }
 
     fun save(back: Boolean) {
         val cur = e ?: return
@@ -685,89 +694,276 @@ fun ExerciseScreen(nav: NavHostController, id: Long) {
         io { t.upsertExercise(cur) }
         if (back) nav.popBackStack()
     }
+    fun startNow(x: Exercise, s: com.dasein.poryadok.data.ExerciseSetup) = io {
+        val sid = TrainingRepo.startExercise(x, s)
+        withContext(Dispatchers.Main) { nav.navigate(Routes.session(sid)) }
+    }
 
-    Screen(
-        if (id == 0L) "Новое упражнение" else "Упражнение", onBack = { save(false); nav.popBackStack(); Unit },
-        actions = { TextButton(onClick = { save(true) }, enabled = !ex?.name.isNullOrBlank()) { Text(btnLabel("Сохранить")) } },
-    ) { pad ->
-        if (ex == null) return@Screen
-        Column(Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            val media = ex.media.lines().filter { it.isNotBlank() }
-            if (media.isNotEmpty()) {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(media, key = { it }) { m ->
-                        Column {
-                        Box {
-                            if (Media.isVideo(m)) VideoPlayer(m, Modifier.height(240.dp), maxHeight = 240.dp)
-                            else MediaView(m, Modifier.size(220.dp).clip(RoundedCornerShape(14.dp)).background(extra.card), crop = false)
-                            Text(
-                                "✕", fontSize = 14.sp,
-                                modifier = Modifier.align(Alignment.TopStart).padding(6.dp).clip(RoundedCornerShape(12.dp)).background(extra.card)
-                                    .clickable {
-                                        val upd = ex.copy(media = media.filter { it != m }.joinToString("\n"))
-                                        e = upd
-                                        // Убираем сразу: сохраняем упражнение и удаляем файл, если он больше нигде не нужен.
-                                        io {
-                                            if (id != 0L) t.upsertExercise(upd)
-                                            if (m.startsWith(ctx.filesDir.absolutePath) && t.exercisesNow().none { x -> x.id != upd.id && m in x.media.lines() }) java.io.File(m).delete()
-                                        }
-                                    }.padding(horizontal = 8.dp, vertical = 2.dp),
-                            )
-                        }
-                        if (Media.isVideo(m) && java.io.File(m).length() > 8L * 1024 * 1024) com.dasein.poryadok.ui.common.CompressVideoButton(m) { new ->
-                            val upd = ex.copy(media = media.map { if (it == m) new else it }.joinToString("\n"))
-                            e = upd
-                            // Исходный файл уже удалён — сразу сохраняем новый путь.
-                            if (id != 0L) io { t.upsertExercise(upd) }
-                        }
-                        }
-                    }
-                }
-                Gap(8.dp)
-            }
-            OutlinedButton(onClick = { addMedia() }, modifier = Modifier.fillMaxWidth()) { Text(btnLabel("+ Фото или GIF техники")) }
-            VideoAddButtons("training") { path -> e = e?.copy(media = (e?.media.orEmpty().lines().filter { it.isNotBlank() } + path).joinToString("\n")) }
-            Gap(8.dp)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                GlyphField(ex.glyph, { g -> e = ex.copy(glyph = g) })
-                HGap(12.dp)
-                TextInput(ex.name, { e = ex.copy(name = it) }, "Название", Modifier.weight(1f))
-            }
-            SectionTitle("Мышцы")
-            MusclePills(ex.muscle, { m -> e = ex.copy(muscle = m) })
-            Gap(8.dp)
-            TextInput(ex.equipment, { e = ex.copy(equipment = it) }, "Инвентарь")
-            SectionTitle("Как считать")
-            Segments(ExKind.names.mapIndexed { i, n -> i to n }, ex.kind, { e = ex.copy(kind = it) })
-            SectionTitle("Техника и описание")
-            TextInput(ex.description, { e = ex.copy(description = it) }, "Как выполнять, на что обратить внимание", singleLine = false, minLines = 4)
-
-            if (id != 0L) {
-                val h = TrainingRepo.history(sets, sessions)
-                if (h.isNotEmpty()) {
-                    ExerciseRecords(ex.kind, h)
-                    val prDays = remember(h) { recordDays(ex.kind, h) }
-                    SectionTitle("История")
-                    h.reversed().forEach { d ->
-                        Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-                            Text(Dates.label(d.day), Modifier.width(96.dp), fontSize = 13.sp, color = extra.dim)
-                            Column(Modifier.weight(1f)) {
-                                Text(TrainingRepo.describeDone(ex.kind, d.sets) + if (d.day in prDays) "  · рекорд!" else "", fontSize = 14.sp, fontWeight = if (d.day in prDays) FontWeight.SemiBold else FontWeight.Normal)
-                                if (ex.kind == ExKind.WEIGHT) Text("1ПМ ≈ ${TrainingRepo.e1rmText(d.best1rm)} · тоннаж ${w(d.volume)} кг", fontSize = 12.sp, color = extra.dim)
-                            }
-                        }
-                    }
-                }
-                Gap(16.dp)
-                if (ex.custom) TextButton(onClick = { deleting = true }) { Text(btnLabel("Удалить упражнение"), color = extra.danger) }
-            }
-            Gap(40.dp)
+    if (ex != null) setupFor?.let { andStart ->
+        ExerciseSetupDialog(ex, setup, andStart, onDismiss = { setupFor = null }) { s ->
+            com.dasein.poryadok.data.ExercisePrefs.saveSetup(ex.id, s)
+            setupFor = null
+            if (andStart) startNow(ex, s)
         }
     }
-    if (deleting) ConfirmDialog("Удалить упражнение?", "Оно пропадёт из библиотеки; прошлые подходы останутся в истории тренировок.", onDismiss = { deleting = false }) {
-        existing?.let { io { t.deleteExercise(it) } }
-        nav.popBackStack()
+
+    Screen(
+        when { id == 0L -> "Новое упражнение"; edit -> "Изменить упражнение"; else -> "Упражнение" },
+        onBack = {
+            when {
+                id == 0L -> { save(false); nav.popBackStack() }
+                edit -> { save(false); edit = false }
+                else -> nav.popBackStack()
+            }
+            Unit
+        },
+        actions = {
+            if (edit) TextButton(onClick = { if (id == 0L) save(true) else { save(false); edit = false } }, enabled = !ex?.name.isNullOrBlank()) { Text(btnLabel("Готово")) }
+            else TextButton(onClick = { edit = true }) { Text(btnLabel("Изменить")) }
+        },
+    ) { pad ->
+        if (ex == null) return@Screen
+        if (edit) ExerciseEditBody(Modifier.padding(pad), ex, id, onChange = { e = it }, onDone = { if (id == 0L) save(true) else { save(false); edit = false } })
+        else ExerciseViewBody(
+            Modifier.padding(pad), nav, ex, setup, TrainingRepo.history(sets, sessions),
+            onStart = { if (setup == null) setupFor = true else startNow(ex, setup) },
+            onSetup = { setupFor = false },
+            onArchive = { com.dasein.poryadok.data.ExercisePrefs.archive(ex.id); nav.popBackStack() },
+        )
     }
+}
+
+/** «3 подхода × 12 повторов · гантели по 5 кг». */
+internal fun describeSetup(kind: Int, s: com.dasein.poryadok.data.ExerciseSetup): String {
+    val work = if (kind == ExKind.TIME) "${s.sets} × ${s.seconds} с" else "${s.sets} × ${s.reps} повт."
+    val load = when (s.load) {
+        com.dasein.poryadok.data.ExerciseSetup.DUMBBELLS -> "гантели по ${w(s.dumbbellKg)} кг"
+        com.dasein.poryadok.data.ExerciseSetup.WEAR -> "утяжелители ${w(s.wearKg)} кг"
+        com.dasein.poryadok.data.ExerciseSetup.BOTH -> "гантели по ${w(s.dumbbellKg)} кг + утяжелители ${w(s.wearKg)} кг"
+        else -> "свой вес"
+    }
+    return "$work · $load"
+}
+
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun ExerciseViewBody(
+    modifier: Modifier, nav: NavHostController, ex: Exercise, setup: com.dasein.poryadok.data.ExerciseSetup?, h: List<TrainingRepo.ExerciseDay>,
+    onStart: () -> Unit, onSetup: () -> Unit, onArchive: () -> Unit,
+) {
+    val extra = LocalExtra.current
+    val ctx = LocalContext.current
+    val media = ex.media.lines().filter { it.isNotBlank() && java.io.File(it).exists() }
+    Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+        // Видео и фото техники — крупно, на всю ширину.
+        if (media.isEmpty()) {
+            Box(
+                Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(com.dasein.poryadok.ui.theme.LocalLook.current.cardRound.dp))
+                    .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = .3f), extra.card))),
+                contentAlignment = Alignment.Center,
+            ) { Glyph(ex.glyph, 88.dp, badge = false) }
+        } else media.forEachIndexed { i, m ->
+            if (i > 0) Gap(8.dp)
+            if (Media.isVideo(m)) VideoPlayer(m, Modifier.fillMaxWidth())
+            else MediaView(m, Modifier.fillMaxWidth().heightIn(max = 380.dp).clip(RoundedCornerShape(12.dp)), crop = false)
+        }
+        Gap(16.dp)
+        Text(ex.name, style = MaterialTheme.typography.headlineSmall)
+        Gap(8.dp)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (ex.muscle.isNotBlank()) InfoChip(ex.muscle, Muscles.glyphOf(ctx, ex.muscle))
+            if (ex.equipment.isNotBlank()) InfoChip(ex.equipment, null)
+            InfoChip(ExKind.names[ex.kind], null)
+        }
+        Gap(16.dp)
+        // Главное действие: мой подход и «Начать».
+        Tile(color = MaterialTheme.colorScheme.primary.copy(alpha = .1f)) {
+            Text(btnLabel("Мой подход"), fontSize = 13.sp, color = extra.dim)
+            Text(
+                setup?.let { describeSetup(ex.kind, it) } ?: "Ещё не настроен — при первом старте спросим подходы, повторы и вес",
+                fontSize = 16.sp, fontWeight = if (setup != null) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.padding(top = 2.dp),
+            )
+            Gap(12.dp)
+            Row {
+                Button(onClick = onStart, Modifier.weight(1f)) { Text(btnLabel("Начать")) }
+                HGap(8.dp)
+                OutlinedButton(onClick = onSetup, Modifier.weight(1f)) { Text(btnLabel("Настроить")) }
+            }
+        }
+        if (h.isNotEmpty()) {
+            Gap(12.dp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                com.dasein.poryadok.ui.common.Stat("${h.sumOf { d -> d.sets.size }}", "подходов", Modifier.weight(1f))
+                com.dasein.poryadok.ui.common.Stat(
+                    when (ex.kind) { ExKind.TIME -> "${h.maxOf { it.bestSeconds }} с"; ExKind.REPS -> "${h.maxOf { it.bestReps }}"; else -> TrainingRepo.e1rmText(h.maxOf { it.best1rm }) },
+                    if (ex.kind == ExKind.WEIGHT) "1ПМ, рекорд" else "рекорд", Modifier.weight(1f),
+                )
+                com.dasein.poryadok.ui.common.Stat(Dates.label(h.last().day), "последний раз", Modifier.weight(1f))
+            }
+        }
+        if (ex.description.isNotBlank()) {
+            Gap(12.dp)
+            com.dasein.poryadok.ui.common.FoldTile("ex_tech", "Техника") {
+                Text(ex.description, fontSize = 15.sp, lineHeight = 22.sp)
+            }
+        }
+        if (h.isNotEmpty()) {
+            ExerciseRecords(ex.kind, h)
+            val prDays = remember(h) { recordDays(ex.kind, h) }
+            SectionTitle("История")
+            Tile(padding = 12.dp) {
+                h.reversed().forEach { d ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                        Text(Dates.label(d.day), Modifier.width(96.dp), fontSize = 13.sp, color = extra.dim)
+                        Column(Modifier.weight(1f)) {
+                            Text(TrainingRepo.describeDone(ex.kind, d.sets) + if (d.day in prDays) "  · рекорд!" else "", fontSize = 14.sp, fontWeight = if (d.day in prDays) FontWeight.SemiBold else FontWeight.Normal)
+                            if (ex.kind == ExKind.WEIGHT) Text("1ПМ ≈ ${TrainingRepo.e1rmText(d.best1rm)} · тоннаж ${w(d.volume)} кг", fontSize = 12.sp, color = extra.dim)
+                        }
+                    }
+                }
+            }
+        }
+        Gap(12.dp)
+        TextButton(onClick = onArchive, Modifier.fillMaxWidth()) { Text(btnLabel("Убрать в архив"), color = extra.danger) }
+        Gap(40.dp)
+    }
+}
+
+@Composable
+private fun InfoChip(text: String, glyph: String?) {
+    val extra = LocalExtra.current
+    Row(
+        Modifier.clip(RoundedCornerShape(50)).background(extra.cardHigh).padding(start = if (glyph != null) 8.dp else 12.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (glyph != null) { Glyph(glyph, 18.dp, badge = false); HGap(6.dp) }
+        Text(text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
+/** Режим правки карточки: видео и фото, название, мышцы, инвентарь, как считать, техника. */
+@Composable
+private fun ExerciseEditBody(modifier: Modifier, ex: Exercise, id: Long, onChange: (Exercise) -> Unit, onDone: () -> Unit) {
+    val t = Graph.training
+    val ctx = LocalContext.current
+    val extra = LocalExtra.current
+    val cur by androidx.compose.runtime.rememberUpdatedState(ex)
+    val addMedia = rememberMediaPicker("training", video = true) { path -> onChange(cur.copy(media = (cur.media.lines().filter { it.isNotBlank() } + path).joinToString("\n"))) }
+    Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+        val media = ex.media.lines().filter { it.isNotBlank() }
+        SectionTitle("Видео и фото техники")
+        media.forEach { m ->
+            Tile(Modifier.padding(bottom = 8.dp), padding = 10.dp) {
+                if (Media.isVideo(m)) VideoPlayer(m, Modifier.fillMaxWidth(), maxHeight = 360.dp)
+                else MediaView(m, Modifier.fillMaxWidth().heightIn(max = 300.dp).clip(RoundedCornerShape(12.dp)), crop = false)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(Modifier.weight(1f))
+                    if (Media.isVideo(m) && java.io.File(m).length() > 8L * 1024 * 1024) com.dasein.poryadok.ui.common.CompressVideoButton(m) { new ->
+                        val upd = ex.copy(media = media.map { if (it == m) new else it }.joinToString("\n"))
+                        onChange(upd)
+                        if (id != 0L) io { t.upsertExercise(upd) }
+                    }
+                    TextButton(onClick = {
+                        val upd = ex.copy(media = media.filter { it != m }.joinToString("\n"))
+                        onChange(upd)
+                        // Убираем сразу: сохраняем упражнение и удаляем файл, если он больше нигде не нужен.
+                        io {
+                            if (id != 0L) t.upsertExercise(upd)
+                            if (m.startsWith(ctx.filesDir.absolutePath) && t.exercisesNow().none { x -> x.id != upd.id && m in x.media.lines() }) java.io.File(m).delete()
+                        }
+                    }) { Text(btnLabel("Убрать"), color = extra.danger) }
+                }
+            }
+        }
+        OutlinedButton(onClick = { addMedia() }, modifier = Modifier.fillMaxWidth()) { Text(btnLabel("+ Фото или GIF техники")) }
+        VideoAddButtons("training") { path -> onChange(cur.copy(media = (cur.media.lines().filter { it.isNotBlank() } + path).joinToString("\n"))) }
+        SectionTitle("Название")
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            GlyphField(ex.glyph, { g -> onChange(ex.copy(glyph = g)) })
+            HGap(12.dp)
+            TextInput(ex.name, { onChange(ex.copy(name = it)) }, "Название", Modifier.weight(1f))
+        }
+        SectionTitle("Мышцы")
+        MusclePills(ex.muscle, { m -> onChange(ex.copy(muscle = m)) })
+        SectionTitle("Инвентарь")
+        TextInput(ex.equipment, { onChange(ex.copy(equipment = it)) }, "Например: гантели, стул")
+        androidx.compose.foundation.layout.FlowRow(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            (listOf("Без инвентаря") + com.dasein.poryadok.data.ExercisePrefs.myGear.value.toList()).forEach { g ->
+                Pill(g, ex.equipment.equals(g, true)) { onChange(ex.copy(equipment = g)) }
+            }
+        }
+        SectionTitle("Как считать")
+        Segments(ExKind.names.mapIndexed { i, n -> i to n }, ex.kind, { onChange(ex.copy(kind = it)) })
+        SectionTitle("Техника и описание")
+        TextInput(ex.description, { onChange(ex.copy(description = it)) }, "Как выполнять, на что обратить внимание", singleLine = false, minLines = 4)
+        Gap(16.dp)
+        Button(onClick = onDone, enabled = ex.name.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text(btnLabel("Готово")) }
+        Gap(40.dp)
+    }
+}
+
+/**
+ * «Мой подход»: подходы, повторы (или секунды) и чем утяжеляю. Запоминается для упражнения и подставляется
+ * при следующих стартах — набирать заново не нужно; поправить можно кнопкой «Настроить».
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun ExerciseSetupDialog(
+    ex: Exercise, initial: com.dasein.poryadok.data.ExerciseSetup?, andStart: Boolean,
+    onDismiss: () -> Unit, onSave: (com.dasein.poryadok.data.ExerciseSetup) -> Unit,
+) {
+    val extra = LocalExtra.current
+    val base = initial ?: com.dasein.poryadok.data.ExerciseSetup(
+        load = when {
+            "гантел" in ex.equipment.lowercase() -> com.dasein.poryadok.data.ExerciseSetup.DUMBBELLS
+            "утяжел" in ex.equipment.lowercase() -> com.dasein.poryadok.data.ExerciseSetup.WEAR
+            else -> com.dasein.poryadok.data.ExerciseSetup.BODY
+        },
+    )
+    var sets by remember { mutableStateOf(base.sets.toString()) }
+    var reps by remember { mutableStateOf(base.reps.toString()) }
+    var seconds by remember { mutableStateOf(base.seconds.toString()) }
+    var load by remember { mutableStateOf(base.load) }
+    var db by remember { mutableStateOf(w(base.dumbbellKg)) }
+    var wear by remember { mutableStateOf(w(base.wearKg)) }
+    fun d(v: String) = v.replace(',', '.').toDoubleOrNull() ?: 0.0
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(btnLabel("Мой подход")) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text("Запомню для «${ex.name}» — в следующий раз ничего набирать не придётся.", fontSize = 13.sp, color = extra.dim)
+                Gap(12.dp)
+                StepField(sets, { sets = it }, "Подходы", 1.0)
+                Gap(8.dp)
+                if (ex.kind == ExKind.TIME) StepField(seconds, { seconds = it }, "Секунд в подходе", 5.0)
+                else StepField(reps, { reps = it }, "Повторов в подходе", 1.0)
+                Gap(12.dp)
+                Text(btnLabel("С каким весом"), fontSize = 12.sp, color = extra.dim)
+                FlowRow(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    com.dasein.poryadok.data.ExerciseSetup.LOADS.forEach { (k, label) -> Pill(label, load == k) { load = k } }
+                }
+                if (load == com.dasein.poryadok.data.ExerciseSetup.DUMBBELLS || load == com.dasein.poryadok.data.ExerciseSetup.BOTH) {
+                    Gap(8.dp); StepField(db, { db = it }, "Одна гантель, кг", 1.0, decimal = true)
+                }
+                if (load == com.dasein.poryadok.data.ExerciseSetup.WEAR || load == com.dasein.poryadok.data.ExerciseSetup.BOTH) {
+                    Gap(8.dp); StepField(wear, { wear = it }, "Утяжелители, всего кг", 0.5, decimal = true)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onSave(
+                    com.dasein.poryadok.data.ExerciseSetup(
+                        sets = (sets.toIntOrNull() ?: 3).coerceIn(1, 20), reps = (reps.toIntOrNull() ?: 12).coerceIn(1, 500),
+                        seconds = (seconds.toIntOrNull() ?: 30).coerceIn(5, 7200), load = load,
+                        dumbbellKg = d(db).coerceIn(0.0, 100.0), wearKg = d(wear).coerceIn(0.0, 50.0),
+                    )
+                )
+            }) { Text(btnLabel(if (andStart) "Начать" else "Сохранить")) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
+    )
 }
 
 /** Небольшое числовое поле для подхода. */

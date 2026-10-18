@@ -42,7 +42,7 @@ object UiProfile {
     /** Папки с иконками: свои картинки, наборы, замены, правки встроенных, порядок. */
     private val DIRS = listOf("icons", "iconsets")
     /** Служебные отметки этого телефона, которые не переносятся. */
-    private val UI_SKIP = setOf("backup_last", APPLIED_KEY, "text_editor_mode", com.dasein.poryadok.data.VacationStore.KEY, "training_archived_sessions", "recipe_deleted_seeds")
+    private val UI_SKIP = setOf("backup_last", APPLIED_KEY, "text_editor_mode", com.dasein.poryadok.data.VacationStore.KEY, "training_archived_sessions", "recipe_deleted_seeds", "training_archived_exercises", "training_home_pack_v1")
     private val SAFE = Regex("^(icons|iconsets)(/[\\p{L}\\p{N}_. ()+\\-]+){1,4}$")
 
     private fun sharedToMap(ctx: Context, name: String): Map<String, String> =

@@ -32,6 +32,10 @@ object ExerciseEnergy {
     // Порядок важен: сначала более узкие названия («отжимания на брусьях» раньше «отжиманий»).
     private val BY_NAME: List<Pair<List<String>, Profile>> = listOf(
         listOf("бёрпи", "берпи", "burpee") to Profile(1.0, 1.0, 8.0),
+        listOf("степпер") to Profile(1.0, 0.2, 6.0),
+        listOf("ходьб") to Profile(1.0, 0.1, 4.5),
+        listOf("колес", "раскат") to Profile(0.55, 0.4, 5.0),
+        listOf("махи ног", "отведени") to Profile(0.17, 0.5, 3.5),
         listOf("прыж", "выпрыг", "jump") to Profile(1.0, 0.5, 8.0),
         listOf("скакал") to Profile(1.0, 0.1, 11.0),
         listOf("скалолаз") to Profile(0.5, 0.3, 8.0),
