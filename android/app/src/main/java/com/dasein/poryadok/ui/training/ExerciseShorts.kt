@@ -81,9 +81,10 @@ private fun favPrefs(ctx: Context) = ctx.getSharedPreferences("ui_state", Contex
 internal fun ExerciseShorts(exercises: List<Exercise>, sets: List<SetLog>, onAdd: () -> Unit, onOpen: (Long) -> Unit) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
-    var q by remember { mutableStateOf("") }
-    var muscles by remember { mutableStateOf(emptySet<String>()) }
-    var favOnly by remember { mutableStateOf(false) }
+    // Поиск и фильтры переживают переход в карточку и обратно — список остаётся тем же.
+    var q by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
+    var muscles by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(emptySet<String>()) }
+    var favOnly by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     var favVer by remember { mutableIntStateOf(0) }
     fun fav(id: Long): Boolean { favVer; return favPrefs(ctx).getBoolean("ex_fav_$id", false) }
     val archivedIds = com.dasein.poryadok.data.ExercisePrefs.archived.value
@@ -113,7 +114,21 @@ internal fun ExerciseShorts(exercises: List<Exercise>, sets: List<SetLog>, onAdd
     // Видео играет только в одной карточке — той, что ближе к центру экрана, и запускается, когда прокрутка
     // остановилась (как в лентах коротких видео). Остальные показывают кадр-обложку: несколько декодеров разом
     // и создание проигрывателей на ходу и давали рывки. В режиме энергосбережения видео не запускается.
-    val listState = rememberLazyListState()
+    // Место в ленте помним и при выходе из карточки возвращаемся туда же. Пока упражнения подгружаются,
+    // список на миг пустой и сам прыгал в начало — поэтому место восстанавливаем, когда данные пришли.
+    val listState = rememberLazyListState(FeedMemory.index, FeedMemory.offset)
+    val loaded = exercises.isNotEmpty()
+    val loadedNow by androidx.compose.runtime.rememberUpdatedState(loaded)
+    LaunchedEffect(loaded) {
+        if (loaded && FeedMemory.index > 0 && listState.firstVisibleItemIndex != FeedMemory.index) {
+            listState.scrollToItem(FeedMemory.index, FeedMemory.offset)
+        }
+    }
+    LaunchedEffect(listState) {
+        androidx.compose.runtime.snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }.collect { (i, o) ->
+            if (loadedNow) { FeedMemory.index = i; FeedMemory.offset = o }
+        }
+    }
     val autoplay = remember { !com.dasein.poryadok.ui.common.TabAnim.saving(ctx) }
     val centerKey by remember {
         derivedStateOf {
@@ -215,6 +230,12 @@ private fun GearSetDialog(onDismiss: () -> Unit) {
         confirmButton = { com.dasein.poryadok.ui.common.TextButton(onClick = { com.dasein.poryadok.data.ExercisePrefs.setGear(pick); onDismiss() }) { Text(btnLabel("Сохранить")) } },
         dismissButton = { com.dasein.poryadok.ui.common.TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
+}
+
+/** Где остановилась лента упражнений — живёт, пока открыто приложение. */
+private object FeedMemory {
+    var index = 0
+    var offset = 0
 }
 
 private val SHADOW = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), blurRadius = 8f))
