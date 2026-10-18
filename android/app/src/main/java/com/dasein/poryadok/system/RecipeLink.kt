@@ -21,17 +21,7 @@ object RecipeLink {
 
     fun findUrl(text: String): String? = Regex("""https?://\S+""").find(text)?.value?.trimEnd('.', ',', ')', '»', '"')
 
-    private fun get(url: String): String {
-        val c = URL(url).openConnection() as HttpURLConnection
-        c.instanceFollowRedirects = true
-        c.connectTimeout = 12_000; c.readTimeout = 25_000
-        c.setRequestProperty("User-Agent", UA)
-        c.setRequestProperty("Accept-Language", "ru-RU,ru;q=0.9,en;q=0.8")
-        try {
-            if (c.responseCode !in 200..299) error("сайт ответил ${c.responseCode}")
-            return c.inputStream.use { it.readBytes().decodeToString() }
-        } finally { c.disconnect() }
-    }
+    private fun get(url: String): String = get(url, UA, "ru-RU,ru;q=0.9,en;q=0.8")
 
     suspend fun fetch(url: String): String = withContext(Dispatchers.IO) {
         val u = url.trim()
@@ -44,22 +34,60 @@ object RecipeLink {
         listOfNotNull(title?.let(::unescape), meta(html, "og:description")?.let(::unescape), body).joinToString("\n\n")
     }
 
-    /** Подпись к посту Instagram: страница «embed/captioned» отдаётся без входа; запасной путь — og:description. */
+    /**
+     * Подпись к посту или рилсу Instagram. Instagram часто меняет страницы, поэтому пробуем по очереди:
+     * 1) страницу встраивания (embed/captioned) — подпись в HTML или в JSON внутри страницы;
+     * 2) открытый GraphQL-запрос по коду поста (как у встраивания на сайтах);
+     * 3) страницу поста «глазами» превью-бота соцсетей — подпись в og:description;
+     * 4) обычную страницу поста.
+     */
     private fun instagram(url: String): String {
-        val code = Regex("""instagram\.com/(?:[^/]+/)?(?:p|reel|reels|tv)/([A-Za-z0-9_-]+)""").find(url)?.groupValues?.get(1)
-        if (code != null) runCatching {
-            val html = get("https://www.instagram.com/p/$code/embed/captioned/")
-            val cap = Regex("""class="Caption"[^>]*>(.*?)<div class="CaptionComments"""", RegexOption.DOT_MATCHES_ALL).find(html)?.groupValues?.get(1)
-                ?: Regex("""class="Caption"[^>]*>(.*?)</div>""", RegexOption.DOT_MATCHES_ALL).find(html)?.groupValues?.get(1)
-            if (cap != null) {
-                val t = plain(cap.replace(Regex("""<a class="CaptionUsername"[^>]*>.*?</a>""", RegexOption.DOT_MATCHES_ALL), "")).trim()
-                if (t.length > 20) return t
+        val code = Regex("""instagram\.com/(?:[^/?#]+/)?(?:p|reel|reels|tv)/([A-Za-z0-9_-]+)""").find(url)?.groupValues?.get(1)
+        val tries = buildList<() -> String?> {
+            if (code != null) {
+                add { InstaCaption.fromHtml(get("https://www.instagram.com/p/$code/embed/captioned/")) }
+                add { InstaCaption.fromHtml(get("https://www.instagram.com/reel/$code/embed/captioned/")) }
+                for (doc in listOf("8845758582119845", "10015901848480474", "9510064595728286")) add { InstaCaption.fromHtml(graphql(code, doc)) }
             }
+            add { InstaCaption.fromMeta(get(url, BOT_UA, "en-US,en;q=0.8")) }
+            add { InstaCaption.fromMeta(get(url)) ?: InstaCaption.fromHtml(get(url)) }
         }
-        val html = get(url)
-        val d = meta(html, "og:description") ?: meta(html, "description") ?: error("Instagram не отдал подпись — скопируйте текст поста вручную")
-        // «123 likes, 4 comments - user on May 1, 2024: "Текст рецепта"» → только текст.
-        return unescape(d).substringAfter(": \"", unescape(d)).removeSuffix("\"").trim()
+        for (t in tries) runCatching { t() }.getOrNull()?.takeIf { it.length > 15 }?.let { return it }
+        error("Instagram не отдал подпись — скопируйте текст поста вручную")
+    }
+
+    private const val BOT_UA = "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"
+
+    private fun get(url: String, ua: String, lang: String): String {
+        val c = URL(url).openConnection() as HttpURLConnection
+        c.instanceFollowRedirects = true
+        c.connectTimeout = 12_000; c.readTimeout = 25_000
+        c.setRequestProperty("User-Agent", ua)
+        c.setRequestProperty("Accept-Language", lang)
+        try {
+            if (c.responseCode !in 200..299) error("сайт ответил ${c.responseCode}")
+            return c.inputStream.use { it.readBytes().decodeToString() }
+        } finally { c.disconnect() }
+    }
+
+    /** Открытый запрос данных поста по коду (без входа), которым пользуются встраивания Instagram. */
+    private fun graphql(code: String, docId: String): String {
+        val c = URL("https://www.instagram.com/graphql/query").openConnection() as HttpURLConnection
+        c.requestMethod = "POST"
+        c.doOutput = true
+        c.connectTimeout = 12_000; c.readTimeout = 25_000
+        c.setRequestProperty("User-Agent", UA)
+        c.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+        c.setRequestProperty("X-IG-App-ID", "936619743392459")
+        c.setRequestProperty("X-FB-LSD", "AVqbxe3J_YA")
+        c.setRequestProperty("X-ASBD-ID", "129477")
+        c.setRequestProperty("Sec-Fetch-Site", "same-origin")
+        val vars = java.net.URLEncoder.encode("""{"shortcode":"$code","fetch_tagged_user_count":null,"hoisted_comment_id":null,"hoisted_reply_id":null}""", "UTF-8")
+        try {
+            c.outputStream.use { it.write("variables=$vars&doc_id=$docId&lsd=AVqbxe3J_YA".toByteArray()) }
+            if (c.responseCode !in 200..299) error("сайт ответил ${c.responseCode}")
+            return c.inputStream.use { it.readBytes().decodeToString() }
+        } finally { c.disconnect() }
     }
 
     private fun meta(html: String, name: String): String? =
