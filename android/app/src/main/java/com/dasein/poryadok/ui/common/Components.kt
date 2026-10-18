@@ -9,6 +9,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -96,8 +101,13 @@ fun Screen(
         },
         floatingActionButton = { Editable { fab() } },
         containerColor = MaterialTheme.colorScheme.background,
-        content = content,
-    )
+        // Снизу отступ и от кнопок Android, и от экранной клавиатуры: поле, в которое печатаете, остаётся видно
+        // (прокручиваемый экран сам подтягивает его над клавиатурой).
+        contentWindowInsets = WindowInsets.systemBars.union(WindowInsets.ime),
+    ) { pad ->
+        // Отступ уже учтён — вложенные imePadding()/navigationBarsPadding() не добавят его второй раз.
+        Box(Modifier.consumeWindowInsets(pad), propagateMinConstraints = true) { content(pad) }
+    }
 }
 
 @Composable

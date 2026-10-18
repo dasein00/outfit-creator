@@ -1,5 +1,8 @@
 package com.dasein.poryadok.ui.today
 
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.systemBars
 import com.dasein.poryadok.ui.common.FitText
 import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.background
@@ -139,6 +142,8 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        // Отступ снизу — и от кнопок Android, и от клавиатуры (как в общем Screen).
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets.systemBars.union(androidx.compose.foundation.layout.WindowInsets.ime),
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { quickAdd = true },
