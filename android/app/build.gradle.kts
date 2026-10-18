@@ -17,6 +17,9 @@ android {
         val run = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
         versionCode = run
         versionName = "1.0.$run"
+        // Телефоны — ARM; x86_64 нужен только эмулятору автотеста. 32-битный x86 (старые эмуляторы) не собираем:
+        // минус ~30 МБ к APK.
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
     }
 
     signingConfigs {
@@ -56,6 +59,9 @@ android {
     }
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        // Встроенные библиотеки (распознавание текста, перевод) — сжатыми: APK скачивается заметно быстрее
+        // и реже «бьётся» при загрузке; при установке Android распаковывает их сам.
+        jniLibs.useLegacyPackaging = true
     }
 }
 
