@@ -90,6 +90,14 @@ private val RECIPE_TAB_GLYPHS = listOf("ui:book", "ui:calendar", "ui:heart", "ui
 fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int, embedded: Boolean = false) {
     var tab by rememberSaveable(initialTab) { mutableStateOf(initialTab) }
     val book = rememberRecipeBook()
+    // Один раз: свои иконки, у которых прозрачный фон стал белым, переделываются из сохранённого исходника.
+    LaunchedEffect(Unit) {
+        val sp = com.dasein.poryadok.Graph.app.getSharedPreferences("ui_state", android.content.Context.MODE_PRIVATE)
+        if (!sp.getBoolean("recipe_icons_alpha_v1", false)) io {
+            RecipeIcons.repairWhiteBackgrounds()
+            sp.edit().putBoolean("recipe_icons_alpha_v1", true).apply()
+        }
+    }
     Screen(
         title = "Рецепты",
         onBack = if (embedded) null else ({ nav.popBackStack() }),

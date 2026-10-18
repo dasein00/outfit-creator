@@ -189,7 +189,12 @@ private fun StepBasics(d: RecipeDraft) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val r = d.recipe
-    val pickPhoto = com.dasein.poryadok.ui.common.rememberImagePickerWithCrop(1f, "recipes") { d.recipe = d.recipe.copy(photo = it) }
+    // PNG, чтобы прозрачный фон иконки не становился белым; фото без прозрачности RecipeIcons.finish пересохранит в JPEG.
+    fun setPhoto(path: String) = com.dasein.poryadok.ui.common.io {
+        val out = RecipeIcons.finish(path)
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { d.recipe = d.recipe.copy(photo = out) }
+    }
+    val pickPhoto = com.dasein.poryadok.ui.common.rememberImagePickerWithCrop(1f, "recipes", png = true) { setPhoto(it) }
     var recrop by remember { mutableStateOf(false) }
     // Поделились рецептом из Instagram или ИИ придумал блюдо — сразу открываем разбор этого текста.
     var fromText by remember { mutableStateOf(RecipeInbox.take()?.let { t -> d.recipe = d.recipe.copy(notes = t); true } ?: false) }
@@ -203,7 +208,7 @@ private fun StepBasics(d: RecipeDraft) {
     Gap(10.dp)
     var pickIllustration by remember { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically) {
-        if (r.photo.startsWith("dish/")) { RecipeThumb(r, 72.dp); HGap(10.dp) }
+        if (r.photo.startsWith("dish/") || RecipeIcons.isIcon(r.photo)) { RecipeThumb(r, 72.dp); HGap(10.dp) }
         else {
             val img by rememberImage(r.photo.takeIf { it.isNotBlank() }, 400)
             img?.let { Image(it, null, Modifier.size(72.dp).clip(RoundedCornerShape(14.dp)), contentScale = ContentScale.Crop); HGap(10.dp) }
@@ -215,8 +220,8 @@ private fun StepBasics(d: RecipeDraft) {
         }
         if (r.photo.isNotBlank()) TextButton(onClick = { d.recipe = r.copy(photo = "") }) { Text(btnLabel("Убрать")) }
     }
-    if (recrop) com.dasein.poryadok.ui.common.CropDialog(com.dasein.poryadok.ui.common.Crop.sourceFor(r.photo), 1f, "recipes", onDismiss = { recrop = false }) {
-        recrop = false; d.recipe = d.recipe.copy(photo = it)
+    if (recrop) com.dasein.poryadok.ui.common.CropDialog(com.dasein.poryadok.ui.common.Crop.sourceFor(r.photo), 1f, "recipes", png = true, onDismiss = { recrop = false }) {
+        recrop = false; setPhoto(it)
     }
         if (pickIllustration) GlyphPickerDialog(r.photo, { pickIllustration = false }, dishes = true) { d.recipe = d.recipe.copy(photo = it) }
     RecipeVideosEditor(r.id, RecipeVideos.list(r), deleteFiles = false) { list -> d.recipe = d.recipe.copy(videos = list.joinToString("\n")) }

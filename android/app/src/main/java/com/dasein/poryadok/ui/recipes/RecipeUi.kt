@@ -138,7 +138,12 @@ fun RecipeThumb(r: Recipe, size: Dp) {
     }
     val img by rememberImage(r.photo.takeIf { it.isNotBlank() }, 400)
     val bmp = img
-    if (bmp != null) {
+    if (bmp != null && RecipeIcons.isIcon(r.photo)) {
+        // Своя иконка с прозрачным фоном — как иконки из набора: на подложке, целиком.
+        Box(Modifier.size(size).clip(RoundedCornerShape(14.dp)).background(LocalExtra.current.cardHigh), contentAlignment = Alignment.Center) {
+            Image(bmp, null, Modifier.size(size * .92f), contentScale = ContentScale.Fit)
+        }
+    } else if (bmp != null) {
         Image(bmp, null, Modifier.size(size).clip(RoundedCornerShape(14.dp)), contentScale = ContentScale.Crop)
     } else {
         Box(
@@ -301,8 +306,9 @@ fun ScrollColumn(modifier: Modifier = Modifier, content: @Composable () -> Unit)
 @Composable
 fun RecipeIconDialog(r: Recipe, onDismiss: () -> Unit) {
     var pickIllustration by remember { mutableStateOf(false) }
-    val pickPhoto = com.dasein.poryadok.ui.common.rememberImagePickerWithCrop(1f, "recipes") { path ->
-        io { com.dasein.poryadok.Graph.extra.upsertRecipe(r.copy(photo = path)) }
+    // PNG — чтобы у картинок с прозрачным фоном он и остался прозрачным (в JPEG он становился белым).
+    val pickPhoto = com.dasein.poryadok.ui.common.rememberImagePickerWithCrop(1f, "recipes", png = true) { path ->
+        io { com.dasein.poryadok.Graph.extra.upsertRecipe(r.copy(photo = RecipeIcons.finish(path))) }
         onDismiss()
     }
     if (pickIllustration) {
@@ -322,7 +328,7 @@ fun RecipeIconDialog(r: Recipe, onDismiss: () -> Unit) {
                     Text("  Меняется только у «${r.name}».", fontSize = 13.sp, color = LocalExtra.current.dim)
                 }
                 com.dasein.poryadok.ui.common.Gap(12.dp)
-                com.dasein.poryadok.ui.common.OutlinedButton(onClick = { pickPhoto() }, Modifier.fillMaxWidth()) { Text(btnLabel("Своё фото")) }
+                com.dasein.poryadok.ui.common.OutlinedButton(onClick = { pickPhoto() }, Modifier.fillMaxWidth()) { Text(btnLabel("Своё фото или иконка")) }
                 com.dasein.poryadok.ui.common.OutlinedButton(onClick = { pickIllustration = true }, Modifier.fillMaxWidth()) { Text(btnLabel("Иллюстрация из набора")) }
             }
         },
