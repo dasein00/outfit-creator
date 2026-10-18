@@ -1,8 +1,6 @@
 package com.dasein.poryadok.ui.common
 
 import android.content.Context
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import android.graphics.ImageDecoder
 import android.graphics.drawable.AnimatedImageDrawable
 import android.net.Uri
@@ -245,11 +243,10 @@ fun VideoPlayer(path: String, modifier: Modifier = Modifier, maxHeight: androidx
                     )
                     PlayerControls(big, paused = false, onFull = null)
                 }
-                Text(
-                    "✕", color = Color.White, fontSize = 22.sp,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(14.dp).clip(RoundedCornerShape(12.dp))
-                        .background(Color.Black.copy(alpha = .55f)).clickable { close() }.padding(horizontal = 12.dp, vertical = 4.dp),
-                )
+                Box(
+                    Modifier.align(Alignment.TopEnd).padding(14.dp).clip(RoundedCornerShape(12.dp))
+                        .background(Color.Black.copy(alpha = .45f)).clickable { close() }.padding(8.dp),
+                ) { PlayerIcon(PlayerIcons.EXIT_FULLSCREEN, 26.dp) }
             }
         }
     }
@@ -284,26 +281,26 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerControls(view: Vid
     Box(Modifier.fillMaxSize().clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) {
         shown = !shown; lastTouch = System.currentTimeMillis()
     })
-    if (onFull != null) Text(
-        "⛶", color = Color.White, fontSize = 18.sp,
-        modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).clip(RoundedCornerShape(10.dp))
-            .background(Color.Black.copy(alpha = .55f)).clickable { onFull() }.padding(horizontal = 9.dp, vertical = 2.dp),
-    )
+    if (onFull != null) Box(
+        Modifier.align(Alignment.TopEnd).padding(6.dp).clip(RoundedCornerShape(10.dp))
+            .background(Color.Black.copy(alpha = .45f)).clickable { onFull() }.padding(6.dp),
+    ) { PlayerIcon(PlayerIcons.FULLSCREEN, 22.dp) }
     androidx.compose.animation.AnimatedVisibility(shown, Modifier.matchParentSize(), enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
         Box(Modifier.fillMaxSize()) {
-            Box(
-                Modifier.align(Alignment.Center).size(56.dp).clip(androidx.compose.foundation.shape.CircleShape)
-                    .background(Color.Black.copy(alpha = .55f))
-                    .clickable {
-                        lastTouch = System.currentTimeMillis()
-                        view?.let { v -> if (v.isPlaying) v.pause() else v.start(); playing = v.isPlaying }
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                androidx.compose.material3.Icon(
-                    if (playing) androidx.compose.material.icons.Icons.Default.Pause else androidx.compose.material.icons.Icons.Default.PlayArrow,
-                    if (playing) "Пауза" else "Смотреть", tint = Color.White, modifier = Modifier.size(34.dp),
-                )
+            // Центр: −10 с, пуск/пауза, +10 с — фирменные кнопки плеера.
+            androidx.compose.foundation.layout.Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically) {
+                fun skip(ms: Int) {
+                    lastTouch = System.currentTimeMillis()
+                    view?.let { v -> val to = (v.currentPosition + ms).coerceIn(0, maxOf(0, v.duration)); v.seekTo(to); pos = to }
+                }
+                RoundPlayerButton(PlayerIcons.BACK, 44.dp, 26.dp, "Назад на 10 секунд") { skip(-10_000) }
+                androidx.compose.foundation.layout.Spacer(Modifier.size(18.dp))
+                RoundPlayerButton(if (playing) PlayerIcons.PAUSE else PlayerIcons.PLAY, 60.dp, 34.dp, if (playing) "Пауза" else "Смотреть") {
+                    lastTouch = System.currentTimeMillis()
+                    view?.let { v -> if (v.isPlaying) v.pause() else v.start(); playing = v.isPlaying }
+                }
+                androidx.compose.foundation.layout.Spacer(Modifier.size(18.dp))
+                RoundPlayerButton(PlayerIcons.FORWARD, 44.dp, 26.dp, "Вперёд на 10 секунд") { skip(10_000) }
             }
             androidx.compose.foundation.layout.Row(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth()
@@ -325,6 +322,33 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerControls(view: Vid
             }
         }
     }
+}
+
+/** Кнопки плеера из фирменного набора (assets/glyphs/player): рисуются как есть, без перекраски под тему. */
+private object PlayerIcons {
+    const val PLAY = 0
+    const val PAUSE = 1
+    const val BACK = 4
+    const val FORWARD = 5
+    const val FULLSCREEN = 8
+    const val EXIT_FULLSCREEN = 9
+}
+
+@Composable
+private fun PlayerIcon(n: Int, size: androidx.compose.ui.unit.Dp) {
+    val ctx = LocalContext.current
+    val key = "player/%02d".format(n)
+    val img by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, key) { value = withContext(Dispatchers.IO) { Glyphs.load(ctx, key) } }
+    img?.let { Image(it, null, Modifier.size(size)) } ?: Box(Modifier.size(size))
+}
+
+@Composable
+private fun RoundPlayerButton(n: Int, box: androidx.compose.ui.unit.Dp, icon: androidx.compose.ui.unit.Dp, label: String, onClick: () -> Unit) {
+    Box(
+        Modifier.size(box).clip(androidx.compose.foundation.shape.CircleShape).background(Color.Black.copy(alpha = .45f))
+            .clickable(onClickLabel = label, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { PlayerIcon(n, icon) }
 }
 
 private fun mmss(ms: Int): String { val s = ms / 1000; return "%d:%02d".format(s / 60, s % 60) }
