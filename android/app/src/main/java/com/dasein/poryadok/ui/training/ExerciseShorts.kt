@@ -24,6 +24,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -84,15 +92,40 @@ internal fun ExerciseShorts(exercises: List<Exercise>, sets: List<SetLog>, onAdd
     var gearEdit by remember { mutableStateOf(false) }
     var archiveOpen by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<Exercise?>(null) }
-    val active = exercises.filter { it.id !in archivedIds }
+    // Фильтры и подсчёты — один раз на изменение данных, а не на каждый кадр прокрутки.
+    val active = remember(exercises, archivedIds) { exercises.filter { it.id !in archivedIds } }
     // «Мой инвентарь»: только упражнения с тем, что есть дома, и со своим весом.
-    val fitting = if (onlyMine) active.filter { com.dasein.poryadok.logic.HomeGear.fits(it.equipment, gear) } else active
+    val fitting = remember(active, onlyMine, gear) { if (onlyMine) active.filter { com.dasein.poryadok.logic.HomeGear.fits(it.equipment, gear) } else active }
     val hiddenByGear = active.size - fitting.size
-    val list = fitting.filter {
-        (muscles.isEmpty() || it.muscle in muscles) && (!favOnly || fav(it.id)) &&
-            (q.isBlank() || it.name.contains(q, true) || it.equipment.contains(q, true) || it.muscle.contains(q, true))
+    val list = remember(fitting, muscles, favOnly, q, favVer) {
+        fitting.filter {
+            (muscles.isEmpty() || it.muscle in muscles) && (!favOnly || fav(it.id)) &&
+                (q.isBlank() || it.name.contains(q, true) || it.equipment.contains(q, true) || it.muscle.contains(q, true))
+        }
     }
-    val archivedList = exercises.filter { it.id in archivedIds }
+    val archivedList = remember(exercises, archivedIds) { exercises.filter { it.id in archivedIds } }
+    val doneSets = remember(sets) { sets.asSequence().filter { it.done }.groupingBy { it.exerciseId }.eachCount() }
+    // Какой файл показывать у каждого упражнения: проверка файлов — в фоне, а не при прокрутке.
+    val mediaOf by produceState(emptyMap<Long, String?>(), exercises) {
+        value = withContext(Dispatchers.IO) { exercises.associate { e -> e.id to e.media.lines().firstOrNull { it.isNotBlank() && java.io.File(it).exists() } } }
+    }
+
+    // Видео играет только в одной карточке — той, что ближе к центру экрана, и запускается, когда прокрутка
+    // остановилась (как в лентах коротких видео). Остальные показывают кадр-обложку: несколько декодеров разом
+    // и создание проигрывателей на ходу и давали рывки. В режиме энергосбережения видео не запускается.
+    val listState = rememberLazyListState()
+    val autoplay = remember { !com.dasein.poryadok.ui.common.TabAnim.saving(ctx) }
+    val centerKey by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
+            info.visibleItemsInfo.filter { it.key is Long }.minByOrNull { kotlin.math.abs(it.offset + it.size / 2 - center) }?.key as? Long
+        }
+    }
+    var playingId by remember { mutableStateOf<Long?>(null) }
+    LaunchedEffect(centerKey, listState.isScrollInProgress) {
+        if (!listState.isScrollInProgress) { delay(160); playingId = centerKey }
+    }
     if (gearEdit) GearSetDialog { gearEdit = false }
     deleting?.let { e ->
         com.dasein.poryadok.ui.common.ConfirmDialog(
@@ -100,7 +133,7 @@ internal fun ExerciseShorts(exercises: List<Exercise>, sets: List<SetLog>, onAdd
             onDismiss = { deleting = null },
         ) { com.dasein.poryadok.ui.common.io { com.dasein.poryadok.data.ExercisePrefs.deleteForever(e) } }
     }
-    LazyColumn(contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyColumn(state = listState, contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             OutlinedTextField(q, { q = it }, placeholder = { Text(btnLabel("Поиск упражнения")) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))
             Column(Modifier.padding(top = 8.dp)) {
@@ -133,9 +166,10 @@ internal fun ExerciseShorts(exercises: List<Exercise>, sets: List<SetLog>, onAdd
                 )
             }
         } else if (list.isEmpty()) item { Text(btnLabel("Ничего не найдено"), color = extra.dim, modifier = Modifier.padding(8.dp)) }
-        itemsIndexed(list, key = { _, e -> e.id }) { i, e ->
+        itemsIndexed(list, key = { _, e -> e.id }, contentType = { _, _ -> "short" }) { i, e ->
+            val media = if (e.id in mediaOf) mediaOf[e.id] else e.media.lines().firstOrNull { it.isNotBlank() }
             ShortCard(
-                e, i + 1, list.size, sets.count { it.exerciseId == e.id && it.done }, fav(e.id),
+                e, media, autoplay && playingId == e.id, i + 1, list.size, doneSets[e.id] ?: 0, fav(e.id),
                 onFav = { favPrefs(ctx).edit().putBoolean("ex_fav_${e.id}", !fav(e.id)).apply(); favVer++ },
                 onArchive = { com.dasein.poryadok.data.ExercisePrefs.archive(e.id) },
                 onOpen = { onOpen(e.id) },
@@ -184,12 +218,12 @@ private fun GearSetDialog(onDismiss: () -> Unit) {
 }
 
 private val SHADOW = TextStyle(shadow = Shadow(Color.Black.copy(alpha = .7f), blurRadius = 8f))
+private val SCRIM = Brush.verticalGradient(0f to Color.Black.copy(alpha = .45f), .3f to Color.Transparent, .55f to Color.Transparent, 1f to Color.Black.copy(alpha = .8f))
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ShortCard(e: Exercise, index: Int, total: Int, doneSets: Int, fav: Boolean, onFav: () -> Unit, onArchive: () -> Unit, onOpen: () -> Unit) {
+private fun ShortCard(e: Exercise, media: String?, play: Boolean, index: Int, total: Int, doneSets: Int, fav: Boolean, onFav: () -> Unit, onArchive: () -> Unit, onOpen: () -> Unit) {
     val accent = MaterialTheme.colorScheme.primary
-    val media = e.media.lines().firstOrNull { it.isNotBlank() && java.io.File(it).exists() }
     Box(
         Modifier.fillMaxWidth().aspectRatio(1.45f).clip(RoundedCornerShape(22.dp)).background(Color(0xFF1B1813)).clickable(onClick = onOpen),
     ) {
@@ -197,11 +231,15 @@ private fun ShortCard(e: Exercise, index: Int, total: Int, doneSets: Int, fav: B
             media == null -> Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(accent.copy(alpha = .35f), Color(0xFF1B1813)))), contentAlignment = Alignment.Center) {
                 Glyph(e.glyph, 96.dp, badge = false)
             }
-            Media.isVideo(media) -> LoopVideo(media, Modifier.fillMaxSize())
+            Media.isVideo(media) -> {
+                // Кадр-обложка всегда; видео поверх — только у карточки, которая сейчас играет.
+                Poster(media, Modifier.fillMaxSize())
+                if (play) LoopVideo(media, Modifier.fillMaxSize())
+            }
             else -> MediaView(media, Modifier.fillMaxSize(), crop = true)
         }
         // Затемнение снизу и сверху — чтобы текст читался на любом кадре.
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = .45f), .3f to Color.Transparent, .55f to Color.Transparent, 1f to Color.Black.copy(alpha = .8f))))
+        Box(Modifier.fillMaxSize().background(SCRIM))
 
         if (e.muscle.isNotBlank()) Row(
             Modifier.align(Alignment.TopStart).padding(12.dp).clip(RoundedCornerShape(18.dp)).background(Color.Black.copy(alpha = .45f))
@@ -246,7 +284,7 @@ private fun ShortCard(e: Exercise, index: Int, total: Int, doneSets: Int, fav: B
                     Text(btnLabel("  Смотреть"), color = Color(0xFF1B1813), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                 }
                 if (media != null && Media.isVideo(media)) {
-                    val dur by produceState<Long?>(null, media) { value = withContext(Dispatchers.IO) { durationMs(media) } }
+                    val dur by produceState(durations[media], media) { if (value == null) value = withContext(Posters.io) { durationMs(media) } }
                     dur?.let { Text("  ${mmss(it / 1000)}", color = Color.White, fontSize = 14.sp, style = SHADOW) }
                 }
             }
@@ -266,7 +304,7 @@ private fun Tag(text: String, filled: Boolean = false) {
 
 private fun mmss(sec: Long) = "%d:%02d".format(sec / 60, sec % 60)
 
-private val durations = HashMap<String, Long>()
+private val durations = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
 private fun durationMs(path: String): Long? = durations[path] ?: runCatching {
     MediaMetadataRetriever().run {
@@ -274,7 +312,48 @@ private fun durationMs(path: String): Long? = durations[path] ?: runCatching {
     }
 }.getOrNull()?.also { durations[path] = it }
 
-/** Видео без звука по кругу, обрезанное по рамке (как обложка шортса). Проигрыватель освобождается, когда карточка уходит с экрана. */
+/** Кадр-обложка видео: из памяти, с диска (кэш приложения) или, впервые, из самого ролика — в фоне. */
+@Composable
+private fun Poster(path: String, modifier: Modifier) {
+    val ctx = LocalContext.current
+    val img by produceState(Posters.mem(path), path) { if (value == null) value = withContext(Posters.io) { Posters.load(ctx, path) } }
+    img?.let { Image(it, null, modifier, contentScale = ContentScale.Crop) }
+}
+
+private object Posters {
+    /** Не больше двух роликов разбираются одновременно — прокрутка не душит процессор. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val io = Dispatchers.IO.limitedParallelism(2)
+    private val cache = android.util.LruCache<String, ImageBitmap>(24)
+
+    private fun key(path: String) = path + "|" + java.io.File(path).lastModified()
+    fun mem(path: String): ImageBitmap? = cache.get(path)
+
+    fun load(ctx: Context, path: String): ImageBitmap? = runCatching {
+        cache.get(path)?.let { return it }
+        val dir = java.io.File(ctx.cacheDir, "posters").apply { mkdirs() }
+        val f = java.io.File(dir, "p" + key(path).hashCode().toUInt().toString(16) + ".jpg")
+        val bmp = if (f.exists()) android.graphics.BitmapFactory.decodeFile(f.absolutePath) else {
+            val r = MediaMetadataRetriever()
+            try {
+                r.setDataSource(path)
+                r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()?.let { durations[path] = it }
+                val frame = if (android.os.Build.VERSION.SDK_INT >= 27) r.getScaledFrameAtTime(500_000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, 720, 720)
+                else r.getFrameAtTime(500_000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                frame?.also { b -> runCatching { f.outputStream().use { b.compress(android.graphics.Bitmap.CompressFormat.JPEG, 82, it) } } }
+            } finally { runCatching { r.release() } }
+        }
+        bmp?.asImageBitmap()?.also { cache.put(path, it) }
+    }.getOrNull()
+}
+
+/** Проигрыватели создаются и освобождаются по одному в фоне: release() на главном потоке подтормаживал прокрутку. */
+private val playerThread = java.util.concurrent.Executors.newSingleThreadExecutor()
+
+/**
+ * Видео без звука по кругу, обрезанное по рамке (как обложка шортса). Появляется плавно с первым кадром —
+ * до этого видна обложка. Проигрыватель освобождается, когда карточка уходит с экрана.
+ */
 @Composable
 fun LoopVideo(path: String, modifier: Modifier = Modifier) = androidx.compose.runtime.key(path) {
     AndroidView(
@@ -289,27 +368,42 @@ private class LoopTexture(c: Context, private val path: String) : TextureView(c)
     private var surface: Surface? = null
     private var vw = 0
     private var vh = 0
+    @Volatile private var released = false
+    private var shown = false
 
-    init { surfaceTextureListener = this }
+    init {
+        surfaceTextureListener = this
+        alpha = 0f
+    }
 
     override fun onSurfaceTextureAvailable(st: SurfaceTexture, w: Int, h: Int) {
         val s = Surface(st).also { surface = it }
-        player = runCatching {
-            MediaPlayer().apply {
-                setDataSource(path)
-                setSurface(s)
-                isLooping = true
-                setVolume(0f, 0f)
-                setOnVideoSizeChangedListener { _, x, y -> vw = x; vh = y; crop() }
-                setOnPreparedListener { it.start() }
-                prepareAsync()
+        // Открытие файла и подготовка декодера — в фоне; на главном потоке только старт.
+        playerThread.execute {
+            if (released) return@execute
+            val mp = runCatching {
+                MediaPlayer().apply {
+                    setDataSource(path)
+                    setSurface(s)
+                    isLooping = true
+                    setVolume(0f, 0f)
+                    setOnVideoSizeChangedListener { _, x, y -> post { vw = x; vh = y; crop() } }
+                    prepare()
+                }
+            }.getOrNull()
+            post {
+                if (released) playerThread.execute { runCatching { mp?.release() } }
+                else { player = mp; runCatching { mp?.start() } }
             }
-        }.getOrNull()
+        }
     }
 
     override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, w: Int, h: Int) = crop()
     override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean { release(); return true }
-    override fun onSurfaceTextureUpdated(st: SurfaceTexture) {}
+    override fun onSurfaceTextureUpdated(st: SurfaceTexture) {
+        // Первый кадр готов — плавно показываем видео поверх обложки.
+        if (!shown) { shown = true; animate().alpha(1f).setDuration(160).start() }
+    }
 
     /** Центр-кроп: кадр заполняет всю карточку, лишнее по краям обрезается. */
     private fun crop() {
@@ -323,9 +417,15 @@ private class LoopTexture(c: Context, private val path: String) : TextureView(c)
     }
 
     fun release() {
-        runCatching { player?.release() }
+        if (released) return
+        released = true
+        val p = player
+        val s = surface
         player = null
-        runCatching { surface?.release() }
         surface = null
+        playerThread.execute {
+            runCatching { p?.release() }
+            runCatching { s?.release() }
+        }
     }
 }
