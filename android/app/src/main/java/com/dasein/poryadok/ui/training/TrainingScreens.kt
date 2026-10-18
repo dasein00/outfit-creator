@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.training
 
 import com.dasein.poryadok.ui.common.swipeTabs
+import com.dasein.poryadok.ui.common.tabSlide
 import com.dasein.poryadok.ui.common.swipeTabsOf
 import android.content.Context
 import com.dasein.poryadok.ui.common.btnLabel
@@ -226,139 +227,141 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
                     Text(btnLabel("Нажмите, чтобы продолжить"), fontSize = 12.sp, color = extra.dim)
                 }
             }
-            when (tab) {
-                0 -> LazyColumn(contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    item {
-                        Hint(
-                            "training_intro",
-                            "Выберите программу и нажмите «Начать». В тренировке отмечайте подходы — после завершения приложение само повысит цель: " +
-                                "сначала добавит повтор, а когда во всех подходах получится верх диапазона — вес (для упражнений без веса — подход). " +
-                                "Так работает двойная прогрессия из рекомендаций Американского колледжа спортивной медицины (ACSM, 2009).",
-                            title = "Как работает прогрессия",
-                        )
-                    }
-                    item {
-                        OutlinedButton(onClick = { startPlan(null) }, Modifier.fillMaxWidth()) { Text(btnLabel("Свободная тренировка без программы")) }
-                    }
-                    if (plans.isEmpty()) item {
-                        Tile {
-                            Text(btnLabel("Программ пока нет"), fontWeight = FontWeight.SemiBold)
-                            Text(
-                                "Составьте свою: кнопка «+ Программа» внизу → название и дни → добавьте упражнения из вкладки «Упражнения» с подходами, повторами и весом. " +
-                                    "Сначала создайте упражнения (с видео или GIF), если их ещё нет.",
-                                fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
+            Column(Modifier.tabSlide(tab)) {
+                when (tab) {
+                    0 -> LazyColumn(contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        item {
+                            Hint(
+                                "training_intro",
+                                "Выберите программу и нажмите «Начать». В тренировке отмечайте подходы — после завершения приложение само повысит цель: " +
+                                    "сначала добавит повтор, а когда во всех подходах получится верх диапазона — вес (для упражнений без веса — подход). " +
+                                    "Так работает двойная прогрессия из рекомендаций Американского колледжа спортивной медицины (ACSM, 2009).",
+                                title = "Как работает прогрессия",
                             )
                         }
-                    }
-                    items(plans, key = { it.id }) { p ->
-                        val items = planEx.filter { it.planId == p.id }
-                        val last = sessions.firstOrNull { it.planId == p.id && it.finishedAt != null }
-                        Tile(onClick = { nav.navigate(Routes.trainingPlan(p.id)) }, onLongClick = { planMenu = p }) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Glyph(p.glyph, 30.dp)
-                                HGap(12.dp)
-                                Column(Modifier.weight(1f)) {
-                                    Text(p.name, fontWeight = FontWeight.SemiBold)
-                                    Text(
-                                        listOfNotNull(
-                                            "${items.size} упр.", days(p.daysMask).takeIf { it.isNotBlank() },
-                                            last?.let { "было ${Dates.label(it.day)}" },
-                                        ).joinToString(" · "),
-                                        fontSize = 12.sp, color = extra.dim,
-                                    )
+                        item {
+                            OutlinedButton(onClick = { startPlan(null) }, Modifier.fillMaxWidth()) { Text(btnLabel("Свободная тренировка без программы")) }
+                        }
+                        if (plans.isEmpty()) item {
+                            Tile {
+                                Text(btnLabel("Программ пока нет"), fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    "Составьте свою: кнопка «+ Программа» внизу → название и дни → добавьте упражнения из вкладки «Упражнения» с подходами, повторами и весом. " +
+                                        "Сначала создайте упражнения (с видео или GIF), если их ещё нет.",
+                                    fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
+                                )
+                            }
+                        }
+                        items(plans, key = { it.id }) { p ->
+                            val items = planEx.filter { it.planId == p.id }
+                            val last = sessions.firstOrNull { it.planId == p.id && it.finishedAt != null }
+                            Tile(onClick = { nav.navigate(Routes.trainingPlan(p.id)) }, onLongClick = { planMenu = p }) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Glyph(p.glyph, 30.dp)
+                                    HGap(12.dp)
+                                    Column(Modifier.weight(1f)) {
+                                        Text(p.name, fontWeight = FontWeight.SemiBold)
+                                        Text(
+                                            listOfNotNull(
+                                                "${items.size} упр.", days(p.daysMask).takeIf { it.isNotBlank() },
+                                                last?.let { "было ${Dates.label(it.day)}" },
+                                            ).joinToString(" · "),
+                                            fontSize = 12.sp, color = extra.dim,
+                                        )
+                                    }
+                                    Button(onClick = { startPlan(p.id) }, enabled = items.isNotEmpty()) { Text(btnLabel("Начать")) }
                                 }
-                                Button(onClick = { startPlan(p.id) }, enabled = items.isNotEmpty()) { Text(btnLabel("Начать")) }
-                            }
-                            if (p.description.isNotBlank()) Text(p.description, fontSize = 13.sp, color = extra.dim, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
-                        }
-                    }
-                    if (archivedPlans.isNotEmpty()) item {
-                        TextButton(onClick = { planArchiveOpen = !planArchiveOpen }, Modifier.fillMaxWidth()) {
-                            Text((if (planArchiveOpen) "Скрыть архив программ" else "Архив программ") + " (${archivedPlans.size})")
-                        }
-                    }
-                    if (planArchiveOpen) items(archivedPlans, key = { "a" + it.id }) { p ->
-                        Tile(color = extra.cardHigh) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Glyph(p.glyph, 26.dp)
-                                HGap(10.dp)
-                                Text(p.name, Modifier.weight(1f), fontWeight = FontWeight.Medium, color = extra.dim)
-                            }
-                            Row {
-                                TextButton(onClick = { io { t.upsertPlan(p.copy(archived = false)) } }) { Text(btnLabel("Вернуть")) }
-                                TextButton(onClick = { deletePlan = p }) { Text(btnLabel("Удалить навсегда"), color = extra.danger) }
+                                if (p.description.isNotBlank()) Text(p.description, fontSize = 13.sp, color = extra.dim, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
                             }
                         }
-                    }
-                    item { HowTo("training") }
-                }
-                1 -> ExerciseShorts(exercises, sets, onAdd = { nav.navigate(Routes.exercise(0)) }) { nav.navigate(Routes.exercise(it)) }
-                // Журнал: быстрая запись бега, йоги, прогулок и любых тренировок, статистика недели и 8 недель.
-                4 -> Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp)) {
-                    com.dasein.poryadok.ui.health.WorkoutTab(nav, inTraining = true)
-                    Gap(80.dp)
-                }
-                2 -> LazyColumn(contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    item {
-                        OutlinedButton(onClick = { tab = 4 }, Modifier.fillMaxWidth()) { Text(btnLabel("Бег, йога, прогулки — быстрая запись")) }
-                    }
-                    val done = sessions.filter { it.finishedAt != null && it.id !in archivedSessions }
-                    val archived = sessions.filter { it.finishedAt != null && it.id in archivedSessions }
-                    if (done.isEmpty()) item { Text(btnLabel("Завершённых тренировок пока нет."), color = extra.dim, modifier = Modifier.padding(8.dp)) }
-                    items(done, key = { it.id }) { s ->
-                        val mine = sets.filter { it.sessionId == s.id && it.done }
-                        val minutes = ((s.finishedAt!! - s.startedAt) / 60000).toInt()
-                        Tile(onClick = { nav.navigate(Routes.session(s.id)) }, onLongClick = { sessionMenu = s }) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(s.title, fontWeight = FontWeight.SemiBold)
-                                    Text("${Dates.label(s.day)} · $minutes мин · подходов ${mine.size} · тоннаж ${w(mine.sumOf { it.weight * it.reps })} кг", fontSize = 12.sp, color = extra.dim)
+                        if (archivedPlans.isNotEmpty()) item {
+                            TextButton(onClick = { planArchiveOpen = !planArchiveOpen }, Modifier.fillMaxWidth()) {
+                                Text((if (planArchiveOpen) "Скрыть архив программ" else "Архив программ") + " (${archivedPlans.size})")
+                            }
+                        }
+                        if (planArchiveOpen) items(archivedPlans, key = { "a" + it.id }) { p ->
+                            Tile(color = extra.cardHigh) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Glyph(p.glyph, 26.dp)
+                                    HGap(10.dp)
+                                    Text(p.name, Modifier.weight(1f), fontWeight = FontWeight.Medium, color = extra.dim)
                                 }
-                                if (s.feel > 0) MoodFace(s.feel, 26.dp)
-                            }
-                        }
-                    }
-                    if (archived.isNotEmpty()) item {
-                        TextButton(onClick = { sessionArchiveOpen = !sessionArchiveOpen }, Modifier.fillMaxWidth()) {
-                            Text((if (sessionArchiveOpen) "Скрыть архив тренировок" else "Архив тренировок") + " (${archived.size})")
-                        }
-                    }
-                    if (sessionArchiveOpen) items(archived, key = { "a" + it.id }) { s ->
-                        Tile(color = extra.cardHigh, onClick = { nav.navigate(Routes.session(s.id)) }, onLongClick = { sessionMenu = s }) {
-                            Text(s.title, fontWeight = FontWeight.Medium, color = extra.dim)
-                            Text(Dates.label(s.day), fontSize = 12.sp, color = extra.dim)
-                            Row {
-                                TextButton(onClick = { com.dasein.poryadok.data.TrainingArchive.restore(s.id) }) { Text(btnLabel("Вернуть")) }
-                                TextButton(onClick = { deleteSession = s }) { Text(btnLabel("Удалить навсегда"), color = extra.danger) }
-                            }
-                        }
-                    }
-                    item { HowTo("training") }
-                }
-                else -> LazyColumn(contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val used = exercises.filter { e -> sets.any { it.exerciseId == e.id && it.done } }
-                    if (used.isEmpty()) item { Text("Здесь появятся графики, когда вы отметите первые подходы.", color = extra.dim, modifier = Modifier.padding(8.dp)) }
-                    items(used, key = { it.id }) { e ->
-                        val h = TrainingRepo.history(sets.filter { it.exerciseId == e.id }, sessions)
-                        val values = h.map {
-                            when (e.kind) { ExKind.TIME -> it.bestSeconds.toFloat(); ExKind.REPS -> it.bestReps.toFloat(); else -> it.best1rm.toFloat() }
-                        }
-                        Tile(onClick = { nav.navigate(Routes.exercise(e.id)) }) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(e.name, fontWeight = FontWeight.SemiBold)
-                                    val last = h.lastOrNull()
-                                    Text(
-                                        (last?.let { TrainingRepo.describeDone(e.kind, it.sets) } ?: "") +
-                                            if (e.kind == ExKind.WEIGHT && last != null) " · 1ПМ ≈ ${TrainingRepo.e1rmText(last.best1rm)}" else "",
-                                        fontSize = 12.sp, color = extra.dim,
-                                    )
+                                Row {
+                                    TextButton(onClick = { io { t.upsertPlan(p.copy(archived = false)) } }) { Text(btnLabel("Вернуть")) }
+                                    TextButton(onClick = { deletePlan = p }) { Text(btnLabel("Удалить навсегда"), color = extra.danger) }
                                 }
-                                if (values.size >= 2) Sparkline(values, Modifier.width(90.dp).height(36.dp))
                             }
                         }
+                        item { HowTo("training") }
                     }
-                    item { HowTo("training") }
+                    1 -> ExerciseShorts(exercises, sets, onAdd = { nav.navigate(Routes.exercise(0)) }) { nav.navigate(Routes.exercise(it)) }
+                    // Журнал: быстрая запись бега, йоги, прогулок и любых тренировок, статистика недели и 8 недель.
+                    4 -> Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp)) {
+                        com.dasein.poryadok.ui.health.WorkoutTab(nav, inTraining = true)
+                        Gap(80.dp)
+                    }
+                    2 -> LazyColumn(contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        item {
+                            OutlinedButton(onClick = { tab = 4 }, Modifier.fillMaxWidth()) { Text(btnLabel("Бег, йога, прогулки — быстрая запись")) }
+                        }
+                        val done = sessions.filter { it.finishedAt != null && it.id !in archivedSessions }
+                        val archived = sessions.filter { it.finishedAt != null && it.id in archivedSessions }
+                        if (done.isEmpty()) item { Text(btnLabel("Завершённых тренировок пока нет."), color = extra.dim, modifier = Modifier.padding(8.dp)) }
+                        items(done, key = { it.id }) { s ->
+                            val mine = sets.filter { it.sessionId == s.id && it.done }
+                            val minutes = ((s.finishedAt!! - s.startedAt) / 60000).toInt()
+                            Tile(onClick = { nav.navigate(Routes.session(s.id)) }, onLongClick = { sessionMenu = s }) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(s.title, fontWeight = FontWeight.SemiBold)
+                                        Text("${Dates.label(s.day)} · $minutes мин · подходов ${mine.size} · тоннаж ${w(mine.sumOf { it.weight * it.reps })} кг", fontSize = 12.sp, color = extra.dim)
+                                    }
+                                    if (s.feel > 0) MoodFace(s.feel, 26.dp)
+                                }
+                            }
+                        }
+                        if (archived.isNotEmpty()) item {
+                            TextButton(onClick = { sessionArchiveOpen = !sessionArchiveOpen }, Modifier.fillMaxWidth()) {
+                                Text((if (sessionArchiveOpen) "Скрыть архив тренировок" else "Архив тренировок") + " (${archived.size})")
+                            }
+                        }
+                        if (sessionArchiveOpen) items(archived, key = { "a" + it.id }) { s ->
+                            Tile(color = extra.cardHigh, onClick = { nav.navigate(Routes.session(s.id)) }, onLongClick = { sessionMenu = s }) {
+                                Text(s.title, fontWeight = FontWeight.Medium, color = extra.dim)
+                                Text(Dates.label(s.day), fontSize = 12.sp, color = extra.dim)
+                                Row {
+                                    TextButton(onClick = { com.dasein.poryadok.data.TrainingArchive.restore(s.id) }) { Text(btnLabel("Вернуть")) }
+                                    TextButton(onClick = { deleteSession = s }) { Text(btnLabel("Удалить навсегда"), color = extra.danger) }
+                                }
+                            }
+                        }
+                        item { HowTo("training") }
+                    }
+                    else -> LazyColumn(contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val used = exercises.filter { e -> sets.any { it.exerciseId == e.id && it.done } }
+                        if (used.isEmpty()) item { Text("Здесь появятся графики, когда вы отметите первые подходы.", color = extra.dim, modifier = Modifier.padding(8.dp)) }
+                        items(used, key = { it.id }) { e ->
+                            val h = TrainingRepo.history(sets.filter { it.exerciseId == e.id }, sessions)
+                            val values = h.map {
+                                when (e.kind) { ExKind.TIME -> it.bestSeconds.toFloat(); ExKind.REPS -> it.bestReps.toFloat(); else -> it.best1rm.toFloat() }
+                            }
+                            Tile(onClick = { nav.navigate(Routes.exercise(e.id)) }) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(e.name, fontWeight = FontWeight.SemiBold)
+                                        val last = h.lastOrNull()
+                                        Text(
+                                            (last?.let { TrainingRepo.describeDone(e.kind, it.sets) } ?: "") +
+                                                if (e.kind == ExKind.WEIGHT && last != null) " · 1ПМ ≈ ${TrainingRepo.e1rmText(last.best1rm)}" else "",
+                                            fontSize = 12.sp, color = extra.dim,
+                                        )
+                                    }
+                                    if (values.size >= 2) Sparkline(values, Modifier.width(90.dp).height(36.dp))
+                                }
+                            }
+                        }
+                        item { HowTo("training") }
+                    }
                 }
             }
         }
@@ -860,11 +863,13 @@ private fun ExerciseEditBody(modifier: Modifier, ex: Exercise, id: Long, onChang
                 else MediaView(m, Modifier.fillMaxWidth().heightIn(max = 300.dp).clip(RoundedCornerShape(12.dp)), crop = false)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Spacer(Modifier.weight(1f))
-                    if (Media.isVideo(m) && java.io.File(m).length() > 8L * 1024 * 1024) com.dasein.poryadok.ui.common.CompressVideoButton(m) { new ->
+                    val swap: (String) -> Unit = { new ->
                         val upd = ex.copy(media = media.map { if (it == m) new else it }.joinToString("\n"))
                         onChange(upd)
                         if (id != 0L) io { t.upsertExercise(upd) }
                     }
+                    if (Media.isVideo(m)) com.dasein.poryadok.ui.common.EditVideoButton(m, swap)
+                    if (Media.isVideo(m) && java.io.File(m).length() > 8L * 1024 * 1024) com.dasein.poryadok.ui.common.CompressVideoButton(m, swap)
                     TextButton(onClick = {
                         val upd = ex.copy(media = media.filter { it != m }.joinToString("\n"))
                         onChange(upd)

@@ -119,15 +119,17 @@ fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolea
                     "Видео ${i + 1}" + if (size > 0) " · ${com.dasein.poryadok.system.VideoCompress.mb(size)}" else "",
                     fontSize = 12.sp, color = extra.dim, modifier = Modifier.weight(1f),
                 )
-                if (size > 8L * 1024 * 1024) com.dasein.poryadok.ui.common.CompressVideoButton(v) { new ->
+                // Старый файл после сжатия или монтажа удалён — путь обновляем во всех сохранённых рецептах с ним
+                // (и в этом тоже, даже если правка ещё не сохранена), иначе видео «пропало» бы при выходе без сохранения.
+                val swap: (String) -> Unit = { new ->
                     save(videos.map { if (it == v) new else it })
-                    // Старый файл уже удалён — путь обновляем во всех сохранённых рецептах с ним (и в этом тоже,
-                    // даже если правка ещё не сохранена), иначе видео «пропало» бы при выходе без сохранения.
                     io {
                         Graph.extra.recipesNow().filter { v in RecipeVideos.list(it) }
                             .forEach { r -> Graph.extra.setVideos(r.id, RecipeVideos.list(r).map { x -> if (x == v) new else x }.joinToString("\n")) }
                     }
                 }
+                if (size > 0) com.dasein.poryadok.ui.common.EditVideoButton(v, swap)
+                if (size > 8L * 1024 * 1024) com.dasein.poryadok.ui.common.CompressVideoButton(v, swap)
                 TextButton(onClick = { remove = v }) { Text(btnLabel("Убрать"), color = extra.danger) }
             }
         }

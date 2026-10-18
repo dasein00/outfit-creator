@@ -232,6 +232,7 @@ object BackupFiles {
             com.dasein.poryadok.data.VacationStore.reload()
             com.dasein.poryadok.data.TrainingArchive.reload()
             com.dasein.poryadok.data.ExercisePrefs.reload()
+            com.dasein.poryadok.ui.common.TabAnim.reload()
             ReaderStore.reload(ctx)
             files
         }

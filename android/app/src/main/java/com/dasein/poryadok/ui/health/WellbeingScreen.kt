@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.health
 
 import com.dasein.poryadok.ui.common.swipeTabs
+import com.dasein.poryadok.ui.common.tabSlide
 import com.dasein.poryadok.ui.common.swipeTabsOf
 import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.btnLabel
@@ -101,7 +102,7 @@ fun WellbeingScreen(nav: NavHostController, initialTab: Int) {
             TabRow(selectedTabIndex = tab - 1, containerColor = MaterialTheme.colorScheme.background) {
                 listOf("Сон", "Вода").forEachIndexed { i, t -> Tab(tab == i + 1, onClick = { tab = i + 1 }, text = { Text(t) }) }
             }
-            Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+            Column(Modifier.tabSlide(tab - 1).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
                 when (tab) {
                     1 -> SleepTab()
                     else -> WaterTab()

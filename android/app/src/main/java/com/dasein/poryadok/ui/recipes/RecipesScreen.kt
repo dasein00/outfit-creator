@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.recipes
 
 import com.dasein.poryadok.ui.common.swipeTabs
+import com.dasein.poryadok.ui.common.tabSlide
 import com.dasein.poryadok.ui.common.swipeTabsOf
 import androidx.compose.foundation.layout.Arrangement
 import com.dasein.poryadok.ui.common.btnLabel
@@ -116,12 +117,14 @@ fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int, emb
             if (tab == 0) com.dasein.poryadok.ui.common.OutlinedButton(
                 onClick = { nav.navigate(WHAT_TO_COOK_ROUTE) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
             ) { Text("Что приготовить из того, что есть дома?") }
-            when (tab) {
-                0 -> Catalog(nav, book)
-                1 -> MenuPlanner(nav, book, initialMode)
-                2 -> Favorites(nav, book)
-                3 -> Mine(nav, book)
-                else -> Archive(nav, book)
+            Column(Modifier.tabSlide(tab)) {
+                when (tab) {
+                    0 -> Catalog(nav, book)
+                    1 -> MenuPlanner(nav, book, initialMode)
+                    2 -> Favorites(nav, book)
+                    3 -> Mine(nav, book)
+                    else -> Archive(nav, book)
+                }
             }
         }
     }

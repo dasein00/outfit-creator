@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.calendar
 
 import com.dasein.poryadok.ui.common.swipeTabs
+import com.dasein.poryadok.ui.common.tabSlide
 import com.dasein.poryadok.ui.common.swipeTabsOf
 import androidx.activity.compose.BackHandler
 import com.dasein.poryadok.ui.common.btnLabel
@@ -137,12 +138,14 @@ fun CalendarScreen(nav: NavHostController, initialTab: Int, onBack: (() -> Unit)
                 Tab(tab == 4, onClick = { tab = 4 }, text = { Text(btnLabel("Культура"), fontSize = 13.sp, maxLines = 1) })
                 Tab(tab == 1, onClick = { tab = 1 }, text = { Text(btnLabel("Напоминалки"), fontSize = 13.sp, maxLines = 1, softWrap = false) })
             }
-            when (tab) {
-                0 -> MonthView(nav, selected, onSelect = { selected = it }, onReminder = { editReminder = it })
-                2 -> HolidaysTab(nav, selected, onSelect = { selected = it })
-                3 -> HistoryTab(selected)
-                4 -> CultureTab(selected)
-                else -> RemindersList(onEdit = { editReminder = it })
+            Column(Modifier.tabSlide(listOf(0, 2, 3, 4, 1).indexOf(tab))) {
+                when (tab) {
+                    0 -> MonthView(nav, selected, onSelect = { selected = it }, onReminder = { editReminder = it })
+                    2 -> HolidaysTab(nav, selected, onSelect = { selected = it })
+                    3 -> HistoryTab(selected)
+                    4 -> CultureTab(selected)
+                    else -> RemindersList(onEdit = { editReminder = it })
+                }
             }
         }
     }

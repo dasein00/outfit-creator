@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.finance
 
 import com.dasein.poryadok.ui.common.swipeTabs
+import com.dasein.poryadok.ui.common.tabSlide
 import com.dasein.poryadok.ui.common.swipeTabsOf
 import com.dasein.poryadok.ui.common.FitText
 import com.dasein.poryadok.ui.common.btnLabel
@@ -177,19 +178,21 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
                     )
                 }
             }
-            when (tab) {
-                0 -> Operations(nav, month, cats, accounts, cur)
-                1 -> Overview(txns, month, cats, ym, cur) { editCategory = it }
-                2 -> Column {
-                    com.dasein.poryadok.ui.common.OutlinedButton(onClick = { nav.navigate(FIN_INFO_ROUTE) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
-                        Text(btnLabel("Вся инфографика: капитал, места, подписки, календарь"))
+            Column(Modifier.tabSlide(tab)) {
+                when (tab) {
+                    0 -> Operations(nav, month, cats, accounts, cur)
+                    1 -> Overview(txns, month, cats, ym, cur) { editCategory = it }
+                    2 -> Column {
+                        com.dasein.poryadok.ui.common.OutlinedButton(onClick = { nav.navigate(FIN_INFO_ROUTE) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+                            Text(btnLabel("Вся инфографика: капитал, места, подписки, календарь"))
+                        }
+                        FinanceAnalytics(txns, cats, accounts, budgets, ym, cur)
                     }
-                    FinanceAnalytics(txns, cats, accounts, budgets, ym, cur)
+                    3 -> Budgets(month, cats, budgets, ym, cur) { editBudget = it }
+                    4 -> RecurringList(recurring, cats, accounts, cur) { editRecurring = it }
+                    5 -> Accounts(accounts, txns, cur, onAlign = { align = true }, onStatement = { nav.navigate(STATEMENT_ROUTE) }) { editAccount = it }
+                    6 -> FinanceCalculators(cur)
                 }
-                3 -> Budgets(month, cats, budgets, ym, cur) { editBudget = it }
-                4 -> RecurringList(recurring, cats, accounts, cur) { editRecurring = it }
-                5 -> Accounts(accounts, txns, cur, onAlign = { align = true }, onStatement = { nav.navigate(STATEMENT_ROUTE) }) { editAccount = it }
-                6 -> FinanceCalculators(cur)
             }
         }
     }

@@ -157,6 +157,18 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
                 Switch(look.contrast, { on -> set { it.copy(contrast = on, icons = if (on && it.icons == 0) 1 else it.icons) } })
             }
 
+            SectionTitle("Анимация")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(btnLabel("Анимация переходов"), fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Подразделы плавно сменяют друг друга при свайпе влево-вправо и нажатии на вкладку. Сама выключается в режиме энергосбережения и при заряде ${com.dasein.poryadok.ui.common.TabAnim.LOW_BATTERY} % и меньше.",
+                        fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
+                    )
+                }
+                Switch(com.dasein.poryadok.ui.common.TabAnim.enabled.value, { com.dasein.poryadok.ui.common.TabAnim.setEnabled(it) })
+            }
+
             SectionTitle("Иконки")
             Look.ICON_MODES.forEachIndexed { i, label ->
                 Row(

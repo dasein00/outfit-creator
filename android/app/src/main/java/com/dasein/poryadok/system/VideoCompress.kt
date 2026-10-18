@@ -66,11 +66,16 @@ object VideoCompress {
      * Звук ускоряется или замедляется без «мультяшного» голоса (Sonic). null — не получилось, остаётся исходный.
      */
     @OptIn(UnstableApi::class)
-    suspend fun edit(ctx: Context, input: File, clipMs: LongRange?, speed: Float): File? = transform(ctx, input, clipMs, speed)
+    suspend fun edit(ctx: Context, input: File, clipMs: LongRange?, speed: Float): File? = transform(ctx, input, clipMs?.let { listOf(it) }, speed)
+
+    /** Монтаж: куски исходного ролика [segments] (мс) склеиваются по порядку, со скоростью [speed] и сжатием. */
+    @OptIn(UnstableApi::class)
+    suspend fun editSegments(ctx: Context, input: File, segments: List<LongRange>, speed: Float): File? =
+        transform(ctx, input, segments.takeIf { it.isNotEmpty() }, speed)
 
     @OptIn(UnstableApi::class)
-    private suspend fun transform(ctx: Context, input: File, clipMs: LongRange?, speed: Float): File? {
-        val edited = clipMs != null || speed != 1f
+    private suspend fun transform(ctx: Context, input: File, segments: List<LongRange>?, speed: Float): File? {
+        val edited = segments != null || speed != 1f
         val i = withContext(Dispatchers.IO) { info(input.absolutePath) } ?: return null
         val out = File(input.parentFile, "v_${System.currentTimeMillis()}.mp4")
         // Высота итогового кадра так, чтобы короткая сторона стала 480 (вертикальное видео — выше).
@@ -97,19 +102,25 @@ object VideoCompress {
                         }
                     })
                     .build()
-                val media = MediaItem.Builder().setUri(Uri.fromFile(input)).apply {
-                    if (clipMs != null) setClippingConfiguration(
-                        MediaItem.ClippingConfiguration.Builder().setStartPositionMs(clipMs.first).setEndPositionMs(clipMs.last).build(),
-                    )
-                }.build()
-                val audio = if (speed != 1f) listOf(androidx.media3.common.audio.SonicAudioProcessor().apply { setSpeed(speed); setPitch(1f) }) else emptyList()
-                val video = buildList<androidx.media3.common.Effect> {
-                    if (speed != 1f) add(androidx.media3.effect.SpeedChangeEffect(speed))
-                    if (scale < 1f) add(Presentation.createForHeight(height))
+                // Каждый кусок — отдельный элемент последовательности со своей обрезкой; эффекты у всех одинаковые.
+                fun item(clip: LongRange?): EditedMediaItem {
+                    val media = MediaItem.Builder().setUri(Uri.fromFile(input)).apply {
+                        if (clip != null) setClippingConfiguration(
+                            MediaItem.ClippingConfiguration.Builder().setStartPositionMs(clip.first).setEndPositionMs(clip.last).build(),
+                        )
+                    }.build()
+                    val audio = if (speed != 1f) listOf(androidx.media3.common.audio.SonicAudioProcessor().apply { setSpeed(speed); setPitch(1f) }) else emptyList()
+                    val video = buildList<androidx.media3.common.Effect> {
+                        if (speed != 1f) add(androidx.media3.effect.SpeedChangeEffect(speed))
+                        if (scale < 1f) add(Presentation.createForHeight(height))
+                    }
+                    return EditedMediaItem.Builder(media).setEffects(Effects(audio, video)).build()
                 }
-                val item = EditedMediaItem.Builder(media).setEffects(Effects(audio, video)).build()
+                val composition = Composition.Builder(
+                    listOf(androidx.media3.transformer.EditedMediaItemSequence((segments ?: listOf(null)).map { item(it) })),
+                ).build()
                 cont.invokeOnCancellation { runCatching { transformer.cancel() } }
-                runCatching { transformer.start(item, out.absolutePath) }.onFailure { if (cont.isActive) cont.resume(false) }
+                runCatching { transformer.start(composition, out.absolutePath) }.onFailure { if (cont.isActive) cont.resume(false) }
             }
         }
         // Если сжатый файл не меньше исходного — оставляем исходный (кроме обрезки и скорости: там важен сам результат).
@@ -121,6 +132,15 @@ object VideoCompress {
         val f = File(path)
         if (!f.exists()) return path
         val c = compress(ctx, f) ?: return path
+        withContext(Dispatchers.IO) { f.delete() }
+        return c.absolutePath
+    }
+
+    /** Монтаж уже добавленного файла: при успехе исходный удаляется. Возвращает путь к итоговому (или прежний). */
+    suspend fun replaceEdited(ctx: Context, path: String, segments: List<LongRange>, speed: Float): String {
+        val f = File(path)
+        if (!f.exists()) return path
+        val c = editSegments(ctx, f, segments, speed) ?: return path
         withContext(Dispatchers.IO) { f.delete() }
         return c.absolutePath
     }

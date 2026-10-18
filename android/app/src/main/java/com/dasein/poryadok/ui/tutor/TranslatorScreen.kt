@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui.tutor
 
 import com.dasein.poryadok.ui.common.swipeTabs
+import com.dasein.poryadok.ui.common.tabSlide
 import com.dasein.poryadok.ui.common.swipeTabsOf
 import android.content.ClipData
 import com.dasein.poryadok.ui.common.btnLabel
@@ -85,7 +86,7 @@ fun TranslatorScreen(nav: NavHostController, initialTab: Int) {
                 Tab(tab == 0, onClick = { tab = 0 }, text = { Text(btnLabel("Перевод")) })
                 Tab(tab == 1, onClick = { tab = 1 }, text = { Text(btnLabel("Идиомы и фразы")) })
             }
-            if (tab == 0) TranslateTab(sp) else PhrasesTab(sp)
+            Column(Modifier.tabSlide(tab)) { if (tab == 0) TranslateTab(sp) else PhrasesTab(sp) }
         }
     }
 }

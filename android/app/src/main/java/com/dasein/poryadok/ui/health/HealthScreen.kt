@@ -3,6 +3,7 @@
 package com.dasein.poryadok.ui.health
 
 import com.dasein.poryadok.ui.common.swipeTabs
+import com.dasein.poryadok.ui.common.tabSlide
 import com.dasein.poryadok.ui.common.swipeTabsOf
 import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.btnLabel
@@ -151,7 +152,7 @@ fun HealthScreen(nav: NavHostController, initialTab: Int) {
             ScrollableTabRow(selectedTabIndex = tabs.indexOfFirst { it.first == tab }.coerceAtLeast(0), edgePadding = 12.dp, containerColor = MaterialTheme.colorScheme.background) {
                 tabs.forEach { (i, t) -> Tab(tab == i, onClick = { tab = i }, text = { Text(t) }) }
             }
-            Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+            Column(Modifier.tabSlide(tabs.indexOfFirst { it.first == tab }).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
                 if (profileOrNull == null) Text(btnLabel("Загрузка…"), Modifier.padding(16.dp), color = LocalExtra.current.dim)
                 else when (tab) {
                     0 -> FoodTab(nav, plan, profile)
