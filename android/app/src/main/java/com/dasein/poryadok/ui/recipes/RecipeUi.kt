@@ -126,9 +126,13 @@ fun Recipe.tagList() = tags.split(',').map { it.trim() }.filter { it.isNotEmpty(
 
 @Composable
 fun RecipeThumb(r: Recipe, size: Dp) {
-    if (r.photo.startsWith("dish/")) {
-        Box(Modifier.size(size).clip(RoundedCornerShape(14.dp)).background(LocalExtra.current.cardHigh), contentAlignment = Alignment.Center) {
-            Glyph(r.photo, size * .92f, badge = false)
+    if (r.photo.startsWith("dish/") || r.photo.startsWith("u:")) {
+        // Удержание иконки здесь не включает общую замену картинки: одна иллюстрация бывает у многих рецептов,
+        // и замена меняла бы её у всех. Своя иконка рецепта меняется через «Сменить иконку» — только у него.
+        androidx.compose.runtime.CompositionLocalProvider(com.dasein.poryadok.ui.common.LocalIconEditable provides false) {
+            Box(Modifier.size(size).clip(RoundedCornerShape(14.dp)).background(LocalExtra.current.cardHigh), contentAlignment = Alignment.Center) {
+                Glyph(r.photo, size * .92f, badge = false)
+            }
         }
         return
     }
@@ -287,4 +291,41 @@ fun MacroLine(m: Macros, modifier: Modifier = Modifier, showFiber: Boolean = fal
 @Composable
 fun ScrollColumn(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Column(modifier.verticalScroll(rememberScrollState())) { content() }
+}
+
+
+/**
+ * «Сменить иконку» одного рецепта: своё фото (с кадрированием) или иллюстрация из набора.
+ * Сохраняется в самом рецепте — у других рецептов иконки не меняются.
+ */
+@Composable
+fun RecipeIconDialog(r: Recipe, onDismiss: () -> Unit) {
+    var pickIllustration by remember { mutableStateOf(false) }
+    val pickPhoto = com.dasein.poryadok.ui.common.rememberImagePickerWithCrop(1f, "recipes") { path ->
+        io { com.dasein.poryadok.Graph.extra.upsertRecipe(r.copy(photo = path)) }
+        onDismiss()
+    }
+    if (pickIllustration) {
+        com.dasein.poryadok.ui.common.GlyphPickerDialog(r.photo, { pickIllustration = false; onDismiss() }, dishes = true) { key ->
+            io { com.dasein.poryadok.Graph.extra.upsertRecipe(r.copy(photo = key)) }
+            pickIllustration = false; onDismiss()
+        }
+        return
+    }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(btnLabel("Иконка рецепта")) },
+        text = {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RecipeThumb(r, 56.dp)
+                    Text("  Меняется только у «${r.name}».", fontSize = 13.sp, color = LocalExtra.current.dim)
+                }
+                com.dasein.poryadok.ui.common.Gap(12.dp)
+                com.dasein.poryadok.ui.common.OutlinedButton(onClick = { pickPhoto() }, Modifier.fillMaxWidth()) { Text(btnLabel("Своё фото")) }
+                com.dasein.poryadok.ui.common.OutlinedButton(onClick = { pickIllustration = true }, Modifier.fillMaxWidth()) { Text(btnLabel("Иллюстрация из набора")) }
+            }
+        },
+        confirmButton = { com.dasein.poryadok.ui.common.TextButton(onClick = onDismiss) { Text(btnLabel("Закрыть")) } },
+    )
 }

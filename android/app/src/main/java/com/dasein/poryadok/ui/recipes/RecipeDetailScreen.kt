@@ -182,13 +182,16 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                 }
                 Gap(10.dp)
             }
-            val img by rememberImage(r.photo.takeIf { it.isNotBlank() && !it.startsWith("dish/") }, 1200)
+            // Нажатие на фото или иконку — сменить иконку только этого рецепта.
+            var changeIcon by remember { mutableStateOf(false) }
+            if (changeIcon) RecipeIconDialog(r) { changeIcon = false }
+            val img by rememberImage(r.photo.takeIf { it.isNotBlank() && !it.startsWith("dish/") && !it.startsWith("u:") }, 1200)
             img?.let {
-                Image(it, null, Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(18.dp)), contentScale = ContentScale.Crop)
+                Image(it, null, Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(18.dp)).clickable { changeIcon = true }, contentScale = ContentScale.Crop)
                 Gap(10.dp)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (img == null) { RecipeThumb(r, if (r.photo.startsWith("dish/")) 96.dp else 56.dp); HGap(12.dp) }
+                if (img == null) { Box(Modifier.clip(RoundedCornerShape(14.dp)).clickable { changeIcon = true }) { RecipeThumb(r, if (r.photo.startsWith("dish/")) 96.dp else 56.dp) }; HGap(12.dp) }
                 Column(Modifier.weight(1f)) {
                     Text(r.category + if (r.custom) " · мой рецепт" else "", color = extra.dim, fontSize = 13.sp)
                     Text(

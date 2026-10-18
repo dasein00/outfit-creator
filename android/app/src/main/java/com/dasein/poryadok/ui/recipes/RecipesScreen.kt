@@ -511,7 +511,9 @@ private fun RecipeQuickMenu(nav: NavHostController, r: Recipe, onDismiss: () -> 
     val ctx = LocalContext.current
     var share by remember { mutableStateOf(false) }
     var delete by remember { mutableStateOf(false) }
+    var icon by remember { mutableStateOf(false) }
     if (share) { ShareRecipesDialog(listOf(r), setOf(r.id)) { share = false; onDismiss() }; return }
+    if (icon) { RecipeIconDialog(r) { icon = false; onDismiss() }; return }
     if (delete) {
         ConfirmDialog("Удалить рецепт навсегда?", "«${r.name}» исчезнет из архива и базы. Уже запланированные блюда останутся в меню.", onDismiss = { delete = false; onDismiss() }) {
             io { RecipeRepo.deleteRecipe(r.id) }
@@ -525,6 +527,7 @@ private fun RecipeQuickMenu(nav: NavHostController, r: Recipe, onDismiss: () -> 
             Column {
                 TextButton(onClick = { onDismiss(); nav.navigate(Routes.recipe(r.id)) }, Modifier.fillMaxWidth()) { Text(btnLabel("Открыть рецепт")) }
                 TextButton(onClick = { onDismiss(); nav.navigate(Routes.recipeEdit(r.id)) }, Modifier.fillMaxWidth()) { Text(btnLabel("Изменить рецепт")) }
+                TextButton(onClick = { icon = true }, Modifier.fillMaxWidth()) { Text(btnLabel("Сменить иконку")) }
                 TextButton(onClick = { share = true }, Modifier.fillMaxWidth()) { Text(btnLabel("Поделиться рецептом (файл)")) }
                 TextButton(onClick = { io { Graph.extra.setFavorite(r.id, !r.favorite) }; onDismiss() }, Modifier.fillMaxWidth()) {
                     Text(if (r.favorite) "Убрать из избранного" else "В избранное")
