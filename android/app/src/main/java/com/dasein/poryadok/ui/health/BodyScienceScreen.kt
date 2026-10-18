@@ -81,7 +81,7 @@ internal fun BodyScienceSection(nav: NavHostController, last: BodyMetric?) {
         Text(
             listOfNotNull(
                 if (p.male) "мужчина" else "женщина", "${p.age} лет", "рост ${s(p.heightCm)} см", "вес ${s(weight)} кг",
-                latest?.waist?.let { "талия ${s(it)}" }, latest?.hips?.let { "бёдра ${s(it)}" }, latest?.neck?.let { "шея ${s(it)}" },
+                facts.waistCm?.let { "талия ${s(it)}" }, facts.hipCm?.let { "бёдра ${s(it)}" }, facts.neckCm?.let { "шея ${s(it)}" },
                 last?.fatPct?.let { "жир с весов ${s(it)}%" },
             ).joinToString(", "),
             fontSize = 13.sp,
@@ -90,7 +90,7 @@ internal fun BodyScienceSection(nav: NavHostController, last: BodyMetric?) {
             "Изменить в «Замерах» →", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(top = 4.dp).clickable { nav.navigate(Routes.health(2)) },
         )
-        if (latest?.waist == null) Text(
+        if (facts.waistCm == null) Text(
             "Добавьте в «Замерах» талию (а также бёдра и шею) — появятся индексы талия/рост, талия/бёдра и точнее станет процент жира.",
             fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
         )

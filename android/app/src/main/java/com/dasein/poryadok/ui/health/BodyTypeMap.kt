@@ -229,7 +229,7 @@ private val modelCache = android.util.LruCache<String, androidx.compose.ui.graph
 @Composable
 private fun TypeModel(key: String, modifier: Modifier) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
-    val img by androidx.compose.runtime.produceState(modelCache.get(key), key) {
+    val img by androidx.compose.runtime.produceState<androidx.compose.ui.graphics.ImageBitmap?>(modelCache.get(key), key) {
         if (value == null) value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             runCatching {
                 ctx.assets.open("body_types/$key.webp").use { android.graphics.BitmapFactory.decodeStream(it) }?.asImageBitmap()
