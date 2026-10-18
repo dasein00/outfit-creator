@@ -308,7 +308,11 @@ fun RecipeIconDialog(r: Recipe, onDismiss: () -> Unit) {
     var pickIllustration by remember { mutableStateOf(false) }
     // PNG — чтобы у картинок с прозрачным фоном он и остался прозрачным (в JPEG он становился белым).
     val pickPhoto = com.dasein.poryadok.ui.common.rememberImagePickerWithCrop(1f, "recipes", png = true) { path ->
-        io { com.dasein.poryadok.Graph.extra.upsertRecipe(r.copy(photo = RecipeIcons.finish(path))) }
+        io {
+            val out = RecipeIcons.finish(path)
+            com.dasein.poryadok.Graph.extra.upsertRecipe(r.copy(photo = out))
+            RecipeIcons.addToFolder(out)
+        }
         onDismiss()
     }
     if (pickIllustration) {

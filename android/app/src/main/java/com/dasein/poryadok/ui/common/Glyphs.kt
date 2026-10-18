@@ -325,11 +325,22 @@ fun GlyphPickerDialog(
     }
     val showGrid = level == IconLibrary.MINE || open != null
     val reorderable = !editMode && !(dishes && level == IconLibrary.MINE)
-    val pickOwn = rememberImagePickerWithCrop(1f, "icons", round = !dishes, png = !dishes, outW = if (dishes) 900 else 320) { path ->
+    // Для блюд — PNG: прозрачный фон иконки остаётся прозрачным (фото без прозрачности пересохраняется в JPEG).
+    val pickOwn = rememberImagePickerWithCrop(1f, "icons", round = !dishes, png = true, outW = if (dishes) 900 else 320) { path ->
         ownVersion++
-        // Своя картинка-иконка попадает в «Мои иконки».
-        if (!dishes) sets.addKeys(ctx, sets.MINE, listOf(path))
-        onPick(path); onDismiss()
+        if (!dishes) {
+            // Своя картинка-иконка попадает в «Мои иконки».
+            sets.addKeys(ctx, sets.MINE, listOf(path))
+            onPick(path); onDismiss()
+        } else {
+            // Иконка блюда — в папку «Мои рецепты».
+            onDismiss()
+            io {
+                val out = com.dasein.poryadok.ui.recipes.RecipeIcons.finish(path)
+                com.dasein.poryadok.ui.recipes.RecipeIcons.addToFolder(out)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { onPick(out) }
+            }
+        }
     }
     val title = when {
         level == IconLibrary.SETS && open != null -> folders.firstOrNull { it.id == open }?.title ?: "Набор"

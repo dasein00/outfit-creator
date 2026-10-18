@@ -50,6 +50,16 @@ object RecipeIcons {
      * Уже добавленные иконки, у которых прозрачный фон стал белым: исходник лежит рядом (…_orig), и если в нём
      * есть прозрачность — делаем из него PNG-иконку и ставим её рецепту. Фото без прозрачности не трогаем.
      */
+    /** Новая иконка или фото моего блюда — в папку «Мои рецепты» библиотеки иконок. */
+    fun addToFolder(path: String) = runCatching { com.dasein.poryadok.system.IconSets.addRecipeIcons(Graph.app, listOf(path)) }
+
+    /** Один раз: иконки и фото уже добавленных моих рецептов — тоже в «Мои рецепты». */
+    suspend fun collectMine() {
+        val files = Graph.app.filesDir.absolutePath
+        val paths = Graph.extra.recipesNow().filter { it.custom && it.photo.startsWith(files) }.map { it.photo }
+        runCatching { com.dasein.poryadok.system.IconSets.addRecipeIcons(Graph.app, paths) }
+    }
+
     suspend fun repairWhiteBackgrounds() {
         val files = Graph.app.filesDir.absolutePath
         Graph.extra.recipesNow().forEach { r ->

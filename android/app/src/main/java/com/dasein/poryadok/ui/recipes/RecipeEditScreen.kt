@@ -192,6 +192,7 @@ private fun StepBasics(d: RecipeDraft) {
     // PNG, чтобы прозрачный фон иконки не становился белым; фото без прозрачности RecipeIcons.finish пересохранит в JPEG.
     fun setPhoto(path: String) = com.dasein.poryadok.ui.common.io {
         val out = RecipeIcons.finish(path)
+        RecipeIcons.addToFolder(out)
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { d.recipe = d.recipe.copy(photo = out) }
     }
     val pickPhoto = com.dasein.poryadok.ui.common.rememberImagePickerWithCrop(1f, "recipes", png = true) { setPhoto(it) }

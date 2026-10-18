@@ -123,6 +123,19 @@ object IconSets {
     /** «Мои иконки» — сюда попадает всё новое, удалить её нельзя. */
     const val MINE = "mine"
 
+    /** «Мои рецепты» — иконки и фото блюд из моих рецептов; папка создаётся сама при первой такой иконке. */
+    const val MY_RECIPES = "my_recipes"
+
+    /** Положить иконку моего блюда в папку «Мои рецепты» (картинку потом можно выбрать и для другого рецепта). */
+    fun addRecipeIcons(ctx: Context, paths: Collection<String>) {
+        val add = paths.filter { it.startsWith("/") && File(it).exists() }
+        if (add.isEmpty()) return
+        update(ctx) { l ->
+            val base = if (l.any { it.id == MY_RECIPES }) l else l + Folder(MY_RECIPES, "Мои рецепты")
+            base.map { if (it.id == MY_RECIPES) it.copy(keys = (it.keys + add).distinct().filter { k -> !k.startsWith("/") || File(k).exists() }) else it }
+        }
+    }
+
     private fun foldersFile(ctx: Context) = File(root(ctx), "folders.json")
 
     /** Свои картинки-иконки, загруженные из галереи (files/icons). */

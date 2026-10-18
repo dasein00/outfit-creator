@@ -97,6 +97,11 @@ fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int, emb
             RecipeIcons.repairWhiteBackgrounds()
             sp.edit().putBoolean("recipe_icons_alpha_v1", true).apply()
         }
+        // Иконки моих блюд собираются в папку «Мои рецепты» библиотеки иконок.
+        if (!sp.getBoolean("recipe_icons_folder_v1", false)) io {
+            RecipeIcons.collectMine()
+            sp.edit().putBoolean("recipe_icons_folder_v1", true).apply()
+        }
     }
     Screen(
         title = "Рецепты",
