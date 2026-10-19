@@ -109,7 +109,7 @@ fun VideoAddButtons(dir: String, galleryLabel: String = "+ Видео из га�
                 // Видео, добавленные в монтаже, уже вклеены — копии больше не нужны.
                 edit.extras.forEach { File(it).delete() }
             } else if (com.dasein.poryadok.system.VideoCompress.worth(path)) {
-                // Сжимаем: 480p и около 1 Мбит/с — звук и картинка остаются, места занимает в разы меньше.
+                // Сжимаем как можно компактнее: 360p, 24 кадра/с, H.265 около 250 кбит/с, звук моно — минута около 2 МБ.
                 withContext(Dispatchers.Main) { busy = "Сжимаю видео (${com.dasein.poryadok.system.VideoCompress.mb(before)})… Не закрывайте приложение" }
                 out = com.dasein.poryadok.system.VideoCompress.replace(ctx, path)
             }
@@ -491,12 +491,14 @@ fun EditVideoButton(path: String, onDone: (String) -> Unit) {
     }
 }
 
-/** Кнопка «Сжать» для уже добавленного видео: перекодирует в 480p и заменяет файл. */
+/** Кнопка «Сжать» для уже добавленного видео: видна, только если ролик крупнее нынешних настроек; заменяет файл. */
 @Composable
 fun CompressVideoButton(path: String, onDone: (String) -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var busy by remember(path) { mutableStateOf(false) }
+    val worth by androidx.compose.runtime.produceState(false, path) { value = withContext(Dispatchers.IO) { com.dasein.poryadok.system.VideoCompress.worth(path) } }
+    if (!worth && !busy) return
     if (busy) {
         Text(btnLabel("Сжимаю…"), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp))
         return

@@ -874,7 +874,7 @@ private fun ExerciseEditBody(modifier: Modifier, ex: Exercise, id: Long, onChang
                 androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalArrangement = Arrangement.Center) {
                     if (Media.isVideo(m)) com.dasein.poryadok.ui.common.EditVideoButton(m, swap)
                     if (Media.isVideo(m)) TextButton(onClick = { replacing = !replacing }) { Text(btnLabel(if (replacing) "Не заменять" else "Заменить")) }
-                    if (Media.isVideo(m) && java.io.File(m).length() > 8L * 1024 * 1024) com.dasein.poryadok.ui.common.CompressVideoButton(m, swap)
+                    if (Media.isVideo(m)) com.dasein.poryadok.ui.common.CompressVideoButton(m, swap)
                     TextButton(onClick = {
                         val upd = ex.copy(media = media.filter { it != m }.joinToString("\n"))
                         onChange(upd)

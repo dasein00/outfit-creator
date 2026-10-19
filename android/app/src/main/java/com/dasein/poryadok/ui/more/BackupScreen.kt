@@ -175,6 +175,23 @@ fun BackupScreen(nav: NavHostController) {
             }
 
             BackupCard(
+                Modifier.padding(top = 12.dp), "Сжать видео",
+                "Видео рецептов и тренировок, добавленные раньше, пережимаются как можно компактнее: 360p, 24 кадра/с, звук моно — минута около 2 МБ. Новые сжимаются так сами.",
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        scope.launch {
+                            busy = "Ищу видео…"
+                            val (n, saved) = runCatching { com.dasein.poryadok.system.VideoCompress.recompressAll(ctx) { busy = it } }.getOrDefault(0 to 0L)
+                            busy = null; refresh++
+                            message = if (n == 0) "Все видео уже компактные." else "Пережато видео: $n · освобождено ${com.dasein.poryadok.system.VideoCompress.mb(saved)}"
+                        }
+                    },
+                    enabled = busy == null, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                ) { Text(btnLabel("Сжать все видео")) }
+            }
+
+            BackupCard(
                 Modifier.padding(top = 12.dp), "Оформление",
                 "Только вид приложения: тема и цвета, шрифт, тексты и названия кнопок, свои иконки, главная и виджет. Записей, PIN и ключей нет. " +
                     "«Отправить в чат» — пришлите файл Claude, и ваше оформление станет стандартным при установке.",

@@ -24,12 +24,18 @@ import kotlin.coroutines.resume
 import kotlin.math.roundToInt
 
 /**
- * Сжатие видео, чтобы ролики рецептов и тренировок занимали мало места: короткая сторона — 480 точек,
- * видео H.264 около 1 Мбит/с, звук AAC сохраняется. Обычно файл уменьшается в 5–15 раз.
+ * Сжатие видео для рецептов и тренировок — как можно компактнее (картинка вторична):
+ * короткая сторона 360 точек, 24 кадра/с, видео H.265 около 250 кбит/с (если телефон его не кодирует — H.264 400 кбит/с),
+ * звук AAC моно 32 кбит/с. Минута весит около 2 МБ. Не получилось с этими настройками — пробуем проще (H.264, звук как есть).
  */
 object VideoCompress {
-    const val SHORT_SIDE = 480
-    private const val BITRATE = 1_000_000
+    const val SHORT_SIDE = 360
+    private const val FPS = 24f
+    private const val HEVC_BITRATE = 250_000
+    private const val AVC_BITRATE = 400_000
+    private const val AUDIO_BITRATE = 32_000
+    /** Общий битрейт сжатого ролика с запасом: файлы заметно выше него стоит пережать. */
+    private const val TARGET_TOTAL = 450_000
 
     /** Размеры кадра с учётом поворота и средний битрейт. */
     private data class Info(val w: Int, val h: Int, val bitrate: Int)
@@ -48,10 +54,72 @@ object VideoCompress {
         }
     }.getOrNull()
 
-    /** Стоит ли сжимать: кадр крупнее 480p или битрейт заметно выше целевого. */
+    /** Стоит ли сжимать: кадр крупнее 360p или битрейт заметно выше целевого (в том числе ролики, сжатые по-старому). */
     fun worth(path: String): Boolean {
         val i = info(path) ?: return false
-        return minOf(i.w, i.h) > SHORT_SIDE + 40 || i.bitrate > BITRATE * 2
+        return minOf(i.w, i.h) > SHORT_SIDE + 40 || i.bitrate > TARGET_TOTAL * 16 / 10
+    }
+
+    /** Настройки одной попытки: кодек, битрейт, звук в моно и 24 кадра/с. */
+    private data class Codec(val mime: String, val bitrate: Int, val compact: Boolean)
+
+    @Volatile private var hevcCached: Boolean? = null
+
+    /** Умеет ли телефон кодировать H.265 (почти все с 2016 года). */
+    @OptIn(UnstableApi::class)
+    private fun hevc(): Boolean = hevcCached ?: runCatching { androidx.media3.transformer.EncoderUtil.getSupportedEncoders(MimeTypes.VIDEO_H265).isNotEmpty() }
+        .getOrDefault(false).also { hevcCached = it }
+
+    /** Сначала самое компактное; если телефон не справился — H.264 без лишних эффектов. */
+    private fun attempts(): List<Codec> = listOf(
+        if (hevc()) Codec(MimeTypes.VIDEO_H265, HEVC_BITRATE, true) else Codec(MimeTypes.VIDEO_H264, AVC_BITRATE, true),
+        Codec(MimeTypes.VIDEO_H264, AVC_BITRATE, false),
+    )
+
+    /** Звук: скорость без «мультяшного» голоса (Sonic) и моно. */
+    @OptIn(UnstableApi::class)
+    private fun audioFx(speed: Float, mono: Boolean): List<androidx.media3.common.audio.AudioProcessor> = buildList {
+        if (speed != 1f) add(androidx.media3.common.audio.SonicAudioProcessor().apply { setSpeed(speed); setPitch(1f) })
+        if (mono) add(androidx.media3.common.audio.ChannelMixingAudioProcessor().apply {
+            putChannelMixingMatrix(androidx.media3.common.audio.ChannelMixingMatrix(1, 1, floatArrayOf(1f)))
+            putChannelMixingMatrix(androidx.media3.common.audio.ChannelMixingMatrix(2, 1, floatArrayOf(.5f, .5f)))
+        })
+    }
+
+    /** Кодирует [composition] в [out] попытками из [attempts]. true — получилось. */
+    @OptIn(UnstableApi::class)
+    private suspend fun export(ctx: Context, out: File, composition: (Codec) -> Composition): Boolean {
+        for (codec in attempts()) {
+            out.delete()
+            val ok = withContext(Dispatchers.Main) {
+                suspendCancellableCoroutine { cont ->
+                    val transformer = Transformer.Builder(ctx)
+                        .setVideoMimeType(codec.mime)
+                        .setAudioMimeType(MimeTypes.AUDIO_AAC)
+                        .setEncoderFactory(
+                            DefaultEncoderFactory.Builder(ctx.applicationContext)
+                                .setRequestedVideoEncoderSettings(VideoEncoderSettings.Builder().setBitrate(codec.bitrate).build())
+                                .apply { if (codec.compact) setRequestedAudioEncoderSettings(androidx.media3.transformer.AudioEncoderSettings.Builder().setBitrate(AUDIO_BITRATE).build()) }
+                                .build(),
+                        )
+                        .addListener(object : Transformer.Listener {
+                            override fun onCompleted(composition: Composition, exportResult: ExportResult) {
+                                if (cont.isActive) cont.resume(true)
+                            }
+
+                            override fun onError(composition: Composition, exportResult: ExportResult, exportException: ExportException) {
+                                if (cont.isActive) cont.resume(false)
+                            }
+                        })
+                        .build()
+                    cont.invokeOnCancellation { runCatching { transformer.cancel() } }
+                    runCatching { transformer.start(composition(codec), out.absolutePath) }.onFailure { if (cont.isActive) cont.resume(false) }
+                }
+            }
+            if (ok && out.length() > 0) return true
+        }
+        out.delete()
+        return false
     }
 
     /**
@@ -62,9 +130,8 @@ object VideoCompress {
     suspend fun compress(ctx: Context, input: File): File? = transform(ctx, input, null, 1f)
 
     /**
-     * Монтаж: куски [clips] из файлов [sources] склеиваются по порядку, у каждого своя скорость (звук без
-     * «мультяшного» голоса — Sonic). [aspect] — кадр (ширина/высота) с обрезкой краёв, null — как у видео.
-     * [mute] — без звука. Итог сжимается до 480p. null — не получилось.
+     * Монтаж: куски [clips] из файлов [sources] склеиваются по порядку, у каждого своя скорость.
+     * [aspect] — кадр (ширина/высота) с обрезкой краёв, null — как у видео. [mute] — без звука. Итог сжимается. null — не получилось.
      */
     @OptIn(UnstableApi::class)
     suspend fun editClips(ctx: Context, sources: List<File>, clips: List<com.dasein.poryadok.logic.VideoCut.Clip>, aspect: Float?, mute: Boolean): File? {
@@ -72,55 +139,33 @@ object VideoCompress {
         val first = withContext(Dispatchers.IO) { info(sources[0].absolutePath) } ?: return null
         val out = File(sources[0].parentFile, "v_${System.currentTimeMillis()}.mp4")
         val mixed = clips.any { it.src != 0 }
-        // Размер кадра: по заданной пропорции или по первому видео; короткая сторона — не больше 480.
+        // Размер кадра: по заданной пропорции или по первому видео; короткая сторона — не больше SHORT_SIDE.
         val a = aspect ?: (first.w.toFloat() / first.h.coerceAtLeast(1))
         val short = if (aspect != null) SHORT_SIDE else minOf(minOf(first.w, first.h), SHORT_SIDE)
         val (outW, outH) = if (a < 1f) short to (short / a).roundToInt() else (short * a).roundToInt() to short
         val w2 = (outW / 2) * 2
         val h2 = (outH / 2) * 2
         val needSize = aspect != null || mixed || minOf(first.w, first.h) > SHORT_SIDE
-        val ok = withContext(Dispatchers.Main) {
-            suspendCancellableCoroutine { cont ->
-                val transformer = Transformer.Builder(ctx)
-                    .setVideoMimeType(MimeTypes.VIDEO_H264)
-                    .setAudioMimeType(MimeTypes.AUDIO_AAC)
-                    .setEncoderFactory(
-                        DefaultEncoderFactory.Builder(ctx.applicationContext)
-                            .setRequestedVideoEncoderSettings(VideoEncoderSettings.Builder().setBitrate(BITRATE).build())
-                            .build(),
-                    )
-                    .addListener(object : Transformer.Listener {
-                        override fun onCompleted(composition: Composition, exportResult: ExportResult) {
-                            if (cont.isActive) cont.resume(true)
-                        }
-
-                        override fun onError(composition: Composition, exportResult: ExportResult, exportException: ExportException) {
-                            if (cont.isActive) cont.resume(false)
-                        }
-                    })
-                    .build()
-                val items = clips.map { c ->
-                    val src = sources.getOrElse(c.src) { sources[0] }
-                    val media = MediaItem.Builder().setUri(Uri.fromFile(src)).setClippingConfiguration(
-                        MediaItem.ClippingConfiguration.Builder().setStartPositionMs(c.start).setEndPositionMs(c.end).build(),
-                    ).build()
-                    val audio = if (c.speed != 1f && !mute) listOf(androidx.media3.common.audio.SonicAudioProcessor().apply { setSpeed(c.speed); setPitch(1f) }) else emptyList()
-                    val video = buildList<androidx.media3.common.Effect> {
-                        if (c.speed != 1f) add(androidx.media3.effect.SpeedChangeEffect(c.speed))
-                        // Кадр с обрезкой краёв (9:16, 1:1…) или общий размер для кусков из разных видео.
-                        if (needSize) add(Presentation.createForWidthAndHeight(w2, h2, if (aspect != null) Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP else Presentation.LAYOUT_SCALE_TO_FIT))
-                    }
-                    EditedMediaItem.Builder(media).setRemoveAudio(mute).setEffects(Effects(audio, video)).build()
+        val ok = export(ctx, out) { codec ->
+            val items = clips.map { c ->
+                val src = sources.getOrElse(c.src) { sources[0] }
+                val media = MediaItem.Builder().setUri(Uri.fromFile(src)).setClippingConfiguration(
+                    MediaItem.ClippingConfiguration.Builder().setStartPositionMs(c.start).setEndPositionMs(c.end).build(),
+                ).build()
+                val video = buildList<androidx.media3.common.Effect> {
+                    if (c.speed != 1f) add(androidx.media3.effect.SpeedChangeEffect(c.speed))
+                    // Кадр с обрезкой краёв (9:16, 1:1…) или общий размер для кусков из разных видео.
+                    if (needSize) add(Presentation.createForWidthAndHeight(w2, h2, if (aspect != null) Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP else Presentation.LAYOUT_SCALE_TO_FIT))
+                    if (codec.compact) add(androidx.media3.effect.FrameDropEffect.createDefaultFrameDropEffect(FPS))
                 }
-                val composition = Composition.Builder(listOf(androidx.media3.transformer.EditedMediaItemSequence(items)))
-                    // Куски из разных видео: если у какого-то нет звука, вместо него — тишина, а не ошибка.
-                    .apply { if (mixed && !mute) experimentalSetForceAudioTrack(true) }
-                    .build()
-                cont.invokeOnCancellation { runCatching { transformer.cancel() } }
-                runCatching { transformer.start(composition, out.absolutePath) }.onFailure { if (cont.isActive) cont.resume(false) }
+                EditedMediaItem.Builder(media).setRemoveAudio(mute).setEffects(Effects(if (mute) emptyList() else audioFx(c.speed, codec.compact), video)).build()
             }
+            Composition.Builder(listOf(androidx.media3.transformer.EditedMediaItemSequence(items)))
+                // Куски из разных видео: если у какого-то нет звука, вместо него — тишина, а не ошибка.
+                .apply { if (mixed && !mute) experimentalSetForceAudioTrack(true) }
+                .build()
         }
-        return if (ok && out.length() > 0) out else { out.delete(); null }
+        return if (ok) out else null
     }
 
     @OptIn(UnstableApi::class)
@@ -128,53 +173,29 @@ object VideoCompress {
         val edited = segments != null || speed != 1f
         val i = withContext(Dispatchers.IO) { info(input.absolutePath) } ?: return null
         val out = File(input.parentFile, "v_${System.currentTimeMillis()}.mp4")
-        // Высота итогового кадра так, чтобы короткая сторона стала 480 (вертикальное видео — выше).
+        // Высота итогового кадра так, чтобы короткая сторона стала SHORT_SIDE (вертикальное видео — выше).
         val short = minOf(i.w, i.h).coerceAtLeast(1)
         val scale = (SHORT_SIDE.toFloat() / short).coerceAtMost(1f)
         val height = ((i.h * scale) / 2).roundToInt() * 2
-        val ok = withContext(Dispatchers.Main) {
-            suspendCancellableCoroutine { cont ->
-                val transformer = Transformer.Builder(ctx)
-                    .setVideoMimeType(MimeTypes.VIDEO_H264)
-                    .setAudioMimeType(MimeTypes.AUDIO_AAC)
-                    .setEncoderFactory(
-                        DefaultEncoderFactory.Builder(ctx.applicationContext)
-                            .setRequestedVideoEncoderSettings(VideoEncoderSettings.Builder().setBitrate(BITRATE).build())
-                            .build(),
+        val ok = export(ctx, out) { codec ->
+            // Каждый кусок — отдельный элемент последовательности со своей обрезкой; эффекты у всех одинаковые.
+            fun item(clip: LongRange?): EditedMediaItem {
+                val media = MediaItem.Builder().setUri(Uri.fromFile(input)).apply {
+                    if (clip != null) setClippingConfiguration(
+                        MediaItem.ClippingConfiguration.Builder().setStartPositionMs(clip.first).setEndPositionMs(clip.last).build(),
                     )
-                    .addListener(object : Transformer.Listener {
-                        override fun onCompleted(composition: Composition, exportResult: ExportResult) {
-                            if (cont.isActive) cont.resume(true)
-                        }
-
-                        override fun onError(composition: Composition, exportResult: ExportResult, exportException: ExportException) {
-                            if (cont.isActive) cont.resume(false)
-                        }
-                    })
-                    .build()
-                // Каждый кусок — отдельный элемент последовательности со своей обрезкой; эффекты у всех одинаковые.
-                fun item(clip: LongRange?): EditedMediaItem {
-                    val media = MediaItem.Builder().setUri(Uri.fromFile(input)).apply {
-                        if (clip != null) setClippingConfiguration(
-                            MediaItem.ClippingConfiguration.Builder().setStartPositionMs(clip.first).setEndPositionMs(clip.last).build(),
-                        )
-                    }.build()
-                    val audio = if (speed != 1f) listOf(androidx.media3.common.audio.SonicAudioProcessor().apply { setSpeed(speed); setPitch(1f) }) else emptyList()
-                    val video = buildList<androidx.media3.common.Effect> {
-                        if (speed != 1f) add(androidx.media3.effect.SpeedChangeEffect(speed))
-                        if (scale < 1f) add(Presentation.createForHeight(height))
-                    }
-                    return EditedMediaItem.Builder(media).setEffects(Effects(audio, video)).build()
+                }.build()
+                val video = buildList<androidx.media3.common.Effect> {
+                    if (speed != 1f) add(androidx.media3.effect.SpeedChangeEffect(speed))
+                    if (scale < 1f) add(Presentation.createForHeight(height))
+                    if (codec.compact) add(androidx.media3.effect.FrameDropEffect.createDefaultFrameDropEffect(FPS))
                 }
-                val composition = Composition.Builder(
-                    listOf(androidx.media3.transformer.EditedMediaItemSequence((segments ?: listOf(null)).map { item(it) })),
-                ).build()
-                cont.invokeOnCancellation { runCatching { transformer.cancel() } }
-                runCatching { transformer.start(composition, out.absolutePath) }.onFailure { if (cont.isActive) cont.resume(false) }
+                return EditedMediaItem.Builder(media).setEffects(Effects(audioFx(speed, codec.compact), video)).build()
             }
+            Composition.Builder(listOf(androidx.media3.transformer.EditedMediaItemSequence((segments ?: listOf(null)).map { item(it) }))).build()
         }
         // Если сжатый файл не меньше исходного — оставляем исходный (кроме обрезки и скорости: там важен сам результат).
-        return if (ok && out.length() > 0 && (edited || out.length() < input.length())) out else { out.delete(); null }
+        return if (ok && (edited || out.length() < input.length())) out else { out.delete(); null }
     }
 
     /** Сжимает файл на месте: при успехе исходный удаляется. Возвращает путь к итоговому файлу. */
@@ -193,6 +214,38 @@ object VideoCompress {
         val c = editClips(ctx, sources.map { File(it) }, clips, aspect, mute) ?: return path
         withContext(Dispatchers.IO) { f.delete() }
         return c.absolutePath
+    }
+
+    /**
+     * Пережать все видео рецептов и тренировок, которые крупнее нынешних настроек (в том числе сжатые по-старому).
+     * Пути обновляются в рецептах и упражнениях. Возвращает (сколько роликов пережато, сколько байт освобождено).
+     */
+    suspend fun recompressAll(ctx: Context, onProgress: (String) -> Unit): Pair<Int, Long> {
+        val g = com.dasein.poryadok.Graph
+        val recipes = g.extra.recipesNow()
+        val exercises = g.training.exercisesNow()
+        fun isLocalVideo(p: String) = p.startsWith("/") && com.dasein.poryadok.ui.common.Media.isVideo(p) && File(p).exists()
+        val paths = (recipes.flatMap { r -> r.videos.lines().map { it.trim() } } + exercises.flatMap { e -> e.media.lines().map { it.trim() } })
+            .filter { isLocalVideo(it) }.distinct()
+        val todo = withContext(Dispatchers.IO) { paths.filter { worth(it) } }
+        var n = 0
+        var saved = 0L
+        todo.forEachIndexed { i, p ->
+            onProgress("Сжимаю видео ${i + 1} из ${todo.size}… Не закрывайте приложение")
+            val before = File(p).length()
+            val out = replace(ctx, p)
+            if (out == p) return@forEachIndexed
+            n++
+            saved += before - File(out).length()
+            com.dasein.poryadok.system.VideoSpeech.carry(ctx, p, out)
+            g.extra.recipesNow().filter { r -> r.videos.lines().any { it.trim() == p } }.forEach { r ->
+                g.extra.setVideos(r.id, r.videos.lines().map { if (it.trim() == p) out else it }.joinToString("\n"))
+            }
+            g.training.exercisesNow().filter { e -> e.media.lines().any { it.trim() == p } }.forEach { e ->
+                g.training.upsertExercise(e.copy(media = e.media.lines().map { if (it.trim() == p) out else it }.joinToString("\n")))
+            }
+        }
+        return n to saved.coerceAtLeast(0)
     }
 
     fun mb(bytes: Long) = if (bytes < 1024 * 1024) "${bytes / 1024} КБ" else String.format(java.util.Locale.US, "%.1f МБ", bytes / 1048576.0)

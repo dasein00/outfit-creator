@@ -135,7 +135,7 @@ fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolea
             androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End) {
                 if (size > 0) com.dasein.poryadok.ui.common.EditVideoButton(v, swap)
                 if (size > 0) TextButton(onClick = { replacing = !replacing }) { Text(btnLabel(if (replacing) "Не заменять" else "Заменить")) }
-                if (size > 8L * 1024 * 1024) com.dasein.poryadok.ui.common.CompressVideoButton(v, swap)
+                if (size > 0) com.dasein.poryadok.ui.common.CompressVideoButton(v, swap)
                 TextButton(onClick = { remove = v }) { Text(btnLabel("Убрать"), color = extra.danger) }
             }
             if (replacing) {
