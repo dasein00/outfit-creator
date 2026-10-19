@@ -387,7 +387,7 @@ object PaintByNumbers {
 
     /** Чем раскрашивать — сначала вид материала, потом какой именно: цветные или акварельные карандаши и т. д. */
     enum class Kind(val title: String, val icon: String) {
-        PENCILS("Карандаши", "✏️"), MARKERS("Маркеры", "🖊"), PAINTS("Краски", "🖌");
+        PENCILS("Карандаши", "craft/05"), MARKERS("Маркеры", "craft/06"), PAINTS("Краски", "craft/07");
         /** Материалы этого вида в порядке показа. */
         val media: List<Medium> get() = when (this) {
             PENCILS -> listOf(Medium.PENCIL, Medium.WATERCOLOR_PENCIL)

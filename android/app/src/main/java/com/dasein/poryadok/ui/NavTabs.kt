@@ -96,7 +96,7 @@ internal fun TabMenu(nav: NavHostController, index: Int, tab: Tab, onDismiss: ()
     val extra = LocalExtra.current
     var mode by remember { mutableStateOf(0) }
     when (mode) {
-        2 -> SectionEditDialog(tab.route, tab.label, tab.icon, onDismiss)
+        2 -> SectionEditDialog(tab.route, tab.label, tab.icon, onDismiss = onDismiss)
         1 -> AlertDialog(
             onDismissRequest = onDismiss,
             title = { Text("Вместо «${tab.label}»") },

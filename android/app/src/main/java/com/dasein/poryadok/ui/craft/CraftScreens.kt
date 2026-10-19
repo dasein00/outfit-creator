@@ -111,10 +111,10 @@ fun ColorChip(t: CraftPattern.Thread, index: Int, size: Int = 28) {
 
 /** Вкладки «Рукоделия» — как в приложениях-органайзерах рукоделия: у каждой техники свои работы и материалы. */
 private enum class CraftTab(val title: String, val kind: CraftPattern.Kind?, val icon: String) {
-    DIAMOND("Алмазная мозаика", CraftPattern.Kind.DIAMOND, "💎"),
-    CROSS("Вышивка крестиком", CraftPattern.Kind.CROSS, "🧵"),
-    BEADS("Бисер", CraftPattern.Kind.BEADS, "📿"),
-    PBN("Картины по номерам", null, "🎨"),
+    DIAMOND("Алмазная мозаика", CraftPattern.Kind.DIAMOND, "craft/00"),
+    CROSS("Вышивка крестиком", CraftPattern.Kind.CROSS, "craft/01"),
+    BEADS("Бисер", CraftPattern.Kind.BEADS, "craft/02"),
+    PBN("Картины по номерам", null, "craft/03"),
 }
 
 /** «Рукоделие»: алмазная мозаика, вышивка крестиком, бисер и картины по номерам — схемы из любой фотографии. */
@@ -166,7 +166,7 @@ fun CraftHomeScreen(nav: NavHostController) {
                 }
                 Gap(4.dp)
                 if (kind == null) PbnHomeContent(nav) else {
-                    com.dasein.poryadok.ui.common.InfoBox("craft_about_${kind.name}", "Как это работает") {
+                    com.dasein.poryadok.ui.common.InfoBox("craft_about_${kind.name}", "Как это работает", glyph = "craft/04") {
                         Text(
                             when (kind) {
                                 CraftPattern.Kind.DIAMOND -> "Алмазная мозаика по любому фото: квадратные или круглые стразы, цвета по каталогу DMC, у каждого цвета свой символ. " +
@@ -189,9 +189,9 @@ fun CraftHomeScreen(nav: NavHostController) {
                     error?.let { Text(it, color = extra.danger, modifier = Modifier.padding(top = 8.dp)) }
                     // Материалы — строками-переходами со счётчиками.
                     SectionTitle("Материалы")
-                    if (kind == CraftPattern.Kind.DIAMOND) NavRow("📷", "Мои стразы по фото", "${CraftStore.mine(ctx).size} цветов", Modifier.padding(bottom = 8.dp)) { nav.navigate(Routes.CRAFT_MINE) }
+                    if (kind == CraftPattern.Kind.DIAMOND) NavRow("craft/00", "Мои стразы по фото", "${CraftStore.mine(ctx).size} цветов", Modifier.padding(bottom = 8.dp)) { nav.navigate(Routes.CRAFT_MINE) }
                     NavRow(
-                        if (kind == CraftPattern.Kind.CROSS) "🧶" else "📦",
+                        if (kind == CraftPattern.Kind.CROSS) "craft/01" else "craft/09",
                         when (kind) {
                             CraftPattern.Kind.DIAMOND -> "Мои запасы страз DMC"
                             CraftPattern.Kind.CROSS -> "Мои нитки мулине DMC"

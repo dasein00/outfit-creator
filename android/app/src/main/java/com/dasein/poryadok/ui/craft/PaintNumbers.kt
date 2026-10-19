@@ -109,7 +109,7 @@ fun PbnHomeContent(nav: NavHostController) {
         }
     }
     Column {
-        com.dasein.poryadok.ui.common.InfoBox("pbn_about", "Как это работает") {
+        com.dasein.poryadok.ui.common.InfoBox("pbn_about", "Как это работает", glyph = "craft/04") {
             Text(
                 "Загрузите любую картинку — приложение превратит её в раскраску: тонкие контуры и номера цветов, а внизу листа — каким цветом " +
                     "закрашивать каждый номер. Цвета подбираются только из того, что у вас есть.",
@@ -127,7 +127,7 @@ fun PbnHomeContent(nav: NavHostController) {
         }
         Gap(10.dp)
         NavRow(
-            "🎨", "Мои материалы",
+            "craft/08", "Мои материалы",
             PaintByNumbers.Kind.entries.joinToString(" · ") { k -> "${k.title} ${k.media.sumOf { counts[it] ?: 0 }}" },
         ) { nav.navigate(Routes.CRAFT_PENCILS) }
         SectionTitle("Мои раскраски")

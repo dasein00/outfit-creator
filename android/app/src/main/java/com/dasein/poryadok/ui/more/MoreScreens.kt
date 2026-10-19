@@ -4,6 +4,12 @@ import com.dasein.poryadok.ui.common.Hint
 import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.draw.zIndex
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import com.dasein.poryadok.ui.common.Glyph
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -100,25 +106,85 @@ val HUB = listOf(
     Hub("d02/00", "Настройки", "тема, PIN, профиль", Routes.SETTINGS),
 )
 
+/** Порядок плиток «Все разделы»: сохранённый пользователем (перемещение пальцем), новые разделы — в конце. */
+private const val ORDER_KEY = "more_order"
+
+private fun hubOrder(ctx: android.content.Context): List<Hub> {
+    val saved = ctx.getSharedPreferences("ui_state", android.content.Context.MODE_PRIVATE).getString(ORDER_KEY, null)
+        ?.split('|')?.filter { it.isNotBlank() } ?: return HUB
+    return saved.mapNotNull { r -> HUB.firstOrNull { it.route == r } } + HUB.filter { it.route !in saved }
+}
+
 @Composable
 fun MoreScreen(nav: NavHostController) {
     val extra = LocalExtra.current
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     var editing by remember { mutableStateOf<Hub?>(null) }
+    val order = remember { mutableStateListOf<Hub>().apply { addAll(hubOrder(ctx)) } }
+    /** Раздел, который сейчас переносят пальцем («Изменить раздел» → «Переместить»). */
+    var moving by remember { mutableStateOf<String?>(null) }
+    var drag by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    val grid = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    // Все плитки одной высоты: место под название в две строки и подпись — даже если название короткое.
+    val tileH = with(density) { 74.dp + (60.sp).toDp() }
+    fun saveOrder() = ctx.getSharedPreferences("ui_state", android.content.Context.MODE_PRIVATE).edit()
+        .putString(ORDER_KEY, order.joinToString("|") { it.route }).apply()
     Screen(title = "Все разделы") { pad ->
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
+            state = grid,
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.padding(pad),
         ) {
-            item(span = { GridItemSpan(2) }) { SectionSearchBar(nav, Modifier.padding(bottom = 4.dp)) }
-            items(HUB) { h ->
+            item(key = "search", span = { GridItemSpan(2) }) { SectionSearchBar(nav, Modifier.padding(bottom = 4.dp)) }
+            if (moving != null) item(key = "moving_hint", span = { GridItemSpan(2) }) {
+                Tile(color = MaterialTheme.colorScheme.primary.copy(alpha = .14f), padding = 12.dp) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Зажмите выделенный раздел и перетащите на новое место. Отпустите — положение сохранится.", fontSize = 13.sp, modifier = Modifier.weight(1f))
+                        com.dasein.poryadok.ui.common.TextButton(onClick = { moving = null; drag = androidx.compose.ui.geometry.Offset.Zero }) { Text(btnLabel("Готово")) }
+                    }
+                }
+            }
+            items(order, key = { it.route }) { h ->
                 val look = com.dasein.poryadok.ui.common.rememberSection(h.route, h.title, h.icon)
-                Tile(onClick = { nav.navigate(h.route) }, onLongClick = { editing = h }) {
+                val isMoving = moving == h.route
+                val mod = if (!isMoving) Modifier.height(tileH) else Modifier.height(tileH)
+                    .zIndex(1f)
+                    .graphicsLayer { translationX = drag.x; translationY = drag.y; scaleX = 1.05f; scaleY = 1.05f; shadowElevation = 12f }
+                    .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(com.dasein.poryadok.ui.theme.LocalLook.current.cardRound.dp))
+                    .pointerInput(h.route) {
+                        detectDragGestures(
+                            onDragEnd = { drag = androidx.compose.ui.geometry.Offset.Zero; saveOrder(); moving = null },
+                            onDragCancel = { drag = androidx.compose.ui.geometry.Offset.Zero; saveOrder(); moving = null },
+                        ) { change, amount ->
+                            change.consume()
+                            drag += amount
+                            // Центр переносимой плитки над другой плиткой — меняем их местами, плитка остаётся под пальцем.
+                            val items = grid.layoutInfo.visibleItemsInfo
+                            val self = items.firstOrNull { it.key == h.route } ?: return@detectDragGestures
+                            val cx = self.offset.x + self.size.width / 2f + drag.x
+                            val cy = self.offset.y + self.size.height / 2f + drag.y
+                            val target = items.firstOrNull { it.key != h.route && it.key is String && order.any { o -> o.route == it.key } &&
+                                cx >= it.offset.x && cx <= it.offset.x + it.size.width && cy >= it.offset.y && cy <= it.offset.y + it.size.height }
+                                ?: return@detectDragGestures
+                            val from = order.indexOfFirst { it.route == h.route }
+                            val to = order.indexOfFirst { it.route == target.key }
+                            if (from < 0 || to < 0) return@detectDragGestures
+                            order.add(to, order.removeAt(from))
+                            drag -= androidx.compose.ui.geometry.Offset((target.offset.x - self.offset.x).toFloat(), (target.offset.y - self.offset.y).toFloat())
+                        }
+                    }
+                Tile(
+                    mod,
+                    onClick = if (moving == null) ({ nav.navigate(h.route) }) else null,
+                    onLongClick = if (moving == null) ({ editing = h }) else null,
+                ) {
                     Glyph(look.icon, 34.dp)
                     Gap(8.dp)
-                    Text(look.name, fontWeight = FontWeight.SemiBold)
+                    Text(look.name, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 20.sp)
                     Text(h.sub, fontSize = 12.sp, color = extra.dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
@@ -126,12 +192,14 @@ fun MoreScreen(nav: NavHostController) {
                 Hint("more_data", "Все данные хранятся только на этом телефоне. Делайте резервную копию в настройках.", Modifier.padding(8.dp), title = "Где хранятся данные")
             }
             item(span = { GridItemSpan(2) }) {
-                Text("Удерживайте раздел, чтобы сменить его название и иконку. Удерживайте кнопку нижней панели, чтобы заменить её любым разделом.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(horizontal = 8.dp))
+                Text("Удерживайте раздел, чтобы сменить его название и иконку или переместить его. Удерживайте кнопку нижней панели, чтобы заменить её любым разделом.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(horizontal = 8.dp))
             }
             item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) { HowTo("more") }
         }
     }
-    editing?.let { h -> com.dasein.poryadok.ui.common.SectionEditDialog(h.route, h.title, h.icon) { editing = null } }
+    editing?.let { h ->
+        com.dasein.poryadok.ui.common.SectionEditDialog(h.route, h.title, h.icon, onMove = { moving = h.route; drag = androidx.compose.ui.geometry.Offset.Zero }) { editing = null }
+    }
 }
 
 val WHEEL_AREAS = listOf("Здоровье", "Карьера", "Финансы", "Отношения", "Друзья", "Развитие", "Отдых", "Духовность")

@@ -58,7 +58,7 @@ fun rememberSection(key: String, defName: String, defIcon: String): SectionLook 
 
 /** Диалог по долгому нажатию на раздел: новое название и иконка из базы (или своя картинка). */
 @Composable
-fun SectionEditDialog(key: String, defName: String, defIcon: String, onDismiss: () -> Unit) {
+fun SectionEditDialog(key: String, defName: String, defIcon: String, onMove: (() -> Unit)? = null, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
     val cur = rememberSection(key, defName, defIcon)
     var name by remember { mutableStateOf(cur.name) }
@@ -81,6 +81,8 @@ fun SectionEditDialog(key: String, defName: String, defIcon: String, onDismiss: 
                     Column(Modifier.weight(1f)) { TextInput(name, { name = it.take(24) }, "Название") }
                 }
                 OutlinedButton(onClick = { pick = true }, modifier = Modifier.padding(top = 10.dp)) { Text(btnLabel("Выбрать иконку из базы")) }
+                // Переместить плитку раздела пальцем (в «Все разделы»).
+                if (onMove != null) OutlinedButton(onClick = { onDismiss(); onMove() }, modifier = Modifier.padding(top = 6.dp)) { Text(btnLabel("Переместить")) }
                 Text(
                     "Было: «$defName». Изменения видны в нижней панели и на плитках разделов.",
                     fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 8.dp),

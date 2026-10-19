@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
@@ -38,6 +39,12 @@ import com.dasein.poryadok.ui.theme.OnBackground
  * чтобы все разделы (мозаика, вышивка, бисер, картины по номерам) выглядели и работали одинаково.
  */
 
+/** Значок: иконка из набора («craft/00») или символ. */
+@Composable
+internal fun CraftIcon(icon: String, size: androidx.compose.ui.unit.Dp = 30.dp) {
+    if ('/' in icon) com.dasein.poryadok.ui.common.Glyph(icon, size, badge = false) else Text(icon, fontSize = (size.value * .75f).sp)
+}
+
 /** Карточка выбора (техника, вид материала): значок, название и короткая подпись. Выбранная — с рамкой акцента. */
 @Composable
 internal fun ChoiceCard(icon: String, title: String, sub: String?, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
@@ -52,7 +59,7 @@ internal fun ChoiceCard(icon: String, title: String, sub: String?, selected: Boo
     ) {
         OnBackground(bg) {
             Column {
-                Text(icon, fontSize = 22.sp)
+                CraftIcon(icon, 30.dp)
                 Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 17.sp, modifier = Modifier.padding(top = 4.dp))
                 if (sub != null) Text(sub, fontSize = 11.sp, color = extra.dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
@@ -66,7 +73,7 @@ internal fun NavRow(icon: String, title: String, sub: String?, modifier: Modifie
     val extra = LocalExtra.current
     Tile(modifier, onClick = onClick, padding = 12.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(icon, fontSize = 22.sp, modifier = Modifier.padding(end = 12.dp))
+            Box(Modifier.padding(end = 12.dp)) { CraftIcon(icon, 30.dp) }
             Column(Modifier.weight(1f)) {
                 Text(title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                 if (sub != null) Text(sub, fontSize = 12.sp, color = extra.dim, maxLines = 2, overflow = TextOverflow.Ellipsis)
