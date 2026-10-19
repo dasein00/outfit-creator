@@ -551,6 +551,7 @@ private fun MeasureTab(nav: NavHostController, profile: BodyProfile?, current: D
     val msOrNull by observe<List<Measurement>?>(null) { Graph.dao.measurements() }
     val ms = msOrNull.orEmpty()
     var edit by remember { mutableStateOf<Measurement?>(null) }
+    BodyAccountsBar()
     Gap(8.dp)
     if (profile == null || msOrNull == null) {
         Text(btnLabel("Загрузка…"), color = extra.dim)

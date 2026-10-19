@@ -114,6 +114,9 @@ object Body {
 
     /** Читает показатели за [days] дней. Возвращает число новых взвешиваний. */
     suspend fun syncHealthConnect(ctx: Context, days: Long = 365): Int {
+        // Открыт аккаунт другого человека — взвешивания владельца телефона ему не подтягиваем.
+        BodyAccounts.recover(ctx)
+        if (!BodyAccounts.syncAllowed(ctx)) return 0
         val ok = granted(ctx)
         if (HealthPermission.getReadPermission(WeightRecord::class) !in ok) return 0
         val client = HealthConnectClient.getOrCreate(ctx)
@@ -131,10 +134,13 @@ object Body {
         val waters = read(BodyWaterMassRecord::class)
         var added = 0
         val known = Graph.extra.bodyMetricsNow().toMutableList()
+        val others = BodyAccounts.othersReadings(ctx)
         weights.forEach { w ->
             val ext = "hc:" + w.metadata.id
             val at = w.time.toEpochMilli()
             val kg = w.weight.inKilograms
+            // Взвешивание уже записано (или перенесено) в аккаунт другого человека.
+            if (BodyAccounts.isForeign(others, ext, at, kg)) return@forEach
             val fat = near(fats, w.time) { it.time }?.percentage?.value
             val bone = near(bones, w.time) { it.time }?.mass?.inKilograms
             val lean = near(leans, w.time) { it.time }?.mass?.inKilograms

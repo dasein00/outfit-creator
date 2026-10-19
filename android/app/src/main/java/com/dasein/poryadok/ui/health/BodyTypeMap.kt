@@ -53,14 +53,22 @@ private val TYPES = listOf(
 )
 
 /**
- * Модели для каждого типа (assets/body_types). Для «Крупного, плотного» отдельной модели нет —
- * показываем ближайшую по сложению (крупное тело без выраженного живота).
+ * Модели для каждого типа (assets/body_types, женские — в female/): своя для каждого пола аккаунта.
+ * У мужских для «Крупного, плотного» отдельной модели нет — показываем ближайшую по сложению.
+ * Все картинки одного размера, фигура выровнена по центру головы и ступней — при смене модель не прыгает.
  */
-private val MODELS = listOf(
+private val MODELS_MALE = listOf(
     listOf("athlete", "hidden_obese", "obese"),
     listOf("slim", "healthy", "hidden_obese"),
     listOf("deficit", "lean", "belly_low"),
 )
+private val MODELS_FEMALE = listOf(
+    listOf("female/athlete", "female/big", "female/obese"),
+    listOf("female/slim", "female/healthy", "female/hidden_obese"),
+    listOf("female/deficit", "female/lean", "female/belly_low"),
+)
+
+private fun models(male: Boolean) = if (male) MODELS_MALE else MODELS_FEMALE
 
 private fun about(row: Int, col: Int): String = when (row to col) {
     0 to 0 -> "ИМТ выше 25, а талия меньше 40% роста — лишний вес даёт не живот, а мышцы и крупный костяк. Так выглядит тело спортсмена: худеть не нужно, держите силовые и белок."
@@ -115,8 +123,8 @@ internal fun BodyTypeMap(r: BodyReading, p: Person, history: List<BodyMetric>) {
         val trail = waists.dropLast(1).takeLast(8).mapNotNull { (d, w, _) -> weightOn(d)?.let { kg -> w / p.heightCm to BodyComp.bmi(kg, p.heightCm) } }
         // Модель типа: сначала — ваш тип по последнему замеру; касание по клетке графика показывает другой тип.
         // При новом заходе снова ваш (выбор не запоминается).
-        var pick by androidx.compose.runtime.remember(row, col) { androidx.compose.runtime.mutableStateOf(row to col) }
-        TypeModelCard(pick, own = row to col)
+        var pick by androidx.compose.runtime.remember(row, col, p.male) { androidx.compose.runtime.mutableStateOf(row to col) }
+        TypeModelCard(pick, own = row to col, male = p.male)
         TypeCanvas(whtr, bmi, trail, pick) { r2, c2 -> pick = r2 to c2 }
         Text(
             "Нажмите на любой тип на графике — модель покажет, как он выглядит.",
@@ -205,12 +213,12 @@ internal fun BodyTypeMap(r: BodyReading, p: Person, history: List<BodyMetric>) {
 
 /** Модель выбранного типа и пара строк о нём; плавная смена при выборе другой клетки. */
 @Composable
-private fun TypeModelCard(pick: Pair<Int, Int>, own: Pair<Int, Int>) {
+private fun TypeModelCard(pick: Pair<Int, Int>, own: Pair<Int, Int>, male: Boolean) {
     val extra = LocalExtra.current
     val (row, col) = pick
     androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-        androidx.compose.animation.Crossfade(MODELS[row][col], label = "bodyType") { key ->
-            TypeModel(key, Modifier.width(104.dp).height(200.dp))
+        androidx.compose.animation.Crossfade(models(male)[row][col], label = "bodyType") { key ->
+            TypeModel(key, TYPES[row][col], Modifier.width(108.dp).height(200.dp))
         }
         androidx.compose.foundation.layout.Spacer(Modifier.width(12.dp))
         androidx.compose.foundation.layout.Column(Modifier.weight(1f)) {
@@ -224,10 +232,10 @@ private fun TypeModelCard(pick: Pair<Int, Int>, own: Pair<Int, Int>) {
     }
 }
 
-private val modelCache = android.util.LruCache<String, androidx.compose.ui.graphics.ImageBitmap>(9)
+private val modelCache = android.util.LruCache<String, androidx.compose.ui.graphics.ImageBitmap>(18)
 
 @Composable
-private fun TypeModel(key: String, modifier: Modifier) {
+private fun TypeModel(key: String, title: String, modifier: Modifier) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val img by androidx.compose.runtime.produceState<androidx.compose.ui.graphics.ImageBitmap?>(modelCache.get(key), key) {
         if (value == null) value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -237,7 +245,8 @@ private fun TypeModel(key: String, modifier: Modifier) {
         }?.also { modelCache.put(key, it) }
     }
     androidx.compose.foundation.layout.Box(modifier, contentAlignment = androidx.compose.ui.Alignment.Center) {
-        img?.let { androidx.compose.foundation.Image(it, TYPES.flatten().getOrNull(MODELS.flatten().indexOf(key)), Modifier.fillMaxWidth(), contentScale = androidx.compose.ui.layout.ContentScale.Fit) }
+        // Все модели 540×1000 с фигурой по центру: рамка той же пропорции, без подгонки по ширине.
+        img?.let { androidx.compose.foundation.Image(it, title, Modifier.matchParentSize(), contentScale = androidx.compose.ui.layout.ContentScale.Fit, alignment = androidx.compose.ui.Alignment.Center) }
     }
 }
 

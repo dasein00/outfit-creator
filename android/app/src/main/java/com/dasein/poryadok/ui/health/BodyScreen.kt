@@ -193,6 +193,7 @@ fun BodyTab(nav: NavHostController, profile: BodyProfile, weights: List<WeightEn
         }
     }
 
+    BodyAccountsBar()
     Gap(8.dp)
     if (last == null) {
         Empty(Glyphs.SCALE, "Нет взвешиваний", "Добавьте вес вручную — или подключите весы через Health Connect, и показатели будут подтягиваться сами.")
@@ -463,6 +464,7 @@ internal fun BodyDialog(m0: BodyMetric, onDismiss: () -> Unit) {
                 MetricField(f, "subcut", "Подкожный жир", "%")
                 MetricField(f, "hr", "Пульс", "уд/мин")
                 MetricField(f, "cardiac", "Сердечный индекс", "л/мин/м²")
+                if (!isNew && m0.source != LEGACY) MoveReadingRow(m0, onDismiss)
             }
         },
         confirmButton = {
