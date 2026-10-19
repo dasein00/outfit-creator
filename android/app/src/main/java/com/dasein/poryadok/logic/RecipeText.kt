@@ -16,6 +16,13 @@ object RecipeText {
         val steps: List<Step>,
         val totalMinutes: Int?,
         val tags: List<String>,
+        /** Остальное заполняет ИИ; без него — [RecipeClassify]. */
+        val category: String? = null,
+        val meals: List<Int>? = null,
+        val difficulty: Int? = null,
+        val prepMinutes: Int? = null,
+        val tips: String? = null,
+        val swaps: String? = null,
     )
 
     /** Заголовок списка продуктов: «Ингредиенты (на 4 порции):», «Нам понадобится 👇». */

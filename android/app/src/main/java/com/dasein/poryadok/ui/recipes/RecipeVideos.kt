@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.dasein.poryadok.ui.recipes
 
 import android.content.Intent
@@ -96,7 +98,9 @@ fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolea
         fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(bottom = 8.dp),
     )
     videos.forEachIndexed { i, v ->
-        Tile(Modifier.padding(bottom = 8.dp)) {
+        // Как у упражнений в «Тренировках»: проигрыватель, «Монтаж», «Заменить», «Сжать», «Убрать».
+        var replacing by remember(v) { mutableStateOf(false) }
+        Tile(Modifier.padding(bottom = 8.dp), padding = 10.dp) {
             if (RecipeVideos.isLink(v)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -109,34 +113,48 @@ fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolea
                     }) { Text(btnLabel("Смотреть")) }
                 }
             } else if (File(v).exists()) {
-                LocalVideo(v, Modifier.fillMaxWidth())
+                com.dasein.poryadok.ui.common.VideoPlayer(v, Modifier.fillMaxWidth(), maxHeight = 360.dp)
             } else {
                 Text(btnLabel("Файл видео не найден"), color = extra.dim)
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val size = if (RecipeVideos.isLink(v)) 0L else File(v).length()
-                Text(
-                    "Видео ${i + 1}" + if (size > 0) " · ${com.dasein.poryadok.system.VideoCompress.mb(size)}" else "",
-                    fontSize = 12.sp, color = extra.dim, modifier = Modifier.weight(1f),
-                )
-                // Старый файл после сжатия или монтажа удалён — путь обновляем во всех сохранённых рецептах с ним
-                // (и в этом тоже, даже если правка ещё не сохранена), иначе видео «пропало» бы при выходе без сохранения.
-                val swap: (String) -> Unit = { new ->
-                    save(videos.map { if (it == v) new else it })
-                    io {
-                        Graph.extra.recipesNow().filter { v in RecipeVideos.list(it) }
-                            .forEach { r -> Graph.extra.setVideos(r.id, RecipeVideos.list(r).map { x -> if (x == v) new else x }.joinToString("\n")) }
-                    }
+            val size = if (RecipeVideos.isLink(v)) 0L else File(v).length()
+            // Старый файл после сжатия, монтажа или замены — путь обновляем во всех сохранённых рецептах с ним
+            // (и в этом тоже, даже если правка ещё не сохранена), иначе видео «пропало» бы при выходе без сохранения.
+            val swap: (String) -> Unit = { new ->
+                save(videos.map { if (it == v) new else it })
+                com.dasein.poryadok.system.VideoSpeech.prefetch(ctx, new)
+                io {
+                    Graph.extra.recipesNow().filter { v in RecipeVideos.list(it) }
+                        .forEach { r -> Graph.extra.setVideos(r.id, RecipeVideos.list(r).map { x -> if (x == v) new else x }.joinToString("\n")) }
                 }
+            }
+            if (size > 0) Text(
+                "Видео ${i + 1} · ${com.dasein.poryadok.system.VideoCompress.mb(size)}",
+                fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
+            )
+            androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End) {
                 if (size > 0) com.dasein.poryadok.ui.common.EditVideoButton(v, swap)
+                if (size > 0) TextButton(onClick = { replacing = !replacing }) { Text(btnLabel(if (replacing) "Не заменять" else "Заменить")) }
                 if (size > 8L * 1024 * 1024) com.dasein.poryadok.ui.common.CompressVideoButton(v, swap)
                 TextButton(onClick = { remove = v }) { Text(btnLabel("Убрать"), color = extra.danger) }
+            }
+            if (replacing) {
+                Text("Новое видео встанет на место этого — сначала откроется монтаж.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(vertical = 4.dp))
+                com.dasein.poryadok.ui.common.VideoAddButtons("recipes/video", galleryLabel = "Из галереи", filesLabel = "Из файлов") { new ->
+                    replacing = false
+                    swap(new)
+                    // Прежний файл больше не нужен, если его нет в других рецептах.
+                    if (deleteFiles) io {
+                        if (Graph.extra.recipesNow().none { it.id != recipeId && v in RecipeVideos.list(it) }) runCatching { File(v).delete() }
+                    }
+                }
             }
         }
     }
     Row {
         Column(Modifier.weight(1f)) {
-            com.dasein.poryadok.ui.common.VideoAddButtons("recipes/video") { path -> save(videos + path) }
+            // Речь из нового видео распознаётся сразу в фоне — для «Рецепта из видео» его не нужно загружать второй раз.
+            com.dasein.poryadok.ui.common.VideoAddButtons("recipes/video") { path -> save(videos + path); com.dasein.poryadok.system.VideoSpeech.prefetch(ctx, path) }
             OutlinedButton(onClick = { addLink = true }, Modifier.fillMaxWidth()) { Text(btnLabel("+ Ссылка на видео (YouTube, VK, Rutube)")) }
         }
     }
@@ -177,6 +195,3 @@ fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolea
     }
 }
 
-/** Проигрыватель локального файла: со звуком, не стартует сам, внизу стандартные кнопки, можно на весь экран. */
-@Composable
-private fun LocalVideo(path: String, modifier: Modifier) = com.dasein.poryadok.ui.common.VideoPlayer(path, modifier)

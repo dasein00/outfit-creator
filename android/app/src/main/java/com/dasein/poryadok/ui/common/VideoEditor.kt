@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -268,6 +269,12 @@ fun VideoEditor(path: String, dir: String, addMode: Boolean, onCancel: () -> Uni
     fun cancel() { pause(); dropExtras(); onCancel() }
 
     var panel by remember { mutableStateOf(EditPanel.NONE) }
+    // Шаг точной обрезки (мс): запоминается между открытиями редактора.
+    val prefs = remember { ctx.getSharedPreferences("video_editor", android.content.Context.MODE_PRIVATE) }
+    var nudge by remember { mutableLongStateOf(prefs.getLong("nudge", 100L).coerceIn(1L, 60_000L)) }
+    fun setNudge(v: Long) { nudge = v.coerceIn(1L, 60_000L); prefs.edit().putLong("nudge", nudge).apply() }
+    var nudgeMenu by remember { mutableStateOf(false) }
+    var nudgeCustom by remember { mutableStateOf(false) }
     fun split() {
         val r = VideoCut.split(clips, playhead)
         if (r == null) toast(ctx, "Бегунок у края куска — сдвиньте его") else { commit { setClips(r.first) }; selected = r.second }
@@ -495,6 +502,54 @@ fun VideoEditor(path: String, dir: String, addMode: Boolean, onCancel: () -> Uni
                     Spacer(Modifier.width(8.dp))
                     Text("кусок ${si + 1}/${clips.size}\n${clock(sel.len)}", color = Color.White.copy(alpha = .7f), fontSize = 11.sp)
                 }
+                // Точная обрезка: «+N» удлиняет кусок с этой стороны, «−N» укорачивает. N выбирается.
+                fun nudgeStart(delta: Long) {
+                    val c = clips.getOrNull(si) ?: return
+                    val nc = VideoCut.nudgeStart(c, delta)
+                    if (nc == c) { toast(ctx, if (delta > 0) "Это начало видео" else "Кусок уже самый короткий"); return }
+                    commit { clips[si] = nc }
+                    stopAt = null; pause(); seek(si, nc.start); scrollToPlayhead()
+                }
+                fun nudgeEnd(delta: Long) {
+                    val c = clips.getOrNull(si) ?: return
+                    val nc = VideoCut.nudgeEnd(c, delta, durations[c.src] ?: c.end)
+                    if (nc == c) { toast(ctx, if (delta > 0) "Это конец видео" else "Кусок уже самый короткий"); return }
+                    commit { clips[si] = nc }
+                    // Как при отпускании ручки конца: последние 0,2 с до него — и стоп на нём.
+                    seek(si, maxOf(nc.start, nc.end - (END_PREVIEW_MS * nc.speed).toLong())); scrollToPlayhead(); stopAt = nc.end; play()
+                }
+                Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 2.dp), verticalAlignment = Alignment.Bottom) {
+                    Column {
+                        Text("Начало", color = Color.White.copy(alpha = .7f), fontSize = 10.sp)
+                        Row {
+                            NudgeButton("+$nudge") { nudgeStart(nudge) }
+                            Spacer(Modifier.width(4.dp))
+                            NudgeButton("−$nudge") { nudgeStart(-nudge) }
+                        }
+                    }
+                    Spacer(Modifier.weight(1f))
+                    Box {
+                        NudgeButton("$nudge мс ▾", accent = true) { nudgeMenu = true }
+                        androidx.compose.material3.DropdownMenu(nudgeMenu, onDismissRequest = { nudgeMenu = false }) {
+                            VideoCut.NUDGE_STEPS.forEach { v ->
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text(if (v == 33L) "33 мс (1 кадр)" else "$v мс", fontWeight = if (v == nudge) FontWeight.Bold else null) },
+                                    onClick = { setNudge(v); nudgeMenu = false },
+                                )
+                            }
+                            androidx.compose.material3.DropdownMenuItem(text = { Text("Своё значение…") }, onClick = { nudgeMenu = false; nudgeCustom = true })
+                        }
+                    }
+                    Spacer(Modifier.weight(1f))
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("Конец", color = Color.White.copy(alpha = .7f), fontSize = 10.sp)
+                        Row {
+                            NudgeButton("−$nudge") { nudgeEnd(-nudge) }
+                            Spacer(Modifier.width(4.dp))
+                            NudgeButton("+$nudge") { nudgeEnd(nudge) }
+                        }
+                    }
+                }
                 Row(
                     Modifier.padding(horizontal = 24.dp, vertical = 4.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Cream).padding(vertical = 4.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically,
@@ -564,6 +619,25 @@ fun VideoEditor(path: String, dir: String, addMode: Boolean, onCancel: () -> Uni
                     val i = selected
                     if (i == null) toast(ctx, "Выберите кусок на ленте") else if (i < clips.lastIndex) { commit { setClips(VideoCut.move(clips, i, 1)) }; selected = i + 1 }
                 }
+            }
+            if (nudgeCustom) {
+                var text by remember { mutableStateOf(nudge.toString()) }
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { nudgeCustom = false },
+                    title = { Text("Шаг обрезки, мс") },
+                    text = {
+                        androidx.compose.material3.OutlinedTextField(
+                            text, { text = it.filter { c -> c.isDigit() }.take(5) }, singleLine = true,
+                            label = { Text("Например, 150") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { text.toLongOrNull()?.takeIf { it > 0 }?.let { setNudge(it) }; nudgeCustom = false }),
+                        )
+                    },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(onClick = { text.toLongOrNull()?.takeIf { it > 0 }?.let { setNudge(it) }; nudgeCustom = false }) { Text("Готово") }
+                    },
+                    dismissButton = { androidx.compose.material3.TextButton(onClick = { nudgeCustom = false }) { Text("Отмена") } },
+                )
             }
         }
     }
@@ -672,6 +746,16 @@ private fun Tool(icon: Int, label: String, active: Boolean = false, onClick: () 
         ) { EditorIcon(icon, 26.dp) }
         Text(label, fontSize = 10.sp, color = if (active) Cream else Color.White.copy(alpha = .85f), maxLines = 1)
     }
+}
+
+/** Кнопка точной обрезки «+100» / «−100» и выбор шага. */
+@Composable
+private fun NudgeButton(label: String, accent: Boolean = false, onClick: () -> Unit) {
+    Box(
+        Modifier.heightIn(min = 36.dp).clip(RoundedCornerShape(10.dp)).background(if (accent) Cream else Panel)
+            .clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) { Text(label, color = if (accent) Ink else Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1) }
 }
 
 /** Кнопка плавающей (кремовой) панели выбранного куска. */

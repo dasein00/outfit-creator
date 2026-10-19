@@ -14,6 +14,8 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -243,5 +245,56 @@ object VideoSpeech {
         val text = if (key.isNotBlank()) withContext(Dispatchers.IO) { groq(key, pcm) } else onDevice(ctx, pcm)
         if (text.count { it.isLetter() } < 20) throw NoSpeech("Речь в видео не распознана")
         return text
+    }
+
+    // ---------- Видео рецепта: распознаём один раз ----------
+    // Текст речи запоминается для файла (путь, размер, время изменения): «Рецепт из видео» берёт готовый,
+    // а не просит выбрать то же видео снова. Видео, добавленное к рецепту, распознаётся сразу в фоне.
+
+    private fun cache(ctx: Context) = ctx.applicationContext.getSharedPreferences("speech_cache", Context.MODE_PRIVATE)
+    private fun keyOf(f: java.io.File) = f.absolutePath + "|" + f.length() + "|" + f.lastModified()
+    private val running = HashMap<String, kotlinx.coroutines.Deferred<String>>()
+    /** Что сейчас делает фоновое распознавание файла — для подписи на кнопке. */
+    val stage = kotlinx.coroutines.flow.MutableStateFlow<Map<String, String>>(emptyMap())
+
+    /** Уже распознанная речь из файла, или null. */
+    fun cached(ctx: Context, path: String): String? = java.io.File(path).takeIf { it.exists() }?.let { cache(ctx).getString(keyOf(it), null) }
+
+    /** Файл заменили сжатой копией (то же видео) — речь переносится к новому файлу. */
+    fun carry(ctx: Context, from: String, to: String) {
+        val text = cache(ctx).all.entries.firstOrNull { it.key.substringBefore('|') == from }?.value as? String ?: return
+        java.io.File(to).takeIf { it.exists() }?.let { cache(ctx).edit().putString(keyOf(it), text).apply() }
+    }
+
+    /** Речь из файла: из памяти или распознаётся (одновременные запросы ждут одно распознавание). */
+    suspend fun transcribeFile(ctx: Context, path: String, onStage: (String) -> Unit = {}): String {
+        val f = java.io.File(path)
+        cached(ctx, path)?.let { return it }
+        val key = keyOf(f)
+        val app = ctx.applicationContext
+        val job = synchronized(running) {
+            running[key] ?: com.dasein.poryadok.Graph.scope.async(start = kotlinx.coroutines.CoroutineStart.LAZY) {
+                try {
+                    val text = transcribe(app, Uri.fromFile(f)) { st -> stage.value = stage.value + (path to st) }
+                    // Записи о файлах, которых больше нет, убираем.
+                    val c = cache(app)
+                    val gone = c.all.keys.filter { !java.io.File(it.substringBefore('|')).exists() }
+                    c.edit().apply { gone.forEach { remove(it) } }.putString(key, text).apply()
+                    text
+                } finally {
+                    synchronized(running) { running.remove(key) }
+                    stage.value = stage.value - path
+                }
+            }.also { running[key] = it }
+        }
+        val relay = com.dasein.poryadok.Graph.scope.launch { stage.collect { m -> m[path]?.let(onStage) } }
+        return try { job.await() } finally { relay.cancel() }
+    }
+
+    /** Распознать речь нового видео рецепта в фоне (ошибки молча: потом можно распознать вручную). */
+    fun prefetch(ctx: Context, path: String) {
+        if (path.startsWith("http")) return
+        val app = ctx.applicationContext
+        com.dasein.poryadok.Graph.scope.launch { runCatching { transcribeFile(app, path) } }
     }
 }

@@ -46,6 +46,19 @@ class VideoCutTest {
         assertEquals(clips, VideoCut.move(clips, 0, -1))
     }
 
+    @Test fun nudgeTrimsByStep() {
+        val c = Clip(0, 1000, 4000)
+        assertEquals(Clip(0, 900, 4000), VideoCut.nudgeStart(c, 100))
+        assertEquals(Clip(0, 1100, 4000), VideoCut.nudgeStart(c, -100))
+        // Не раньше начала файла и не короче MIN_MS.
+        assertEquals(Clip(0, 0, 4000), VideoCut.nudgeStart(c, 5000))
+        assertEquals(Clip(0, 3800, 4000), VideoCut.nudgeStart(c, -9000))
+        assertEquals(Clip(0, 1000, 4250), VideoCut.nudgeEnd(c, 250, 10_000))
+        assertEquals(Clip(0, 1000, 3750), VideoCut.nudgeEnd(c, -250, 10_000))
+        assertEquals(Clip(0, 1000, 4100), VideoCut.nudgeEnd(c, 500, 4100))
+        assertEquals(Clip(0, 1000, 1200), VideoCut.nudgeEnd(c, -9000, 10_000))
+    }
+
     @Test fun ticksDoNotOverlap() {
         assertEquals(10_000L, VideoCut.tickStep(400f / 60_000))
         assertEquals(100L, VideoCut.tickStep(1f))

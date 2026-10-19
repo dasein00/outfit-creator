@@ -73,6 +73,15 @@ object VideoCut {
         return clips.toMutableList().also { it[i] = c.copy(end = src) }
     }
 
+    /** Сдвинуть начало куска на [deltaMs] мс исходника: больше нуля — кусок длиннее (начало раньше), меньше — короче. */
+    fun nudgeStart(c: Clip, deltaMs: Long): Clip = c.copy(start = (c.start - deltaMs).coerceIn(0L, c.end - MIN_MS))
+
+    /** Сдвинуть конец куска на [deltaMs] мс: больше нуля — длиннее, меньше — короче; не дальше конца файла [srcLen]. */
+    fun nudgeEnd(c: Clip, deltaMs: Long, srcLen: Long): Clip = c.copy(end = (c.end + deltaMs).coerceIn(c.start + MIN_MS, maxOf(srcLen, c.start + MIN_MS)))
+
+    /** Шаги точной обрезки, мс. */
+    val NUDGE_STEPS = longArrayOf(33, 50, 100, 200, 500, 1000, 2000)
+
     fun duplicate(clips: List<Clip>, index: Int): List<Clip> =
         clips.getOrNull(index)?.let { c -> clips.toMutableList().also { it.add(index + 1, c) } } ?: clips
 

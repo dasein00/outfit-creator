@@ -16,6 +16,7 @@ import androidx.compose.material3.AlertDialog
 import com.dasein.poryadok.ui.common.Text
 import com.dasein.poryadok.ui.common.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -102,21 +103,37 @@ internal suspend fun ingredientsFrom(parsed: RecipeText.Parsed, text: String = "
 private val AI_UNITS = setOf("г", "кг", "мл", "л", "шт", "ст.л.", "ч.л.", "стакан", "щепотка", "по вкусу")
 
 /** Инструкция для ИИ: вернуть рецепт строго в JSON. */
-private const val AI_RECIPE_PROMPT = """Ты помощник кулинарного приложения. Текст — это подпись к рецепту из Instagram, заметка, страница сайта или расшифровка речи из видео (тогда в нём могут быть разговорные слова, повторы и ошибки распознавания — пойми смысл). Извлеки рецепт и верни ТОЛЬКО JSON без пояснений:
+private const val AI_RECIPE_PROMPT = """Ты помощник кулинарного приложения. На входе до двух источников об одном блюде:
+«ТЕКСТ ПОСТА» — подпись под видео в Instagram или текст сайта (обычно ингредиенты с граммовками, иногда шаги и советы);
+«РЕЧЬ ИЗ ВИДЕО» — расшифровка того, что говорит автор (обычно как готовить, нюансы, огонь и время; бывают разговорные слова, повторы и ошибки распознавания — пойми смысл).
+Источники ДОПОЛНЯЮТ друг друга: собери один полный рецепт из обоих. Продукты — все из обоих источников без повторов; количества бери из поста, если там есть, иначе из речи, иначе оцени. Этапы — объедини: порядок и детали из речи, точные цифры (граммы, градусы, минуты) из поста. Советы и замены — из обоих.
+Верни ТОЛЬКО JSON без пояснений:
 {"title": "название блюда", "servings": число порций или null,
+ "category": "одна из: Завтраки|Обеды|Ужины|Перекусы|Кухни мира|Супы|Салаты|Гарниры|Десерты|Напитки|Выпечка|Заготовки",
+ "meals": ["подходящие приёмы пищи из: Завтрак|Второй завтрак|Обед|Полдник|Ужин|Перекус"],
+ "difficulty": 1 (легко) | 2 (средне) | 3 (сложно),
+ "prep_minutes": минуты подготовки (нарезка, замес), "cook_minutes": минуты готовки (варка, жарка, духовка, ожидание),
+ "tags": ["до 6 коротких тегов: кухня в виде «итальянская кухня», быстро, высокобелковые, низкоуглеводные, вегетарианские, постное, без сахара, заготовка, на компанию…"],
  "ingredients": [{"name": "продукт в именительном падеже, без количества", "amount": число, "unit": "г|кг|мл|л|шт|ст.л.|ч.л.|стакан|щепотка|по вкусу", "grams_per_piece": вес одной штуки в граммах для unit=шт, иначе null}],
- "steps": [{"text": "подробный этап для новичка", "minutes": минуты этапа или 0}]}
-Правила: включи ВСЕ продукты, упомянутые в тексте, даже в советах (например «можно добавить сулугуни» — продукт с unit "по вкусу").
-Если в тексте есть блок «Ингредиенты (из поста, точные граммовки)» — бери продукты и количества оттуда в первую очередь, а речь используй для этапов и деталей.
+ "steps": [{"text": "подробный этап для новичка", "minutes": минуты этапа или 0}],
+ "tips": ["советы автора и полезные советы по подаче и хранению"], "swaps": ["чем можно заменить продукт"]}
+Правила: включи ВСЕ продукты, упомянутые в любом источнике, даже в советах (например «можно добавить сулугуни» — продукт с unit "по вкусу").
 Если для продукта указано несколько количеств («150 г + 20 г на обвалку»), сложи их. Проценты жирности оставь в названии.
 Если количество сказано на глаз («горсть», «пара ложек», «кусочек») — переведи в граммы или ложки примерно. Если не сказано совсем — оцени разумное количество на указанные порции.
-Этапы пиши подробно и понятно новичку: что сделать, какой огонь или температура духовки, сколько минут, как понять, что готово. Не выдумывай продукты, которых нет в тексте.
-Даты, хештеги, рекламу, приветствия и «ещё/меньше» игнорируй."""
+Этапы пиши подробно и понятно новичку: что сделать, какой огонь или температура духовки, сколько минут, как понять, что готово. Не выдумывай продукты, которых нет в источниках.
+Даты, хештеги, рекламу, приветствия, просьбы подписаться и «ещё/меньше» игнорируй."""
 
-/** Разбор рецепта ИИ (бесплатные модели OpenRouter). null — не получилось, тогда работает встроенный разбор. */
+/** Текст для разбора из двух источников с подписями — ИИ сводит их, встроенный разбор берёт продукты из поста, этапы из речи. */
+internal fun recipeSource(post: String, speech: String): String = when {
+    post.isBlank() -> speech.trim()
+    speech.isBlank() -> post.trim()
+    else -> "ТЕКСТ ПОСТА:\n" + post.trim() + "\n\nРЕЧЬ ИЗ ВИДЕО:\n" + speech.trim()
+}
+
+/** Разбор рецепта ИИ (бесплатные модели OpenRouter). Ошибка — тогда работает встроенный разбор. */
 internal suspend fun aiParse(ctx: Context, text: String): RecipeText.Parsed {
     with(com.dasein.poryadok.system.Ai) {
-        val answer = ask(ctx, AI_RECIPE_PROMPT, text.take(6000))
+        val answer = ask(ctx, AI_RECIPE_PROMPT, text.take(9000))
         val o = extractJson(answer) ?: throw com.dasein.poryadok.system.Ai.AiError("ИИ ответил не в том формате")
         val ings = o.arr("ingredients").orEmpty().mapNotNull { it as? kotlinx.serialization.json.JsonObject }.mapNotNull { i ->
             val name = i.str("name")?.trim()?.replaceFirstChar { it.uppercase() } ?: return@mapNotNull null
@@ -127,25 +144,45 @@ internal suspend fun aiParse(ctx: Context, text: String): RecipeText.Parsed {
             val t = st.str("text")?.trim()?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
             RecipeText.Step(t, (st.num("minutes") ?: 0.0).toInt().takeIf { it > 0 } ?: RecipeText.minutesIn(t))
         }
-        return RecipeText.Parsed(o.str("title"), o.num("servings")?.toInt()?.takeIf { it in 1..40 }, ings, steps, null, RecipeText.parse(text).tags)
+        fun strings(key: String) = o.arr(key).orEmpty().mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.takeIf { p -> p.isString }?.content?.trim() }.filter { it.isNotEmpty() }
+        val meals = strings("meals").mapNotNull { m -> com.dasein.poryadok.logic.MealType.names.indexOfFirst { it.equals(m, ignoreCase = true) }.takeIf { it >= 0 } }
+        val prep = o.num("prep_minutes")?.toInt()?.takeIf { it in 0..600 }
+        val cook = o.num("cook_minutes")?.toInt()?.takeIf { it in 0..1440 }
+        val tagsAi = strings("tags").map { it.lowercase().removePrefix("#") }.take(6)
+        return RecipeText.Parsed(
+            o.str("title"), o.num("servings")?.toInt()?.takeIf { it in 1..40 }, ings, steps, cook,
+            tagsAi.ifEmpty { RecipeText.parse(text).tags },
+            category = o.str("category")?.trim()?.takeIf { it in com.dasein.poryadok.logic.RECIPE_CATEGORIES },
+            meals = meals.ifEmpty { null },
+            difficulty = o.num("difficulty")?.toInt()?.takeIf { it in 1..3 },
+            prepMinutes = prep,
+            tips = strings("tips").take(6).joinToString("\n") { "• $it" }.ifBlank { null },
+            swaps = strings("swaps").take(6).joinToString("\n") { "• $it" }.ifBlank { null },
+        )
     }
 }
 
+/** Это уже оформленное описание или прошлый разбор, а не подпись поста — в поле поста его не переносим. */
+private fun isOwnDraft(t: String) = t.trimStart().startsWith("#") || "## Ингредиенты" in t || t.trimStart().startsWith("ТЕКСТ ПОСТА:")
+
 /**
- * «Описание из Instagram»: вставьте подпись к рецепту — приложение найдёт название, порции, ингредиенты
- * с граммовками и разобьёт приготовление на этапы. Всё попадает в черновик, где можно поправить.
+ * «Рецепт из видео, Instagram или по ссылке». Два источника, которые дополняют друг друга:
+ *  • текст поста (подпись под видео в Instagram, сайт) — обычно продукты с граммовками;
+ *  • речь из видео — как готовить. Видео рецепта распознаётся один раз (и сразу после добавления, в фоне),
+ *    выбранное здесь видео само прикрепляется к рецепту — загружать его второй раз не нужно.
+ * С ИИ рецепт собирается из обоих источников целиком; без интернета — встроенный разбор заполняет всё сам.
  */
 @Composable
 internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     val scope = rememberCoroutineScope()
+    /** Речь из видео или свой текст. */
     var text by remember { mutableStateOf(d.recipe.notes) }
-    // Ингредиенты из поста (в видео их обычно не проговаривают): с граммовками — они важнее того, что сказано в речи.
+    /** Текст поста: ингредиенты, граммовки (в видео их обычно не проговаривают). */
     var ingrText by remember { mutableStateOf("") }
-    /** Всё, что разбирается: речь или описание + ингредиенты из поста. */
-    fun source(): String = if (ingrText.isBlank()) text else "Ингредиенты (из поста, точные граммовки):\n" + ingrText.trim() + "\n\nОписание и речь из видео:\n" + text.trim()
-    // Без интернета: продукты — из поста, этапы — из поста или из речи (RecipeText.merge).
+    fun source(): String = recipeSource(ingrText, text)
+    // Без интернета: продукты — из поста (и те, что прозвучали в речи), этапы — из поста или из речи.
     val preview = remember(text, ingrText) {
         when {
             text.isBlank() && ingrText.isBlank() -> null
@@ -168,13 +205,32 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
     var postBusy by remember { mutableStateOf(false) }
     var videoBusy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
+    // Видео, уже прикреплённые к рецепту (файлы на телефоне).
+    val ownVideos = remember(d.recipe.videos) { d.recipe.videos.lines().map { it.trim() }.filter { it.startsWith("/") && java.io.File(it).exists() } }
     val link = remember(text) { com.dasein.poryadok.system.RecipeLink.findUrl(text)?.takeIf { text.trim().length < it.length + 40 } }
-    // Пришла одна ссылка (поделились постом) — сразу загружаем рецепт.
+
+    /** Новая речь не затирает подпись поста: вставленный раньше текст переезжает в поле поста. */
+    fun putSpeech(speech: String) {
+        if (ingrText.isBlank() && text.isNotBlank() && text.trim() != speech.trim() && !isOwnDraft(text) && com.dasein.poryadok.system.RecipeLink.findUrl(text) != text.trim()) ingrText = text.trim()
+        text = speech.trim()
+    }
+
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        val l = link ?: return@LaunchedEffect
-        linkBusy = true
-        runCatching { com.dasein.poryadok.system.RecipeLink.fetch(l) }.onSuccess { text = it.trim() }.onFailure { aiError = "Не удалось загрузить: ${it.message}." }
-        linkBusy = false
+        // Поделились постом (пришла одна ссылка): пост Instagram — в поле поста, сайт — в описание.
+        link?.let { l ->
+            linkBusy = true
+            runCatching { com.dasein.poryadok.system.RecipeLink.fetch(l) }
+                .onSuccess { if ("instagram.com" in l) { postUrl = l; ingrText = it.trim(); text = "" } else text = it.trim() }
+                .onFailure { aiError = "Не удалось загрузить: ${it.message}." }
+            linkBusy = false
+        }
+        // Речь из видео рецепта уже распознана (сразу после добавления) — подставляем, второй раз ничего выбирать не нужно.
+        ownVideos.firstNotNullOfOrNull { com.dasein.poryadok.system.VideoSpeech.cached(ctx, it) }?.let { sp ->
+            if (text.isBlank() || isOwnDraft(text) || text.trim() == d.recipe.notes.trim() && ingrText.isBlank()) {
+                if (text.trim() != sp.trim()) putSpeech(sp)
+                status = "Речь из видео рецепта уже распознана."
+            }
+        }
     }
     fun applyResult(p: RecipeText.Parsed, viaAi: Boolean) {
         scope.launch {
@@ -188,74 +244,95 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
             aiBusy = false; onDismiss()
         }
     }
-    fun fromVideo(uri: android.net.Uri) {
+    fun speechError(e: Throwable): String = if (e is com.dasein.poryadok.system.VideoSpeech.NoSpeech)
+        "${e.message}. Вставьте описание из Instagram, ссылку на пост или сайт, или свой текст — карточка заполнится по нему."
+    else "Не удалось распознать речь: ${e.message}"
+
+    /** Речь из файла видео рецепта: из памяти, если уже распознана, иначе распознаётся (один раз). */
+    suspend fun speechOf(path: String): Result<String> =
+        runCatching { com.dasein.poryadok.system.VideoSpeech.transcribeFile(ctx, path) { st -> status = st } }
+
+    fun fromFile(path: String) {
         videoBusy = true; aiError = null
         scope.launch {
-            runCatching { com.dasein.poryadok.system.VideoSpeech.transcribe(ctx, uri) { st -> status = st } }
-                .onSuccess { speech ->
-                    // Текст речи — в описание: его можно поправить, а потом добавить ингредиенты из поста и сгенерировать рецепт.
-                    text = speech.trim()
-                    d.recipe = d.recipe.copy(notes = text)
-                    status = "Речь распознана. Поправьте текст, добавьте ингредиенты из поста и нажмите «Сгенерировать рецепт»."
-                    videoBusy = false
+            speechOf(path)
+                .onSuccess { sp ->
+                    putSpeech(sp)
+                    status = "Речь распознана. Поправьте текст при необходимости и нажмите «Сгенерировать рецепт» или «Разобрать без ИИ»."
                 }
-                .onFailure { e ->
-                    videoBusy = false; status = null
-                    aiError = if (e is com.dasein.poryadok.system.VideoSpeech.NoSpeech)
-                        "${e.message}. Вставьте сюда описание из Instagram, ссылку на пост или сайт, или свой текст — карточка заполнится по нему."
-                    else "Не удалось распознать речь: ${e.message}"
+                .onFailure { e -> status = null; aiError = speechError(e) }
+            videoBusy = false
+        }
+    }
+    /** Видео из галереи: копируется в рецепт (второй раз добавлять не нужно), речь распознаётся, потом файл сжимается. */
+    fun fromPicked(uri: android.net.Uri) {
+        videoBusy = true; aiError = null; status = "Добавляю видео к рецепту…"
+        scope.launch {
+            val path = com.dasein.poryadok.ui.common.Media.importRaw(ctx, uri, "recipes/video")?.takeIf { java.io.File(it).length() > 0 }
+            if (path == null) { videoBusy = false; status = null; aiError = "Не удалось открыть видео"; return@launch }
+            d.recipe = d.recipe.copy(videos = (RecipeVideos.list(d.recipe) + path).distinct().joinToString("\n"))
+            speechOf(path)
+                .onSuccess { sp -> putSpeech(sp); status = "Речь распознана, видео прикреплено к рецепту. Нажмите «Сгенерировать рецепт» или «Разобрать без ИИ»." }
+                .onFailure { e -> status = "Видео прикреплено к рецепту."; aiError = speechError(e) }
+            videoBusy = false
+            // Сжатие — после распознавания и в фоне приложения; речь переносится к сжатой копии.
+            com.dasein.poryadok.ui.common.io {
+                if (!com.dasein.poryadok.system.VideoCompress.worth(path)) return@io
+                val out = com.dasein.poryadok.system.VideoCompress.replace(ctx, path)
+                if (out == path) return@io
+                com.dasein.poryadok.system.VideoSpeech.carry(ctx, path, out)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    d.recipe = d.recipe.copy(videos = RecipeVideos.list(d.recipe).map { if (it == path) out else it }.joinToString("\n"))
                 }
+            }
         }
     }
     val videoPicker = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) fromVideo(uri)
+        if (uri != null) fromPicked(uri)
     }
-    // Видео, уже прикреплённые к рецепту (файлы на телефоне).
-    val ownVideos = remember(d.recipe.videos) { d.recipe.videos.lines().map { it.trim() }.filter { it.startsWith("/") && java.io.File(it).exists() } }
     /**
      * Всё за один раз: подпись из поста Instagram + речь из видео рецепта → рецепт.
-     * С ИИ — он сводит оба текста; без интернета или ключа — встроенный разбор (продукты из поста, этапы из речи).
+     * С ИИ — он сводит оба текста; без интернета или ключа — встроенный разбор (продукты из поста, этапы из речи, остальное по правилам).
      */
     fun fromPostAndVideo() {
         bothBusy = true; aiError = null
         scope.launch {
-            if (postUrl.startsWith("http")) {
+            if (postUrl.startsWith("http") && ingrText.isBlank()) {
                 status = "Загружаю описание из поста…"
                 runCatching { com.dasein.poryadok.system.RecipeLink.fetch(postUrl) }
                     .onSuccess { ingrText = it.trim() }
                     .onFailure { aiError = "Пост не загрузился (${it.message}) — беру только речь из видео." }
             }
             ownVideos.firstOrNull()?.let { v ->
-                runCatching { com.dasein.poryadok.system.VideoSpeech.transcribe(ctx, android.net.Uri.fromFile(java.io.File(v))) { st -> status = st } }
-                    .onSuccess { text = it.trim() }
-                    .onFailure { if (ingrText.isBlank()) aiError = "Речь не распознана: ${it.message}" }
+                speechOf(v).onSuccess { putSpeech(it) }.onFailure { if (ingrText.isBlank() && text.isBlank()) aiError = speechError(it) }
             }
             if (text.isBlank() && ingrText.isBlank()) { status = null; bothBusy = false; return@launch }
             val online = aiOn && com.dasein.poryadok.system.Offline.hasNetwork(ctx)
+            val offline = { if (text.isNotBlank() && ingrText.isNotBlank()) RecipeText.merge(ingrText, text) else RecipeText.parse(source()) }
             if (online) {
                 status = "ИИ сводит описание поста и речь из видео…"
                 aiBusy = true
                 runCatching { aiParse(ctx, source()) }
                     .onSuccess { bothBusy = false; applyResult(it, viaAi = true) }
-                    .onFailure {
-                        aiBusy = false; bothBusy = false
-                        val p = if (text.isNotBlank() && ingrText.isNotBlank()) RecipeText.merge(ingrText, text) else RecipeText.parse(source())
-                        applyResult(p, viaAi = false)
-                    }
+                    .onFailure { aiBusy = false; bothBusy = false; applyResult(offline(), viaAi = false) }
             } else {
                 bothBusy = false
-                applyResult(if (text.isNotBlank() && ingrText.isNotBlank()) RecipeText.merge(ingrText, text) else RecipeText.parse(source()), viaAi = false)
+                applyResult(offline(), viaAi = false)
             }
         }
     }
+    // Фоновое распознавание только что добавленного видео — показываем, на каком оно этапе.
+    val bgStage by com.dasein.poryadok.system.VideoSpeech.stage.collectAsState()
+    val bgText = ownVideos.firstNotNullOfOrNull { bgStage[it] }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(btnLabel("Описание блюда")) },
         text = {
             Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState())) {
                 Text(
-                    "1) «Распознать речь» — текст из видео появится в описании, его можно поправить. Или вставьте подпись из Instagram, ссылку на пост или сайт, свой текст.\n" +
-                        "2) Вставьте ссылку на пост Instagram и нажмите «Запарсить рецепт» — подпись под видео (ингредиенты, граммовки) попадёт в поле «Текст из поста». Или вставьте её вручную.\n3) «Сгенерировать рецепт» — ИИ заполнит ингредиенты, подробные этапы и описание. Всё можно править потом.",
+                    "Достаточно видео и ссылки на пост: речь из видео рецепта распознаётся сама, подпись под постом загружается по ссылке. " +
+                        "Оба текста дополняют друг друга: продукты и граммовки — из поста, как готовить — из речи. " +
+                        "ИИ или встроенный разбор (без интернета) заполнят название, категорию, приём пищи, порции, время, сложность, ингредиенты, этапы, теги и советы. Всё можно поправить потом.",
                     fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
                 )
                 if (ownVideos.isNotEmpty() || postUrl.startsWith("http")) Button(
@@ -271,20 +348,28 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                         },
                     )
                 }
+                bgText?.let { Text("Видео рецепта: $it", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp)) }
                 TextButton(onClick = {
                     val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     cm.primaryClip?.getItemAt(0)?.coerceToText(ctx)?.toString()?.let { text = it }
                 }) { Text(btnLabel("Вставить из буфера обмена")) }
-                // Видео со звуком: речь распознаётся и попадает в описание.
-                OutlinedButton(enabled = !videoBusy && !aiBusy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp), onClick = {
+                // Видео рецепта уже есть — распознаём его; нет — выбираем из галереи, и оно само прикрепится к рецепту.
+                if (ownVideos.isEmpty()) OutlinedButton(enabled = !videoBusy && !aiBusy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp), onClick = {
                     videoPicker.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.VideoOnly))
-                }) { Text(if (videoBusy) (status ?: "Распознаю…") else "Распознать речь") }
+                }) { Text(if (videoBusy) (status ?: "Распознаю…") else "Видео рецепта: добавить и распознать речь") }
                 ownVideos.forEachIndexed { i, v ->
-                    TextButton(enabled = !videoBusy && !aiBusy, onClick = { fromVideo(android.net.Uri.fromFile(java.io.File(v))) }) {
-                        Text("Распознать речь из видео рецепта" + if (ownVideos.size > 1) " №${i + 1}" else "")
+                    val ready = com.dasein.poryadok.system.VideoSpeech.cached(ctx, v) != null
+                    TextButton(enabled = !videoBusy && !aiBusy, onClick = { fromFile(v) }) {
+                        Text(
+                            (if (ready) "Речь из видео рецепта" else "Распознать речь из видео рецепта") + (if (ownVideos.size > 1) " №${i + 1}" else "") +
+                                if (ready) " — подставить" else "",
+                        )
                     }
                 }
-                TextInput(text, { text = it }, "Описание: речь из видео, текст поста или ссылка", singleLine = false, minLines = 5)
+                if (ownVideos.isNotEmpty()) TextButton(enabled = !videoBusy && !aiBusy, onClick = {
+                    videoPicker.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.VideoOnly))
+                }) { Text(btnLabel("Другое видео из галереи")) }
+                TextInput(text, { text = it }, "Речь из видео или свой текст", singleLine = false, minLines = 5)
                 // Подпись под видео в Instagram: ссылка → «Запарсить рецепт» → текст поста попадает в поле ниже.
                 TextInput(postUrl, { postUrl = it.trim() }, "Ссылка на пост Instagram", Modifier.padding(top = 6.dp))
                 Button(
@@ -296,7 +381,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                             runCatching { com.dasein.poryadok.system.RecipeLink.fetch(postUrl) }
                                 .onSuccess { cap ->
                                     ingrText = cap.trim()
-                                    status = "Описание из поста загружено. Распознайте речь из видео (если ещё не) и нажмите «Сгенерировать рецепт»."
+                                    status = "Описание из поста загружено. Нажмите «Сгенерировать рецепт» или «Разобрать без ИИ»."
                                 }
                                 .onFailure { aiError = "Не удалось загрузить пост: ${it.message}. Скопируйте подпись вручную в поле «Текст из поста»." }
                             postBusy = false
@@ -304,24 +389,25 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                     },
                 ) { Text(if (postBusy) "Загружаю пост…" else btnLabel("Запарсить рецепт")) }
                 TextInput(ingrText, { ingrText = it }, "Текст из поста: ингредиенты, граммовки", Modifier.padding(top = 6.dp), singleLine = false, minLines = 3)
-                if (link != null) Button(enabled = !linkBusy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp), onClick = {
+                if (link != null && !linkBusy && text.trim().startsWith("http")) Button(modifier = Modifier.fillMaxWidth().padding(top = 6.dp), onClick = {
                     linkBusy = true; aiError = null
                     scope.launch {
                         runCatching { com.dasein.poryadok.system.RecipeLink.fetch(link) }
-                            .onSuccess { text = it.trim() }
+                            .onSuccess { if ("instagram.com" in link) { postUrl = link; ingrText = it.trim(); text = "" } else text = it.trim() }
                             .onFailure { aiError = "Не удалось загрузить: ${it.message}." }
                         linkBusy = false
                     }
-                }) { Text(if (linkBusy) "Загружаю рецепт…" else "Загрузить рецепт по ссылке") }
+                }) { Text(btnLabel("Загрузить рецепт по ссылке")) }
+                if (linkBusy) Text(btnLabel("Загружаю рецепт по ссылке…"), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
                 status?.let { Text(it, fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp)) }
-                aiError?.let { Text(if ("Вставьте сюда" in it) it else it + " Можно нажать «Разобрать» — встроенный разбор работает без интернета.", fontSize = 12.sp, color = extra.danger, modifier = Modifier.padding(top = 6.dp)) }
+                aiError?.let { Text(if ("Вставьте" in it) it else it + " Можно нажать «Разобрать без ИИ» — встроенный разбор работает без интернета.", fontSize = 12.sp, color = extra.danger, modifier = Modifier.padding(top = 6.dp)) }
                 if (!aiOn) Text("Точнее разбирает бесплатный ИИ: добавьте ключ OpenRouter в «Настройки» → «ИИ-помощник».", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
                 // Главные действия — крупно и во всю ширину, чтобы надписи не сжимались.
                 if (aiOn) Button(
                     enabled = (text.isNotBlank() || ingrText.isNotBlank()) && !aiBusy && !videoBusy,
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp).heightIn(min = 52.dp),
                     onClick = {
-                        aiBusy = true; aiError = null; status = "ИИ пишет подробный рецепт…"
+                        aiBusy = true; aiError = null; status = if (text.isNotBlank() && ingrText.isNotBlank()) "ИИ сводит пост и речь в один рецепт…" else "ИИ пишет подробный рецепт…"
                         scope.launch {
                             runCatching { aiParse(ctx, source()) }
                                 .onSuccess { applyResult(it, viaAi = true) }
@@ -335,9 +421,11 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                     onClick = { preview?.let { applyResult(it, viaAi = false) } },
                 ) { Text(btnLabel("Разобрать без ИИ")) }
                 preview?.let { p ->
+                    val g = remember(p, text, ingrText) { com.dasein.poryadok.logic.RecipeClassify.guess(p, source()) }
                     Text(
                         listOfNotNull(
-                            p.title?.let { "Название: $it" },
+                            (p.title ?: g.title)?.let { "Название: $it" },
+                            "Категория: ${g.category}",
                             "Ингредиентов: ${p.ingredients.size}" + " (+ упомянутые в тексте)",
                             "Этапов: ${p.steps.size}",
                             p.servings?.let { "Порций: $it" } ?: "Порции посчитаю по весу",
@@ -352,21 +440,45 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
     )
 }
 
-/** Применить разбор к черновику: ингредиенты с КБЖУ из базы, порции, этапы. */
+/**
+ * Применить разбор к черновику: ингредиенты с КБЖУ из базы, порции, этапы — и все остальные пункты карточки:
+ * категория, приёмы пищи, сложность, время, теги, советы и замены (от ИИ, а без него — [com.dasein.poryadok.logic.RecipeClassify]).
+ */
 private suspend fun applyParsed(d: RecipeDraft, p: RecipeText.Parsed, text: String, viaAi: Boolean) {
-                    // ИИ сам перечисляет упомянутые продукты; встроенный разбор добирает их по базе.
-                    val ings = ingredientsFrom(p, if (viaAi) "" else text)
-                    var r = d.recipe.copy(notes = text.trim())
-                    if (r.name.isBlank() && p.title != null) r = r.copy(name = p.title)
-                    val total = ings.sumOf { it.grams }
-                    val servings = p.servings ?: RecipeText.guessServings(total)
-                    // Порции из текста задают вес порции: блюдо делится на столько тарелок.
-                    r = r.copy(servings = servings, portionGrams = if (p.servings != null && total > 0) (total / servings).coerceAtLeast(50.0) else r.portionGrams)
-                    p.totalMinutes?.let { r = r.copy(cookMin = it) }
-                    if (p.tags.isNotEmpty() && r.tags.isBlank()) r = r.copy(tags = p.tags.take(6).joinToString(", "))
-                    d.recipe = r
-                    if (ings.isNotEmpty()) { d.ingredients.clear(); d.ingredients.addAll(ings) }
-                    if (p.steps.isNotEmpty()) { d.steps.clear(); d.steps.addAll(p.steps.map { it.text }) }
-                    // Сразу показать, что получилось: ингредиенты можно поправить.
-                    d.step = 1
+    // ИИ сам перечисляет упомянутые продукты; встроенный разбор добирает их по базе.
+    val ings = ingredientsFrom(p, if (viaAi) "" else text)
+    val g = com.dasein.poryadok.logic.RecipeClassify.guess(p, text)
+    var r = d.recipe.copy(notes = text.trim())
+    val title = p.title ?: g.title
+    if (r.name.isBlank() && title != null) r = r.copy(name = title)
+    val total = ings.sumOf { it.grams }
+    val servings = p.servings ?: RecipeText.guessServings(total)
+    // Порции из текста задают вес порции: блюдо делится на столько тарелок.
+    r = r.copy(servings = servings, portionGrams = if (p.servings != null && total > 0) (total / servings).coerceAtLeast(50.0) else r.portionGrams)
+    // Теги по КБЖУ порции: высокобелковые (от 25 г белка), низкоуглеводные (до 15 г углеводов).
+    val protein = ings.sumOf { it.grams * it.protein100 / 100 } / servings
+    val carbs = ings.sumOf { it.grams * it.carbs100 / 100 } / servings
+    val kcal = ings.sumOf { it.grams * it.kcal100 / 100 }
+    val kbjuTags = buildList {
+        if (protein >= 25) add("высокобелковые")
+        if (kcal > 0 && carbs <= 15) add("низкоуглеводные")
+    }
+    val tags = (r.tagList() + p.tags.take(if (viaAi) 6 else 3) + g.tags + kbjuTags).map { it.trim() }.filter { it.isNotEmpty() }.distinct().take(10)
+    val meals = (p.meals ?: g.meals).toSet()
+    r = r.copy(
+        category = p.category ?: g.category,
+        meals = com.dasein.poryadok.logic.MealType.order.filter { it in meals }.joinToString(","),
+        difficulty = p.difficulty ?: g.difficulty,
+        prepMin = p.prepMinutes ?: g.prepMin,
+        // У ИИ «totalMinutes» — время готовки; у встроенного разбора время делит RecipeClassify.
+        cookMin = if (p.prepMinutes != null) (p.totalMinutes ?: g.cookMin) else g.cookMin,
+        tags = tags.joinToString(", "),
+        tips = r.tips.ifBlank { p.tips ?: g.tips },
+        swaps = r.swaps.ifBlank { p.swaps ?: g.swaps },
+    )
+    d.recipe = r
+    if (ings.isNotEmpty()) { d.ingredients.clear(); d.ingredients.addAll(ings) }
+    if (p.steps.isNotEmpty()) { d.steps.clear(); d.steps.addAll(p.steps.map { it.text }) }
+    // Сразу показать, что получилось: ингредиенты можно поправить.
+    d.step = 1
 }
