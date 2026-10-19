@@ -62,6 +62,61 @@ object UiState {
     fun hintsOn(ctx: Context): Boolean = hintsShown.value ?: bool(ctx, "hints_on", true).also { hintsShown.value = it }
 
     fun setHintsOn(ctx: Context, on: Boolean) { setBool(ctx, "hints_on", on); hintsShown.value = on }
+
+    // ---------- Скрытые плашки ----------
+    // В режиме редактора любую плашку (подсказку, «Как пользоваться», сворачиваемую карточку) можно скрыть.
+    // Отметки лежат в ui_state — попадают в «Файл оформления» и в резервную копию.
+    private val plates = androidx.compose.runtime.mutableIntStateOf(0)
+    private const val HIDE = "hide_"
+
+    fun plateHidden(ctx: Context, key: String): Boolean { plates.intValue; return bool(ctx, HIDE + key, false) }
+
+    fun setPlateHidden(ctx: Context, key: String, hidden: Boolean) {
+        if (hidden) setBool(ctx, HIDE + key, true) else sp(ctx).edit().remove(HIDE + key).apply()
+        plates.intValue++
+    }
+
+    fun hiddenPlates(ctx: Context): Int { plates.intValue; return sp(ctx).all.count { (k, v) -> k.startsWith(HIDE) && v == true } }
+
+    fun showAllPlates(ctx: Context) {
+        val e = sp(ctx).edit()
+        sp(ctx).all.keys.filter { it.startsWith(HIDE) }.forEach { e.remove(it) }
+        e.apply()
+        plates.intValue++
+    }
+}
+
+/**
+ * Плашка, которую можно скрыть в режиме редактора. Скрытая не показывается; в режиме редактора на её месте —
+ * строка «Скрыто: …» с кнопкой «Показать». Над видимой плашкой в режиме редактора — кнопка «Скрыть».
+ */
+@Composable
+fun HideablePlate(key: String, title: String, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val ctx = LocalContext.current
+    val editor = com.dasein.poryadok.data.UiTexts.editorMode.value
+    val hidden = UiState.plateHidden(ctx, key)
+    if (hidden && !editor) return
+    val extra = LocalExtra.current
+    if (hidden) {
+        Row(
+            modifier.fillMaxWidth().clip(RoundedCornerShape(Space.fieldRound)).border(1.dp, extra.dim.copy(alpha = .35f), RoundedCornerShape(Space.fieldRound))
+                .padding(start = 12.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            androidx.compose.material3.Text("Скрыто: $title", Modifier.weight(1f), fontSize = 12.sp, color = extra.dim, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            androidx.compose.material3.TextButton(onClick = { UiState.setPlateHidden(ctx, key, false) }) { androidx.compose.material3.Text("Показать", fontSize = 12.sp) }
+        }
+        return
+    }
+    if (!editor) { androidx.compose.foundation.layout.Box(modifier) { content() }; return }
+    Column(modifier.fillMaxWidth()) {
+        androidx.compose.material3.TextButton(
+            onClick = { UiState.setPlateHidden(ctx, key, true) },
+            modifier = Modifier.align(Alignment.End).heightIn(min = 32.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+        ) { androidx.compose.material3.Text("✕ Скрыть плашку", fontSize = 12.sp, color = extra.danger) }
+        content()
+    }
 }
 
 /** Флаг, который переживает перезапуск приложения. */
@@ -97,6 +152,13 @@ fun InfoBox(
     // Подсказку, заголовок которой скрыли в режиме редактора, не показываем вовсе.
     com.dasein.poryadok.data.UiTexts.version.intValue
     if (hint && com.dasein.poryadok.data.UiTexts.isHidden(title) && !com.dasein.poryadok.data.UiTexts.editorMode.value) return
+    if (hint) HideablePlate("info_$key", title, modifier) { InfoBoxBody(key, title, Modifier, glyph, content) }
+    else InfoBoxBody(key, title, modifier, glyph, content)
+}
+
+@Composable
+private fun InfoBoxBody(key: String, title: String, modifier: Modifier, glyph: String?, content: @Composable ColumnScope.() -> Unit) {
+    val ctx = LocalContext.current
     val extra = LocalExtra.current
     var open by rememberUiFlag("info_$key", UiState.infoDefault(ctx))
     val tint = MaterialTheme.colorScheme.primary
@@ -140,6 +202,16 @@ fun FoldTile(
     modifier: Modifier = Modifier,
     summary: String? = null,
     summaryColor: androidx.compose.ui.graphics.Color? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) = HideablePlate("fold_$key", title, modifier) { FoldTileBody(key, title, Modifier, summary, summaryColor, content) }
+
+@Composable
+private fun FoldTileBody(
+    key: String,
+    title: String,
+    modifier: Modifier,
+    summary: String?,
+    summaryColor: androidx.compose.ui.graphics.Color?,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val extra = LocalExtra.current

@@ -92,7 +92,7 @@ fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolea
     var remove by remember { mutableStateOf<String?>(null) }
     fun save(list: List<String>) = onChange(list.distinct())
 
-    SectionTitle("Видео рецепта")
+    com.dasein.poryadok.ui.common.FoldSection("recipe_videos", "Видео рецепта") {
     if (videos.isEmpty()) Text(
         "Прикрепите ролик из галереи или ссылку на видео (YouTube, VK, Rutube) — он будет под рукой во время готовки.",
         fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(bottom = 8.dp),
@@ -159,6 +159,7 @@ fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolea
         }
     }
 
+    }
     if (addLink) {
         var text by remember { mutableStateOf("") }
         val url = RecipeVideos.normalizeLink(text)

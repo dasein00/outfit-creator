@@ -141,9 +141,14 @@ fun Tile(
 }
 
 @Composable
-fun SectionTitle(text: String, modifier: Modifier = Modifier, action: String? = null, onAction: () -> Unit = {}) {
+fun SectionTitle(
+    text: String, modifier: Modifier = Modifier, action: String? = null, onAction: () -> Unit = {},
+    /** Рубрика сворачивается нажатием на заголовок: [open] — развёрнута, справа стрелка. */
+    open: Boolean? = null, onToggle: (() -> Unit)? = null,
+) {
     Row(
-        modifier.fillMaxWidth().padding(top = Space.xl, bottom = Space.s).heightIn(min = 32.dp),
+        modifier.fillMaxWidth().padding(top = Space.xl, bottom = Space.s).heightIn(min = 32.dp)
+            .let { m -> if (onToggle != null) m.clip(RoundedCornerShape(8.dp)).clickable(onClick = onToggle) else m },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // Заголовок пишется капителью, но правится и переводится по исходному тексту (раньше «Тексты
@@ -157,13 +162,33 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier, action: String? = 
             color = LocalExtra.current.dim, maxLines = 2, overflow = TextOverflow.Ellipsis,
             modifier = (if (UiTexts.editorMode.value) Modifier.textEditPress(if (legacy != upper) upper else text) else Modifier).weight(1f),
         )
-        if (action != null) Editable {
+        if (action != null && open != false) Editable {
             Text(
                 btnLabel(action), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(start = Space.s).clip(RoundedCornerShape(10.dp)).clickable(onClick = onAction)
                     .heightIn(min = 36.dp).padding(horizontal = Space.s, vertical = Space.s),
             )
         }
+        if (open != null) androidx.compose.material3.Icon(
+            if (open) androidx.compose.material.icons.Icons.Default.ExpandLess else androidx.compose.material.icons.Icons.Default.ExpandMore,
+            if (open) "Свернуть" else "Развернуть", tint = LocalExtra.current.dim, modifier = Modifier.padding(start = 4.dp),
+        )
+    }
+}
+
+/**
+ * Рубрика, которая сворачивается простым нажатием на заголовок («Ингредиенты», «Приготовление»…).
+ * Свёрнутая остаётся свёрнутой и после перезапуска (своё состояние для каждого [key]).
+ */
+@Composable
+fun FoldSection(
+    key: String, title: String, modifier: Modifier = Modifier, action: String? = null, onAction: () -> Unit = {},
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
+) {
+    var open by rememberUiFlag("sec_$key", true)
+    SectionTitle(title, modifier, action, onAction, open = open) { open = !open }
+    androidx.compose.animation.AnimatedVisibility(open) {
+        androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth(), content = content)
     }
 }
 

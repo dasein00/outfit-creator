@@ -238,7 +238,7 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                 if (swaps.isNotEmpty()) Text(btnLabel("С учётом замен ингредиентов"), fontSize = 12.sp, color = extra.warn, modifier = Modifier.padding(top = 6.dp))
             }
 
-            SectionTitle("Калькулятор граммовки")
+            com.dasein.poryadok.ui.common.FoldSection("recipe_calc", "Калькулятор граммовки") {
             // Компактно: основной продукт (по умолчанию — главный в рецепте) и сколько его есть.
             // Нажатие на продукт раскрывает список ингредиентов, чтобы считать от другого.
             if (calcBase != null) Tile(padding = 12.dp) {
@@ -278,7 +278,8 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                     )
                 }
             }
-            SectionTitle(if (baseFactor != null) "Ингредиенты на ≈ ${Cooking.amount(servD)} порц." else "Ингредиенты на $serv порц.")
+            }
+            com.dasein.poryadok.ui.common.FoldSection("recipe_ingredients", if (baseFactor != null) "Ингредиенты на ≈ ${Cooking.amount(servD)} порц." else "Ингредиенты на $serv порц.") {
             Tile(padding = 8.dp) {
                 scaled.forEachIndexed { i, ing ->
                     val hasSwap = Cooking.SWAPS.containsKey(baseIngr.getOrNull(i)?.name) || swaps.containsKey(i)
@@ -301,6 +302,7 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                 }
             }
 
+            }
             // «Описание» — ваши заметки к блюду (сюда же попадает текст рецепта при вставке из Instagram). Пишется прямо здесь.
             Gap(8.dp)
             RecipeDescription(r)
@@ -331,10 +333,12 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
             val shown: List<Pair<String, Int>> = if (detailed && detail != null) detail!!.map { it.text to it.minutes }
                 else steps.map { it.text to it.minutes }
             val doneCount = shown.indices.count { done[it] == true }
-            SectionTitle(
+            com.dasein.poryadok.ui.common.FoldSection(
+                "recipe_steps",
                 if (shown.isEmpty()) "Приготовление" else "Приготовление · $doneCount из ${shown.size}",
                 action = if (done.isNotEmpty() || have.isNotEmpty()) "Сбросить" else null,
-            ) { done.clear(); have.clear(); timers.clear() }
+                onAction = { done.clear(); have.clear(); timers.clear() },
+            ) {
             if (steps.isNotEmpty()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp)) {
                     Pill("Подробно для новичка", detailed) { if (!detailed) { detailed = true; done.clear(); timers.clear() } }
@@ -403,17 +407,18 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
             }
             if (shown.isNotEmpty() && doneCount == shown.size) Text(btnLabel("Готово! Приятного аппетита 🍽"), color = green, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
             if (steps.isEmpty()) Text(btnLabel("Шаги не добавлены"), color = extra.dim)
+            }
             RecipeRating(r.id)
 
-            if (r.tips.isNotBlank()) { SectionTitle("Советы"); Text(r.tips) }
+            if (r.tips.isNotBlank()) com.dasein.poryadok.ui.common.FoldSection("recipe_tips", "Советы") { Text(r.tips) }
             val swapList = baseIngr.mapNotNull { ing -> Cooking.SWAPS[ing.name]?.let { ing.name to it } }
             if (swapList.isNotEmpty() || r.swaps.isNotBlank()) {
-                SectionTitle("Замены ингредиентов")
-                swapList.forEach { (from, to) -> Text("$from → ${to.joinToString(", ")}", fontSize = 14.sp, modifier = Modifier.padding(bottom = 4.dp)) }
-                if (r.swaps.isNotBlank()) Text(r.swaps, fontSize = 14.sp)
+                com.dasein.poryadok.ui.common.FoldSection("recipe_swaps", "Замены ингредиентов") {
+                    swapList.forEach { (from, to) -> Text("$from → ${to.joinToString(", ")}", fontSize = 14.sp, modifier = Modifier.padding(bottom = 4.dp)) }
+                    if (r.swaps.isNotBlank()) Text(r.swaps, fontSize = 14.sp)
+                }
             }
-            SectionTitle("Пищевая ценность")
-            Tile {
+            com.dasein.poryadok.ui.common.FoldSection("recipe_nutrition", "Пищевая ценность") { Tile {
                 val per100 = scaled.sumOf { it.grams }.takeIf { it > 0 }?.let { total * (100 / it) }
                 Text("Порция (${Cooking.amount(scaled.sumOf { it.grams } / servD)} г)", fontSize = 13.sp, color = extra.dim)
                 MacroLine(total / servD, showFiber = true)
@@ -423,7 +428,7 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                     MacroLine(per100, showFiber = true)
                 }
                 Text("Расчёт по базе продуктов, значения приблизительные.", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
-            }
+            } }
 
             Gap(16.dp)
             Row {
@@ -691,8 +696,7 @@ private fun RecipeRating(id: Long) {
     val ctx = LocalContext.current
     val sp = remember { ctx.getSharedPreferences("ui_state", android.content.Context.MODE_PRIVATE) }
     var rate by remember(id) { mutableStateOf(sp.getInt("recipe_rate_$id", 0)) }
-    SectionTitle("Моя оценка")
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    com.dasein.poryadok.ui.common.FoldSection("recipe_rating", "Моя оценка") { Row(verticalAlignment = Alignment.CenterVertically) {
         (1..5).forEach { k ->
             Text(
                 if (k <= rate) "★" else "☆", fontSize = 30.sp, color = MaterialTheme.colorScheme.primary,
@@ -703,7 +707,7 @@ private fun RecipeRating(id: Long) {
             )
         }
         if (rate > 0) Text(btnLabel("  ") + listOf("", "не понравилось", "так себе", "нормально", "вкусно", "шедевр")[rate], fontSize = 13.sp, color = LocalExtra.current.dim)
-    }
+    } }
 }
 
 

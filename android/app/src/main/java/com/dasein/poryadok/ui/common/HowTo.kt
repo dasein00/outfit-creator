@@ -36,6 +36,11 @@ data class HowToGuide(val title: String, val about: String, val steps: List<Stri
 fun HowTo(key: String, modifier: Modifier = Modifier.padding(top = 20.dp, bottom = 12.dp)) {
     val g = HowToTexts.all[key] ?: return
     if (!UiState.hintsOn(androidx.compose.ui.platform.LocalContext.current)) return
+    HideablePlate("howto_$key", "Как пользоваться · ${g.title}", modifier) { HowToBody(g, key, Modifier) }
+}
+
+@Composable
+private fun HowToBody(g: HowToGuide, key: String, modifier: Modifier) {
     val extra = LocalExtra.current
     var open by rememberUiFlag("howto_$key", false)
     Column(modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.primary.copy(alpha = .07f))) {

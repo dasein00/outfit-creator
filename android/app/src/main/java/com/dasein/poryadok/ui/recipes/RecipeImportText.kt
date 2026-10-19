@@ -264,32 +264,12 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
             videoBusy = false
         }
     }
-    /** Видео из галереи: копируется в рецепт (второй раз добавлять не нужно), речь распознаётся, потом файл сжимается. */
-    fun fromPicked(uri: android.net.Uri) {
-        videoBusy = true; aiError = null; status = "Добавляю видео к рецепту…"
-        scope.launch {
-            val path = com.dasein.poryadok.ui.common.Media.importRaw(ctx, uri, "recipes/video")?.takeIf { java.io.File(it).length() > 0 }
-            if (path == null) { videoBusy = false; status = null; aiError = "Не удалось открыть видео"; return@launch }
-            d.recipe = d.recipe.copy(videos = (RecipeVideos.list(d.recipe) + path).distinct().joinToString("\n"))
-            speechOf(path)
-                .onSuccess { sp -> putSpeech(sp); status = "Речь распознана, видео прикреплено к рецепту. Нажмите «Сгенерировать рецепт» или «Разобрать без ИИ»." }
-                .onFailure { e -> status = "Видео прикреплено к рецепту."; aiError = speechError(e) }
-            videoBusy = false
-            // Сжатие — после распознавания и в фоне приложения; речь переносится к сжатой копии.
-            com.dasein.poryadok.ui.common.io {
-                if (!com.dasein.poryadok.system.VideoCompress.worth(path)) return@io
-                val out = com.dasein.poryadok.system.VideoCompress.replace(ctx, path)
-                if (out == path) return@io
-                com.dasein.poryadok.system.VideoSpeech.carry(ctx, path, out)
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    d.recipe = d.recipe.copy(videos = RecipeVideos.list(d.recipe).map { if (it == path) out else it }.joinToString("\n"))
-                }
-            }
-        }
+    /** Видео добавлено здесь же (после монтажа и сжатия): прикрепляется к рецепту, и сразу распознаётся речь. */
+    fun attachAndRecognize(path: String) {
+        d.recipe = d.recipe.copy(videos = (RecipeVideos.list(d.recipe) + path).distinct().joinToString("\n"))
+        fromFile(path)
     }
-    val videoPicker = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) fromPicked(uri)
-    }
+    var addVideo by remember { mutableStateOf(false) }
     /**
      * Всё за один раз: подпись из поста Instagram + речь из видео рецепта → рецепт.
      * С ИИ — он сводит оба текста; без интернета или ключа — встроенный разбор (продукты из поста, этапы из речи, остальное по правилам).
@@ -353,22 +333,31 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                     val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     cm.primaryClip?.getItemAt(0)?.coerceToText(ctx)?.toString()?.let { text = it }
                 }) { Text(btnLabel("Вставить из буфера обмена")) }
-                // Видео рецепта уже есть — распознаём его; нет — выбираем из галереи, и оно само прикрепится к рецепту.
-                if (ownVideos.isEmpty()) OutlinedButton(enabled = !videoBusy && !aiBusy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp), onClick = {
-                    videoPicker.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.VideoOnly))
-                }) { Text(if (videoBusy) (status ?: "Распознаю…") else "Видео рецепта: добавить и распознать речь") }
-                ownVideos.forEachIndexed { i, v ->
-                    val ready = com.dasein.poryadok.system.VideoSpeech.cached(ctx, v) != null
-                    TextButton(enabled = !videoBusy && !aiBusy, onClick = { fromFile(v) }) {
+                // Видео загружается один раз — здесь (монтаж, сжатие) или в карточке рецепта. «Распознать речь» берёт его само.
+                if (ownVideos.isEmpty() || addVideo) {
+                    Text(
+                        if (ownVideos.isEmpty()) "Добавьте видео рецепта: откроется монтаж (обрезка, куски, скорость), потом видео сожмётся и прикрепится к рецепту, а речь распознается сама."
+                        else "Новое видео тоже прикрепится к рецепту.",
+                        fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp, modifier = Modifier.padding(top = 8.dp),
+                    )
+                    com.dasein.poryadok.ui.common.VideoAddButtons("recipes/video") { path -> addVideo = false; attachAndRecognize(path) }
+                }
+                if (ownVideos.isNotEmpty()) {
+                    val ready = ownVideos.associateWith { com.dasein.poryadok.system.VideoSpeech.cached(ctx, it) != null }
+                    OutlinedButton(enabled = !videoBusy && !aiBusy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(min = 48.dp), onClick = { fromFile(ownVideos.first()) }) {
                         Text(
-                            (if (ready) "Речь из видео рецепта" else "Распознать речь из видео рецепта") + (if (ownVideos.size > 1) " №${i + 1}" else "") +
-                                if (ready) " — подставить" else "",
+                            when {
+                                videoBusy -> status ?: "Распознаю…"
+                                ready[ownVideos.first()] == true -> "Распознать речь (уже готово — подставить)"
+                                else -> "Распознать речь из видео рецепта"
+                            },
                         )
                     }
+                    ownVideos.drop(1).forEachIndexed { i, v ->
+                        TextButton(enabled = !videoBusy && !aiBusy, onClick = { fromFile(v) }) { Text("Распознать речь из видео №${i + 2}" + if (ready[v] == true) " (готово)" else "") }
+                    }
+                    if (!addVideo) TextButton(enabled = !videoBusy, onClick = { addVideo = true }) { Text(btnLabel("+ Добавить другое видео")) }
                 }
-                if (ownVideos.isNotEmpty()) TextButton(enabled = !videoBusy && !aiBusy, onClick = {
-                    videoPicker.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.VideoOnly))
-                }) { Text(btnLabel("Другое видео из галереи")) }
                 TextInput(text, { text = it }, "Речь из видео или свой текст", singleLine = false, minLines = 5)
                 // Подпись под видео в Instagram: ссылка → «Запарсить рецепт» → текст поста попадает в поле ниже.
                 TextInput(postUrl, { postUrl = it.trim() }, "Ссылка на пост Instagram", Modifier.padding(top = 6.dp))

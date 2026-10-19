@@ -227,6 +227,19 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
                 }
                 Switch(UiTexts.editorMode.value, { UiTexts.setEditorMode(it) })
             }
+            // Плашки, скрытые в режиме редактора кнопкой «✕ Скрыть плашку».
+            val hiddenPlates = com.dasein.poryadok.ui.common.UiState.hiddenPlates(ctx)
+            Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(btnLabel("Скрытые плашки") + if (hiddenPlates > 0) ": $hiddenPlates" else "", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "В режиме редактора над каждой подсказкой, инструкцией «Как пользоваться» и сворачиваемой карточкой есть «✕ Скрыть плашку», " +
+                            "а отдельный текст скрывается удержанием → «Скрыть с экрана». Скрытое сохраняется в «Файл оформления».",
+                        fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
+                    )
+                }
+                if (hiddenPlates > 0) TextButton(onClick = { com.dasein.poryadok.ui.common.UiState.showAllPlates(ctx) }) { Text(btnLabel("Показать все")) }
+            }
 
             SectionTitle("Файл оформления")
             Text(
