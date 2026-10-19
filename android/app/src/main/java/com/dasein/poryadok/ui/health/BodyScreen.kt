@@ -193,7 +193,6 @@ fun BodyTab(nav: NavHostController, profile: BodyProfile, weights: List<WeightEn
         }
     }
 
-    BodyAccountsBar()
     Gap(8.dp)
     if (last == null) {
         Empty(Glyphs.SCALE, "Нет взвешиваний", "Добавьте вес вручную — или подключите весы через Health Connect, и показатели будут подтягиваться сами.")
@@ -268,7 +267,7 @@ internal fun BodyComposition(r: BodyReading, p: Person) {
         Gap(8.dp)
         Row(verticalAlignment = Alignment.CenterVertically) {
             // Заливка — доля воды (измеренная или оценка); без данных о воде фигура без заливки, а не «50%».
-            ModelFigure(c.water?.let { (it / r.weight).toFloat() } ?: 0f, Modifier.width(88.dp).height(250.dp))
+            ModelFigure(c.water?.let { (it / r.weight).toFloat() } ?: 0f, Modifier.width(88.dp).height(250.dp), p.male)
             HGap(12.dp)
             Column(Modifier.weight(1f)) {
                 Text(fmt(r.weight) + " кг", style = MaterialTheme.typography.titleLarge, modifier = Modifier.align(Alignment.End))
@@ -464,7 +463,6 @@ internal fun BodyDialog(m0: BodyMetric, onDismiss: () -> Unit) {
                 MetricField(f, "subcut", "Подкожный жир", "%")
                 MetricField(f, "hr", "Пульс", "уд/мин")
                 MetricField(f, "cardiac", "Сердечный индекс", "л/мин/м²")
-                if (!isNew && m0.source != LEGACY) MoveReadingRow(m0, onDismiss)
             }
         },
         confirmButton = {

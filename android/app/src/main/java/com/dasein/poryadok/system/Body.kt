@@ -114,9 +114,8 @@ object Body {
 
     /** Читает показатели за [days] дней. Возвращает число новых взвешиваний. */
     suspend fun syncHealthConnect(ctx: Context, days: Long = 365): Int {
-        // Открыт аккаунт другого человека — взвешивания владельца телефона ему не подтягиваем.
-        BodyAccounts.recover(ctx)
-        if (!BodyAccounts.syncAllowed(ctx)) return 0
+        // Аккаунты весов убраны: если был открыт чужой аккаунт — сначала вернуть свои данные.
+        runCatching { BodyAccounts.backToOwner(ctx) }
         val ok = granted(ctx)
         if (HealthPermission.getReadPermission(WeightRecord::class) !in ok) return 0
         val client = HealthConnectClient.getOrCreate(ctx)

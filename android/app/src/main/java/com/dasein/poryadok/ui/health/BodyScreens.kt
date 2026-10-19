@@ -279,11 +279,13 @@ fun Sparkline(values: List<Float>, modifier: Modifier) {
 
 /** Ваша модель из гардероба с «заливкой» по доле воды — как фигура в отчёте весов. */
 @Composable
-internal fun ModelFigure(fill: Float, modifier: Modifier) {
+internal fun ModelFigure(fill: Float, modifier: Modifier, male: Boolean = true) {
     val ctx = LocalContext.current
     val tint = Color(0xFF6FA8DC)
-    val img by produceState<ImageBitmap?>(null) {
-        value = runCatching { ctx.assets.open("wardrobe/model.webp").use { BitmapFactory.decodeStream(it) }?.asImageBitmap() }.getOrNull()
+    // Пол из «Замеров»: у женщины — женская модель.
+    val asset = if (male) "wardrobe/model.webp" else "body_types/female/model.webp"
+    val img by produceState<ImageBitmap?>(null, asset) {
+        value = runCatching { ctx.assets.open(asset).use { BitmapFactory.decodeStream(it) }?.asImageBitmap() }.getOrNull()
     }
     val bmp = img ?: run { Glyph("train/16", 84.dp, badge = false); return }
     Image(
