@@ -51,6 +51,18 @@
   // ---------- раскладка ----------
   function layout() {
     W = vp.clientWidth || window.innerWidth; H = vp.clientHeight || window.innerHeight;
+    lastW = W; lastH = H;
+    if (S.paged) {
+      // Высота страницы и ширина колонки — в пикселях от настоящего окна. 100vh в WebView бывает почти нулевым,
+      // пока окно ещё не разложено, — тогда каждая «страница» выходила в одну строку под шапкой, а остальное пустым.
+      var cs = getComputedStyle(book);
+      var m = (parseFloat(cs.paddingLeft) || 0);
+      book.style.height = H + 'px';
+      book.style.columnWidth = Math.max(40, W - 2 * m) + 'px';
+      book.style.columnGap = (2 * m) + 'px';
+    } else {
+      book.style.height = ''; book.style.columnWidth = ''; book.style.columnGap = '';
+    }
     if (S.paged) pages = Math.max(1, Math.round(book.scrollWidth / W));
     else pages = Math.max(1, Math.ceil(vp.scrollHeight / H));
   }
@@ -385,11 +397,20 @@
     }
   });
 
-  window.addEventListener('resize', function () {
+  // Окно изменилось (разложилось после открытия, повернули экран, скрылись панели) — пересчитываем страницы,
+  // оставаясь на том же месте текста. ResizeObserver ловит и случаи, когда события resize не было.
+  var lastW = 0, lastH = 0, relayTimer = 0;
+  function relayout() {
     if (ch < 0) return;
+    var w = vp.clientWidth || window.innerWidth, h = vp.clientHeight || window.innerHeight;
+    if (w === lastW && h === lastH) return;
+    lastW = w; lastH = h;
     var o = curOffset();
-    setTimeout(function () { nodes = null; layout(); goOffset(o); }, 60);
-  });
+    clearTimeout(relayTimer);
+    relayTimer = setTimeout(function () { nodes = null; layout(); goOffset(o); }, 60);
+  }
+  window.addEventListener('resize', relayout);
+  if (window.ResizeObserver) new ResizeObserver(relayout).observe(vp);
 
   document.addEventListener('DOMContentLoaded', function () { A.ready(); });
   if (document.readyState !== 'loading') setTimeout(function () { A.ready(); }, 0);

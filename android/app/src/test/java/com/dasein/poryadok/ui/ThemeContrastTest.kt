@@ -45,4 +45,22 @@ class ThemeContrastTest {
             Palette.accents.forEach { (an, acc) -> check("акцент «$an» на $n", acc, bg, min) }
         }
     }
+
+    /** Свой цвет текста, слишком близкий к своему фону, сам становится различимым. */
+    @Test fun ownColorsBecomeReadable() {
+        val pairs = listOf(
+            Color(0xFFF4ECD8) to Color(0xFFF7F0E0), // кремовый текст на кремовом фоне
+            Color(0xFF1C1B1A) to Color(0xFF2B2826), // тёмный на тёмном
+            Color(0xFFE8913A) to Color(0xFFF0A050), // оранжевый на оранжевом
+            Color(0xFF777777) to Color(0xFF808080), // серый на сером
+            Color(0x80F6F3EC) to Color(0xFFF7F3EB), // полупрозрачный светлый на светлом
+        )
+        pairs.forEach { (fg, bg) ->
+            val c = com.dasein.poryadok.ui.theme.Look.readable(fg, bg, 4.5f)
+            check("текст ${Integer.toHexString(fg.hashCode())} на фоне", c.copy(alpha = 1f), bg, 4.4)
+        }
+        // Уже различимый цвет не трогаем.
+        val ok = Color(0xFF211D18)
+        assertTrue(com.dasein.poryadok.ui.theme.Look.readable(ok, Color(0xFFF7F3EB)) == ok)
+    }
 }

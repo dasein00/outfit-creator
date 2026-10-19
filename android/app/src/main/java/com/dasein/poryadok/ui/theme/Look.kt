@@ -93,6 +93,24 @@ object Look {
 
     fun isDark(c: Color) = c.luminance() < .4f
 
+    /**
+     * Цвет, различимый на фоне [bg]: если контраст ниже [min], цвет плавно сдвигается к чёрному или белому
+     * (что даёт больший контраст с этим фоном) — оттенок по возможности сохраняется. Полупрозрачный цвет
+     * оценивается так, как он ляжет на фон.
+     */
+    fun readable(fg: Color, bg: Color, min: Float = 4.5f): Color {
+        val solid = if (fg.alpha < 1f) mix(bg, fg.copy(alpha = 1f), fg.alpha) else fg
+        if (contrast(solid, bg) >= min) return fg
+        val toward = if (contrast(Color.Black, bg) >= contrast(Color.White, bg)) Color.Black else Color.White
+        var f = 0f
+        var c = solid
+        while (f < 1f && contrast(c, bg) < min) { f = (f + .05f).coerceAtMost(1f); c = mix(solid, toward, f) }
+        return c
+    }
+
+    /** Различимый сразу на нескольких фонах (фон экрана и карточек). */
+    fun readableOn(fg: Color, bgs: List<Color>, min: Float = 4.5f): Color = bgs.fold(fg) { c, b -> readable(c, b, min) }
+
     /** Контраст по WCAG: от 1 до 21. */
     fun contrast(a: Color, b: Color): Float {
         val l1 = a.luminance() + .05f

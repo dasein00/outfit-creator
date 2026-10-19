@@ -88,7 +88,17 @@ import kotlinx.coroutines.withContext
 data class PageTheme(val name: String, val bg: Color, val fg: Color, val dim: Color, val link: Color, val dark: Boolean)
 
 @Composable
-fun pageTheme(i: Int): PageTheme {
+fun pageTheme(i: Int): PageTheme = rawPageTheme(i).let { t ->
+    // Текст страницы всегда различим на её фоне — и в «Как в приложении» со своими цветами оформления.
+    t.copy(
+        fg = com.dasein.poryadok.ui.theme.Look.readable(t.fg, t.bg, 7f),
+        dim = com.dasein.poryadok.ui.theme.Look.readable(t.dim, t.bg, 3f),
+        link = com.dasein.poryadok.ui.theme.Look.readable(t.link, t.bg, 3f),
+    )
+}
+
+@Composable
+private fun rawPageTheme(i: Int): PageTheme {
     val app = MaterialTheme.colorScheme
     return when (i) {
         0 -> PageTheme("День", Color(0xFFFFFFFF), Color(0xFF1E1E1E), Color(0xFF8A8A8A), Color(0xFFB0611E), false)

@@ -54,7 +54,7 @@ class PaintByNumbersTest {
             m.sets.forEach { (_, l) -> assertEquals("$m", l.size, l.toSet().size) }
         }
         assertEquals(48, PaintByNumbers.WATERCOLOR_PENCILS.size)
-        assertEquals(76, PaintByNumbers.ALCOHOL_MARKERS.size)
+        assertEquals(216, PaintByNumbers.ALCOHOL_MARKERS.size)
     }
 
     @Test fun sharpPhotoEdgesInsideOneColorBecomeContours() {

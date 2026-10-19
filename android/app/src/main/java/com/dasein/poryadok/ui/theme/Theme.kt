@@ -134,16 +134,20 @@ fun PoryadokTheme(theme: String, accent: Int, content: @Composable () -> Unit) {
     val acc = if (look.accentRgb != 0) Look.color(look.accentRgb) else Palette.accents.getOrNull(accent)?.second ?: Palette.Brass
     val base = if (dark) baseDark(acc) else baseLight(acc)
     val bg = if (look.bgRgb != 0) Look.color(look.bgRgb) else base.background
-    val text = when {
+    // Текст всегда различим на фоне: свой цвет текста, слишком близкий к фону, сам сдвигается к контрастному.
+    val text0 = when {
         look.textRgb != 0 -> Look.color(look.textRgb)
         look.contrast -> if (dark) Color.White else Color.Black
         else -> base.onBackground
     }
+    val text1 = Look.readable(text0, bg, 4.5f)
     val custom = look.bgRgb != 0 || look.textRgb != 0 || look.contrast
-    val scheme = if (!custom) base else {
-        val card = Look.mix(bg, text, if (dark) .07f else .03f).let { if (!dark && look.bgRgb != 0) Look.mix(bg, Color.White, .6f) else it }
-        val cardHigh = Look.mix(bg, text, if (dark) .13f else .08f)
-        val dim = Look.mix(text, bg, if (look.contrast) .12f else .3f)
+    val scheme0 = if (!custom) base else {
+        val card = Look.mix(bg, text1, if (dark) .07f else .03f).let { if (!dark && look.bgRgb != 0) Look.mix(bg, Color.White, .6f) else it }
+        val cardHigh = Look.mix(bg, text1, if (dark) .13f else .08f)
+        val text = Look.readableOn(text1, listOf(bg, card, cardHigh), 4.5f)
+        // Второстепенный текст — бледнее основного, но не ниже 3:1 и на фоне, и на карточках.
+        val dim = Look.readableOn(Look.mix(text, bg, if (look.contrast) .12f else .3f), listOf(bg, card, cardHigh), 3f)
         base.copy(
             background = bg, onBackground = text, surface = bg, onSurface = text,
             surfaceVariant = card, onSurfaceVariant = dim,
@@ -153,9 +157,22 @@ fun PoryadokTheme(theme: String, accent: Int, content: @Composable () -> Unit) {
             onPrimaryContainer = text, secondaryContainer = cardHigh, onSecondaryContainer = text,
         )
     }
+    // Акцент как цвет ссылок и надписей — различим на фоне; текст на кнопках с акцентом — различим на акценте.
+    val primary = if (custom || look.accentRgb != 0) Look.readable(scheme0.primary, scheme0.background, 3f) else scheme0.primary
+    val scheme = scheme0.copy(
+        primary = primary,
+        onPrimary = Look.readable(scheme0.onPrimary, primary, 4.5f),
+        onSecondary = Look.readable(scheme0.onSecondary, scheme0.secondary, 4.5f),
+        onError = Look.readable(scheme0.onError, scheme0.error, 4.5f),
+    )
     val extra = if (!custom) (if (dark) DarkExtra else LightExtra) else {
         val e = if (dark) DarkExtra else LightExtra
-        e.copy(dim = scheme.onSurfaceVariant, card = scheme.surfaceContainer, cardHigh = scheme.surfaceContainerHigh, line = scheme.outlineVariant)
+        val bgs = listOf(scheme.background, scheme.surfaceContainer)
+        e.copy(
+            dim = scheme.onSurfaceVariant, card = scheme.surfaceContainer, cardHigh = scheme.surfaceContainerHigh, line = scheme.outlineVariant,
+            // Цвета состояний (норма, внимание, опасность) — тоже различимы на своём фоне.
+            ok = Look.readableOn(e.ok, bgs, 3f), warn = Look.readableOn(e.warn, bgs, 3f), danger = Look.readableOn(e.danger, bgs, 3f),
+        )
     }
     val typography = androidx.compose.runtime.remember(look.font) { typographyFor(look.font) }
     val density = androidx.compose.ui.platform.LocalDensity.current
