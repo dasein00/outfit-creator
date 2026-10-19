@@ -18,6 +18,8 @@ import androidx.media3.transformer.Transformer
 import androidx.media3.transformer.VideoEncoderSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.coroutines.resume
@@ -216,25 +218,45 @@ object VideoCompress {
         return c.absolutePath
     }
 
+    private val compactLock = kotlinx.coroutines.sync.Mutex()
+    private fun prefs(ctx: Context) = ctx.applicationContext.getSharedPreferences("video_compact", Context.MODE_PRIVATE)
+    private const val OLD_KEY = "old_files"
+    /** Ролики, которые уже пробовали и меньше они не стали (путь|размер), — не мучаем их при каждом запуске. */
+    private const val SKIP_KEY = "skip"
+
     /**
      * Пережать все видео рецептов и тренировок, которые крупнее нынешних настроек (в том числе сжатые по-старому).
-     * Пути обновляются в рецептах и упражнениях. Возвращает (сколько роликов пережато, сколько байт освобождено).
+     * Пути обновляются в рецептах и упражнениях. Прежний файл удаляется не сразу, а при следующем запуске и только если
+     * на него больше ничего не ссылается: открытый черновик рецепта или упражнения со старым путём ничего не потеряет.
+     * Возвращает (сколько роликов пережато, сколько байт освобождено).
      */
-    suspend fun recompressAll(ctx: Context, onProgress: (String) -> Unit): Pair<Int, Long> {
+    suspend fun recompressAll(ctx: Context, onProgress: (String) -> Unit = {}): Pair<Int, Long> = compactLock.withLock {
         val g = com.dasein.poryadok.Graph
-        val recipes = g.extra.recipesNow()
-        val exercises = g.training.exercisesNow()
         fun isLocalVideo(p: String) = p.startsWith("/") && com.dasein.poryadok.ui.common.Media.isVideo(p) && File(p).exists()
-        val paths = (recipes.flatMap { r -> r.videos.lines().map { it.trim() } } + exercises.flatMap { e -> e.media.lines().map { it.trim() } })
-            .filter { isLocalVideo(it) }.distinct()
-        val todo = withContext(Dispatchers.IO) { paths.filter { worth(it) } }
+        suspend fun referenced(): List<String> =
+            (g.extra.recipesNow().flatMap { r -> r.videos.lines().map { it.trim() } } + g.training.exercisesNow().flatMap { e -> e.media.lines().map { it.trim() } })
+                .filter { it.isNotEmpty() }
+        // Прежние файлы прошлых сжатий: удаляем те, на которые уже никто не ссылается.
+        val sp = prefs(ctx)
+        val used = referenced().toSet()
+        val old = sp.getStringSet(OLD_KEY, emptySet()).orEmpty()
+        val keep = old.filter { it in used }.toSet()
+        withContext(Dispatchers.IO) { (old - keep).forEach { File(it).delete() } }
+        sp.edit().putStringSet(OLD_KEY, keep).apply()
+
+        val skip = sp.getStringSet(SKIP_KEY, emptySet()).orEmpty()
+        val todo = withContext(Dispatchers.IO) { used.filter { isLocalVideo(it) && "$it|${File(it).length()}" !in skip && worth(it) } }
         var n = 0
         var saved = 0L
         todo.forEachIndexed { i, p ->
             onProgress("Сжимаю видео ${i + 1} из ${todo.size}… Не закрывайте приложение")
-            val before = File(p).length()
-            val out = replace(ctx, p)
-            if (out == p) return@forEachIndexed
+            val src = File(p)
+            val before = src.length()
+            val out = compress(ctx, src)?.absolutePath
+            if (out == null) {
+                sp.edit().putStringSet(SKIP_KEY, sp.getStringSet(SKIP_KEY, emptySet()).orEmpty() + "$p|$before").apply()
+                return@forEachIndexed
+            }
             n++
             saved += before - File(out).length()
             com.dasein.poryadok.system.VideoSpeech.carry(ctx, p, out)
@@ -244,8 +266,22 @@ object VideoCompress {
             g.training.exercisesNow().filter { e -> e.media.lines().any { it.trim() == p } }.forEach { e ->
                 g.training.upsertExercise(e.copy(media = e.media.lines().map { if (it.trim() == p) out else it }.joinToString("\n")))
             }
+            sp.edit().putStringSet(OLD_KEY, sp.getStringSet(OLD_KEY, emptySet()).orEmpty() + p).apply()
         }
-        return n to saved.coerceAtLeast(0)
+        n to saved.coerceAtLeast(0)
+    }
+
+    /** При запуске, в фоне: всё уже загруженное сжимается само; что не успело — продолжится при следующем запуске. */
+    fun autoCompact(ctx: Context) {
+        val app = ctx.applicationContext
+        com.dasein.poryadok.Graph.scope.launch {
+            kotlinx.coroutines.delay(20_000) // не мешаем первым секундам после запуска
+            if (compactLock.isLocked) return@launch
+            val (n, saved) = runCatching { recompressAll(app) }.getOrDefault(0 to 0L)
+            if (n > 0) withContext(Dispatchers.Main) {
+                android.widget.Toast.makeText(app, "Видео сжаты: $n · освобождено ${mb(saved)}", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     fun mb(bytes: Long) = if (bytes < 1024 * 1024) "${bytes / 1024} КБ" else String.format(java.util.Locale.US, "%.1f МБ", bytes / 1048576.0)
