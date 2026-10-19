@@ -100,7 +100,7 @@ fun PbnHomeContent(nav: NavHostController) {
     val list = remember(refresh) { PbnStore.list(ctx) }
     val ver = PbnStore.version.intValue
     var medium by remember { mutableIntStateOf(PbnStore.lastMedium(ctx)) }
-    val counts = remember(ver) { PaintByNumbers.Medium.entries.map { PbnStore.pencils(ctx, it).size } }
+    val counts = remember(ver) { PaintByNumbers.Medium.entries.associateWith { PbnStore.pencils(ctx, it).size } }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) scope.launch {
             busy = true
@@ -109,20 +109,27 @@ fun PbnHomeContent(nav: NavHostController) {
         }
     }
     Column {
-        Text(
-            "Загрузите любую картинку — приложение превратит её в раскраску: тонкие контуры и номера цветов, а внизу листа — каким цветом " +
-                "закрашивать каждый номер. Цвета подбираются только из того, что у вас есть: карандашей, акварельных карандашей, маркеров, спиртовых маркеров или красок.",
-            fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
-        )
-        Text(btnLabel("Чем раскрашивать"), fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
-        MediumPicker(medium) { medium = it; PbnStore.setLastMedium(ctx, it) }
-        Gap(8.dp)
-        Button(onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-            Text(if (busy) "Открываю…" else "Новая раскраска из фото")
+        com.dasein.poryadok.ui.common.InfoBox("pbn_about", "Как это работает") {
+            Text(
+                "Загрузите любую картинку — приложение превратит её в раскраску: тонкие контуры и номера цветов, а внизу листа — каким цветом " +
+                    "закрашивать каждый номер. Цвета подбираются только из того, что у вас есть.",
+                fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
+            )
         }
-        OutlinedButton(onClick = { nav.navigate(Routes.CRAFT_PENCILS) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
-            Text("🎨 Мои материалы · ✏️ ${counts[0]} · 🖊 ${counts[1]} · 🖌 ${counts[2]}")
+        // Новая раскраска: выбрать материал и фото — два шага в одной карточке.
+        SettingsCard("Новая раскраска") {
+            FieldLabel("Чем раскрашивать")
+            MaterialPicker(medium, counts) { medium = it; PbnStore.setLastMedium(ctx, it) }
+            Button(
+                onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy,
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+            ) { Text(if (busy) "Открываю…" else "Выбрать фото") }
         }
+        Gap(10.dp)
+        NavRow(
+            "🎨", "Мои материалы",
+            PaintByNumbers.Kind.entries.joinToString(" · ") { k -> "${k.title} ${k.media.sumOf { counts[it] ?: 0 }}" },
+        ) { nav.navigate(Routes.CRAFT_PENCILS) }
         SectionTitle("Мои раскраски")
         if (list.isEmpty()) Text("Пока нет раскрасок. Лучше всего получаются картинки с крупными предметами: пейзажи, цветы, животные.", color = extra.dim, fontSize = 13.sp)
         list.forEach { p ->
@@ -226,38 +233,42 @@ fun PbnScreen(nav: NavHostController, id: Long) {
             }
             Text("Раскраску можно увеличить в PDF — контуры и цифры векторные, печатаются чётко.", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
 
-            SectionTitle("Настройки")
-            Text(btnLabel("Чем раскрашивать"), fontSize = 14.sp)
-            MediumPicker(p0.medium) { save(p0.copy(medium = it)); PbnStore.setLastMedium(ctx, it) }
-            Gap(8.dp)
-            Text(btnLabel("Детализация"), fontSize = 14.sp)
-            Segments(listOf(0 to "Крупно", 1 to "Средне", 2 to "Подробно"), p0.detail, { save(p0.copy(detail = it)) })
-            Text("Крупно — большие области, удобно детям; подробно — мелкие детали, дольше раскрашивать.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
-            Gap(8.dp)
-            Text("Чувствительность контуров: ${p0.edges}%", fontSize = 14.sp)
-            var ev by remember(p0.id) { mutableFloatStateOf(p0.edges.toFloat()) }
-            Slider(ev, { ev = it }, valueRange = 0f..100f, onValueChangeFinished = { save(p0.copy(edges = ev.roundToInt())) })
-            Text(
-                "Выше — различаются близкие оттенки, сохраняются мелкие детали, а резкие края фото внутри одного цвета тоже обводятся контуром. " +
-                    "Ниже — меньше линий и крупнее области.",
-                fontSize = 12.sp, color = extra.dim,
-            )
-            Gap(8.dp)
-            Text("Цветов: до ${p0.colors} (${medium.many} у вас: ${pencils.size})", fontSize = 14.sp)
-            var k by remember(p0.id) { mutableFloatStateOf(p0.colors.toFloat()) }
-            Slider(k, { k = it }, valueRange = 4f..maxOf(5f, minOf(200f, pencils.size.toFloat())), onValueChangeFinished = { save(p0.copy(colors = k.toInt())) })
-            Text(btnLabel("Лист для печати"), fontSize = 14.sp)
-            Segments(listOf(0 to "A4", 1 to "A3"), p0.paper, { save(p0.copy(paper = it)) })
-            var title by remember(p0.id) { mutableStateOf(p0.name) }
-            Gap(6.dp)
-            TextInput(title, { title = it; save(p0.copy(name = it.ifBlank { p0.name })) }, "Название")
-            if (pencils.size < 2) Text("Отметьте, какие ${medium.many} у вас есть, — пока подбираю из всего каталога.", color = extra.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
-            when (medium) {
-                PaintByNumbers.Medium.PAINT -> "Для красок: доля — какую часть картины занимает цвет, по ней видно, какой краски понадобится больше. Цвета берутся из тюбика без смешивания."
-                PaintByNumbers.Medium.WATERCOLOR_PENCIL -> "Акварельные карандаши: цвета подобраны такими, какими они становятся после воды. Заштрихуйте номер ровным слоем и пройдитесь влажной кистью — от светлых участков к тёмным, чтобы соседние цвета не смешались."
-                PaintByNumbers.Medium.ALCOHOL_MARKER -> "Спиртовые маркеры: цвет — один ровный слой, каждый следующий темнее. Закрашивайте сначала светлые номера, крупные участки ведите быстро и без остановок — так не останется полос. Бумага — плотная, для маркеров: спирт пропитывает тонкую насквозь."
-                else -> null
-            }?.let { tip -> Text(tip, fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp)) }
+            // Настройки — по карточкам: материал, раскраска, лист.
+            SettingsCard("Материал") {
+                MaterialPicker(p0.medium) { save(p0.copy(medium = it)); PbnStore.setLastMedium(ctx, it) }
+                if (pencils.size < 2) Text("Отметьте в «Мои материалы», какие ${medium.many} у вас есть, — пока подбираю из всего каталога.", color = extra.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                when (medium) {
+                    PaintByNumbers.Medium.PAINT -> "Краски из наборов картин по номерам: доля — какую часть картины занимает цвет, по ней видно, какой краски понадобится больше. Цвета берутся из баночки без смешивания."
+                    PaintByNumbers.Medium.WATERCOLOR_PAINT -> "Акварельные краски: цвета подобраны такими, какими ложится разбавленная краска. Начинайте со светлых номеров, давайте слою высохнуть, прежде чем закрашивать соседний."
+                    PaintByNumbers.Medium.WATERCOLOR_PENCIL -> "Акварельные карандаши: цвета подобраны такими, какими они становятся после воды. Заштрихуйте номер ровным слоем и пройдитесь влажной кистью — от светлых участков к тёмным, чтобы соседние цвета не смешались."
+                    PaintByNumbers.Medium.ALCOHOL_MARKER -> "Спиртовые маркеры: цвет — один ровный слой, каждый следующий темнее. Закрашивайте сначала светлые номера, крупные участки ведите быстро и без остановок — так не останется полос. Бумага — плотная, для маркеров: спирт пропитывает тонкую насквозь."
+                    PaintByNumbers.Medium.MARKER -> "Акриловые маркеры кроющие: светлый цвет ложится и поверх тёмного. Дайте слою высохнуть пару минут, прежде чем закрашивать соседний номер."
+                    else -> null
+                }?.let { tip -> Text(tip, fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp, modifier = Modifier.padding(top = 8.dp)) }
+            }
+            SettingsCard("Раскраска") {
+                FieldLabel("Детализация")
+                Segments(listOf(0 to "Крупно", 1 to "Средне", 2 to "Подробно"), p0.detail, { save(p0.copy(detail = it)) })
+                Text("Крупно — большие области, удобно детям; подробно — мелкие детали, дольше раскрашивать.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
+                var ev by remember(p0.id) { mutableFloatStateOf(p0.edges.toFloat()) }
+                FieldLabel("Чувствительность контуров", "${ev.roundToInt()}%")
+                Slider(ev, { ev = it }, valueRange = 0f..100f, onValueChangeFinished = { save(p0.copy(edges = ev.roundToInt())) })
+                Text(
+                    "Выше — различаются близкие оттенки, сохраняются мелкие детали, а резкие края фото внутри одного цвета тоже обводятся контуром. " +
+                        "Ниже — меньше линий и крупнее области.",
+                    fontSize = 12.sp, color = extra.dim,
+                )
+                var k by remember(p0.id) { mutableFloatStateOf(p0.colors.toFloat()) }
+                FieldLabel("Цветов", "до ${k.toInt()} · у вас ${pencils.size}")
+                Slider(k, { k = it }, valueRange = 4f..maxOf(5f, minOf(200f, pencils.size.toFloat())), onValueChangeFinished = { save(p0.copy(colors = k.toInt())) })
+            }
+            SettingsCard("Лист") {
+                FieldLabel("Формат для печати")
+                Segments(listOf(0 to "A4", 1 to "A3"), p0.paper, { save(p0.copy(paper = it)) })
+                var title by remember(p0.id) { mutableStateOf(p0.name) }
+                Gap(8.dp)
+                TextInput(title, { title = it; save(p0.copy(name = it.ifBlank { p0.name })) }, "Название")
+            }
 
             result?.let { r ->
                 SectionTitle("${medium.title} для этой картины · ${r.colors.size}")
@@ -298,32 +309,33 @@ fun PencilsScreen(nav: NavHostController) {
     var edit by remember { mutableStateOf<MyPencil?>(null) }
     Screen("Мои материалы", onBack = { nav.popBackStack() }) { pad ->
         Column(Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            MediumPicker(mi) { mi = it; PbnStore.setLastMedium(ctx, it) }
-            Gap(8.dp)
+            SettingsCard("Материал") {
+                MaterialPicker(mi) { mi = it; PbnStore.setLastMedium(ctx, it) }
+            }
             // Свой цвет по фото — первым делом: так быстрее всего добавить то, что лежит на столе.
-            Text("${medium.one} по фото", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-            PencilPhotoPicker(medium) { rgb -> edit = MyPencil(0, rgb) }
-
-            SectionTitle("Какие ${medium.many} у вас есть")
-            Text("Отметьте, что есть. Раскраски подбирают цвета только из отмеченного и своих цветов.", fontSize = 13.sp, color = extra.dim)
-            Gap(6.dp)
-            Text(btnLabel("Быстро выбрать набор:"), fontSize = 13.sp)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
-                medium.sets.forEach { (t, codes) -> Pill(t, owned == codes.toSet()) { PbnStore.setOwned(ctx, codes.toSet(), medium) } }
-                Pill("Снять все", false) { PbnStore.setOwned(ctx, emptySet(), medium) }
+            SettingsCard("${medium.one} по фото") {
+                PencilPhotoPicker(medium) { rgb -> edit = MyPencil(0, rgb) }
             }
-            Text("Отмечено: ${owned.size} из ${medium.catalog.size} + своих ${custom.size}", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(vertical = 4.dp))
-
-            SectionTitle("Свои цвета")
-            Text("Если оттенка нет в списке — добавьте его пипеткой по фото выше, ползунками, HEX-кодом или по номеру DMC.", fontSize = 12.sp, color = extra.dim)
-            custom.forEach { c ->
-                Row(Modifier.fillMaxWidth().clickable { edit = c }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(28.dp).clip(RoundedCornerShape(6.dp)).background(sw(c.rgb)).border(1.dp, extra.line, RoundedCornerShape(6.dp)))
-                    Text("  ${c.name.ifBlank { "Свой цвет ${c.n}" }}", Modifier.weight(1f), fontSize = 14.sp)
-                    TextButton(onClick = { PbnStore.setCustom(ctx, custom.filter { it.n != c.n }, medium) }) { Text(btnLabel("Удалить"), color = extra.danger, fontSize = 12.sp) }
+            SettingsCard("Какие ${medium.many} у вас есть") {
+                Text("Отметьте, что есть. Раскраски подбирают цвета только из отмеченного и своих цветов.", fontSize = 13.sp, color = extra.dim)
+                FieldLabel("Быстро выбрать набор")
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    medium.sets.forEach { (t, codes) -> Pill(t, owned == codes.toSet()) { PbnStore.setOwned(ctx, codes.toSet(), medium) } }
+                    Pill("Снять все", false) { PbnStore.setOwned(ctx, emptySet(), medium) }
                 }
+                Text("Отмечено: ${owned.size} из ${medium.catalog.size} + своих ${custom.size}", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
             }
-            OutlinedButton(onClick = { edit = MyPencil(0, 0x9E9E9E) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text(btnLabel("+ Добавить свой цвет")) }
+            SettingsCard("Свои цвета") {
+                Text("Если оттенка нет в каталоге — добавьте его пипеткой по фото выше, ползунками, HEX-кодом или по номеру DMC.", fontSize = 12.sp, color = extra.dim)
+                custom.forEach { c ->
+                    Row(Modifier.fillMaxWidth().clickable { edit = c }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(28.dp).clip(RoundedCornerShape(6.dp)).background(sw(c.rgb)).border(1.dp, extra.line, RoundedCornerShape(6.dp)))
+                        Text("  ${c.name.ifBlank { "Свой цвет ${c.n}" }}", Modifier.weight(1f), fontSize = 14.sp)
+                        TextButton(onClick = { PbnStore.setCustom(ctx, custom.filter { it.n != c.n }, medium) }) { Text(btnLabel("Удалить"), color = extra.danger, fontSize = 12.sp) }
+                    }
+                }
+                OutlinedButton(onClick = { edit = MyPencil(0, 0x9E9E9E) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text(btnLabel("+ Добавить свой цвет")) }
+            }
 
             SectionTitle("Каталог · ${medium.title}")
             medium.catalog.forEach { pc ->
@@ -345,17 +357,5 @@ fun PencilsScreen(nav: NavHostController) {
             PbnStore.setCustom(ctx, if (c.n == 0) cur + out else cur.map { if (it.n == c.n) out else it }, medium)
             edit = null
         }
-    }
-}
-
-/** Чем раскрашивать: материалы плашками в несколько строк — длинные названия в один ряд не помещаются. */
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-@Composable
-private fun MediumPicker(selected: Int, onSelect: (Int) -> Unit) {
-    androidx.compose.foundation.layout.FlowRow(
-        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
-    ) {
-        PaintByNumbers.Medium.entries.forEach { m -> com.dasein.poryadok.ui.common.Pill(m.title, selected == m.ordinal) { onSelect(m.ordinal) } }
     }
 }

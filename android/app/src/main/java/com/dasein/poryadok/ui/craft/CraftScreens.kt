@@ -110,11 +110,11 @@ fun ColorChip(t: CraftPattern.Thread, index: Int, size: Int = 28) {
 }
 
 /** Вкладки «Рукоделия» — как в приложениях-органайзерах рукоделия: у каждой техники свои работы и материалы. */
-private enum class CraftTab(val title: String, val kind: CraftPattern.Kind?) {
-    DIAMOND("Алмазная мозаика", CraftPattern.Kind.DIAMOND),
-    CROSS("Вышивка крестиком", CraftPattern.Kind.CROSS),
-    BEADS("Бисер", CraftPattern.Kind.BEADS),
-    PBN("Картины по номерам", null),
+private enum class CraftTab(val title: String, val kind: CraftPattern.Kind?, val icon: String) {
+    DIAMOND("Алмазная мозаика", CraftPattern.Kind.DIAMOND, "💎"),
+    CROSS("Вышивка крестиком", CraftPattern.Kind.CROSS, "🧵"),
+    BEADS("Бисер", CraftPattern.Kind.BEADS, "📿"),
+    PBN("Картины по номерам", null, "🎨"),
 }
 
 /** «Рукоделие»: алмазная мозаика, вышивка крестиком, бисер и картины по номерам — схемы из любой фотографии. */
@@ -152,50 +152,53 @@ fun CraftHomeScreen(nav: NavHostController) {
         },
     ) { pad ->
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState())) {
-            androidx.compose.foundation.lazy.LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
-            ) {
-                items(CraftTab.entries.size) { i ->
-                    val t = CraftTab.entries[i]
-                    val n = if (t.kind == null) pbnCount else all.count { it.kindEnum == t.kind }
-                    Pill(if (n > 0) "${t.title} · $n" else t.title, tab == t) { tab = t; sp.edit().putInt("craft_tab", t.ordinal).apply() }
-                }
-            }
             Column(Modifier.padding(horizontal = 16.dp)) {
-                Gap(10.dp)
+                // Техники — плитками 2×2: видно все сразу и сколько в каждой работ.
+                CraftTab.entries.chunked(2).forEach { row ->
+                    Row(Modifier.padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        row.forEach { t ->
+                            val n = if (t.kind == null) pbnCount else all.count { it.kindEnum == t.kind }
+                            ChoiceCard(t.icon, t.title, if (n > 0) "работ: $n" else "пока нет работ", tab == t, Modifier.weight(1f)) {
+                                tab = t; sp.edit().putInt("craft_tab", t.ordinal).apply()
+                            }
+                        }
+                    }
+                }
+                Gap(4.dp)
                 if (kind == null) PbnHomeContent(nav) else {
-                    Text(
-                        when (kind) {
-                            CraftPattern.Kind.DIAMOND -> "Алмазная мозаика по любому фото: квадратные или круглые стразы, цвета по каталогу DMC, у каждого цвета свой символ. " +
-                                "Приложение посчитает стразы с запасом и сделает схему для печати на A4–A0 или в натуральную величину."
-                            CraftPattern.Kind.CROSS -> "Схема вышивки крестиком по фото: канва Аида 11–18, мулине по каталогу DMC, символы на клетках, " +
-                                "сколько мотков каждого цвета купить и схема по листам с номерами рядов и сеткой через 10."
-                            CraftPattern.Kind.BEADS -> "Схема для вышивки бисером 10/0 по фото: цвета по каталогу DMC, символы на клетках, " +
-                                "сколько граммов каждого цвета нужно и схема для печати."
-                        },
-                        fontSize = 14.sp, color = extra.dim, lineHeight = 20.sp,
-                    )
-                    Gap(10.dp)
-                    Button(onClick = { newPattern() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                        Text(btnLabel(when (kind) { CraftPattern.Kind.DIAMOND -> "Новая мозаика из фото"; CraftPattern.Kind.CROSS -> "Новая вышивка из фото"; else -> "Новая схема из фото" }))
-                    }
-                    if (kind == CraftPattern.Kind.DIAMOND) OutlinedButton(onClick = { nav.navigate(Routes.CRAFT_MINE) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                        Text("📷 Мои стразы по фото (${CraftStore.mine(ctx).size} цветов)")
-                    }
-                    OutlinedButton(onClick = { nav.navigate(Routes.CRAFT_STASH) }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                    com.dasein.poryadok.ui.common.InfoBox("craft_about_${kind.name}", "Как это работает") {
                         Text(
                             when (kind) {
-                                CraftPattern.Kind.DIAMOND -> "Мои запасы страз DMC"
-                                CraftPattern.Kind.CROSS -> "Мои нитки мулине DMC"
-                                else -> "Мои запасы DMC"
-                            } + " (${CraftStore.stash(ctx).size} цветов)",
+                                CraftPattern.Kind.DIAMOND -> "Алмазная мозаика по любому фото: квадратные или круглые стразы, цвета по каталогу DMC, у каждого цвета свой символ. " +
+                                    "Приложение посчитает стразы с запасом и сделает схему для печати на A4–A0 или в натуральную величину."
+                                CraftPattern.Kind.CROSS -> "Схема вышивки крестиком по фото: канва Аида 11–18, мулине по каталогу DMC, символы на клетках, " +
+                                    "сколько мотков каждого цвета купить и схема по листам с номерами рядов и сеткой через 10."
+                                CraftPattern.Kind.BEADS -> "Схема для вышивки бисером 10/0 по фото: цвета по каталогу DMC, символы на клетках, " +
+                                    "сколько граммов каждого цвета нужно и схема для печати."
+                            },
+                            fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
                         )
+                    }
+                    Gap(10.dp)
+                    Button(onClick = { newPattern() }, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                        Text(btnLabel(when (kind) { CraftPattern.Kind.DIAMOND -> "Новая мозаика из фото"; CraftPattern.Kind.CROSS -> "Новая вышивка из фото"; else -> "Новая схема из фото" }))
                     }
                     if (busy) Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Text(btnLabel("  Готовлю фото…"))
                     }
                     error?.let { Text(it, color = extra.danger, modifier = Modifier.padding(top = 8.dp)) }
+                    // Материалы — строками-переходами со счётчиками.
+                    SectionTitle("Материалы")
+                    if (kind == CraftPattern.Kind.DIAMOND) NavRow("📷", "Мои стразы по фото", "${CraftStore.mine(ctx).size} цветов", Modifier.padding(bottom = 8.dp)) { nav.navigate(Routes.CRAFT_MINE) }
+                    NavRow(
+                        if (kind == CraftPattern.Kind.CROSS) "🧶" else "📦",
+                        when (kind) {
+                            CraftPattern.Kind.DIAMOND -> "Мои запасы страз DMC"
+                            CraftPattern.Kind.CROSS -> "Мои нитки мулине DMC"
+                            else -> "Мои запасы DMC"
+                        },
+                        "${CraftStore.stash(ctx).size} цветов",
+                    ) { nav.navigate(Routes.CRAFT_STASH) }
                     SectionTitle(when (kind) { CraftPattern.Kind.DIAMOND -> "Мои мозаики"; CraftPattern.Kind.CROSS -> "Мои вышивки"; else -> "Мои схемы" })
                     if (projects.isEmpty()) Empty(Ic.image, "Пока нет работ", "Лучше всего получаются фото с крупным объектом и чётким контрастом: портрет, питомец, цветы, пейзаж.")
                     projects.forEach { p ->

@@ -118,3 +118,30 @@ object Look {
         return if (l1 > l2) l1 / l2 else l2 / l1
     }
 }
+
+/**
+ * Фон, на котором сейчас рисуется текст (экран, карточка, панель). Задаётся через [OnBackground];
+ * общий Text по нему подстраивает цвет текста, чтобы он не сливался с фоном.
+ */
+val LocalBg = androidx.compose.runtime.compositionLocalOf { Color.Unspecified }
+
+/**
+ * Всё внутри рисуется на фоне [bg]: цвет текста по умолчанию становится различимым на нём (контраст не ниже 4,5:1).
+ * Полупрозрачный фон считается так, как он ложится на фон снаружи.
+ */
+@androidx.compose.runtime.Composable
+fun OnBackground(bg: Color, content: @androidx.compose.runtime.Composable () -> Unit) {
+    val parent = LocalBg.current
+    val solid = when {
+        bg == Color.Unspecified -> parent
+        bg.alpha < 1f && parent != Color.Unspecified -> Look.mix(parent, bg.copy(alpha = 1f), bg.alpha)
+        else -> bg.copy(alpha = 1f)
+    }
+    if (solid == Color.Unspecified) { content(); return }
+    val text = androidx.compose.material3.LocalContentColor.current
+    androidx.compose.runtime.CompositionLocalProvider(
+        LocalBg provides solid,
+        androidx.compose.material3.LocalContentColor provides Look.readable(text, solid, 4.5f),
+        content = content,
+    )
+}

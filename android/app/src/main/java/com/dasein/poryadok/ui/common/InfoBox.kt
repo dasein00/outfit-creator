@@ -166,7 +166,7 @@ private fun InfoBoxBody(key: String, title: String, modifier: Modifier, glyph: S
         modifier.fillMaxWidth().clip(RoundedCornerShape(Space.fieldRound))
             .background(tint.copy(alpha = .08f))
             .border(1.dp, tint.copy(alpha = .14f), RoundedCornerShape(Space.fieldRound)),
-    ) {
+    ) { com.dasein.poryadok.ui.theme.OnBackground(tint.copy(alpha = .08f)) { Column(Modifier.fillMaxWidth()) {
         Row(
             Modifier.fillMaxWidth().heightIn(min = Space.touch).clickable { open = !open }
                 .padding(start = 14.dp, end = 10.dp, top = 10.dp, bottom = 10.dp),
@@ -179,7 +179,7 @@ private fun InfoBoxBody(key: String, title: String, modifier: Modifier, glyph: S
         AnimatedVisibility(open) {
             Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, bottom = 14.dp), content = content)
         }
-    }
+    } } }
 }
 
 /** Короткая сворачиваемая подсказка из одного абзаца. */
@@ -217,7 +217,7 @@ private fun FoldTileBody(
     val extra = LocalExtra.current
     var open by rememberUiFlag("fold_$key", true)
     val shape = RoundedCornerShape(com.dasein.poryadok.ui.theme.LocalLook.current.cardRound.dp)
-    Column(modifier.fillMaxWidth().clip(shape).background(extra.card).let { m -> cardBorder()?.let { m.border(it, shape) } ?: m }) {
+    Column(modifier.fillMaxWidth().clip(shape).background(extra.card).let { m -> cardBorder()?.let { m.border(it, shape) } ?: m }) { com.dasein.poryadok.ui.theme.OnBackground(extra.card) { Column(Modifier.fillMaxWidth()) {
         Row(
             Modifier.fillMaxWidth().heightIn(min = Space.touch).clickable { open = !open }
                 .padding(start = Space.card, end = 10.dp, top = Space.m, bottom = if (open) Space.xs else Space.m),
@@ -237,5 +237,5 @@ private fun FoldTileBody(
         AnimatedVisibility(open) {
             Column(Modifier.fillMaxWidth().padding(start = Space.card, end = Space.card, bottom = Space.card), content = content)
         }
-    }
+    } } }
 }

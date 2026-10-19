@@ -59,6 +59,25 @@ fun Modifier.textEditPress(raw: String): Modifier = pointerInput(raw) {
  * свои названия кнопок, плашек и подсказок. Своё содержимое (заметки, задачи) совпадает с ними редко и не трогается,
  * если такой надписи в интерфейсе нет.
  */
+/**
+ * Цвет надписи, различимый на текущем фоне ([com.dasein.poryadok.ui.theme.LocalBg]). Цвет по умолчанию уже подстроен
+ * в [com.dasein.poryadok.ui.theme.OnBackground]; цвета темы (основной, бледный, акцент), заданные явно, подстраиваются
+ * здесь. Свои цвета плашек (метки статуса на цветном фоне и т. п.) не трогаем — у них свой фон.
+ */
+@Composable
+internal fun readableColor(color: Color): Color {
+    val bg = com.dasein.poryadok.ui.theme.LocalBg.current
+    if (bg == Color.Unspecified || color == Color.Unspecified || color.alpha < .05f) return color
+    val scheme = androidx.compose.material3.MaterialTheme.colorScheme
+    val dim = com.dasein.poryadok.ui.theme.LocalExtra.current.dim
+    val min = when (color) {
+        scheme.onSurface, scheme.onBackground -> 4.5f
+        dim, scheme.onSurfaceVariant, scheme.primary -> 3f
+        else -> return color
+    }
+    return com.dasein.poryadok.ui.theme.Look.readable(color, bg, min)
+}
+
 @Composable
 fun Text(
     text: String,
@@ -93,7 +112,7 @@ fun Text(
     // переносятся как обычно — по словам.
     val oneWord = maxLines == Int.MAX_VALUE && softWrap && shown.length in 2..24 && shown.none { it.isWhitespace() } && shown.any { it.isLetter() }
     androidx.compose.material3.Text(
-        text = shown, modifier = if (UiTexts.editorMode.value) modifier.textEditPress(text) else modifier, color = color, fontSize = fontSize, fontStyle = fontStyle,
+        text = shown, modifier = if (UiTexts.editorMode.value) modifier.textEditPress(text) else modifier, color = readableColor(color), fontSize = fontSize, fontStyle = fontStyle,
         fontWeight = fontWeight, fontFamily = fontFamily, letterSpacing = letterSpacing, textDecoration = decoration,
         textAlign = textAlign, lineHeight = lineHeight,
         overflow = if (oneWord && overflow == TextOverflow.Clip) TextOverflow.Ellipsis else overflow,

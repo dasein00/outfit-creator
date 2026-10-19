@@ -137,8 +137,11 @@ fun Tile(
         // Рамка — только у обычной карточки: цветные плашки и так отделены от фона.
         border = if (color == LocalExtra.current.card) cardBorder() else null,
     ) {
-        if (holder != null) androidx.compose.runtime.CompositionLocalProvider(LocalLabelHolder provides holder) { Column(Modifier.padding(padding), content = content) }
-        else Column(Modifier.padding(padding), content = content)
+        // Текст в карточке различим на её цвете (своя заливка карточки, цветные плашки).
+        com.dasein.poryadok.ui.theme.OnBackground(color) {
+            if (holder != null) androidx.compose.runtime.CompositionLocalProvider(LocalLabelHolder provides holder) { Column(Modifier.padding(padding), content = content) }
+            else Column(Modifier.padding(padding), content = content)
+        }
     }
 }
 

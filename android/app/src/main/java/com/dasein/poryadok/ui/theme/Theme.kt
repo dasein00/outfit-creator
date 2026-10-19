@@ -181,7 +181,13 @@ fun PoryadokTheme(theme: String, accent: Int, content: @Composable () -> Unit) {
         LocalLook provides look,
         androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, density.fontScale * look.scale),
     ) {
-        MaterialTheme(colorScheme = scheme, typography = typography, content = content)
+        MaterialTheme(colorScheme = scheme, typography = typography) {
+            // Цвет текста по умолчанию — цвет темы, а не чёрный: экраны без своей подложки (читалка, полноэкранные окна)
+            // раньше получали чёрные надписи на тёмной теме.
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides scheme.onBackground) {
+                OnBackground(scheme.background, content)
+            }
+        }
     }
 }
 

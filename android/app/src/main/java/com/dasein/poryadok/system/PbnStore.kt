@@ -76,6 +76,7 @@ object PbnStore {
     private fun ownedKey(m: PaintByNumbers.Medium) = when (m) {
         PaintByNumbers.Medium.PENCIL -> "pbn_owned"; PaintByNumbers.Medium.MARKER -> "pbn_owned_marker"; PaintByNumbers.Medium.PAINT -> "pbn_owned_paint"
         PaintByNumbers.Medium.WATERCOLOR_PENCIL -> "pbn_owned_watercolor"; PaintByNumbers.Medium.ALCOHOL_MARKER -> "pbn_owned_alcohol"
+        PaintByNumbers.Medium.WATERCOLOR_PAINT -> "pbn_owned_wc_paint"
     }
 
     /** Отмеченные цвета из каталога материала. По умолчанию — средний набор (24 карандаша, 24 маркера, 12 красок). */

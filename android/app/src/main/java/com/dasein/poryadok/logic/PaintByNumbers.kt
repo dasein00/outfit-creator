@@ -367,21 +367,37 @@ object PaintByNumbers {
 
     /** Чем раскрашивать: у каждого материала свой каталог, наборы и свои цвета. */
     // Новые материалы — только в конец: номер материала хранится в сохранённых картинах.
-    enum class Medium(val title: String, val one: String, val many: String) {
-        PENCIL("Карандаши", "Карандаш", "карандашей"), MARKER("Маркеры", "Маркер", "маркеров"), PAINT("Краски", "Краска", "красок"),
-        WATERCOLOR_PENCIL("Акварельные карандаши", "Акварельный карандаш", "акварельных карандашей"),
-        ALCOHOL_MARKER("Спиртовые маркеры", "Спиртовой маркер", "спиртовых маркеров");
+    enum class Medium(val title: String, val one: String, val many: String, val kind: Kind, val variant: String) {
+        PENCIL("Цветные карандаши", "Цветной карандаш", "цветных карандашей", Kind.PENCILS, "Цветные"),
+        MARKER("Акриловые маркеры", "Акриловый маркер", "акриловых маркеров", Kind.MARKERS, "Акриловые"),
+        PAINT("Краски для картин по номерам", "Краска", "красок", Kind.PAINTS, "Из наборов картин по номерам"),
+        WATERCOLOR_PENCIL("Акварельные карандаши", "Акварельный карандаш", "акварельных карандашей", Kind.PENCILS, "Акварельные"),
+        ALCOHOL_MARKER("Спиртовые маркеры", "Спиртовой маркер", "спиртовых маркеров", Kind.MARKERS, "Спиртовые"),
+        WATERCOLOR_PAINT("Акварельные краски", "Акварельная краска", "акварельных красок", Kind.PAINTS, "Акварельные");
         val catalog: List<Pencil> get() = when (this) {
             PENCIL -> PENCILS_ALL; MARKER -> MARKERS_ALL; PAINT -> PAINTS_ALL; WATERCOLOR_PENCIL -> WATERCOLOR_PENCILS; ALCOHOL_MARKER -> ALCOHOL_MARKERS
+            WATERCOLOR_PAINT -> WATERCOLOR_PAINTS
         }
         val sets: List<Pair<String, List<String>>> get() = when (this) {
             PENCIL -> SETS; MARKER -> MARKER_SETS; PAINT -> PAINT_SETS; WATERCOLOR_PENCIL -> WATERCOLOR_SETS; ALCOHOL_MARKER -> ALCOHOL_SETS
+            WATERCOLOR_PAINT -> WATERCOLOR_PAINT_SETS
         }
         companion object { fun of(i: Int) = entries.getOrElse(i) { PENCIL } }
     }
 
+    /** Чем раскрашивать — сначала вид материала, потом какой именно: цветные или акварельные карандаши и т. д. */
+    enum class Kind(val title: String, val icon: String) {
+        PENCILS("Карандаши", "✏️"), MARKERS("Маркеры", "🖊"), PAINTS("Краски", "🖌");
+        /** Материалы этого вида в порядке показа. */
+        val media: List<Medium> get() = when (this) {
+            PENCILS -> listOf(Medium.PENCIL, Medium.WATERCOLOR_PENCIL)
+            MARKERS -> listOf(Medium.MARKER, Medium.ALCOHOL_MARKER)
+            PAINTS -> listOf(Medium.WATERCOLOR_PAINT, Medium.PAINT)
+        }
+    }
+
     /**
-     * Маркеры для скетчинга (на водной основе и универсальные) — 60 ходовых оттенков, как в наборах на 12–60 цветов.
+     * Акриловые маркеры (кроющие, на водной основе) — 60 ходовых оттенков, как в наборах на 12–60 цветов.
      * Номера «М…» — для удобства, не артикулы конкретной марки: если оттенок отличается, добавьте его пипеткой по фото.
      */
     val MARKERS: List<Pencil> = listOf(
@@ -514,6 +530,32 @@ object PaintByNumbers {
         "24 цвета" to listOf(1, 2, 3, 5, 7, 8, 9, 11, 12, 15, 16, 18, 19, 22, 24, 26, 28, 30, 33, 35, 36, 38, 45, 47).map { "А$it" },
         "36 цветов" to spread(WATERCOLOR_PENCILS, 36),
         "48 цветов" to WATERCOLOR_PENCILS.map { it.code },
+    )
+
+    /**
+     * Акварельные краски (кюветы и тюбики) — 48 классических пигментов, как в наборах на 12–48. Цвет — каким ложится
+     * разбавленная краска на белую бумагу. Номера «АК…» — для удобства, не артикулы.
+     */
+    val WATERCOLOR_PAINTS: List<Pencil> = listOf(
+        "Белила китайские" to 0xF6F6F2, "Лимонная" to 0xFBEB5A, "Кадмий жёлтый светлый" to 0xFDDB3A, "Кадмий жёлтый средний" to 0xF9C22E,
+        "Неаполитанская жёлтая" to 0xF5DDA6, "Охра жёлтая" to 0xD9A44A, "Индийская жёлтая" to 0xF0AE2C, "Кадмий оранжевый" to 0xF5832E,
+        "Кадмий красный светлый" to 0xEE5139, "Пиррол красный" to 0xD9333A, "Краплак красный" to 0xB82A44, "Кармин" to 0xC21F3E,
+        "Хинакридон розовый" to 0xE2568E, "Розовая" to 0xF3A4BE, "Пурпурная" to 0xA23379, "Хинакридон фиолетовый" to 0x8A3A82,
+        "Диоксазин фиолетовый" to 0x5B3A8C, "Ультрамарин" to 0x3346A6, "Кобальт синий" to 0x2E5DB0, "Церулеум" to 0x3A8FCB,
+        "Фталоцианин синий" to 0x1E4A8C, "Прусская синь" to 0x1F3F68, "Индиго" to 0x2C3557, "Небесно-голубая" to 0x8FCDEE,
+        "Бирюзовая" to 0x1FA6AC, "Кобальт бирюзовый" to 0x16918C, "Изумрудная" to 0x1A8A63, "Фталоцианин зелёный" to 0x17604C,
+        "Виридоновая" to 0x22735B, "Зелёная светлая" to 0x86C454, "Сок-зелёный" to 0x678E33, "Оливковая" to 0x7C7A36,
+        "Хром оксид" to 0x5F7A48, "Земля зелёная" to 0x84895A, "Персиковая" to 0xF3B08C, "Телесная" to 0xF4CDB0,
+        "Сиена натуральная" to 0xC88342, "Сиена жжёная" to 0x934428, "Венецианская красная" to 0xAD4A33, "Английская красная" to 0x9C3B2C,
+        "Умбра натуральная" to 0x7A6342, "Умбра жжёная" to 0x5A3A28, "Ван Дик коричневая" to 0x46302A, "Сепия" to 0x4E3B2F,
+        "Нейтральный тинт" to 0x55515C, "Пейнс серый" to 0x434B5A, "Серая тёплая" to 0xA79F93, "Сажа газовая" to 0x1E1E1E,
+    ).mapIndexed { i, (n, c) -> Pencil("АК${i + 1}", n, c) }
+
+    val WATERCOLOR_PAINT_SETS: List<Pair<String, List<String>>> = listOf(
+        "12 цветов" to listOf(2, 4, 6, 8, 11, 13, 18, 20, 27, 31, 38, 47).map { "АК$it" },
+        "24 цвета" to listOf(1, 2, 3, 4, 6, 8, 9, 11, 13, 15, 17, 18, 20, 21, 24, 25, 27, 30, 31, 37, 38, 42, 46, 48).map { "АК$it" },
+        "36 цветов" to spread(WATERCOLOR_PAINTS, 36),
+        "48 цветов" to WATERCOLOR_PAINTS.map { it.code },
     )
 
     val ALCOHOL_SETS: List<Pair<String, List<String>>> = listOf(

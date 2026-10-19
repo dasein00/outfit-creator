@@ -559,7 +559,7 @@ fun ReaderMenu(
         Row(
             Modifier.align(Alignment.TopCenter).fillMaxWidth().background(bar).windowInsetsPadding(WindowInsets.statusBars).padding(horizontal = 4.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
-        ) {
+        ) { com.dasein.poryadok.ui.theme.OnBackground(MaterialTheme.colorScheme.surface) { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) { Text("←", fontSize = 20.sp) }
             Column(Modifier.weight(1f)) {
                 Text(title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -568,8 +568,9 @@ fun ReaderMenu(
             onNote?.let { MenuIcon("d18/00", it) }
             MenuIcon(if (bookmarked) "d17/10" else "d17/11", onBookmark)
             MenuIcon("reading/04", onSearch)
-        }
-        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(bar).windowInsetsPadding(WindowInsets.navigationBars).padding(horizontal = 12.dp, vertical = 6.dp)) {
+        } } }
+        // Подписи панелей — различимы на их фоне, какой бы ни была тема страницы.
+        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(bar).windowInsetsPadding(WindowInsets.navigationBars).padding(horizontal = 12.dp, vertical = 6.dp)) { com.dasein.poryadok.ui.theme.OnBackground(MaterialTheme.colorScheme.surface) { Column(Modifier.fillMaxWidth()) {
             var v by remember(progress) { mutableFloatStateOf(progress) }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = onPrevPart) { Text("‹", fontSize = 22.sp) }
@@ -587,7 +588,7 @@ fun ReaderMenu(
                 onSpeak?.let { MenuButton("books/09", "Вслух", it) }
                 MenuButton(if (night) "d01/06" else "d15/00", if (night) "День" else "Ночь", onNight)
             }
-        }
+        } } }
     }
 }
 
