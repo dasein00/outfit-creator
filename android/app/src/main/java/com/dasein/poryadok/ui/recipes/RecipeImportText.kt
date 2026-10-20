@@ -205,6 +205,10 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
     var postBusy by remember { mutableStateOf(false) }
     var videoBusy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
+    // Instagram требует вход — показываем кнопку «Войти в Instagram», после входа пост загружается сам.
+    var needLogin by remember { mutableStateOf(false) }
+    var showLogin by remember { mutableStateOf(false) }
+    fun loginNeeded(e: Throwable) { if (e is com.dasein.poryadok.system.RecipeLink.InstagramLogin) needLogin = true }
     // Видео, уже прикреплённые к рецепту (файлы на телефоне).
     val ownVideos = remember(d.recipe.videos) { d.recipe.videos.lines().map { it.trim() }.filter { it.startsWith("/") && java.io.File(it).exists() } }
     val link = remember(text) { com.dasein.poryadok.system.RecipeLink.findUrl(text)?.takeIf { text.trim().length < it.length + 40 } }
@@ -221,7 +225,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
             linkBusy = true
             runCatching { com.dasein.poryadok.system.RecipeLink.fetch(l) }
                 .onSuccess { if ("instagram.com" in l) { postUrl = l; ingrText = it.trim(); text = "" } else text = it.trim() }
-                .onFailure { aiError = "Не удалось загрузить: ${it.message}." }
+                .onFailure { aiError = "Не удалось загрузить: ${it.message}."; loginNeeded(it) }
             linkBusy = false
         }
         // Речь из видео рецепта уже распознана (сразу после добавления) — подставляем, второй раз ничего выбирать не нужно.
@@ -281,7 +285,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                 status = "Загружаю описание из поста…"
                 runCatching { com.dasein.poryadok.system.RecipeLink.fetch(postUrl) }
                     .onSuccess { ingrText = it.trim() }
-                    .onFailure { aiError = "Пост не загрузился (${it.message}) — беру только речь из видео." }
+                    .onFailure { aiError = "Пост не загрузился (${it.message}) — беру только речь из видео."; loginNeeded(it) }
             }
             ownVideos.firstOrNull()?.let { v ->
                 speechOf(v).onSuccess { putSpeech(it) }.onFailure { if (ingrText.isBlank() && text.isBlank()) aiError = speechError(it) }
@@ -372,18 +376,42 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                                     ingrText = cap.trim()
                                     status = "Описание из поста загружено. Нажмите «Сгенерировать рецепт» или «Разобрать без ИИ»."
                                 }
-                                .onFailure { aiError = "Не удалось загрузить пост: ${it.message}. Скопируйте подпись вручную в поле «Текст из поста»." }
+                                .onFailure {
+                                    aiError = if (it is com.dasein.poryadok.system.RecipeLink.InstagramLogin) "${it.message}."
+                                    else "Не удалось загрузить пост: ${it.message}. Скопируйте подпись вручную в поле «Текст из поста»."
+                                    loginNeeded(it)
+                                }
                             postBusy = false
                         }
                     },
                 ) { Text(if (postBusy) "Загружаю пост…" else btnLabel("Запарсить рецепт")) }
+                if (needLogin) OutlinedButton(
+                    onClick = { showLogin = true },
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(min = 48.dp),
+                ) { Text(btnLabel("Войти в Instagram")) }
                 TextInput(ingrText, { ingrText = it }, "Текст из поста: ингредиенты, граммовки", Modifier.padding(top = 6.dp), singleLine = false, minLines = 3)
+                if (showLogin) com.dasein.poryadok.ui.common.InstaLoginDialog {
+                    showLogin = false
+                    if (com.dasein.poryadok.system.InstaWeb.loggedIn()) {
+                        needLogin = false
+                        // Вход есть — сразу загружаем пост ещё раз.
+                        if (postUrl.startsWith("http")) {
+                            postBusy = true; aiError = null; status = "Загружаю пост…"
+                            scope.launch {
+                                runCatching { com.dasein.poryadok.system.RecipeLink.fetch(postUrl) }
+                                    .onSuccess { cap -> ingrText = cap.trim(); status = "Описание из поста загружено. Нажмите «Сгенерировать рецепт» или «Разобрать без ИИ»." }
+                                    .onFailure { status = null; aiError = "Не удалось загрузить пост: ${it.message}." }
+                                postBusy = false
+                            }
+                        }
+                    }
+                }
                 if (link != null && !linkBusy && text.trim().startsWith("http")) Button(modifier = Modifier.fillMaxWidth().padding(top = 6.dp), onClick = {
                     linkBusy = true; aiError = null
                     scope.launch {
                         runCatching { com.dasein.poryadok.system.RecipeLink.fetch(link) }
                             .onSuccess { if ("instagram.com" in link) { postUrl = link; ingrText = it.trim(); text = "" } else text = it.trim() }
-                            .onFailure { aiError = "Не удалось загрузить: ${it.message}." }
+                            .onFailure { aiError = "Не удалось загрузить: ${it.message}."; loginNeeded(it) }
                         linkBusy = false
                     }
                 }) { Text(btnLabel("Загрузить рецепт по ссылке")) }

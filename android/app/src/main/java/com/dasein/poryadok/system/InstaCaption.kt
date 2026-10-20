@@ -16,19 +16,33 @@ object InstaCaption {
     private const val STR = """"((?:[^"\\]|\\.)*)""""
     private val EDGE = Regex("""edge_media_to_caption"\s*:\s*\{\s*"edges"\s*:\s*\[\s*\{\s*"node"\s*:\s*\{[^{}]*?"text"\s*:\s*$STR""")
     private val CAPTION_OBJ = Regex(""""caption"\s*:\s*\{[^{}]*?"text"\s*:\s*$STR""")
+    /** Ответ api/v1/media/…/info: в объекте caption поле text может стоять после вложенного user {…}. */
+    private val CAPTION_LOOSE = Regex(""""caption"\s*:\s*\{(?:[^{}]|\{[^{}]*\})*?"text"\s*:\s*$STR""")
+
+    /**
+     * Instagram без входа вместо поста отдаёт страницу входа — её текст («Welcome back to Instagram. Sign in…»)
+     * нельзя принимать за подпись.
+     */
+    private val WALL = listOf(
+        "welcome back to instagram", "sign in to check out", "log in to instagram", "log into instagram", "create an account or log in",
+        "see instagram photos and videos", "sign up to see photos", "с возвращением в instagram", "войдите, чтобы", "войдите в instagram",
+        "зарегистрируйтесь, чтобы", "смотрите фото и видео",
+    )
+
+    fun isLoginWall(text: String): Boolean = text.lowercase().let { l -> WALL.any { it in l } }
 
     fun fromHtml(html: String): String? {
         val cap = CAPTION_HTML.find(html)?.groupValues?.get(1) ?: CAPTION_HTML2.find(html)?.groupValues?.get(1)
         if (cap != null) {
             val t = plain(cap.replace(Regex("""<a class="CaptionUsername"[^>]*>.*?</a>""", RegexOption.DOT_MATCHES_ALL), "")).trim()
-            if (t.length > 15) return t
+            if (t.length > 15 && !isLoginWall(t)) return t
         }
         // JSON в странице: сначала как есть, потом снятое одно экранирование (JSON внутри строки JSON).
         for (src in listOf(html, html.replace("\\\\", "\u0000").replace("\\\"", "\"").replace("\u0000", "\\"))) {
-            for (re in listOf(EDGE, CAPTION_OBJ)) {
+            for (re in listOf(EDGE, CAPTION_OBJ, CAPTION_LOOSE)) {
                 val raw = re.find(src)?.groupValues?.get(1) ?: continue
                 val t = runCatching { json.parseToJsonElement("\"$raw\"").jsonPrimitive.content }.getOrNull()?.trim()
-                if (!t.isNullOrBlank() && t.length > 15) return t
+                if (!t.isNullOrBlank() && t.length > 15 && !isLoginWall(t)) return t
             }
         }
         return null
@@ -42,7 +56,7 @@ object InstaCaption {
         val body = if (i != null) text.substring(i + 3) else text
         // Хвост «".» после подписи; точку внутри текста не трогаем — только если за ней кавычка.
         val clean = body.trimEnd().removeSuffix(".").trimEnd().trimEnd('"', '»', '”').trim()
-        return clean.takeIf { it.length > 15 }
+        return clean.takeIf { it.length > 15 && !isLoginWall(it) }
     }
 
     private fun meta(html: String, name: String): String? =

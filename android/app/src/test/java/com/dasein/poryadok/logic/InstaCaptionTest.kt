@@ -26,4 +26,15 @@ class InstaCaptionTest {
     @Test fun nothingFound() {
         assertNull(InstaCaption.fromHtml("<html><body>Log in</body></html>"))
     }
+
+    @Test fun loginWallIsNotACaption() {
+        val html = """<meta property="og:description" content="Welcome back to Instagram. Sign in to check out what your friends, family &amp; interests have been capturing &amp; sharing around the world." />"""
+        assertNull(InstaCaption.fromMeta(html))
+        assertNull(InstaCaption.fromHtml("""<div class="Caption">Welcome back to Instagram. Sign in to check out what your friends</div>"""))
+    }
+
+    @Test fun apiCaptionAfterNestedUser() {
+        val api = """{"items":[{"caption":{"pk":"1","user":{"pk":"2","username":"chef"},"text":"Сырники: творог 400 г, яйцо 1 шт"}}]}"""
+        assertEquals("Сырники: творог 400 г, яйцо 1 шт", InstaCaption.fromHtml(api))
+    }
 }

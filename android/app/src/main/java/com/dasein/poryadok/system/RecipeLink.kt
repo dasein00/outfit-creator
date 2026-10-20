@@ -35,28 +35,56 @@ object RecipeLink {
     }
 
     /**
-     * Подпись к посту или рилсу Instagram. Instagram часто меняет страницы, поэтому пробуем по очереди:
+     * Подпись к посту или рилсу Instagram. Instagram часто меняет страницы и всё чаще без входа показывает
+     * страницу входа, поэтому пробуем по очереди:
      * 1) страницу встраивания (embed/captioned) — подпись в HTML или в JSON внутри страницы;
-     * 2) открытый GraphQL-запрос по коду поста (как у встраивания на сайтах);
+     * 2) данные поста по коду (api/v1 и GraphQL) — с входом в Instagram во встроенном браузере работают надёжно;
      * 3) страницу поста «глазами» превью-бота соцсетей — подпись в og:description;
-     * 4) обычную страницу поста.
+     * 4) обычную страницу поста;
+     * 5) страницу во встроенном браузере (как у человека: с выполнением скриптов и сохранённым входом).
      */
-    private fun instagram(url: String): String {
+    private suspend fun instagram(url: String): String {
         val code = Regex("""instagram\.com/(?:[^/?#]+/)?(?:p|reel|reels|tv)/([A-Za-z0-9_-]+)""").find(url)?.groupValues?.get(1)
+        val post = if (code != null) "https://www.instagram.com/p/$code/" else url
         val tries = buildList<() -> String?> {
             if (code != null) {
                 add { InstaCaption.fromHtml(get("https://www.instagram.com/p/$code/embed/captioned/")) }
                 add { InstaCaption.fromHtml(get("https://www.instagram.com/reel/$code/embed/captioned/")) }
+                mediaId(code)?.let { id -> add { InstaCaption.fromHtml(api("https://www.instagram.com/api/v1/media/$id/info/")) } }
                 for (doc in listOf("8845758582119845", "10015901848480474", "9510064595728286")) add { InstaCaption.fromHtml(graphql(code, doc)) }
             }
-            add { InstaCaption.fromMeta(get(url, BOT_UA, "en-US,en;q=0.8")) }
-            add { InstaCaption.fromMeta(get(url)) ?: InstaCaption.fromHtml(get(url)) }
+            add { InstaCaption.fromMeta(get(post, BOT_UA, "en-US,en;q=0.8")) }
+            add { get(post).let { InstaCaption.fromMeta(it) ?: InstaCaption.fromHtml(it) } }
         }
         for (t in tries) runCatching { t() }.getOrNull()?.takeIf { it.length > 15 }?.let { return it }
-        error("Instagram не отдал подпись — скопируйте текст поста вручную")
+        // Встроенный браузер: страница встраивания, потом сама страница поста.
+        for (u in listOfNotNull(code?.let { "https://www.instagram.com/p/$it/embed/captioned/" }, post)) {
+            runCatching { InstaWeb.caption(u) }.getOrNull()?.takeIf { it.length > 15 }?.let { return it }
+        }
+        throw InstagramLogin(
+            if (InstaWeb.loggedIn()) "Instagram не отдал подпись этого поста — скопируйте текст поста вручную"
+            else "Instagram показывает пост только после входа. Нажмите «Войти в Instagram» — это нужно один раз",
+        )
     }
 
+    /** Пост не загрузился, потому что Instagram требует вход: в окне импорта появляется кнопка «Войти в Instagram». */
+    class InstagramLogin(message: String) : Exception(message)
+
+    /** Номер поста по коду из ссылки (код — число в base64 Instagram). */
+    internal fun mediaId(code: String): String? = runCatching {
+        val abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+        code.take(11).fold(java.math.BigInteger.ZERO) { n, ch ->
+            val i = abc.indexOf(ch); require(i >= 0); n.shiftLeft(6).add(java.math.BigInteger.valueOf(i.toLong()))
+        }.toString()
+    }.getOrNull()
+
     private const val BOT_UA = "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"
+
+    /** Куки встроенного браузера для Instagram: если там выполнен вход, запросы идут от имени пользователя. */
+    private fun cookies(url: String): String? =
+        if ("instagram.com" in url) runCatching { android.webkit.CookieManager.getInstance().getCookie(url) }.getOrNull()?.takeIf { it.isNotBlank() } else null
+
+    private fun csrf(cookie: String?): String? = cookie?.split(';')?.map { it.trim() }?.firstOrNull { it.startsWith("csrftoken=") }?.substringAfter('=')
 
     private fun get(url: String, ua: String, lang: String): String {
         val c = URL(url).openConnection() as HttpURLConnection
@@ -64,6 +92,23 @@ object RecipeLink {
         c.connectTimeout = 12_000; c.readTimeout = 25_000
         c.setRequestProperty("User-Agent", ua)
         c.setRequestProperty("Accept-Language", lang)
+        if (ua != BOT_UA) cookies(url)?.let { c.setRequestProperty("Cookie", it) }
+        try {
+            if (c.responseCode !in 200..299) error("сайт ответил ${c.responseCode}")
+            return c.inputStream.use { it.readBytes().decodeToString() }
+        } finally { c.disconnect() }
+    }
+
+    /** Данные поста, как их берёт сайт Instagram (с входом во встроенном браузере). */
+    private fun api(url: String): String {
+        val cookie = cookies(url) ?: error("нет входа")
+        val c = URL(url).openConnection() as HttpURLConnection
+        c.connectTimeout = 12_000; c.readTimeout = 25_000
+        c.setRequestProperty("User-Agent", UA)
+        c.setRequestProperty("X-IG-App-ID", "936619743392459")
+        c.setRequestProperty("X-Requested-With", "XMLHttpRequest")
+        c.setRequestProperty("Cookie", cookie)
+        csrf(cookie)?.let { c.setRequestProperty("X-CSRFToken", it) }
         try {
             if (c.responseCode !in 200..299) error("сайт ответил ${c.responseCode}")
             return c.inputStream.use { it.readBytes().decodeToString() }
@@ -82,6 +127,7 @@ object RecipeLink {
         c.setRequestProperty("X-FB-LSD", "AVqbxe3J_YA")
         c.setRequestProperty("X-ASBD-ID", "129477")
         c.setRequestProperty("Sec-Fetch-Site", "same-origin")
+        cookies("https://www.instagram.com/")?.let { ck -> c.setRequestProperty("Cookie", ck); csrf(ck)?.let { c.setRequestProperty("X-CSRFToken", it) } }
         val vars = java.net.URLEncoder.encode("""{"shortcode":"$code","fetch_tagged_user_count":null,"hoisted_comment_id":null,"hoisted_reply_id":null}""", "UTF-8")
         try {
             c.outputStream.use { it.write("variables=$vars&doc_id=$docId&lsd=AVqbxe3J_YA".toByteArray()) }
