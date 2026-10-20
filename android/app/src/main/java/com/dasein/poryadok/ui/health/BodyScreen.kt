@@ -215,6 +215,8 @@ fun BodyTab(nav: NavHostController, profile: BodyProfile, weights: List<WeightEn
         fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
     )
     Gap(8.dp)
+    WeightGoalCard(profile, readings)
+    Gap(8.dp)
     Tile(onClick = { nav.navigate(Routes.BODY_SCIENCE) }) { // открывает «Детали» → «Аналитика»
         Row(verticalAlignment = Alignment.CenterVertically) {
             Glyph("ui:v_chart", 26.dp)

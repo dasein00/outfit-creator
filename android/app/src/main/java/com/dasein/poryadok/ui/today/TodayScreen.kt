@@ -200,7 +200,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                     "weight" -> item(key = "weight") {
                             val body = com.dasein.poryadok.ui.health.rememberBodyData()
                             if (body.readings.isNotEmpty()) {
-                                com.dasein.poryadok.ui.health.WeekWeightCard(body.readings, { nav.navigate(Routes.health(1)) })
+                                com.dasein.poryadok.ui.health.WeekWeightCard(body.readings, { nav.navigate(Routes.health(1)) }, profile = body.profile)
                                 Gap(8.dp)
                             }
                     }

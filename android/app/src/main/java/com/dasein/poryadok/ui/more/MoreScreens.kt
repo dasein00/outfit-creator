@@ -6,6 +6,7 @@ import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.graphicsLayer
@@ -49,6 +50,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import com.dasein.poryadok.Graph
 import com.dasein.poryadok.data.BalanceWheel
 import com.dasein.poryadok.data.Settings
@@ -125,11 +128,60 @@ fun MoreScreen(nav: NavHostController) {
     var moving by remember { mutableStateOf<String?>(null) }
     var drag by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     val grid = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     val density = androidx.compose.ui.platform.LocalDensity.current
     // Все плитки одной высоты: место под название в две строки и подпись — даже если название короткое.
     val tileH = with(density) { 74.dp + (60.sp).toDp() }
     fun saveOrder() = ctx.getSharedPreferences("ui_state", android.content.Context.MODE_PRIVATE).edit()
         .putString(ORDER_KEY, order.joinToString("|") { it.route }).apply()
+    /** Центр переносимой плитки над другой плиткой — меняем их местами, плитка остаётся под пальцем. */
+    fun trySwap(route: String) {
+        val items = grid.layoutInfo.visibleItemsInfo
+        val self = items.firstOrNull { it.key == route } ?: return
+        val cx = self.offset.x + self.size.width / 2f + drag.x
+        val cy = self.offset.y + self.size.height / 2f + drag.y
+        val target = items.firstOrNull { it.key != route && it.key is String && order.any { o -> o.route == it.key } &&
+            cx >= it.offset.x && cx <= it.offset.x + it.size.width && cy >= it.offset.y && cy <= it.offset.y + it.size.height } ?: return
+        val from = order.indexOfFirst { it.route == route }
+        val to = order.indexOfFirst { it.route == target.key }
+        if (from < 0 || to < 0) return
+        // Лента держится за первую видимую плитку: если переставляется она, возвращаем прокрутку как была.
+        val first = items.minByOrNull { it.index }?.key
+        if (first == route || first == target.key) {
+            val fi = grid.firstVisibleItemIndex
+            val fo = grid.firstVisibleItemScrollOffset
+            scope.launch { grid.scrollToItem(fi, fo) }
+        }
+        order.add(to, order.removeAt(from))
+        drag -= androidx.compose.ui.geometry.Offset((target.offset.x - self.offset.x).toFloat(), (target.offset.y - self.offset.y).toFloat())
+    }
+    /** Палец с плиткой у верхнего или нижнего края — лента сама едет туда, тем быстрее, чем ближе к краю. */
+    var dragging by remember { mutableStateOf(false) }
+    LaunchedEffect(moving, dragging) {
+        val route = moving ?: return@LaunchedEffect
+        if (!dragging) return@LaunchedEffect
+        val edge = with(density) { 96.dp.toPx() }
+        val maxStep = with(density) { 18.dp.toPx() }
+        while (true) {
+            androidx.compose.runtime.withFrameNanos { }
+            val info = grid.layoutInfo
+            val self = info.visibleItemsInfo.firstOrNull { it.key == route } ?: continue
+            val y = self.offset.y + self.size.height / 2f + drag.y
+            val h = info.viewportSize.height.toFloat()
+            val step = when {
+                y < edge -> -maxStep * ((edge - y) / edge).coerceIn(0f, 1f)
+                y > h - edge -> maxStep * ((y - (h - edge)) / edge).coerceIn(0f, 1f)
+                else -> 0f
+            }
+            if (step == 0f) continue
+            // Прокрутку могла перебить перестановка плиток — это не конец переноса.
+            val used = try { grid.scrollBy(step) } catch (e: kotlinx.coroutines.CancellationException) { if (!isActive) throw e; 0f }
+            if (used == 0f) continue
+            // Лента уехала — плитку сдвигаем обратно под палец и проверяем, над чем она теперь.
+            drag += androidx.compose.ui.geometry.Offset(0f, used)
+            trySwap(route)
+        }
+    }
     Screen(title = "Все разделы") { pad ->
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
@@ -156,25 +208,15 @@ fun MoreScreen(nav: NavHostController) {
                     .graphicsLayer { translationX = drag.x; translationY = drag.y; scaleX = 1.05f; scaleY = 1.05f; shadowElevation = 12f }
                     .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(com.dasein.poryadok.ui.theme.LocalLook.current.cardRound.dp))
                     .pointerInput(h.route) {
+                        fun finish() { dragging = false; drag = androidx.compose.ui.geometry.Offset.Zero; saveOrder(); moving = null }
                         detectDragGestures(
-                            onDragEnd = { drag = androidx.compose.ui.geometry.Offset.Zero; saveOrder(); moving = null },
-                            onDragCancel = { drag = androidx.compose.ui.geometry.Offset.Zero; saveOrder(); moving = null },
+                            onDragStart = { dragging = true },
+                            onDragEnd = { finish() },
+                            onDragCancel = { finish() },
                         ) { change, amount ->
                             change.consume()
                             drag += amount
-                            // Центр переносимой плитки над другой плиткой — меняем их местами, плитка остаётся под пальцем.
-                            val items = grid.layoutInfo.visibleItemsInfo
-                            val self = items.firstOrNull { it.key == h.route } ?: return@detectDragGestures
-                            val cx = self.offset.x + self.size.width / 2f + drag.x
-                            val cy = self.offset.y + self.size.height / 2f + drag.y
-                            val target = items.firstOrNull { it.key != h.route && it.key is String && order.any { o -> o.route == it.key } &&
-                                cx >= it.offset.x && cx <= it.offset.x + it.size.width && cy >= it.offset.y && cy <= it.offset.y + it.size.height }
-                                ?: return@detectDragGestures
-                            val from = order.indexOfFirst { it.route == h.route }
-                            val to = order.indexOfFirst { it.route == target.key }
-                            if (from < 0 || to < 0) return@detectDragGestures
-                            order.add(to, order.removeAt(from))
-                            drag -= androidx.compose.ui.geometry.Offset((target.offset.x - self.offset.x).toFloat(), (target.offset.y - self.offset.y).toFloat())
+                            trySwap(h.route)
                         }
                     }
                 Tile(

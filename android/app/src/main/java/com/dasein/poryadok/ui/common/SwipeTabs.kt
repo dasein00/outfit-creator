@@ -16,39 +16,72 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.pointer.positionChangeIgnoreConsumed
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.unit.dp
 import kotlin.math.abs
 
 /**
  * Свайп одним пальцем влево/вправо — соседняя вкладка (подраздел). Жест срабатывает, только если его не взял
- * вложенный элемент (лента карточек, ползунок, график): тогда прокручивается он. Вертикальная прокрутка не мешает.
- * На крайней вкладке жест уходит дальше — во внешние вкладки (например, «Календарь → Задачи»).
+ * вложенный элемент с горизонтальной прокруткой (лента карточек, ползунок, график): тогда прокручивается он.
+ * Вертикальная прокрутка не мешает: живой палец почти всегда немного уходит вверх-вниз, и список успевает
+ * перехватить касание — если при этом движение в целом горизонтальное, вкладка всё равно листается.
+ * Хватает и короткого быстрого взмаха. На крайней вкладке жест уходит дальше — во внешние вкладки
+ * (например, «Календарь → Задачи»).
  */
 fun Modifier.swipeTabs(index: Int, count: Int, onSelect: (Int) -> Unit): Modifier = pointerInput(index, count) {
-    val threshold = 72.dp.toPx()
+    val threshold = 64.dp.toPx()
+    val flingMin = 36.dp.toPx()
+    val flingSpeed = 500.dp.toPx()
+    val slop = viewConfiguration.touchSlop
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false)
+        val velocity = VelocityTracker().apply { addPosition(down.uptimeMillis, down.position) }
         var dx = 0f
         var dy = 0f
+        // Касание взял вложенный элемент: горизонтальный — жест его; вертикальный список — следим дальше, но строже.
+        var takenByList = false
+        // Жест наш: дальше гасим движение, чтобы кнопка под пальцем не нажалась, а внешние вкладки его не взяли.
+        var claimed = false
+        fun horizontal() = abs(dx) > abs(dy) * (if (takenByList) 2f else 1.5f)
+        fun target() = if (dx < 0) index + 1 else index - 1
+        fun go(): Boolean {
+            val t = target()
+            if (t !in 0 until count) return false
+            SwipeGesture.handled = down.id
+            onSelect(t)
+            return true
+        }
         while (true) {
             val ev = awaitPointerEvent()
             if (ev.changes.size > 1) return@awaitEachGesture
             val c = ev.changes.firstOrNull { it.id == down.id } ?: return@awaitEachGesture
-            if (!c.pressed) return@awaitEachGesture
-            if (c.isConsumed) return@awaitEachGesture
-            val d = c.positionChange()
+            // Вложенные вкладки уже перелистнули этим жестом.
+            if (SwipeGesture.handled == down.id) return@awaitEachGesture
+            val d = c.positionChangeIgnoreConsumed()
             dx += d.x; dy += d.y
-            if (abs(dy) > viewConfiguration.touchSlop && abs(dy) > abs(dx)) return@awaitEachGesture
-            if (abs(dx) > threshold && abs(dx) > abs(dy) * 1.5f) {
-                val target = if (dx < 0) index + 1 else index - 1
-                if (target !in 0 until count) return@awaitEachGesture
+            velocity.addPosition(c.uptimeMillis, c.position)
+            if (!c.pressed) {
+                // Отпустили: короткий, но быстрый горизонтальный взмах тоже листает.
+                if ((claimed || takenByList) && abs(dx) > flingMin && horizontal() && abs(velocity.calculateVelocity().x) > flingSpeed && go()) c.consume()
+                return@awaitEachGesture
+            }
+            if (c.isConsumed && !claimed && !takenByList) {
+                if (abs(dx) >= abs(dy)) return@awaitEachGesture
+                takenByList = true
+            }
+            if (abs(dy) > slop * 4 && abs(dy) > abs(dx)) return@awaitEachGesture
+            if (!claimed && !takenByList && abs(dx) > slop && horizontal() && target() in 0 until count) claimed = true
+            if (claimed) c.consume()
+            if (abs(dx) > threshold && horizontal()) {
+                if (!go()) return@awaitEachGesture
                 c.consume()
-                onSelect(target)
-                // Остаток жеста гасим, чтобы не нажалось то, что под пальцем.
+                // Остаток жеста гасим раньше вложенных элементов, чтобы ничего не нажалось и список не ехал.
                 while (true) {
-                    val e = awaitPointerEvent()
+                    val e = awaitPointerEvent(PointerEventPass.Initial)
                     e.changes.forEach { it.consume() }
                     if (e.changes.none { it.pressed }) break
                 }
@@ -56,6 +89,11 @@ fun Modifier.swipeTabs(index: Int, count: Int, onSelect: (Int) -> Unit): Modifie
             }
         }
     }
+}
+
+/** Какой жест уже перелистнул вкладки — чтобы внешние вкладки не листнули тем же жестом второй раз. */
+private object SwipeGesture {
+    var handled: PointerId? = null
 }
 
 /** То же для вкладок со своими значениями (не 0, 1, 2…): [values] — в порядке на экране. */

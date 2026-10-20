@@ -56,7 +56,7 @@ object BackupFiles {
     /** Служебные папки и кэш, который сам загрузится заново (новости на месяц). */
     private val SKIP_DIRS = setOf("datastore", "profileInstalled", "offline")
     /** Дополнительные настройки, которые тоже переносятся (кроме widget и ui_state). */
-    private val OTHER_PREFS = listOf("ai", "reading", "talk_online", "weather", "fin_accounts", "training_gear", "training_setup")
+    private val OTHER_PREFS = listOf("ai", "reading", "talk_online", "weather", "fin_accounts", "training_gear", "training_setup", "weight_goal")
 
     private fun safe(name: String) = SAFE_ENTRY.matches(name) && name.split('/').none { it == ".." || it == "." || it.isBlank() }
     private val SHARED = listOf("widget", "ui_state")

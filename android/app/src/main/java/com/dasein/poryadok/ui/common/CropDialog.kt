@@ -138,8 +138,8 @@ fun CropDialog(
                     val minScale = max(fw / b.width, fh / b.height)
                     fun clamp() {
                         scale = scale.coerceIn(minScale, minScale * 6)
-                        ox = ox.coerceIn(frame.right - b.width * scale, frame.left)
-                        oy = oy.coerceIn(frame.bottom - b.height * scale, frame.top)
+                        ox = ox.within(frame.right - b.width * scale, frame.left)
+                        oy = oy.within(frame.bottom - b.height * scale, frame.top)
                     }
                     fun center() {
                         scale = minScale
@@ -151,6 +151,7 @@ fun CropDialog(
                     Canvas(
                         Modifier.fillMaxSize().pointerInput(b, frame) {
                             detectTransformGestures { centroid, pan, zoom, _ ->
+                                if (scale <= 0f) center()
                                 val newScale = (scale * zoom).coerceIn(minScale, minScale * 6)
                                 val k = newScale / scale
                                 ox = centroid.x - (centroid.x - ox) * k + pan.x
@@ -201,6 +202,12 @@ fun CropDialog(
         }
     }
 }
+
+/**
+ * coerceIn, который не падает: когда картинка ровно по рамке, из-за округления нижняя граница
+ * может оказаться на долю пикселя больше верхней — тогда берём середину.
+ */
+private fun Float.within(lo: Float, hi: Float): Float = if (lo <= hi) coerceIn(lo, hi) else (lo + hi) / 2
 
 /** Выбор картинки из галереи и сразу — кадрирование. Возвращает путь к готовому превью. */
 @Composable

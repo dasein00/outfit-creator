@@ -218,7 +218,7 @@ private val WD = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
  * изменение за неделю, минимум и максимум. Если за неделю взвешиваний мало — последние 7.
  */
 @Composable
-fun WeekWeightCard(readings: List<BodyMetric>, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun WeekWeightCard(readings: List<BodyMetric>, onClick: () -> Unit, modifier: Modifier = Modifier, profile: BodyProfile? = null) {
     val extra = LocalExtra.current
     val today = Dates.today()
     val byDay = readings.groupBy { it.day }.mapValues { (_, l) -> l.maxBy { it.at }.weight }
@@ -257,6 +257,8 @@ fun WeekWeightCard(readings: List<BodyMetric>, onClick: () -> Unit, modifier: Mo
                 dayLabels = { d -> val x = Dates.day(d); WD[x.dayOfWeek.value - 1] + " " + x.dayOfMonth }, zoomable = true, unit = "кг",
             )
         } else Text("Добавьте хотя бы два взвешивания — здесь появится график.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
+        // Цель похудения — под графиком.
+        if (profile != null) WeightGoalInline(profile, readings)
     }
 }
 
