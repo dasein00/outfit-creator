@@ -81,8 +81,7 @@ data class Hub(val icon: String, val title: String, val sub: String, val route: 
 val HUB = listOf(
     Hub("d06/00", "Финансы", "операции, бюджеты, счета", Routes.FINANCE),
     Hub("d04/00", "Привычки", "серии и статистика", Routes.HABITS),
-    Hub("d03/00", "Задачи", "списки и проекты", Routes.TASKS),
-    Hub("d03/11", "Цели", "этапы и прогресс", Routes.GOALS),
+    Hub("d03/00", "Задачи и цели", "списки, проекты, цели и этапы", Routes.TASKS),
     Hub("d11/00", "Питание", "КБЖУ и калории", Routes.health(0)),
     Hub("d08/00", "Давление и пульс", "дневник для вас и близких, нормы по возрасту, советы врачей", com.dasein.poryadok.ui.health.PressureRoutes.HOME),
     Hub("d08/02", "Вес и состав тела", "весы, метрики, тренд", Routes.health(1)),

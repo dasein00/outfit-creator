@@ -230,7 +230,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
         if (com.dasein.poryadok.data.UiTexts.editorMode.value) EditorModeStrip()
         NavHost(nav, startDestination = Routes.TODAY, modifier = Modifier.weight(1f)) {
             composable(Routes.TODAY) { TodayScreen(nav, settings) }
-            composable(Routes.TASKS) { TasksScreen(nav) { nav.popBackStack() } }
+            composable(Routes.TASKS) { TasksGoalsScreen(nav, 0) { nav.popBackStack() } }
             composable(
                 "${Routes.CALENDAR}?tab={tab}",
                 arguments = listOf(navArgument("tab") { type = NavType.IntType; defaultValue = 0 }),
@@ -288,7 +288,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable("habitEdit/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
                 HabitEditScreen(nav, it.long("id"))
             }
-            composable(Routes.GOALS) { GoalsScreen(nav) }
+            composable(Routes.GOALS) { TasksGoalsScreen(nav, 1) { nav.popBackStack() } }
             composable("goal/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
                 GoalScreen(nav, it.long("id"))
             }

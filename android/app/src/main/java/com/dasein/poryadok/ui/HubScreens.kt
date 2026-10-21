@@ -83,6 +83,16 @@ fun PlanScreen(nav: NavHostController, initialTab: Int) {
     }
 }
 
+/** «Задачи и цели»: один раздел с двумя вкладками (свайп или переключатель сверху). */
+@Composable
+fun TasksGoalsScreen(nav: NavHostController, initialTab: Int, onBack: (() -> Unit)?) {
+    var tab by rememberSaveable(initialTab) { mutableStateOf(initialTab) }
+    TabbedHost(listOf(0 to "Задачи", 1 to "Цели"), tab, { tab = it }) { t ->
+        if (t == 0) TasksScreen(nav, onBack, showGoals = false)
+        else com.dasein.poryadok.ui.productivity.GoalsScreen(nav, embedded = onBack == null)
+    }
+}
+
 /** «Топы»: коллекция фильмов, сериалов, книг и свои рейтинги. */
 @Composable
 fun TopsHubScreen(nav: NavHostController, initialTab: Int) {

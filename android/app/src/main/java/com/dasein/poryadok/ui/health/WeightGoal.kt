@@ -156,19 +156,39 @@ private fun GoalSummary(g: WeightGoal.Goal) {
     Text(text, fontSize = 12.sp, color = if (g.reached) extra.ok else extra.dim, modifier = Modifier.padding(top = 4.dp))
 }
 
-/** Компактный блок цели для карточки веса на главной — под графиком. */
+/** Компактный блок цели для карточки веса на главной — под графиком: те же цифры в три строки. */
 @Composable
 fun WeightGoalInline(profile: BodyProfile, readings: List<BodyMetric>, modifier: Modifier = Modifier) {
+    val extra = LocalExtra.current
+    val accent = MaterialTheme.colorScheme.primary
     val g = rememberGoal(profile, readings)
-    Column(modifier.fillMaxWidth().padding(top = 10.dp)) {
+    Column(modifier.fillMaxWidth().padding(top = 6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Glyph("d03/11", 18.dp)
+            Glyph("d03/11", 16.dp)
             HGap(6.dp)
-            Text(btnLabel(if (g.losing) "Цель похудения" else "Цель по весу"), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Text(btnLabel(if (g.losing) "Цель похудения" else "Цель по весу"), fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.weight(1f))
+            Text(
+                pct(g.fraction) + if (g.current != null && !g.reached) " · осталось ${fmt(g.left)} кг" else "",
+                fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (g.reached) extra.ok else accent, maxLines = 1,
+            )
         }
-        Gap(4.dp)
-        WeightGoalBar(g)
-        GoalSummary(g)
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(12.dp), contentAlignment = Alignment.CenterStart) {
+            val x = maxWidth * g.fraction
+            Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(extra.line))
+            Box(Modifier.width(x.coerceAtLeast(6.dp)).height(6.dp).clip(RoundedCornerShape(3.dp)).background(accent))
+            Box(
+                Modifier.offset(x = (x - 6.dp).coerceIn(0.dp, maxOf(0.dp, maxWidth - 12.dp))).size(12.dp).clip(CircleShape).background(accent)
+                    .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape),
+            )
+        }
+        Row(Modifier.fillMaxWidth()) {
+            Text(btnLabel("Исходный: ") + fmt(g.start) + " кг", fontSize = 11.sp, color = extra.dim, modifier = Modifier.weight(1f), maxLines = 1)
+            if (g.current != null && g.done >= 0.05) Text(
+                (if (g.losing) "сброшено " else "набрано ") + fmt(g.done) + " кг", fontSize = 11.sp, color = extra.dim, maxLines = 1,
+                modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+            Text(btnLabel("Цель: ") + fmt(g.target) + " кг", fontSize = 11.sp, color = extra.dim, modifier = Modifier.weight(1f), maxLines = 1, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+        }
     }
 }
 

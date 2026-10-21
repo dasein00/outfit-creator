@@ -80,7 +80,7 @@ private const val L_MATRIX = "matrix"
 private const val L_DONE = "done"
 
 @Composable
-fun TasksScreen(nav: NavHostController, onBack: (() -> Unit)? = null) {
+fun TasksScreen(nav: NavHostController, onBack: (() -> Unit)? = null, showGoals: Boolean = true) {
     val dao = Graph.dao
     val tasks by observe(emptyList()) { dao.tasks() }
     val projects by observe(emptyList()) { dao.projects() }
@@ -97,7 +97,7 @@ fun TasksScreen(nav: NavHostController, onBack: (() -> Unit)? = null) {
         title = "Задачи",
         onBack = onBack,
         actions = {
-            IconButton(onClick = { nav.navigate(Routes.GOALS) }) { Icon(Icons.Default.TrackChanges, "Цели") }
+            if (showGoals) IconButton(onClick = { nav.navigate(Routes.GOALS) }) { Icon(Icons.Default.TrackChanges, "Цели") }
             if (list == L_DONE) IconAction(Ic.trash, "Очистить") { confirmClear = true }
         },
         fab = {

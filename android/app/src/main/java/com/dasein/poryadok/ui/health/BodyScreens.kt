@@ -225,35 +225,36 @@ fun WeekWeightCard(readings: List<BodyMetric>, onClick: () -> Unit, modifier: Mo
     val week = (today - 6..today).mapNotNull { d -> byDay[d]?.let { d to it } }
     val pts = if (week.size >= 2) week else byDay.entries.sortedBy { it.key }.takeLast(7).map { it.key to it.value }
     val isWeek = week.size >= 2
+    // Компактно: всё главное — в шапке, график ниже ростом; ничего из показателей не потеряно.
     Tile(modifier, onClick = onClick, padding = 12.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Glyph("ui:v_weight", 22.dp)
+            Glyph("ui:v_weight", 20.dp)
             Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                Text(if (isWeek) "Вес за неделю" else "Последние взвешивания", fontWeight = FontWeight.SemiBold)
-                Text(if (isWeek) "${Dates.short(today - 6)} — ${Dates.short(today)}" else "за неделю меньше двух замеров", fontSize = 11.sp, color = extra.dim)
+                Text(if (isWeek) "Вес за неделю" else "Последние взвешивания", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                Text(
+                    (if (isWeek) "${Dates.short(today - 6)} — ${Dates.short(today)}" else "за неделю меньше двух замеров") + " · ${pts.size} ${com.dasein.poryadok.logic.plural(pts.size, "замер", "замера", "замеров")}",
+                    fontSize = 11.sp, color = extra.dim, maxLines = 1,
+                )
+                if (pts.size >= 2) Text(
+                    "мин ${fmt(pts.minOf { it.second })} · макс ${fmt(pts.maxOf { it.second })}",
+                    fontSize = 11.sp, color = extra.dim, maxLines = 1,
+                )
             }
-            pts.lastOrNull()?.let { Text(fmt(it.second) + " кг", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
+            Column(horizontalAlignment = Alignment.End) {
+                pts.lastOrNull()?.let { Text(fmt(it.second) + " кг", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
+                if (pts.size >= 2) {
+                    val change = pts.last().second - pts.first().second
+                    Text(
+                        (if (abs(change) < 0.05) "0,0" else signed(change)) + " кг",
+                        fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                        color = if (change > 0.05) extra.warn else if (change < -0.05) extra.ok else MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
         }
         if (pts.size >= 2) {
-            val change = pts.last().second - pts.first().second
-            Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                @Composable
-                fun Stat(value: String, label: String, color: Color = MaterialTheme.colorScheme.onSurface, mod: Modifier) {
-                    Column(mod) {
-                        Text(value, fontWeight = FontWeight.SemiBold, color = color)
-                        Text(label, fontSize = 11.sp, color = extra.dim)
-                    }
-                }
-                Stat(
-                    (if (abs(change) < 0.05) "0,0" else signed(change)) + " кг", "изменение",
-                    if (change > 0.05) extra.warn else if (change < -0.05) extra.ok else MaterialTheme.colorScheme.onSurface, Modifier.weight(1f),
-                )
-                Stat(fmt(pts.minOf { it.second }), "минимум", mod = Modifier.weight(1f))
-                Stat(fmt(pts.maxOf { it.second }), "максимум", mod = Modifier.weight(1f))
-                Stat("${pts.size}", "замеров", mod = Modifier.weight(.7f))
-            }
             TrendChart(
-                pts, false, Modifier.fillMaxWidth().height(170.dp).padding(top = 6.dp),
+                pts, false, Modifier.fillMaxWidth().height(118.dp).padding(top = 4.dp),
                 dayLabels = { d -> val x = Dates.day(d); WD[x.dayOfWeek.value - 1] + " " + x.dayOfMonth }, zoomable = true, unit = "кг",
             )
         } else Text("Добавьте хотя бы два взвешивания — здесь появится график.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))

@@ -32,6 +32,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -144,22 +145,30 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
         containerColor = MaterialTheme.colorScheme.background,
         // Отступ снизу — и от кнопок Android, и от клавиатуры (как в общем Screen).
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets.systemBars.union(androidx.compose.foundation.layout.WindowInsets.ime),
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { quickAdd = true },
-                icon = { Icon(Icons.Default.Add, null) },
-                text = { Text(btnLabel("Задача")) },
-                containerColor = MaterialTheme.colorScheme.primary,
-            )
-        },
     ) { pad ->
         val layout = HomeLayout.state.value
         val homeRows = HomeLayout.rows(layout)
         LazyColumn(
             Modifier.fillMaxSize().padding(pad),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
         ) {
-            item { Spacer(Modifier.statusBarsPadding().padding(top = 10.dp)) }
+            // Верхняя строка вместо приветствия: дата и системные кнопки — сразу под строкой состояния, без пустого места.
+            item(key = "top") {
+                Row(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 2.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "${Dates.weekdayFull(today)}, ${Dates.full(today)}", Modifier.weight(1f),
+                        color = extra.dim, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
+                    val editor = com.dasein.poryadok.data.UiTexts.editorMode.value
+                    IconButton(onClick = { quickAdd = true }) { Icon(Icons.Default.Add, "Новая задача", tint = MaterialTheme.colorScheme.primary) }
+                    IconButton(onClick = { com.dasein.poryadok.data.UiTexts.setEditorMode(!editor) }) {
+                        Icon(Icons.Default.Edit, "Режим редактора", tint = if (editor) MaterialTheme.colorScheme.primary else extra.dim)
+                    }
+                    IconAction("ui:sliders", "Настроить главное") { nav.navigate(HOME_EDIT) }
+                    IconAction(Ic.search, "Поиск") { nav.navigate(Routes.SEARCH) }
+                    IconAction(Ic.settings, "Настройки") { nav.navigate(Routes.SETTINGS) }
+                }
+            }
             homeRows.forEach { row ->
                 val e = layout[row.first()]
                 if (HomeLayout.isShortcut(e.id)) {
@@ -204,20 +213,8 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                                 Gap(8.dp)
                             }
                     }
-                    "greeting" -> item(key = "greeting") {
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(
-                                        Dates.greeting() + if (settings.name.isNotBlank()) ", ${settings.name}" else "",
-                                        style = MaterialTheme.typography.headlineSmall,
-                                    )
-                                    Text("${Dates.weekdayFull(today)}, ${Dates.full(today)}", color = extra.dim, fontSize = 14.sp)
-                                }
-                                IconAction("ui:sliders", "Настроить главное") { nav.navigate(HOME_EDIT) }
-                                IconAction(Ic.search, "Поиск") { nav.navigate(Routes.SEARCH) }
-                                IconAction(Ic.settings, "Настройки") { nav.navigate(Routes.SETTINGS) }
-                            }
-                    }
+                    // Приветствие убрано: дата и кнопки — в верхней строке.
+                    "greeting" -> Unit
                     "weather" -> item(key = "weather") { com.dasein.poryadok.ui.weather.WeatherTile(nav) }
                     "holiday" -> item(key = "holiday") { com.dasein.poryadok.ui.calendar.HolidayBanner(nav) }
                     "tutor" -> item(key = "tutor") { Gap(10.dp); com.dasein.poryadok.ui.tutor.HomeWordCard(nav) }
@@ -248,7 +245,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                         if (todayTasks.isEmpty()) item {
                             Tile {
                                 Text(
-                                    if (doneToday.isNotEmpty()) "Все задачи на сегодня выполнены" else "На сегодня задач нет. Нажмите «Задача», чтобы добавить.",
+                                    if (doneToday.isNotEmpty()) "Все задачи на сегодня выполнены" else "На сегодня задач нет. Нажмите «+» вверху, чтобы добавить.",
                                     color = extra.dim,
                                 )
                             }
