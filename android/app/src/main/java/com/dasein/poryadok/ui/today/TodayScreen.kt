@@ -152,23 +152,9 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
             Modifier.fillMaxSize().padding(pad),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
         ) {
-            // Верхняя строка вместо приветствия: дата и системные кнопки — сразу под строкой состояния, без пустого места.
-            item(key = "top") {
-                Row(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 2.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "${Dates.weekdayFull(today)}, ${Dates.full(today)}", Modifier.weight(1f),
-                        color = extra.dim, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    )
-                    val editor = com.dasein.poryadok.data.UiTexts.editorMode.value
-                    IconButton(onClick = { quickAdd = true }) { Icon(Icons.Default.Add, "Новая задача", tint = MaterialTheme.colorScheme.primary) }
-                    IconButton(onClick = { com.dasein.poryadok.data.UiTexts.setEditorMode(!editor) }) {
-                        Icon(Icons.Default.Edit, "Режим редактора", tint = if (editor) MaterialTheme.colorScheme.primary else extra.dim)
-                    }
-                    IconAction("ui:sliders", "Настроить главное") { nav.navigate(HOME_EDIT) }
-                    IconAction(Ic.search, "Поиск") { nav.navigate(Routes.SEARCH) }
-                    IconAction(Ic.settings, "Настройки") { nav.navigate(Routes.SETTINGS) }
-                }
-            }
+            item(key = "top") { Spacer(Modifier.statusBarsPadding().padding(top = 8.dp)) }
+            // Системные кнопки стоят на месте блока «Кнопки» (по умолчанию — между весом и погодой); если блок скрыт — сверху.
+            if (homeRows.none { layout[it.first()].id == "greeting" }) item(key = "buttons") { HomeButtons(nav) { quickAdd = true } }
             homeRows.forEach { row ->
                 val e = layout[row.first()]
                 if (HomeLayout.isShortcut(e.id)) {
@@ -213,8 +199,8 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                                 Gap(8.dp)
                             }
                     }
-                    // Приветствие убрано: дата и кнопки — в верхней строке.
-                    "greeting" -> Unit
+                    // Вместо приветствия — только системные кнопки, без слов.
+                    "greeting" -> item(key = "greeting") { HomeButtons(nav) { quickAdd = true } }
                     "weather" -> item(key = "weather") { com.dasein.poryadok.ui.weather.WeatherTile(nav) }
                     "holiday" -> item(key = "holiday") { com.dasein.poryadok.ui.calendar.HolidayBanner(nav) }
                     "tutor" -> item(key = "tutor") { Gap(10.dp); com.dasein.poryadok.ui.tutor.HomeWordCard(nav) }
@@ -416,32 +402,29 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                         }
 
                     }
-                    "quote" -> {
-                        item {
-                            Gap(18.dp)
-                            Text(
-                                "«${QUOTES[(today % QUOTES.size).toInt()]}»",
-                                fontStyle = FontStyle.Italic, color = extra.dim, fontSize = 14.sp,
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                            )
-                            if (doneToday.isNotEmpty()) Text(
-                                "Сегодня закрыто ${doneToday.size} ${plural(doneToday.size, "задача", "задачи", "задач")} — так держать!",
-                                fontSize = 12.sp, color = extra.ok, modifier = Modifier.padding(8.dp),
-                            )
-                        }
-                    }
+                    // Цитаты и слова на главной не показываем — только полезная информация.
+                    "quote" -> Unit
                 }
             }
-            item {
-                Gap(14.dp)
-                com.dasein.poryadok.ui.common.OutlinedButton(onClick = { nav.navigate(HOME_EDIT) }, modifier = Modifier.fillMaxWidth()) {
-                    Glyph("ui:sliders", 18.dp, badge = false); Text(btnLabel("  Настроить главное"))
-                }
-            }
-            item { HowTo("today") }
         }
     }
     if (quickAdd) QuickAddSheet(onDismiss = { quickAdd = false }, defaultDay = today)
+}
+
+/** Системные кнопки главной: новая задача, режим редактора, настройка главного, поиск, настройки. */
+@Composable
+private fun HomeButtons(nav: NavHostController, onAdd: () -> Unit) {
+    val extra = LocalExtra.current
+    val editor = com.dasein.poryadok.data.UiTexts.editorMode.value
+    Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = onAdd) { Icon(Icons.Default.Add, "Новая задача", tint = MaterialTheme.colorScheme.primary) }
+        IconButton(onClick = { com.dasein.poryadok.data.UiTexts.setEditorMode(!editor) }) {
+            Icon(Icons.Default.Edit, "Режим редактора", tint = if (editor) MaterialTheme.colorScheme.primary else extra.dim)
+        }
+        IconAction("ui:sliders", "Настроить главное") { nav.navigate(HOME_EDIT) }
+        IconAction(Ic.search, "Поиск") { nav.navigate(Routes.SEARCH) }
+        IconAction(Ic.settings, "Настройки") { nav.navigate(Routes.SETTINGS) }
+    }
 }
 
 fun goalProgress(g: com.dasein.poryadok.data.Goal, tasksDone: Int, tasksTotal: Int, msDone: Int = 0, msTotal: Int = 0): Float {
