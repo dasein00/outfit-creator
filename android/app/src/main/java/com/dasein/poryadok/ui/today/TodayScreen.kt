@@ -150,7 +150,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
         val homeRows = HomeLayout.rows(layout)
         LazyColumn(
             Modifier.fillMaxSize().padding(pad),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 8.dp),
         ) {
             item(key = "top") { Spacer(Modifier.statusBarsPadding().padding(top = 8.dp)) }
             // Системные кнопки стоят на месте блока «Кнопки» (по умолчанию — между весом и погодой); если блок скрыт — сверху.

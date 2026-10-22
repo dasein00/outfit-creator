@@ -1,5 +1,7 @@
 package com.dasein.poryadok.ui
 
+import androidx.compose.foundation.layout.consumeWindowInsets
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -228,7 +230,14 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
     Column(Modifier.fillMaxSize().editorModeHold()) {
         // Полоса режима редактора — сверху, подальше от системных кнопок Android внизу.
         if (com.dasein.poryadok.data.UiTexts.editorMode.value) EditorModeStrip()
-        NavHost(nav, startDestination = Routes.TODAY, modifier = Modifier.weight(1f)) {
+        // Под экранами вкладок стоит нижняя панель, и отступ от кнопок Android даёт она сама — экранам он не нужен,
+        // иначе над панелью остаётся пустая полоса.
+        NavHost(
+            nav, startDestination = Routes.TODAY,
+            modifier = Modifier.weight(1f).then(
+                if (showBar) Modifier.consumeWindowInsets(androidx.compose.foundation.layout.WindowInsets.navigationBars) else Modifier,
+            ),
+        ) {
             composable(Routes.TODAY) { TodayScreen(nav, settings) }
             composable(Routes.TASKS) { TasksGoalsScreen(nav, 0) { nav.popBackStack() } }
             composable(
