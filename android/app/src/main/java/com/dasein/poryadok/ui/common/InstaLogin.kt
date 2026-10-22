@@ -37,6 +37,8 @@ import com.dasein.poryadok.ui.theme.LocalExtra
 fun InstaLoginDialog(onDone: () -> Unit) {
     val extra = LocalExtra.current
     var logged by remember { mutableStateOf(InstaWeb.loggedIn()) }
+    var failed by remember { mutableStateOf<String?>(null) }
+    var web by remember { mutableStateOf<WebView?>(null) }
     fun close() { InstaWeb.flush(); onDone() }
     Dialog(onDismissRequest = { close() }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeBars(withIme = true)) {
@@ -50,14 +52,23 @@ fun InstaLoginDialog(onDone: () -> Unit) {
                 }
                 Button(onClick = { close() }, modifier = Modifier.padding(start = 8.dp)) { Text(btnLabel("Готово")) }
             }
+            failed?.let { err ->
+                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Страница не загрузилась ($err). Проверьте интернет и VPN и нажмите «Повторить».", fontSize = 12.sp, color = extra.danger, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { failed = null; web?.loadUrl(InstaWeb.LOGIN_URL) }) { Text(btnLabel("Повторить")) }
+                }
+            }
             AndroidView(
                 factory = { c ->
                     WebView(c).apply {
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        CookieManager.getInstance().setAcceptCookie(true)
-                        CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+                        InstaWeb.setup(this)
+                        web = this
                         webViewClient = object : WebViewClient() {
+                            override fun shouldOverrideUrlLoading(view: WebView, request: android.webkit.WebResourceRequest): Boolean =
+                                InstaWeb.foreign(request.url?.toString())
+                            override fun onReceivedError(view: WebView, request: android.webkit.WebResourceRequest, error: android.webkit.WebResourceError) {
+                                if (request.isForMainFrame) failed = error.description?.toString() ?: "ошибка сети"
+                            }
                             override fun onPageFinished(view: WebView, u: String) {
                                 logged = InstaWeb.loggedIn()
                                 if (logged) InstaWeb.flush()

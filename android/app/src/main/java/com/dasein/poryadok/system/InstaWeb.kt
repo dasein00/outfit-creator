@@ -34,6 +34,21 @@ object InstaWeb {
 
     private val json = Json { isLenient = true }
 
+    /**
+     * Instagram страницам встроенного браузера часто отвечает переходом в своё приложение (intent://, instagram://)
+     * или отказом по пометке «wv» в имени браузера — тогда WebView показывает «Не удаётся загрузить веб-страницу».
+     * Поэтому браузер представляется обычным Chrome, а переходы не по http(s) игнорируются.
+     */
+    fun setup(w: WebView) {
+        w.settings.javaScriptEnabled = true
+        w.settings.domStorageEnabled = true
+        w.settings.userAgentString = w.settings.userAgentString.replace("; wv", "").replace(Regex("""Version/\d+(\.\d+)*\s"""), "")
+        runCatching { CookieManager.getInstance().setAcceptCookie(true); CookieManager.getInstance().setAcceptThirdPartyCookies(w, true) }
+    }
+
+    /** Ссылка не для браузера (приложение Instagram, intent://, market://) — не открываем. */
+    fun foreign(url: String?): Boolean = url != null && !url.startsWith("http://") && !url.startsWith("https://")
+
     // Заголовок, текст первого h1 (в нём подпись на странице поста) и вся страница.
     private const val JS = "(function(){var h=document.querySelector('h1');" +
         "return JSON.stringify([document.title||'',h?h.innerText:'',document.documentElement.outerHTML]);})()"
@@ -59,13 +74,12 @@ object InstaWeb {
                     runCatching { w.stopLoading(); w.destroy() }
                     if (cont.isActive) cont.resume(v)
                 }
-                w.settings.javaScriptEnabled = true
-                w.settings.domStorageEnabled = true
-                runCatching { CookieManager.getInstance().setAcceptCookie(true) }
+                setup(w)
                 // Невидимому браузеру тоже нужен размер — иначе часть страниц не рисует содержимое.
                 w.layout(0, 0, 1080, 2200)
                 var scheduled = false
                 w.webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(view: WebView, request: android.webkit.WebResourceRequest): Boolean = foreign(request.url?.toString())
                     override fun onPageFinished(view: WebView, u: String) {
                         if (scheduled) return
                         scheduled = true
