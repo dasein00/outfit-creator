@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui
 
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.navigationBars
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.statusBars
