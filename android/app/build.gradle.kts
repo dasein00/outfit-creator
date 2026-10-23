@@ -99,6 +99,8 @@ dependencies {
     // Распознавание цифр со скриншотов приложений весов (Fitdays и др.) — на телефоне, без интернета.
     implementation("com.google.mlkit:text-recognition:16.0.1")
 
+    // Встроенный браузер без заголовка X-Requested-With (Instagram отказывает страницам с ним).
+    implementation("androidx.webkit:webkit:1.11.0")
     implementation("androidx.glance:glance-appwidget:1.1.1")
     implementation("androidx.glance:glance-material3:1.1.1")
     implementation("androidx.biometric:biometric:1.1.0")

@@ -39,12 +39,33 @@ object InstaWeb {
      * или отказом по пометке «wv» в имени браузера — тогда WebView показывает «Не удаётся загрузить веб-страницу».
      * Поэтому браузер представляется обычным Chrome, а переходы не по http(s) игнорируются.
      */
-    fun setup(w: WebView) {
+    fun setup(w: WebView, desktop: Boolean = false) {
         w.settings.javaScriptEnabled = true
         w.settings.domStorageEnabled = true
-        w.settings.userAgentString = w.settings.userAgentString.replace("; wv", "").replace(Regex("""Version/\d+(\.\d+)*\s"""), "")
+        w.settings.userAgentString = if (desktop) DESKTOP_UA else mobileUa(w)
         runCatching { CookieManager.getInstance().setAcceptCookie(true); CookieManager.getInstance().setAcceptThirdPartyCookies(w, true) }
+        // Без заголовка с именем приложения — для сайта это обычный браузер.
+        runCatching {
+            if (androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.REQUESTED_WITH_HEADER_ALLOW_LIST))
+                androidx.webkit.WebSettingsCompat.setRequestedWithHeaderOriginAllowList(w.settings, emptySet())
+        }
     }
+
+    private var defaultUa: String? = null
+    private fun mobileUa(w: WebView): String {
+        val base = defaultUa ?: w.settings.userAgentString.also { defaultUa = it }
+        return base.replace("; wv", "").replace(Regex("""Version/\d+(\.\d+)*\s"""), "")
+    }
+
+    const val DESKTOP_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+
+    /** Куда пробовать войти по очереди, если Instagram не отдаёт страницу: (адрес, как компьютер). */
+    val LOGIN_TRIES = listOf(
+        "https://www.instagram.com/" to false,
+        "https://www.instagram.com/accounts/login/" to true,
+        "https://www.instagram.com/" to true,
+        "https://m.instagram.com/accounts/login/" to false,
+    )
 
     /** Ссылка не для браузера (приложение Instagram, intent://, market://) — не открываем. */
     fun foreign(url: String?): Boolean = url != null && !url.startsWith("http://") && !url.startsWith("https://")

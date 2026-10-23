@@ -208,6 +208,21 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
     // Instagram требует вход — показываем кнопку «Войти в Instagram», после входа пост загружается сам.
     var needLogin by remember { mutableStateOf(false) }
     var showLogin by remember { mutableStateOf(false) }
+    var shotBusy by remember { mutableStateOf(false) }
+    val shots = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia(6)) { uris ->
+        if (uris.isEmpty()) return@rememberLauncherForActivityResult
+        shotBusy = true; aiError = null
+        scope.launch {
+            val lines = uris.flatMap { com.dasein.poryadok.system.ScaleOcr.lines(ctx, it) }
+            val got = com.dasein.poryadok.logic.RecipeText.cleanOcr(lines)
+            if (got.isBlank()) aiError = "На скриншоте не нашлось текста. Откройте пост с раскрытым описанием («ещё») и сделайте скриншот."
+            else {
+                ingrText = listOf(ingrText.trim(), got).filter { it.isNotBlank() }.joinToString("\n")
+                status = "Текст со скриншота распознан. Проверьте его и нажмите «Сгенерировать рецепт» или «Разобрать без ИИ»."
+            }
+            shotBusy = false
+        }
+    }
     fun loginNeeded(e: Throwable) { if (e is com.dasein.poryadok.system.RecipeLink.InstagramLogin) needLogin = true }
     // Видео, уже прикреплённые к рецепту (файлы на телефоне).
     val ownVideos = remember(d.recipe.videos) { d.recipe.videos.lines().map { it.trim() }.filter { it.startsWith("/") && java.io.File(it).exists() } }
@@ -347,16 +362,9 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                     com.dasein.poryadok.ui.common.VideoAddButtons("recipes/video") { path -> addVideo = false; attachAndRecognize(path) }
                 }
                 if (ownVideos.isNotEmpty()) {
+                    // Речь первого видео распознаётся сама и входит в «Заполнить…» — отдельная кнопка для него не нужна.
                     val ready = ownVideos.associateWith { com.dasein.poryadok.system.VideoSpeech.cached(ctx, it) != null }
-                    OutlinedButton(enabled = !videoBusy && !aiBusy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(min = 48.dp), onClick = { fromFile(ownVideos.first()) }) {
-                        Text(
-                            when {
-                                videoBusy -> status ?: "Распознаю…"
-                                ready[ownVideos.first()] == true -> "Распознать речь (уже готово — подставить)"
-                                else -> "Распознать речь из видео рецепта"
-                            },
-                        )
-                    }
+                    if (videoBusy) Text(status ?: "Распознаю речь…", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
                     ownVideos.drop(1).forEachIndexed { i, v ->
                         TextButton(enabled = !videoBusy && !aiBusy, onClick = { fromFile(v) }) { Text("Распознать речь из видео №${i + 2}" + if (ready[v] == true) " (готово)" else "") }
                     }
@@ -389,6 +397,12 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                     onClick = { showLogin = true },
                     modifier = Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(min = 48.dp),
                 ) { Text(btnLabel("Войти в Instagram")) }
+                // Подпись со скриншота: текст распознаётся на телефоне (без интернета и без входа в Instagram).
+                OutlinedButton(
+                    enabled = !shotBusy,
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(min = 48.dp),
+                    onClick = { shots.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                ) { Text(if (shotBusy) "Распознаю текст…" else btnLabel("📷 Текст описания со скриншота")) }
                 TextInput(ingrText, { ingrText = it }, "Текст из поста: ингредиенты, граммовки", Modifier.padding(top = 6.dp), singleLine = false, minLines = 3)
                 if (showLogin) com.dasein.poryadok.ui.common.InstaLoginDialog {
                     showLogin = false

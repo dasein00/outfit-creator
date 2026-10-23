@@ -135,6 +135,20 @@ object RecipeText {
         return listOf(Ingredient(name, amountOf(m), u?.first ?: "шт", u?.second ?: 0.0))
     }
 
+    /** Обвязка экрана на скриншоте поста: строка состояния, счётчики, кнопки, комментарии. */
+    private val OCR_JUNK = Regex(
+        """^(\d{1,2}:\d{2}.*|.*\b(vpn|lte|4g|5g)\b.*|\d{1,3}\s*%|.*отмет\p{L}* «?нравится»?.*|.*\bнравится\b.*\d.*|посмотреть (все )?(\d+ )?коммент\p{L}*.*|""" +
+            """добавьте комментарий.*|.*\bкомментари\p{L}*\s*$|подписаться|подписки|подписан\p{L}*|отправить|сохранить|поделиться|оригинальное аудио.*|""" +
+            """(view|see) (all )?\d* ?comments?.*|liked by.*|\d+ (likes?|comments?)|follow(ing)?|more|less|see translation|\d+\s*(ч|мин|дн|нед|h|m|d|w)\.?)$""",
+        RegexOption.IGNORE_CASE,
+    )
+
+    /** Текст со скриншотов поста (строки распознавания) → подпись без обвязки экрана и мусора Instagram. */
+    fun cleanOcr(lines: List<String>): String = lines.map { it.trim() }
+        .filter { it.length > 1 && !OCR_JUNK.matches(it) && !JUNK.matches(it) }
+        .fold(mutableListOf<String>()) { acc, l -> if (acc.lastOrNull() != l) acc += l; acc }
+        .joinToString("\n")
+
     /** Строка-мусор из Instagram: дата поста, «ещё», «меньше», «показать перевод». */
     private val JUNK = Regex("""^(\d{1,2}\s+(январ|феврал|март|апрел|ма[яй]|июн|июл|август|сентябр|октябр|ноябр|декабр)\p{L}*(\s+\d{4})?(\s*г\.?)?|меньше|ещё|еще|показать перевод|показать оригинал|перевод|нравится|ответить|подробнее|читать далее|… ?ещё|\.\.\. ?ещё)$""", RegexOption.IGNORE_CASE)
 
