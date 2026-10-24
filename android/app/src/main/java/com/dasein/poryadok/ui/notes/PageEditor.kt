@@ -2,6 +2,11 @@
 
 package com.dasein.poryadok.ui.notes
 
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+
 import android.content.Intent
 import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.animation.AnimatedVisibility
@@ -134,11 +139,14 @@ internal val BLOCK_KINDS = listOf(
 )
 
 /** Показывает разметку: в активном блоке маркеры бледные, в остальных — скрыты, текст оформлен. */
-private class MdTransformation(private val focused: Boolean, private val dim: Color, private val codeBg: Color, private val mark: Color) : VisualTransformation {
+private class MdTransformation(
+    private val focused: Boolean, private val dim: Color, private val codeBg: Color, private val mark: Color, private val link: Color = Color(0xFF5B8DD2),
+) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         val raw = text.text
         val spans = InlineMarkdown.spans(raw)
-        if (spans.isEmpty()) return TransformedText(text, OffsetMapping.Identity)
+        val refs = com.dasein.poryadok.logic.NoteRefs.refs(raw)
+        if (spans.isEmpty() && refs.isEmpty()) return TransformedText(text, OffsetMapping.Identity)
         val out = buildAnnotatedString {
             append(raw)
             val hidden = SpanStyle(color = Color.Transparent, fontSize = 1.sp, letterSpacing = 0.sp)
@@ -157,6 +165,12 @@ private class MdTransformation(private val focused: Boolean, private val dim: Co
                 addStyle(style, cs, ce)
                 addStyle(if (focused) shown else hidden, s.start, cs)
                 addStyle(if (focused) shown else hidden, ce, s.end)
+            }
+            // Ссылки [[…]], веб-адреса и #теги — цветом; скобки ссылки видны только при правке.
+            refs.forEach { r ->
+                addStyle(SpanStyle(color = link, textDecoration = if (r.kind == com.dasein.poryadok.logic.NoteRefs.Kind.TAG) null else TextDecoration.Underline), r.nameStart, r.nameEnd)
+                if (r.nameStart > r.start) addStyle(if (focused) shown else hidden, r.start, r.nameStart)
+                if (r.end > r.nameEnd) addStyle(if (focused) shown else hidden, r.nameEnd, r.end)
             }
         }
         return TransformedText(out, OffsetMapping.Identity)
@@ -337,6 +351,14 @@ fun PageScreen(nav: NavHostController, id: Long) {
     var outline by remember { mutableStateOf(false) }
     // Пункты заметки → задачи (с датой — появятся в календаре и на главной).
     var toTasks by remember { mutableStateOf<List<Long>?>(null) }
+    val scope = rememberCoroutineScope()
+    // Связи: #тег — страницы с ним; 🔗 — вставка ссылки; внизу — кто ссылается на эту страницу.
+    var tagShown by remember { mutableStateOf<String?>(null) }
+    var linkFor by remember { mutableStateOf<Long?>(null) }
+    var backlinks by remember { mutableStateOf<List<Pair<Long, String>>>(emptyList()) }
+    val saveMd = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("text/markdown")) { uri ->
+        if (uri != null) scope.launch { st.save(); NoteNav.exportPage(ctx, id, uri); android.widget.Toast.makeText(ctx, "Сохранено — файл .md откроется на компьютере в любом редакторе", android.widget.Toast.LENGTH_LONG).show() }
+    }
 
     LaunchedEffect(id) { st.load(Graph.pages.blocksNow(id)) }
     LaunchedEffect(page?.id) { if (title == null && page != null) title = page!!.title }
@@ -419,6 +441,7 @@ fun PageScreen(nav: NavHostController, id: Long) {
     val words = st.blocks.sumOf { b -> if (b.type in BlockType.TEXTUAL) InlineMarkdown.plain(st.plain(b.id)).split(Regex("\\s+")).count { it.isNotBlank() } else 0 }
     val isEmpty = st.loaded && st.blocks.size == 1 && st.blocks[0].type == BlockType.TEXT && st.plain(st.blocks[0].id).isBlank()
     LaunchedEffect(st.loaded) { if (st.loaded && editing == null) editing = isEmpty }
+    LaunchedEffect(title, st.loaded) { backlinks = NoteNav.backlinks(id, title.orEmpty()) }
     val canEdit = editing != false
     fun startEdit() {
         editing = true
@@ -454,6 +477,7 @@ fun PageScreen(nav: NavHostController, id: Long) {
                     DropdownMenuItem({ Text(btnLabel("Оглавление")) }, { menu = false; outline = true })
                     val openTodos = st.blocks.filter { it.type == BlockType.TODO && !it.checked && st.plain(it.id).isNotBlank() }
                     if (openTodos.isNotEmpty()) DropdownMenuItem({ Text("Пункты → в задачи (${openTodos.size})") }, { menu = false; toTasks = openTodos.map { it.id } })
+                    DropdownMenuItem({ Text(btnLabel("Сохранить файлом (.md)")) }, { menu = false; saveMd.launch((title.orEmpty().ifBlank { "Заметка" }).replace(Regex("""[\\/:*?"<>|]"""), " ") + ".md") })
                     DropdownMenuItem({ Text(btnLabel("Копировать весь текст")) }, {
                         menu = false
                         val text = listOf(title.orEmpty()) + st.blocks.filter { it.type in BlockType.TEXTUAL }.map { InlineMarkdown.plain(st.plain(it.id)) }
@@ -556,6 +580,17 @@ fun PageScreen(nav: NavHostController, id: Long) {
                             onOpenPage = { pid -> st.save(); nav.navigate(Routes.page(pid)) },
                             onKind = { k -> applyKind(b.id, k) },
                             onPickImage = { imageFor = b.id; pickImage() },
+                            onRef = { r -> scope.launch { openRef(ctx, nav, r) { tagShown = it } } },
+                        )
+                    }
+                }
+                // Обратные ссылки: какие страницы упоминают эту ([[Название]]).
+                if (backlinks.isNotEmpty()) {
+                    Text(btnLabel("Ссылаются на эту страницу"), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 18.dp))
+                    backlinks.forEach { (pid, t) ->
+                        Text(
+                            "↩ $t", color = scheme.primary, fontSize = 14.sp,
+                            modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable { st.save(); nav.navigate(Routes.page(pid)) }.padding(vertical = 4.dp),
                         )
                     }
                 }
@@ -618,6 +653,7 @@ fun PageScreen(nav: NavHostController, id: Long) {
                             .background(Color(0x66E0B040)).padding(horizontal = 10.dp, vertical = 6.dp),
                     )
                     if (st.blocks.getOrNull(st.index(fid))?.let { it.type == BlockType.TODO && st.plain(it.id).isNotBlank() } == true) Tool("→ Задача") { toTasks = listOf(fid) }
+                    Tool("🔗") { linkFor = fid }
                     Tool("☐") { st.setType(fid, if (st.blocks.getOrNull(st.index(fid))?.type == BlockType.TODO) BlockType.TEXT else BlockType.TODO) }
                     Tool("•") { st.setType(fid, if (st.blocks.getOrNull(st.index(fid))?.type == BlockType.BULLET) BlockType.TEXT else BlockType.BULLET) }
                     Tool("⇥") { st.update(fid) { if (it.type in BlockType.CONTINUES) it.copy(indent = (it.indent + 1).coerceAtMost(4)) else it } }
@@ -653,6 +689,20 @@ fun PageScreen(nav: NavHostController, id: Long) {
                 ctx, "Задач добавлено: ${items.size}" + (day?.let { " на ${Dates.label(it)} — они видны в календаре" } ?: " (без даты)"), android.widget.Toast.LENGTH_LONG,
             ).show()
         })
+    }
+    tagShown?.let { t -> TagPagesDialog(nav, t) { tagShown = null } }
+    linkFor?.let { bid ->
+        val v0 = st.values[bid]
+        val sel = v0?.let { it.text.substring(it.selection.min.coerceIn(0, it.text.length), it.selection.max.coerceIn(0, it.text.length)) }.orEmpty().removePrefix(ZWS)
+        LinkPickerDialog(sel, onDismiss = { linkFor = null }) { target, name ->
+            linkFor = null
+            val v = st.values[bid] ?: return@LinkPickerDialog
+            val a = v.selection.min.coerceIn(1, v.text.length)
+            val e = v.selection.max.coerceIn(a, v.text.length)
+            val ins = com.dasein.poryadok.logic.NoteRefs.link(target, name)
+            val nt = v.text.substring(0, a) + ins + v.text.substring(e)
+            st.blocks.firstOrNull { it.id == bid }?.let { blk -> st.onChange(blk, TextFieldValue(nt, TextRange(a + ins.length))) }
+        }
     }
     if (findReplace) FindReplaceDialog(
         count = { q -> if (q.isBlank()) 0 else st.blocks.filter { it.type in BlockType.TEXTUAL }.sumOf { b -> Regex(Regex.escape(q), RegexOption.IGNORE_CASE).findAll(st.plain(b.id)).count() } },
@@ -724,6 +774,7 @@ private fun BlockView(
     onOpenPage: (Long) -> Unit,
     onKind: (BlockKind) -> Unit,
     onPickImage: () -> Unit,
+    onRef: (com.dasein.poryadok.logic.NoteRefs.Ref) -> Unit = {},
 ) {
     val extra = LocalExtra.current
     val scheme = MaterialTheme.colorScheme
@@ -808,7 +859,23 @@ private fun BlockView(
 
             val field: @Composable (Modifier) -> Unit = { m ->
                 Box(m) {
-                    BasicTextField(
+                    // Чтение: текст со ссылками — нажатие открывает заметку, рецепт, книгу, сайт или страницы с тегом.
+                    if (readOnly) {
+                        val tr = remember(v.text, extra.dim) { MdTransformation(false, extra.dim, extra.card, Color(0x66E0B040)).filter(AnnotatedString(v.text)).text }
+                        val refs = remember(v.text) { com.dasein.poryadok.logic.NoteRefs.refs(v.text) }
+                        var layout by remember { mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
+                        Text(
+                            tr, style = style, onTextLayout = { layout = it },
+                            modifier = Modifier.fillMaxWidth().then(
+                                if (refs.isEmpty()) Modifier else Modifier.pointerInput(refs) {
+                                    detectTapGestures { pos ->
+                                        val off = layout?.getOffsetForPosition(pos) ?: return@detectTapGestures
+                                        refs.firstOrNull { off >= it.start && off < it.end }?.let(onRef)
+                                    }
+                                },
+                            ),
+                        )
+                    } else BasicTextField(
                         value = v,
                         readOnly = readOnly,
                         onValueChange = { st.onChange(b, it) },

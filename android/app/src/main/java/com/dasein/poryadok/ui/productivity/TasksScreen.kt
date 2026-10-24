@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -157,6 +158,8 @@ fun TasksScreen(nav: NavHostController, onBack: (() -> Unit)? = null, showGoals:
                 }
             }
 
+            // Цели — полосой над задачами: прогресс, срок (он же в календаре) и быстрый переход.
+            if (!showGoals) GoalsStrip(nav)
             when (list) {
                 L_MATRIX -> Matrix(open, today, nav)
                 else -> {
@@ -298,5 +301,50 @@ fun ProjectDialog(p: Project, onDismiss: () -> Unit) {
     ) {
         io { Graph.dao.detachProject(p.id); Graph.dao.deleteProject(p) }
         onDismiss()
+    }
+}
+
+
+/** Цели над списком задач: прогресс, дедлайн (виден и в календаре), «+ Цель» и «Все цели». */
+@Composable
+internal fun GoalsStrip(nav: NavHostController) {
+    val dao = Graph.dao
+    val extra = LocalExtra.current
+    val goals by observe(emptyList()) { dao.goals() }
+    val tasks by observe(emptyList()) { dao.tasks() }
+    val milestones by observe(emptyList()) { dao.milestones() }
+    val active = goals.filter { !it.done }.sortedBy { it.deadline ?: Long.MAX_VALUE }
+    val today = Dates.today()
+    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(btnLabel("Цели"), fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.weight(1f))
+        androidx.compose.material3.TextButton(onClick = { nav.navigate(Routes.GOALS) }) { Text(btnLabel("Все цели"), fontSize = 13.sp) }
+    }
+    LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 6.dp)) {
+        items(active, key = { "g" + it.id }) { g ->
+            val gt = tasks.filter { it.goalId == g.id }
+            val gm = milestones.filter { it.goalId == g.id }
+            val pr = com.dasein.poryadok.ui.today.goalProgress(g, gt.count { it.done }, gt.size, gm.count { it.done }, gm.size)
+            Tile(Modifier.width(170.dp), onClick = { nav.navigate(Routes.goal(g.id)) }, padding = 10.dp) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Glyph(g.emoji, 20.dp)
+                    Text(" ${(pr * 100).toInt()}%", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                }
+                Text(g.title, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, fontSize = 14.sp)
+                androidx.compose.material3.LinearProgressIndicator(progress = { pr }, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
+                g.deadline?.let { d ->
+                    val left = d - today
+                    Text(
+                        if (left < 0) "срок прошёл" else if (left == 0L) "срок сегодня" else "до ${Dates.label(d)} · $left дн.",
+                        fontSize = 11.sp, color = if (left <= 7) extra.danger else extra.dim,
+                    )
+                }
+            }
+        }
+        item {
+            Tile(Modifier.width(110.dp), onClick = { nav.navigate(Routes.goal(0)) }, padding = 10.dp) {
+                Text(btnLabel("+ Цель"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                Text(btnLabel("этапы, задачи, срок"), fontSize = 11.sp, color = extra.dim)
+            }
+        }
     }
 }

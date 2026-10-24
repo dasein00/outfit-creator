@@ -162,6 +162,8 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
     val extra = LocalExtra.current
     val events by observe(emptyList()) { dao.events() }
     val tasks by observe(emptyList()) { dao.tasks() }
+    // Сроки целей тоже в календаре — рядом с задачами.
+    val goals by observe(emptyList()) { dao.goals() }
     val reminders by observe(emptyList()) { dao.reminders() }
     val projects by observe(emptyList()) { dao.projects() }
     val subtasks by observe(emptyList()) { dao.subtasks() }
@@ -220,6 +222,7 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
                             if (info?.third == true) add(info!!.second?.let { Color(it) } ?: Color(0xFFC7A46A))
                             eventsOn(events, day).take(2).forEach { add(Palette.item(it.color)) }
                             if (tasks.any { !it.done && it.dueDay == day }) add(MaterialTheme.colorScheme.primary)
+                            if (goals.any { !it.done && it.deadline == day }) add(extra.danger)
                             if (remindersOn(reminders, day).any { !it.done }) add(extra.dim)
                         }
                         Column(
@@ -280,7 +283,27 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
         }
         val dayHolidays = com.dasein.poryadok.data.HolidayRepo.entries(ctx, Dates.day(selected), custom, marks, hiddenCats(ctx))
         items(dayHolidays, key = { "h" + it.key }) { e -> ExpandableEntry(e, selected) }
-        if (dayEvents.isEmpty() && dayTasks.isEmpty() && dayReminders.isEmpty() && dayHolidays.isEmpty()) item {
+        val dayGoals = goals.filter { !it.done && it.deadline == selected }
+        items(dayGoals, key = { "g" + it.id }) { g ->
+            Tile(Modifier.padding(bottom = 8.dp), onClick = { nav.navigate(Routes.goal(g.id)) }) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Glyph(g.emoji, 24.dp)
+                    Column(Modifier.padding(start = 12.dp).weight(1f)) {
+                        Text("Срок цели: ${g.title}", fontWeight = FontWeight.Medium)
+                        Text(btnLabel("дедлайн — сегодня в календаре"), fontSize = 12.sp, color = extra.danger)
+                    }
+                }
+            }
+        }
+        if (selected == today) {
+            val overdue = tasks.filter { !it.done && it.dueDay != null && it.dueDay < today }
+            if (overdue.isNotEmpty()) item {
+                Tile(Modifier.padding(bottom = 8.dp), onClick = { nav.navigate(Routes.TASKS) }) {
+                    Text("Просрочено задач: ${overdue.size} — " + overdue.take(3).joinToString { it.title }, color = extra.danger, fontSize = 13.sp, maxLines = 2)
+                }
+            }
+        }
+        if (dayEvents.isEmpty() && dayTasks.isEmpty() && dayReminders.isEmpty() && dayHolidays.isEmpty() && dayGoals.isEmpty()) item {
             Tile { Text("Свободный день. Нажмите «+», чтобы запланировать.", color = extra.dim) }
         }
         items(dayEvents, key = { "e" + it.id }) { e ->

@@ -299,7 +299,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable("habitEdit/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
                 HabitEditScreen(nav, it.long("id"))
             }
-            composable(Routes.GOALS) { TasksGoalsScreen(nav, 1) { nav.popBackStack() } }
+            composable(Routes.GOALS) { GoalsScreen(nav) }
             composable("goal/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
                 GoalScreen(nav, it.long("id"))
             }
@@ -318,7 +318,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
                 "${Routes.WELLBEING}?tab={tab}",
                 arguments = listOf(navArgument("tab") { type = NavType.IntType; defaultValue = 0 }),
             ) { WellbeingScreen(nav, it.int("tab")) }
-            composable(Routes.NOTES) { TasksGoalsScreen(nav, 2) { nav.popBackStack() } }
+            composable(Routes.NOTES) { TasksGoalsScreen(nav, 1) { nav.popBackStack() } }
             composable("page/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
                 com.dasein.poryadok.ui.notes.PageScreen(nav, it.long("id"))
             }

@@ -91,10 +91,10 @@ fun PlanScreen(nav: NavHostController, initialTab: Int) {
 @Composable
 fun TasksGoalsScreen(nav: NavHostController, initialTab: Int, onBack: (() -> Unit)?) {
     var tab by rememberSaveable(initialTab) { mutableStateOf(initialTab) }
-    TabbedHost(listOf(0 to "Задачи", 1 to "Цели", 2 to "Заметки"), tab, { tab = it }) { t ->
+    // Задачи и цели — одна вкладка (цели полосой над задачами), заметки — вторая.
+    TabbedHost(listOf(0 to "Задачи и цели", 1 to "Заметки"), tab, { tab = it }) { t ->
         when (t) {
             0 -> TasksScreen(nav, onBack, showGoals = false)
-            1 -> com.dasein.poryadok.ui.productivity.GoalsScreen(nav, embedded = onBack == null)
             else -> com.dasein.poryadok.ui.notes.PagesHome(nav, embedded = true)
         }
     }

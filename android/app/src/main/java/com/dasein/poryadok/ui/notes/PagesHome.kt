@@ -1,4 +1,4 @@
-@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 
 package com.dasein.poryadok.ui.notes
 
@@ -63,6 +63,8 @@ import com.dasein.poryadok.ui.common.observe
 import com.dasein.poryadok.ui.theme.LocalExtra
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.MoreVert
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -83,6 +85,28 @@ fun PagesHome(nav: NavHostController, embedded: Boolean = false) {
     LaunchedEffect(Unit) { runCatching { PagesRepo.migrateOldNotes(ctx) } }
 
     fun open(id: Long) = nav.navigate(Routes.page(id))
+    var menu by remember { mutableStateOf(false) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    fun toast(t: String) = android.widget.Toast.makeText(ctx, t, android.widget.Toast.LENGTH_LONG).show()
+    // Экспорт: Markdown-файлы (открываются на компьютере — Obsidian, Notion, Word, любой редактор) и полная копия раздела.
+    val exportZip = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        if (uri != null) scope.launch { runCatching { NoteNav.exportZip(ctx, uri) }.onSuccess { toast("Экспортировано страниц: $it (Markdown, с папками и картинками)") }.onFailure { toast("Не получилось: ${it.message}") } }
+    }
+    val backup = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        if (uri != null) scope.launch {
+            com.dasein.poryadok.system.BackupFiles.export(ctx, uri, setOf(com.dasein.poryadok.data.BackupSection.NOTES))
+                .onSuccess { toast("Резервная копия заметок готова. Восстановить: Настройки → Резервное копирование → Импортировать") }
+                .onFailure { toast("Не получилось: ${it.message}") }
+        }
+    }
+    val importMd = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isNotEmpty()) scope.launch {
+            val ids = uris.mapNotNull { u -> runCatching { NoteNav.importFile(ctx, u) }.getOrNull() }
+            toast("Импортировано страниц: ${ids.size}")
+            ids.singleOrNull()?.let { open(it) }
+        }
+    }
+    var tagFilter by remember { mutableStateOf<String?>(null) }
     fun create(parent: Long? = null) = io {
         val id = PagesRepo.create(parent)
         withContext(Dispatchers.Main) { open(id) }
@@ -100,9 +124,24 @@ fun PagesHome(nav: NavHostController, embedded: Boolean = false) {
         }
     }
 
+    tagFilter?.let { t -> TagPagesDialog(nav, t) { tagFilter = null } }
     Screen(
         title = if (embedded) "Заметки" else "Заметки",
         onBack = if (embedded) null else ({ nav.popBackStack(); Unit }),
+        actions = {
+            Box {
+                androidx.compose.material3.IconButton(onClick = { menu = true }) { Icon(androidx.compose.material.icons.Icons.Default.MoreVert, "Ещё") }
+                DropdownMenu(menu, { menu = false }) {
+                    DropdownMenuItem({ Text(btnLabel("Новая папка")) }, {
+                        menu = false
+                        io { val id = PagesRepo.create(null, "Новая папка"); Graph.pages.pageNow(id)?.let { Graph.pages.upsertPage(it.copy(icon = "ui:folder")) }; withContext(Dispatchers.Main) { open(id) } }
+                    })
+                    DropdownMenuItem({ Text(btnLabel("Импорт .md / .txt")) }, { menu = false; importMd.launch(arrayOf("text/*", "application/octet-stream")) })
+                    DropdownMenuItem({ Text(btnLabel("Экспорт всех заметок (Markdown, ZIP)")) }, { menu = false; exportZip.launch("DASEIN-заметки.zip") })
+                    DropdownMenuItem({ Text(btnLabel("Резервная копия заметок")) }, { menu = false; backup.launch("DASEIN-заметки-копия-${java.time.LocalDate.now()}.zip") })
+                }
+            }
+        },
         fab = { ExtendedFloatingActionButton(onClick = { create() }, icon = { Icon(Icons.Default.Add, null) }, text = { Text(btnLabel("Страница")) }) },
     ) { pad ->
         LazyColumn(Modifier.padding(pad).fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
@@ -129,6 +168,8 @@ fun PagesHome(nav: NavHostController, embedded: Boolean = false) {
             if (live.isEmpty()) item {
                 Hint(
                     "pages_intro",
+                    "Ссылки: кнопка 🔗 на панели или [[Название]] в тексте — на заметку, рецепт, книгу читалки, фильм; в режиме чтения ссылка открывается нажатием. " +
+                        "#тег собирает страницы по темам. Папки — страницы внутри страниц (меню ⋮ → «Новая папка»). " +
                     "Страницы можно вкладывать друг в друга. В тексте введите «/», чтобы вставить заголовок, список, задачу, цитату, код, картинку или GIF. " +
                         "Быстрые сокращения: «# » — заголовок, «- » — список, «[] » — задача, «> » — цитата, «---» — разделитель. " +
                         "Выделите слово и нажмите B, I, S или A на панели над клавиатурой, чтобы оформить его.",
@@ -151,6 +192,17 @@ fun PagesHome(nav: NavHostController, embedded: Boolean = false) {
                                 Text(SHORT.format(Date(p.updatedAt)), fontSize = 11.sp, color = extra.dim)
                             }
                         }
+                    }
+                }
+            }
+            // Теги: #слово в тексте любой страницы — указатель, нажатие показывает страницы с тегом.
+            val tagCounts = blocks.flatMap { b -> com.dasein.poryadok.logic.NoteRefs.tags(b.text).map { it to b.pageId } }.distinct()
+                .groupingBy { it.first }.eachCount().entries.sortedByDescending { it.value }
+            if (tagCounts.isNotEmpty()) {
+                item { SectionTitle("Теги") }
+                item {
+                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        tagCounts.take(30).forEach { (t, n) -> com.dasein.poryadok.ui.common.Pill("#$t · $n", false) { tagFilter = t } }
                     }
                 }
             }
