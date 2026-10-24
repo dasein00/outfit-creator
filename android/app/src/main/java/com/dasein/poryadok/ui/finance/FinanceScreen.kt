@@ -112,6 +112,9 @@ fun balanceOf(a: Account, txns: List<Txn>): Double {
     return b
 }
 
+/** Подразделы финансов по порядку (номер — в Routes.finance). */
+val FIN_TABS = listOf("Операции", "Обзор", "Расходы", "Доходы", "Календарь", "Бюджеты", "Регулярные", "Счета", "Калькуляторы")
+
 @Composable
 fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, onBack: (() -> Unit)? = null) {
     val dao = Graph.dao
@@ -142,9 +145,10 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
             FloatingActionButton(
                 onClick = {
                     when (tab) {
-                        3 -> editBudget = Budget(categoryId = -1, monthly = 0.0)
-                        4 -> editRecurring = Recurring(title = "", amount = 0.0, accountId = accounts.firstOrNull()?.id ?: 0, nextDay = Dates.today())
-                        5 -> editAccount = Account(name = "")
+                        5 -> editBudget = Budget(categoryId = -1, monthly = 0.0)
+                        6 -> editRecurring = Recurring(title = "", amount = 0.0, accountId = accounts.firstOrNull()?.id ?: 0, nextDay = Dates.today())
+                        7 -> editAccount = Account(name = "")
+                        3 -> nav.navigate(Routes.txn(0, income = true))
                         else -> nav.navigate(Routes.txn(0))
                     }
                 },
@@ -152,13 +156,14 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
             ) { Icon(Icons.Default.Add, "Добавить") }
         },
     ) { pad ->
-        Column(Modifier.padding(pad).swipeTabs(tab, 7) { tab = it }) {
+        Column(Modifier.padding(pad).swipeTabs(tab, FIN_TABS.size) { tab = it }) {
             ScrollableTabRow(selectedTabIndex = tab, edgePadding = 12.dp, containerColor = MaterialTheme.colorScheme.background) {
-                listOf("Операции", "Обзор", "Аналитика", "Бюджеты", "Регулярные", "Счета", "Калькуляторы").forEachIndexed { i, t ->
+                FIN_TABS.forEachIndexed { i, t ->
                     Tab(tab == i, onClick = { tab = i }, text = { Text(t) })
                 }
             }
-            if (tab <= 3) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            // Месяц — для операций, обзора и бюджетов; у расходов, доходов и календаря свой выбор периода.
+            if (tab <= 1 || tab == 5) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { ymText = ym.minusMonths(1).toString() }) { Icon(Icons.Default.ChevronLeft, "Раньше") }
                 Text(Dates.monthTitle(ym), Modifier.weight(1f), textAlign = TextAlign.Center, style = MaterialTheme.typography.titleMedium)
                 IconButton(onClick = { ymText = ym.plusMonths(1).toString() }) { Icon(Icons.Default.ChevronRight, "Позже") }
@@ -181,17 +186,22 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
             Column(Modifier.tabSlide(tab)) {
                 when (tab) {
                     0 -> Operations(nav, month, cats, accounts, cur)
-                    1 -> Overview(txns, month, cats, ym, cur) { editCategory = it }
-                    2 -> Column {
+                    // «Обзор» и «Аналитика» — на одной прокрутке.
+                    1 -> Column(Modifier.verticalScroll(rememberScrollState())) {
+                        Overview(txns, month, cats, ym, cur, embedded = true) { editCategory = it }
                         com.dasein.poryadok.ui.common.OutlinedButton(onClick = { nav.navigate(FIN_INFO_ROUTE) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
                             Text(btnLabel("Вся инфографика: капитал, места, подписки, календарь"))
                         }
-                        FinanceAnalytics(txns, cats, accounts, budgets, ym, cur)
+                        FinanceAnalytics(txns, cats, accounts, budgets, ym, cur, embedded = true)
+                        Gap(96.dp)
                     }
-                    3 -> Budgets(month, cats, budgets, ym, cur) { editBudget = it }
-                    4 -> RecurringList(recurring, cats, accounts, cur) { editRecurring = it }
-                    5 -> Accounts(accounts, txns, cur, onAlign = { align = true }, onStatement = { nav.navigate(STATEMENT_ROUTE) }) { editAccount = it }
-                    6 -> FinanceCalculators(cur)
+                    2 -> FlowTab(nav, txns, cats, accounts, income = false, cur = cur)
+                    3 -> FlowTab(nav, txns, cats, accounts, income = true, cur = cur)
+                    4 -> SpendCalendar(nav, txns, cats, accounts, cur)
+                    5 -> Budgets(month, cats, budgets, ym, cur) { editBudget = it }
+                    6 -> RecurringList(recurring, cats, accounts, cur) { editRecurring = it }
+                    7 -> Accounts(accounts, txns, cur, onAlign = { align = true }, onStatement = { nav.navigate(STATEMENT_ROUTE) }) { editAccount = it }
+                    8 -> FinanceCalculators(cur)
                 }
             }
         }
@@ -278,13 +288,13 @@ fun TxnRow(t: Txn, cats: List<Category>, accounts: List<Account>, cur: String, o
 }
 
 @Composable
-private fun Overview(all: List<Txn>, month: List<Txn>, cats: List<Category>, ym: YearMonth, cur: String, onCategory: (Category) -> Unit) {
+private fun Overview(all: List<Txn>, month: List<Txn>, cats: List<Category>, ym: YearMonth, cur: String, embedded: Boolean = false, onCategory: (Category) -> Unit) {
     val extra = LocalExtra.current
     val exp = month.filter { it.type == TxnType.EXPENSE }
     val total = exp.sumOf { it.amount }
     val byCat = exp.groupBy { it.categoryId }.map { (id, l) -> cats.firstOrNull { it.id == id } to l.sumOf { it.amount } }.sortedByDescending { it.second }
     val months = (5 downTo 0).map { ym.minusMonths(it.toLong()) }
-    Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+    Column((if (embedded) Modifier else Modifier.verticalScroll(rememberScrollState())).padding(horizontal = 16.dp)) {
         Tile {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Donut(byCat.mapIndexed { i, (c, v) -> v.toFloat() to Palette.item(c?.color ?: i) }, size = 150.dp) {

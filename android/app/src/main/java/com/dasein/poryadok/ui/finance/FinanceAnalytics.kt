@@ -76,7 +76,7 @@ private fun pct(v: Double) = "${(v * 100).roundToInt()} %"
 
 /** Вкладка «Аналитика»: оценка финансов, прогноз, темп, 50/30/20, подушка, тренды категорий, дни недели и советы. */
 @Composable
-fun FinanceAnalytics(all: List<Txn>, cats: List<Category>, accounts: List<Account>, budgets: List<Budget>, ym: YearMonth, cur: String) {
+fun FinanceAnalytics(all: List<Txn>, cats: List<Category>, accounts: List<Account>, budgets: List<Budget>, ym: YearMonth, cur: String, embedded: Boolean = false) {
     val extra = LocalExtra.current
     val today = LocalDate.now()
     val ops = remember(all, cats) { opsOf(all, cats) }
@@ -95,7 +95,7 @@ fun FinanceAnalytics(all: List<Txn>, cats: List<Category>, accounts: List<Accoun
     val health = FinanceStats.health(m.savingsRate, runway, budgetUse, pace)
     val tips = FinanceStats.tips(m, avg, runway, pace, trends, split, totalBudget != null) { rub(it, cur) }
 
-    Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+    Column((if (embedded) Modifier else Modifier.verticalScroll(rememberScrollState())).padding(horizontal = 16.dp)) {
         // ---------- Оценка ----------
         Tile {
             Row(verticalAlignment = Alignment.CenterVertically) {

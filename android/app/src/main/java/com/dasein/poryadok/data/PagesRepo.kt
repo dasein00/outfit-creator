@@ -200,6 +200,17 @@ object PagesRepo {
                 b(BlockType.H3, "Договорились"), b(BlockType.BULLET),
                 b(BlockType.H3, "Что сделать после"), b(BlockType.TODO),
             ),
+            "Подготовка к празднику" to listOf(
+                b(BlockType.CALLOUT, "Праздник, дата, сколько гостей, бюджет"),
+                b(BlockType.H3, "За 2–3 недели"), b(BlockType.TODO, "Составить список гостей"), b(BlockType.TODO, "Пригласить гостей"),
+                b(BlockType.TODO, "Решить, где праздновать"), b(BlockType.TODO, "Купить или заказать подарки"),
+                b(BlockType.H3, "За неделю"), b(BlockType.TODO, "Составить меню"), b(BlockType.TODO, "Заказать торт"), b(BlockType.TODO, "Продумать оформление и музыку"),
+                b(BlockType.H3, "Меню"), b(BlockType.BULLET, "Закуски: "), b(BlockType.BULLET, "Салаты: "), b(BlockType.BULLET, "Горячее: "), b(BlockType.BULLET, "Десерт: "), b(BlockType.BULLET, "Напитки: "),
+                b(BlockType.H3, "Купить"), b(BlockType.TODO, "Продукты"), b(BlockType.TODO, "Напитки"), b(BlockType.TODO, "Посуда и салфетки"), b(BlockType.TODO, "Свечи, шары, декор"),
+                b(BlockType.H3, "За день"), b(BlockType.TODO, "Уборка"), b(BlockType.TODO, "Приготовить заготовки"), b(BlockType.TODO, "Зарядить телефон и камеру"),
+                b(BlockType.H3, "В день праздника"), b(BlockType.TODO, "Накрыть стол"), b(BlockType.TODO, "Оформить комнату"), b(BlockType.TODO, "Встретить гостей"),
+                b(BlockType.H3, "Бюджет"), b(BlockType.BULLET, "План: "), b(BlockType.BULLET, "Потрачено: "),
+            ),
             "Подарки" to listOf(
                 b(BlockType.H3, "Кому и к какому дню"), b(BlockType.BULLET),
                 b(BlockType.H3, "Идеи"), b(BlockType.BULLET),

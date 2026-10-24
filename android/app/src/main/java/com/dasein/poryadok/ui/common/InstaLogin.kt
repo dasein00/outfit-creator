@@ -55,6 +55,14 @@ fun InstaLoginDialog(onDone: () -> Unit) {
         if (attempt + 1 < InstaWeb.LOGIN_TRIES.size) { attempt++; open(w, attempt) }
         else failed = why
     }
+    // Страница не открылась за 25 секунд (Instagram недоступен из приложения) — пробуем следующий адрес, потом показываем причину.
+    var loadedAttempt by remember { mutableStateOf(-1) }
+    androidx.compose.runtime.LaunchedEffect(attempt, failed) {
+        if (failed != null) return@LaunchedEffect
+        kotlinx.coroutines.delay(25_000)
+        val w = web
+        if (loadedAttempt != attempt && w != null) onFail(w, "Instagram не отвечает")
+    }
     fun close() { InstaWeb.flush(); onDone() }
     Dialog(onDismissRequest = { close() }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeBars(withIme = true)) {
@@ -71,8 +79,8 @@ fun InstaLoginDialog(onDone: () -> Unit) {
             failed?.let { err ->
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "Instagram не открылся ($err). Проверьте, что VPN работает для всех приложений, а не только для браузера, и нажмите «Повторить». " +
-                            "Можно и без входа: кнопка «Текст описания со скриншота» в окне рецепта.",
+                        "Instagram не открылся ($err). Обычно это значит, что VPN пропускает через себя только браузер: в настройках VPN включите его " +
+                            "для всех приложений или добавьте DASEIN и нажмите «Повторить». Без входа и без VPN работает кнопка «Текст описания со скриншота».",
                         fontSize = 12.sp, color = extra.danger, modifier = Modifier.weight(1f),
                     )
                     TextButton(onClick = { failed = null; attempt = 0; failedAttempt = -1; open(web, 0) }) { Text(btnLabel("Повторить")) }
@@ -92,6 +100,7 @@ fun InstaLoginDialog(onDone: () -> Unit) {
                                 if (request.isForMainFrame && response.statusCode >= 400) onFail(view, "код ${response.statusCode}")
                             }
                             override fun onPageFinished(view: WebView, u: String) {
+                                if (view.progress >= 100) loadedAttempt = attempt
                                 logged = InstaWeb.loggedIn()
                                 if (logged) InstaWeb.flush()
                             }

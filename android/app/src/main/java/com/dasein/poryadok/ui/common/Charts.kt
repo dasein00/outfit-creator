@@ -87,27 +87,39 @@ fun BarChart(
     val labelStyle = TextStyle(fontSize = 10.sp, color = dim)
     val bubbleStyle = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
     val z = rememberChartZoom(values.size)
-    val maxV = max(values.maxOrNull() ?: 0f, target ?: 0f).coerceAtLeast(1f)
+    // Ось ординат: «круглые» деления от нуля, слева подписи — видно порядок величин.
+    val ticks = axisTicks(max(values.maxOrNull() ?: 0f, target ?: 0f))
+    val maxV = ticks.last().coerceAtLeast(1f)
+    val tickLabels = ticks.map { axisNumber(it) }
+    val axisStyle = TextStyle(fontSize = 9.sp, color = dim)
+    val ax = (tickLabels.maxOfOrNull { measurer.measure(it, axisStyle).size.width } ?: 0) + with(LocalDensity.current) { 6.dp.toPx() }
     val n = values.size.coerceAtLeast(1)
     val labelH = with(LocalDensity.current) { 18.dp.toPx() }
     // Сверху оставлено место под плашку со значением даже над самым высоким столбиком.
     val topPad = with(LocalDensity.current) { 38.dp.toPx() }
     Canvas(
         modifier.fillMaxWidth().height(height + 18.dp + 38.dp)
-            .chartGestures(z, values, 0f, (n / 4f).coerceAtLeast(1f)) { o ->
+            .chartGestures(z, values, ax, (n / 4f).coerceAtLeast(1f)) { o ->
                 val slot = z.width * z.scale / n
-                ((o.x + z.shift) / slot).toInt().takeIf { it in values.indices } ?: -1
+                ((o.x - ax + z.shift) / slot).toInt().takeIf { it in values.indices } ?: -1
             },
     ) {
-        z.width = size.width
+        val pw = size.width - ax
+        z.width = pw
         val h = size.height - labelH - topPad
-        val slot = size.width * z.scale / n
+        val slot = pw * z.scale / n
         val bw = slot * .62f
         val sel = z.selected
-        clipRect(0f, 0f, size.width, size.height) {
+        ticks.forEachIndexed { i, t ->
+            val y = topPad + h * (1 - t / maxV)
+            if (i > 0) drawLine(line.copy(alpha = .6f), Offset(ax, y), Offset(size.width, y), 1f)
+            val tl = measurer.measure(tickLabels[i], axisStyle)
+            drawText(tl, topLeft = Offset(ax - tl.size.width - 4f, (y - tl.size.height / 2).coerceAtLeast(0f)))
+        }
+        clipRect(ax, 0f, size.width, size.height) {
             values.forEachIndexed { i, v ->
-                val x0 = i * slot - z.shift
-                if (x0 + slot < 0 || x0 > size.width) return@forEachIndexed
+                val x0 = ax + i * slot - z.shift
+                if (x0 + slot < ax || x0 > size.width) return@forEachIndexed
                 val bh = h * (v / maxV)
                 val active = if (sel >= 0) i == sel else (highlight == -1 || i == highlight)
                 drawRoundRect(
@@ -120,23 +132,45 @@ fun BarChart(
             val every = if (slot <= 0f) 1 else kotlin.math.ceil((maxLabelW + 6f) / slot).toInt().coerceAtLeast(1)
             labels.forEachIndexed { i, l ->
                 if (i % every != 0 && i != sel) return@forEachIndexed
-                val cx = i * slot - z.shift + slot / 2
-                if (cx < -slot || cx > size.width + slot) return@forEachIndexed
+                val cx = ax + i * slot - z.shift + slot / 2
+                if (cx < ax - slot || cx > size.width + slot) return@forEachIndexed
                 val t = measurer.measure(l, if (i == sel) labelStyle.copy(color = onSurface, fontWeight = FontWeight.Bold) else labelStyle)
-                drawText(t, topLeft = Offset((cx - t.size.width / 2).coerceIn(0f, size.width - t.size.width), topPad + h + 4f))
+                drawText(t, topLeft = Offset((cx - t.size.width / 2).coerceIn(ax, (size.width - t.size.width).coerceAtLeast(ax)), topPad + h + 4f))
             }
         }
         if (target != null) {
             val y = topPad + h * (1 - target / maxV)
-            drawLine(dim, Offset(0f, y), Offset(size.width, y), 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f)))
+            drawLine(dim, Offset(ax, y), Offset(size.width, y), 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f)))
         }
-        drawLine(line, Offset(0f, topPad + h), Offset(size.width, topPad + h), 2f)
+        drawLine(line, Offset(ax, topPad + h), Offset(size.width, topPad + h), 2f)
+        drawLine(line, Offset(ax, topPad), Offset(ax, topPad + h), 2f)
         if (sel in values.indices) {
-            val cx = sel * slot - z.shift + slot / 2
+            val cx = ax + sel * slot - z.shift + slot / 2
             val top = topPad + h - h * (values[sel] / maxV)
             val label = labels.getOrNull(sel)?.let { "$it · " } ?: ""
             chartBubble(measurer, bubble?.invoke(sel) ?: (label + format(values[sel])), Offset(cx, top), onSurface, surface, bubbleStyle)
         }
+    }
+}
+
+/** Деления оси: 0 и 3–5 «круглых» значений (1, 2, 2,5, 5 × 10ⁿ), последнее — не меньше максимума. */
+fun axisTicks(maxValue: Float, parts: Int = 4): List<Float> {
+    if (maxValue <= 0f) return listOf(0f, 1f)
+    val raw = maxValue / parts
+    val mag = Math.pow(10.0, kotlin.math.floor(kotlin.math.log10(raw.toDouble()))).toFloat()
+    val step = listOf(1f, 2f, 2.5f, 5f, 10f).map { it * mag }.first { it >= raw }
+    val top = kotlin.math.ceil(maxValue / step) * step
+    return generateSequence(0f) { it + step }.takeWhile { it <= top + step / 2 }.toList()
+}
+
+/** Коротко для оси: 950, 1,5 тыс, 12 тыс, 1,2 млн. */
+fun axisNumber(v: Float): String {
+    val a = kotlin.math.abs(v)
+    fun one(x: Float) = (if (x >= 10f || kotlin.math.abs(x - Math.round(x)) < 0.05f) Math.round(x).toString() else "%.1f".format(java.util.Locale.US, x).replace('.', ','))
+    return when {
+        a >= 1_000_000f -> one(v / 1_000_000f) + " млн"
+        a >= 1_000f -> one(v / 1_000f) + " тыс"
+        else -> chartNumber(v)
     }
 }
 
@@ -185,14 +219,15 @@ fun LineChart(
             val h = size.height - topPad
             fun x(i: Int) = if (n > 1) z.x(0f, i / (n - 1f)) else w / 2
             fun y(v: Float) = topPad + h * (1 - (v - lo) / (hi - lo))
-            for (k in 0..3) {
-                val yy = topPad + h * k / 3f
-                drawLine(line, Offset(0f, yy), Offset(w, yy), 1.5f)
-            }
+            // Ось ординат: значение у каждой линии сетки — видно порядок величин.
             drawIntoCanvas { c ->
-                val p = android.graphics.Paint().apply { this.color = dim.toArgb(); textSize = 26f; isAntiAlias = true }
-                c.nativeCanvas.drawText(chartNumber(hi), 4f, topPad + 26f, p)
-                c.nativeCanvas.drawText(chartNumber(lo), 4f, size.height - 6f, p)
+                val p = android.graphics.Paint().apply { this.color = dim.toArgb(); textSize = 24f; isAntiAlias = true }
+                for (k in 0..3) {
+                    val yy = topPad + h * k / 3f
+                    drawLine(line, Offset(0f, yy), Offset(w, yy), 1.5f)
+                    val v = hi - (hi - lo) * k / 3f
+                    c.nativeCanvas.drawText(if (hi - lo >= 1000f) axisNumber(v) else chartNumber(v), 4f, yy - 6f, p)
+                }
             }
             clipRect(0f, 0f, w, size.height) {
                 series.forEach { s ->

@@ -82,7 +82,10 @@ object RecipeLink {
 
     /** Куки встроенного браузера для Instagram: если там выполнен вход, запросы идут от имени пользователя. */
     private fun cookies(url: String): String? =
-        if ("instagram.com" in url) runCatching { android.webkit.CookieManager.getInstance().getCookie(url) }.getOrNull()?.takeIf { it.isNotBlank() } else null
+        // Только при настоящем входе (кука сессии): обрывки куки от неудачной попытки входа Instagram принимает за подозрительный
+        // браузер и вместо поста отдаёт страницу входа — без них страница встраивания открывается как раньше.
+        if ("instagram.com" in url) runCatching { android.webkit.CookieManager.getInstance().getCookie(url) }.getOrNull()
+            ?.takeIf { it.contains("sessionid=") } else null
 
     private fun csrf(cookie: String?): String? = cookie?.split(';')?.map { it.trim() }?.firstOrNull { it.startsWith("csrftoken=") }?.substringAfter('=')
 

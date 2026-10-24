@@ -33,6 +33,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.AlertDialog
@@ -328,6 +330,10 @@ fun PageScreen(nav: NavHostController, id: Long) {
     var moving by remember { mutableStateOf(false) }
     var typeMenu by remember { mutableStateOf(false) }
     var imageFor by remember { mutableStateOf<Long?>(null) }
+    // Готовая страница открывается для чтения; «✎ Редактировать» включает правку, «✓» — снова чтение. Новая — сразу правка.
+    var editing by remember(id) { mutableStateOf<Boolean?>(null) }
+    var findReplace by remember { mutableStateOf(false) }
+    var outline by remember { mutableStateOf(false) }
 
     LaunchedEffect(id) { st.load(Graph.pages.blocksNow(id)) }
     LaunchedEffect(page?.id) { if (title == null && page != null) title = page!!.title }
@@ -409,6 +415,15 @@ fun PageScreen(nav: NavHostController, id: Long) {
     }
     val words = st.blocks.sumOf { b -> if (b.type in BlockType.TEXTUAL) InlineMarkdown.plain(st.plain(b.id)).split(Regex("\\s+")).count { it.isNotBlank() } else 0 }
     val isEmpty = st.loaded && st.blocks.size == 1 && st.blocks[0].type == BlockType.TEXT && st.plain(st.blocks[0].id).isBlank()
+    LaunchedEffect(st.loaded) { if (st.loaded && editing == null) editing = isEmpty }
+    val canEdit = editing != false
+    fun startEdit() {
+        editing = true
+        val last = st.blocks.lastOrNull { it.type in BlockType.TEXTUAL }
+        if (last != null) st.focusRequest = last.id to (st.values[last.id]?.text?.length ?: 1)
+    }
+    fun stopEdit() { st.selected = null; st.focused = null; focusManager.clearFocus(); st.save(); editing = false }
+    val chars = st.blocks.sumOf { b -> if (b.type in BlockType.TEXTUAL) InlineMarkdown.plain(st.plain(b.id)).length else 0 }
 
     Column(Modifier.fillMaxSize().background(scheme.background).systemBarsPadding().imePadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -423,12 +438,33 @@ fun PageScreen(nav: NavHostController, id: Long) {
                 }
                 Text((title ?: "").ifBlank { "Без названия" }, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(4.dp))
             }
+            if (canEdit) IconButton(onClick = { stopEdit() }) { Icon(Icons.Default.Check, "Готово", tint = scheme.primary) }
+            else IconButton(onClick = { startEdit() }) { Icon(Icons.Default.Edit, "Редактировать", tint = scheme.primary) }
             if (p != null) IconButton(onClick = { io { Graph.pages.upsertPage(p.copy(favorite = !p.favorite)) } }) {
                 Icon(if (p.favorite) Icons.Default.Star else Icons.Default.StarBorder, "Избранное", tint = if (p.favorite) scheme.primary else extra.dim)
             }
             Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "Ещё") }
                 DropdownMenu(menu, { menu = false }) {
+                    DropdownMenuItem({ Text(btnLabel(if (canEdit) "Готово (режим чтения)" else "Редактировать")) }, { menu = false; if (canEdit) stopEdit() else startEdit() })
+                    DropdownMenuItem({ Text(btnLabel("Найти и заменить…")) }, { menu = false; findReplace = true })
+                    DropdownMenuItem({ Text(btnLabel("Оглавление")) }, { menu = false; outline = true })
+                    DropdownMenuItem({ Text(btnLabel("Копировать весь текст")) }, {
+                        menu = false
+                        val text = listOf(title.orEmpty()) + st.blocks.filter { it.type in BlockType.TEXTUAL }.map { InlineMarkdown.plain(st.plain(it.id)) }
+                        val cm = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        cm.setPrimaryClip(android.content.ClipData.newPlainText("note", text.filter { it.isNotBlank() }.joinToString("\n")))
+                        android.widget.Toast.makeText(ctx, "Текст скопирован", android.widget.Toast.LENGTH_SHORT).show()
+                    })
+                    if (st.blocks.any { it.type == BlockType.TODO && it.checked }) DropdownMenuItem({ Text(btnLabel("Убрать выполненные пункты")) }, {
+                        menu = false
+                        st.blocks.filter { it.type == BlockType.TODO && it.checked }.map { it.id }.forEach { st.remove(it) }
+                        st.dirty++
+                    })
+                    if (st.blocks.any { it.type == BlockType.TODO && it.checked }) DropdownMenuItem({ Text(btnLabel("Снять все отметки")) }, {
+                        menu = false
+                        st.blocks.filter { it.type == BlockType.TODO && it.checked }.map { it.id }.forEach { bid -> st.update(bid) { it.copy(checked = false) } }
+                    })
                     DropdownMenuItem({ Text(btnLabel("Иконка")) }, { menu = false; pickIcon = true })
                     DropdownMenuItem({ Text(if (p?.cover.isNullOrBlank()) "Добавить обложку" else "Сменить обложку") }, { menu = false; pickCover() })
                     if (!p?.cover.isNullOrBlank()) DropdownMenuItem({ Text(btnLabel("Убрать обложку")) }, { menu = false; p?.let { io { Graph.pages.upsertPage(it.copy(cover = "")) } } })
@@ -474,6 +510,7 @@ fun PageScreen(nav: NavHostController, id: Long) {
                     }
                 }
                 BasicTextField(
+                    readOnly = !canEdit,
                     value = title ?: "",
                     onValueChange = { v ->
                         if ('\n' in v) {
@@ -491,7 +528,7 @@ fun PageScreen(nav: NavHostController, id: Long) {
                         }
                     },
                 )
-                if (isEmpty) {
+                if (isEmpty && canEdit) {
                     Text(btnLabel("Начните писать или выберите шаблон:"), fontSize = 13.sp, color = extra.dim)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 8.dp)) {
                         PagesRepo.templates().forEach { (name, blocks) ->
@@ -510,7 +547,7 @@ fun PageScreen(nav: NavHostController, id: Long) {
                     number = if (b.type == BlockType.NUMBER) (if (i > 0 && st.blocks[i - 1].type == BlockType.NUMBER && st.blocks[i - 1].indent == b.indent) number + 1 else 1) else 0
                     key(b.id) {
                         BlockView(
-                            st, b, number, requesters.getOrPut(b.id) { FocusRequester() }, pages,
+                            st, b, number, requesters.getOrPut(b.id) { FocusRequester() }, pages, !canEdit,
                             onOpenPage = { pid -> st.save(); nav.navigate(Routes.page(pid)) },
                             onKind = { k -> applyKind(b.id, k) },
                             onPickImage = { imageFor = b.id; pickImage() },
@@ -520,13 +557,14 @@ fun PageScreen(nav: NavHostController, id: Long) {
                 // Нажатие под последним блоком — продолжить писать.
                 Box(
                     Modifier.fillMaxWidth().heightIn(min = 120.dp).clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) {
+                        if (!canEdit) return@clickable
                         val last = st.blocks.lastOrNull()
                         if (last != null && last.type in BlockType.TEXTUAL && st.plain(last.id).isEmpty()) st.focusRequest = last.id to 1
                         else st.insertAfter(null, st.newBlock()).also { st.focusRequest = it.id to 1 }
                     },
                 ) {
                     Text(
-                        "$words ${wordsLabel(words)}" + (p?.updatedAt?.takeIf { it > 0 }?.let { " · изменено " + DATE.format(Date(it)) } ?: ""),
+                        "$words ${wordsLabel(words)} · $chars знаков · ≈${(words / 200).coerceAtLeast(1)} мин чтения" + (p?.updatedAt?.takeIf { it > 0 }?.let { " · изменено " + DATE.format(Date(it)) } ?: ""),
                         fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 24.dp),
                     )
                 }
@@ -535,7 +573,7 @@ fun PageScreen(nav: NavHostController, id: Long) {
 
         val fid = st.focused
         val sid = st.selected
-        if (fid != null || sid != null) {
+        if (canEdit && (fid != null || sid != null)) {
             HorizontalDivider()
             Row(
                 Modifier.fillMaxWidth().background(extra.card).horizontalScroll(rememberScrollState()).padding(horizontal = 6.dp, vertical = 4.dp),
@@ -594,6 +632,44 @@ fun PageScreen(nav: NavHostController, id: Long) {
         }
     }
 
+    if (findReplace) FindReplaceDialog(
+        count = { q -> if (q.isBlank()) 0 else st.blocks.filter { it.type in BlockType.TEXTUAL }.sumOf { b -> Regex(Regex.escape(q), RegexOption.IGNORE_CASE).findAll(st.plain(b.id)).count() } },
+        onDismiss = { findReplace = false },
+    ) { q, r ->
+        var n = 0
+        st.blocks.filter { it.type in BlockType.TEXTUAL }.forEach { b ->
+            val old = st.plain(b.id)
+            val re = Regex(Regex.escape(q), RegexOption.IGNORE_CASE)
+            n += re.findAll(old).count()
+            val new = re.replace(old, Regex.escapeReplacement(r))
+            if (new != old) { st.values[b.id] = TextFieldValue(ZWS + new, TextRange(1)); st.update(b.id) { it.copy(text = new) } }
+        }
+        st.dirty++
+        android.widget.Toast.makeText(ctx, "Заменено: $n", android.widget.Toast.LENGTH_SHORT).show()
+        findReplace = false
+    }
+    if (outline) {
+        val heads = st.blocks.filter { it.type in setOf(BlockType.H1, BlockType.H2, BlockType.H3) && st.plain(it.id).isNotBlank() }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { outline = false },
+            title = { Text(btnLabel("Оглавление")) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    if (heads.isEmpty()) Text("Заголовков нет. Сделайте строку заголовком через «Aa» или «/».", color = extra.dim)
+                    heads.forEach { h ->
+                        val pad = when (h.type) { BlockType.H1 -> 0.dp; BlockType.H2 -> 14.dp; else -> 28.dp }
+                        Text(
+                            InlineMarkdown.plain(st.plain(h.id)), fontWeight = if (h.type == BlockType.H1) FontWeight.SemiBold else FontWeight.Normal,
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp)).clickable {
+                                outline = false; editing = true; st.focusRequest = h.id to (st.values[h.id]?.text?.length ?: 1)
+                            }.padding(start = pad, top = 8.dp, bottom = 8.dp),
+                        )
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { outline = false }) { Text(btnLabel("Закрыть")) } },
+        )
+    }
     if (pickIcon && p != null) GlyphPickerDialog(p.icon, { pickIcon = false }) { g -> io { Graph.pages.upsertPage(p.copy(icon = g)) } }
     if (moving && p != null) MovePageDialog(p, pages, { moving = false }) { parent -> io { PagesRepo.move(id, parent) } }
 }
@@ -622,6 +698,7 @@ private fun BlockView(
     number: Int,
     fr: FocusRequester,
     pages: List<Page>,
+    readOnly: Boolean,
     onOpenPage: (Long) -> Unit,
     onKind: (BlockKind) -> Unit,
     onPickImage: () -> Unit,
@@ -653,6 +730,7 @@ private fun BlockView(
             }
             BasicTextField(
                 value = b.text,
+                readOnly = readOnly,
                 onValueChange = { t -> st.update(b.id) { it.copy(text = t.replace("\n", " ")) } },
                 textStyle = TextStyle(fontSize = 13.sp, color = extra.dim),
                 cursorBrush = SolidColor(scheme.primary),
@@ -710,6 +788,7 @@ private fun BlockView(
                 Box(m) {
                     BasicTextField(
                         value = v,
+                        readOnly = readOnly,
                         onValueChange = { st.onChange(b, it) },
                         textStyle = style,
                         cursorBrush = SolidColor(scheme.primary),
@@ -784,6 +863,7 @@ private fun BlockView(
                             AnimatedVisibility(open) {
                                 BasicTextField(
                                     value = b.media,
+                                    readOnly = readOnly,
                                     onValueChange = { t -> st.update(b.id) { it.copy(media = t) } },
                                     textStyle = TextStyle(fontSize = 15.sp, color = scheme.onSurface, lineHeight = 21.sp),
                                     cursorBrush = SolidColor(scheme.primary),
@@ -830,5 +910,26 @@ internal fun MovePageDialog(page: Page, pages: List<Page>, onDismiss: () -> Unit
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
+    )
+}
+
+/** «Найти и заменить» по всей странице: сколько найдено — видно сразу, регистр не важен. */
+@Composable
+private fun FindReplaceDialog(count: (String) -> Int, onDismiss: () -> Unit, onReplace: (String, String) -> Unit) {
+    var q by remember { mutableStateOf("") }
+    var r by remember { mutableStateOf("") }
+    val n = count(q)
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(btnLabel("Найти и заменить")) },
+        text = {
+            Column {
+                com.dasein.poryadok.ui.common.TextInput(q, { q = it }, "Найти")
+                com.dasein.poryadok.ui.common.TextInput(r, { r = it }, "Заменить на", Modifier.padding(top = 6.dp))
+                Text(if (q.isBlank()) "Введите, что искать" else "Найдено: $n", fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 6.dp))
+            }
+        },
+        confirmButton = { TextButton(onClick = { onReplace(q, r) }, enabled = n > 0) { Text(btnLabel("Заменить все")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
 }
