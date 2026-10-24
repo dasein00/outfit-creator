@@ -97,6 +97,8 @@ class RecipeDraft : ViewModel() {
     val ingredients = mutableStateListOf<RecipeIngredient>()
     val steps = mutableStateListOf<String>()
     var step by mutableStateOf(0)
+    /** Черновик новой карточки (вкладка «Черновики»); у правки существующего рецепта — null. */
+    var draftId: String? = null
 }
 
 /** Обычная тарелка — около 300 г готового блюда. */
@@ -106,8 +108,8 @@ private val PLATE_SIZES = listOf("Полтарелки" to 150.0, "Тарелк�
 private val STEP_TITLES = listOf("Основное", "Ингредиенты", "Шаги", "Параметры", "Сохранение")
 
 @Composable
-fun RecipeEditScreen(nav: NavHostController, id: Long) {
-    val d: RecipeDraft = viewModel(key = "recipe-draft-$id")
+fun RecipeEditScreen(nav: NavHostController, id: Long, draft: String? = null) {
+    val d: RecipeDraft = viewModel(key = "recipe-draft-$id-${draft.orEmpty()}")
     val scope = rememberCoroutineScope()
     val extra = LocalExtra.current
     val ctx = LocalContext.current
@@ -119,8 +121,45 @@ fun RecipeEditScreen(nav: NavHostController, id: Long) {
                 d.ingredients.addAll(Graph.extra.ingredientsOfNow(id))
                 d.steps.addAll(Graph.extra.stepsOfNow(id).map { it.text })
             }
+            if (id == 0L) {
+                d.draftId = draft ?: RecipeDrafts.newId()
+                draft?.let { RecipeDrafts.get(it) }?.let { RecipeDrafts.load(d, it) }
+            }
             if (d.steps.isEmpty()) d.steps.add("")
+            RecipeAiQueue.kick(ctx)
         }
+    }
+    // Новая карточка сама сохраняется в черновики (не пока её заполняет ИИ — иначе затрётся результат).
+    val drafts by RecipeDrafts.list
+    val myDraft = d.draftId?.let { did -> drafts.firstOrNull { it.id == did } }
+    val aiBusyHere = myDraft?.ai == 1 || myDraft?.ai == 2
+    LaunchedEffect(d.recipe, d.ingredients.toList(), d.steps.toList(), aiBusyHere) {
+        val did = d.draftId ?: return@LaunchedEffect
+        if (aiBusyHere) return@LaunchedEffect
+        kotlinx.coroutines.delay(1500)
+        if (RecipeDrafts.hasContent(d.recipe, d.ingredients, d.steps)) com.dasein.poryadok.ui.common.io { RecipeDrafts.put(RecipeDrafts.from(d, did)) }
+    }
+    // ИИ дозаполнил эту карточку, пока она открыта, — показываем результат.
+    var seenAi by remember { mutableStateOf(myDraft?.ai ?: 0) }
+    LaunchedEffect(myDraft?.ai) {
+        val st = myDraft?.ai ?: return@LaunchedEffect
+        if (st == 3 && (seenAi == 1 || seenAi == 2)) { myDraft?.let { RecipeDrafts.load(d, it) }; d.step = 1 }
+        seenAi = st
+    }
+    // Теги проставляются сами (ИИ или правила), когда карточка дошла до параметров или сохранения, а тегов нет.
+    LaunchedEffect(d.step) {
+        if (d.step >= 3 && d.recipe.tags.isBlank() && (d.recipe.name.isNotBlank() || d.ingredients.isNotEmpty()) && !aiBusyHere) {
+            val got = aiTags(ctx, d)
+            if (d.recipe.tags.isBlank() && got.isNotEmpty()) d.recipe = d.recipe.copy(tags = got.joinToString(", "))
+        }
+    }
+    fun leave() {
+        val did = d.draftId
+        if (did != null && RecipeDrafts.hasContent(d.recipe, d.ingredients, d.steps)) {
+            if (!aiBusyHere) com.dasein.poryadok.ui.common.io { RecipeDrafts.put(RecipeDrafts.from(d, did)) }
+            Toast.makeText(ctx, "Карточка сохранена в «Черновиках»", Toast.LENGTH_SHORT).show()
+        }
+        nav.popBackStack()
     }
     var error by remember { mutableStateOf<String?>(null) }
     var confirmExit by remember { mutableStateOf(false) }
@@ -133,6 +172,7 @@ fun RecipeEditScreen(nav: NavHostController, id: Long) {
             val exact = RecipeRepo.exactServings(d.ingredients, r)
             val fixed = if (r.portionGrams > 0) r.copy(servings = Math.round(exact).toInt().coerceIn(1, 40)) else r
             val newId = RecipeRepo.saveRecipe(fixed.copy(name = r.name.trim()), d.ingredients.toList(), d.steps.toList())
+            d.draftId?.let { did -> RecipeDrafts.delete(did); d.draftId = null }
             val ate = d.eaten.num() ?: 0.0
             if (ate > 0) {
                 RecipeRepo.cook(newId, exact, ate, d.meal, addToFood = true)
@@ -143,12 +183,21 @@ fun RecipeEditScreen(nav: NavHostController, id: Long) {
         }
     }
 
+    androidx.activity.compose.BackHandler { if (id == 0L) leave() else confirmExit = true }
     Screen(
         title = if (id == 0L) "Новый рецепт" else "Изменить рецепт",
-        onBack = { confirmExit = true },
+        onBack = { if (id == 0L) leave() else confirmExit = true },
         actions = { IconAction(Ic.check, "Сохранить") { save() } },
     ) { pad ->
         Column(Modifier.padding(pad).padding(horizontal = 16.dp)) {
+            if (aiBusyHere) com.dasein.poryadok.ui.common.Tile(Modifier.padding(bottom = 6.dp), padding = 10.dp) {
+                Text(
+                    (if (myDraft?.ai == 2) "✨ ИИ заполняет карточку…" else "✨ Карточка в очереди ИИ…") +
+                        " Можно выйти и создать другую — готовая будет в «Черновиках».",
+                    fontSize = 13.sp,
+                )
+            }
+            if (myDraft?.ai == 4) Text("ИИ не смог заполнить: ${myDraft?.aiError}", color = extra.danger, fontSize = 12.sp)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("${d.step + 1}/5 · ${STEP_TITLES[d.step]}", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 Text("${macros.kcal.roundToInt()} ккал/порц.", color = extra.dim, fontSize = 13.sp)
@@ -173,7 +222,7 @@ fun RecipeEditScreen(nav: NavHostController, id: Long) {
                 Gap(24.dp)
             }
             Row(Modifier.padding(vertical = 10.dp)) {
-                OutlinedButton(onClick = { if (d.step > 0) d.step-- else confirmExit = true }, Modifier.weight(1f)) { Text(if (d.step > 0) "Назад" else "Отмена") }
+                OutlinedButton(onClick = { if (d.step > 0) d.step-- else if (id == 0L) leave() else confirmExit = true }, Modifier.weight(1f)) { Text(if (d.step > 0) "Назад" else if (id == 0L) "В черновики" else "Отмена") }
                 HGap(8.dp)
                 Button(onClick = { if (d.step < 4) d.step++ else save() }, Modifier.weight(1f)) { Text(if (d.step < 4) "Далее" else "Сохранить") }
             }
@@ -225,7 +274,8 @@ private fun StepBasics(d: RecipeDraft) {
         recrop = false; setPhoto(it)
     }
         if (pickIllustration) GlyphPickerDialog(r.photo, { pickIllustration = false }, dishes = true) { d.recipe = d.recipe.copy(photo = it) }
-    RecipeVideosEditor(r.id, RecipeVideos.list(r), deleteFiles = false) { list -> d.recipe = d.recipe.copy(videos = list.joinToString("\n")) }
+    RecipeVideosEditor(r.id, RecipeVideos.list(r), deleteFiles = false) { list -> d.recipe = d.recipe.copy(videos = RecipeVideos.join(list, RecipeVideos.source(d.recipe))) }
+    RecipeSourceButton(r)
     SectionTitle("Категория")
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         RECIPE_CATEGORIES.forEach { c -> Pill(c, c == r.category) { d.recipe = r.copy(category = c) } }
@@ -234,6 +284,15 @@ private fun StepBasics(d: RecipeDraft) {
     MealTypeChips(MealType.parse(r.meals).toSet()) { set -> d.recipe = r.copy(meals = MealType.order.filter { it in set }.joinToString(",")) }
     SectionTitle("Теги")
     TextInput(r.tags, { d.recipe = r.copy(tags = it) }, "Через запятую: быстро, высокобелковые")
+    var tagsBusy by remember { mutableStateOf(false) }
+    com.dasein.poryadok.ui.common.TextButton(enabled = !tagsBusy, onClick = {
+        tagsBusy = true
+        scope.launch {
+            val got = aiTags(ctx, d)
+            d.recipe = d.recipe.copy(tags = (d.recipe.tagList() + got).map { it.trim() }.filter { it.isNotEmpty() }.distinct().take(10).joinToString(", "))
+            tagsBusy = false
+        }
+    }) { Text(if (tagsBusy) "Подбираю теги…" else "✨ Подобрать теги автоматически") }
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
         listOf("быстро", "высокобелковые", "низкоуглеводные", "вегетарианские", "заготовка", "без сахара", "постное").forEach { t ->
             val on = t in r.tagList()

@@ -100,7 +100,7 @@ object SectionIndex {
             }
 
             // Рецепты
-            listOf("Каталог", "Меню на неделю", "Избранное", "Мои рецепты", "Архив").forEachIndexed { i, t -> add(Dest(t, Routes.recipes(i), "d12/00", rec)) }
+            listOf("Каталог", "Меню на неделю", "Избранное", "Мои рецепты", "Черновики рецептов", "Архив").forEachIndexed { i, t -> add(Dest(t, Routes.recipes(i), "d12/00", rec)) }
             add(Dest("Что приготовить", com.dasein.poryadok.ui.recipes.WHAT_TO_COOK_ROUTE, "d12/00", rec, "холодильник продукты дома"))
             add(Dest("Новый рецепт", Routes.recipeEdit(0), "d12/00", rec, "добавить рецепт видео instagram ссылка"))
             add(Dest("Список покупок", Routes.SHOPPING, "food/24", rec, "магазин продукты"))

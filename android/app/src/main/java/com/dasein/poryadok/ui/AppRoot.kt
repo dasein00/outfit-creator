@@ -151,6 +151,7 @@ object Routes {
     fun recipes(tab: Int = 0, mode: Int = 0) = "$RECIPES?tab=$tab&mode=$mode"
     fun recipe(id: Long) = "recipe/$id"
     fun recipeEdit(id: Long) = "recipeEdit/$id"
+    fun recipeDraft(id: String) = "recipeDraft/$id"
     fun menuCreate(day: Long = 0) = "$MENU_CREATE?day=$day"
     fun preset(id: Long) = "preset/$id"
     fun plan(tab: Int) = "$PLAN?tab=$tab"
@@ -412,6 +413,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable("recipeEdit/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
                 RecipeEditScreen(nav, it.long("id"))
             }
+            composable("recipeDraft/{draft}") { RecipeEditScreen(nav, 0L, it.arguments?.getString("draft")) }
             composable(
                 "${Routes.MENU_CREATE}?day={day}",
                 arguments = listOf(navArgument("day") { type = NavType.LongType; defaultValue = 0L }),

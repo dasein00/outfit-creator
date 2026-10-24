@@ -162,6 +162,37 @@ internal suspend fun aiParse(ctx: Context, text: String): RecipeText.Parsed {
     }
 }
 
+/**
+ * Теги карточки от ИИ по названию, продуктам и этапам: кухня, «быстро», «высокобелковые», «постное» и т. п.
+ * Без ИИ — встроенные правила [com.dasein.poryadok.logic.RecipeClassify].
+ */
+internal suspend fun aiTags(ctx: Context, d: RecipeDraft): List<String> {
+    val r = d.recipe
+    val text = buildString {
+        appendLine("Блюдо: ${r.name}. Категория: ${r.category}. Время: ${r.prepMin + r.cookMin} мин.")
+        appendLine("Продукты: " + d.ingredients.joinToString { "${it.name} ${it.grams.toInt()} г" })
+        appendLine("Этапы: " + d.steps.filter { it.isNotBlank() }.joinToString(" "))
+    }
+    val offline = {
+        val p = RecipeText.Parsed(r.name.ifBlank { null }, r.servings, d.ingredients.map { RecipeText.Ingredient(it.name, it.amount, it.unit, 0.0) }, d.steps.map { RecipeText.Step(it, 0) }, r.cookMin, emptyList())
+        com.dasein.poryadok.logic.RecipeClassify.guess(p, text).tags
+    }
+    if (!com.dasein.poryadok.system.Ai.enabled(ctx)) return offline()
+    return runCatching {
+        with(com.dasein.poryadok.system.Ai) {
+            val answer = ask(
+                ctx,
+                "Ты помощник кулинарного приложения. По описанию блюда подбери до 6 коротких тегов на русском в нижнем регистре: кухня мира («итальянская кухня»), " +
+                    "быстро (до 30 мин), высокобелковые, низкоуглеводные, вегетарианские, постное, без сахара, без глютена, заготовка, на компанию, детское, праздничное, бюджетное, острое. " +
+                    "Только подходящие. Верни ТОЛЬКО JSON: {\"tags\": [\"…\"]}",
+                text.take(4000),
+            )
+            val o = extractJson(answer) ?: return@runCatching offline()
+            o.arr("tags").orEmpty().mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.content?.trim()?.lowercase()?.removePrefix("#") }.filter { it.isNotEmpty() }.take(6)
+        }
+    }.getOrElse { offline() }.ifEmpty { offline() }
+}
+
 /** Это уже оформленное описание или прошлый разбор, а не подпись поста — в поле поста его не переносим. */
 private fun isOwnDraft(t: String) = t.trimStart().startsWith("#") || "## Ингредиенты" in t || t.trimStart().startsWith("ТЕКСТ ПОСТА:")
 
@@ -197,7 +228,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
     // Ссылка на пост подставляется сама: из прикреплённых к рецепту ссылок или из вставленного текста.
     var postUrl by remember {
         mutableStateOf(
-            (d.recipe.videos.lines() + d.recipe.notes.lines()).map { it.trim() }
+            RecipeVideos.source(d.recipe) ?: (d.recipe.videos.lines() + d.recipe.notes.lines()).map { it.trim() }
                 .firstOrNull { it.startsWith("http") && "instagram.com" in it }.orEmpty()
         )
     }
@@ -223,6 +254,20 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
             shotBusy = false
         }
     }
+    /** Ссылка на пост, из которого взято описание, — кнопка «Источник» под видео в карточке. */
+    fun keepSource(url: String) { if (url.startsWith("http")) d.recipe = RecipeVideos.withSource(d.recipe, url) }
+    /**
+     * Новая карточка: ИИ заполняет её в фоне по очереди — окно закрывается, карточку можно покинуть и делать следующую;
+     * готовая ждёт в «Черновиках». У правки существующего рецепта ИИ работает здесь же, как раньше.
+     */
+    fun queueAi(): Boolean {
+        val did = d.draftId ?: return false
+        keepSource(postUrl)
+        RecipeAiQueue.enqueue(ctx, RecipeDrafts.from(d, did), source())
+        android.widget.Toast.makeText(ctx, "Карточка в очереди ИИ — можно выйти и создать следующую. Готовая будет в «Черновиках».", android.widget.Toast.LENGTH_LONG).show()
+        onDismiss()
+        return true
+    }
     fun loginNeeded(e: Throwable) { if (e is com.dasein.poryadok.system.RecipeLink.InstagramLogin) needLogin = true }
     // Видео, уже прикреплённые к рецепту (файлы на телефоне).
     val ownVideos = remember(d.recipe.videos) { d.recipe.videos.lines().map { it.trim() }.filter { it.startsWith("/") && java.io.File(it).exists() } }
@@ -239,7 +284,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
         link?.let { l ->
             linkBusy = true
             runCatching { com.dasein.poryadok.system.RecipeLink.fetch(l) }
-                .onSuccess { if ("instagram.com" in l) { postUrl = l; ingrText = it.trim(); text = "" } else text = it.trim() }
+                .onSuccess { keepSource(l); if ("instagram.com" in l) { postUrl = l; ingrText = it.trim(); text = "" } else text = it.trim() }
                 .onFailure { aiError = "Не удалось загрузить: ${it.message}."; loginNeeded(it) }
             linkBusy = false
         }
@@ -254,6 +299,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
     fun applyResult(p: RecipeText.Parsed, viaAi: Boolean) {
         scope.launch {
             applyParsed(d, p, source(), viaAi)
+            keepSource(postUrl)
             // С ИИ — ещё и красивое описание для карточки блюда (его потом можно править вручную).
             if (viaAi) {
                 status = "Оформляю описание…"
@@ -299,7 +345,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
             if (postUrl.startsWith("http") && ingrText.isBlank()) {
                 status = "Загружаю описание из поста…"
                 runCatching { com.dasein.poryadok.system.RecipeLink.fetch(postUrl) }
-                    .onSuccess { ingrText = it.trim() }
+                    .onSuccess { ingrText = it.trim(); keepSource(postUrl) }
                     .onFailure { aiError = "Пост не загрузился (${it.message}) — беру только речь из видео."; loginNeeded(it) }
             }
             ownVideos.firstOrNull()?.let { v ->
@@ -308,6 +354,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
             if (text.isBlank() && ingrText.isBlank()) { status = null; bothBusy = false; return@launch }
             val online = aiOn && com.dasein.poryadok.system.Offline.hasNetwork(ctx)
             val offline = { if (text.isNotBlank() && ingrText.isNotBlank()) RecipeText.merge(ingrText, text) else RecipeText.parse(source()) }
+            if (online && queueAi()) { bothBusy = false; return@launch }
             if (online) {
                 status = "ИИ сводит описание поста и речь из видео…"
                 aiBusy = true
@@ -381,7 +428,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                         scope.launch {
                             runCatching { com.dasein.poryadok.system.RecipeLink.fetch(postUrl) }
                                 .onSuccess { cap ->
-                                    ingrText = cap.trim()
+                                    ingrText = cap.trim(); keepSource(postUrl)
                                     status = "Описание из поста загружено. Нажмите «Сгенерировать рецепт» или «Разобрать без ИИ»."
                                 }
                                 .onFailure {
@@ -413,7 +460,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                             postBusy = true; aiError = null; status = "Загружаю пост…"
                             scope.launch {
                                 runCatching { com.dasein.poryadok.system.RecipeLink.fetch(postUrl) }
-                                    .onSuccess { cap -> ingrText = cap.trim(); status = "Описание из поста загружено. Нажмите «Сгенерировать рецепт» или «Разобрать без ИИ»." }
+                                    .onSuccess { cap -> ingrText = cap.trim(); keepSource(postUrl); status = "Описание из поста загружено. Нажмите «Сгенерировать рецепт» или «Разобрать без ИИ»." }
                                     .onFailure { status = null; aiError = "Не удалось загрузить пост: ${it.message}." }
                                 postBusy = false
                             }
@@ -424,7 +471,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                     linkBusy = true; aiError = null
                     scope.launch {
                         runCatching { com.dasein.poryadok.system.RecipeLink.fetch(link) }
-                            .onSuccess { if ("instagram.com" in link) { postUrl = link; ingrText = it.trim(); text = "" } else text = it.trim() }
+                            .onSuccess { keepSource(link); if ("instagram.com" in link) { postUrl = link; ingrText = it.trim(); text = "" } else text = it.trim() }
                             .onFailure { aiError = "Не удалось загрузить: ${it.message}."; loginNeeded(it) }
                         linkBusy = false
                     }
@@ -438,6 +485,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                     enabled = (text.isNotBlank() || ingrText.isNotBlank()) && !aiBusy && !videoBusy,
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp).heightIn(min = 52.dp),
                     onClick = {
+                        if (queueAi()) return@Button
                         aiBusy = true; aiError = null; status = if (text.isNotBlank() && ingrText.isNotBlank()) "ИИ сводит пост и речь в один рецепт…" else "ИИ пишет подробный рецепт…"
                         scope.launch {
                             runCatching { aiParse(ctx, source()) }
@@ -475,7 +523,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
  * Применить разбор к черновику: ингредиенты с КБЖУ из базы, порции, этапы — и все остальные пункты карточки:
  * категория, приёмы пищи, сложность, время, теги, советы и замены (от ИИ, а без него — [com.dasein.poryadok.logic.RecipeClassify]).
  */
-private suspend fun applyParsed(d: RecipeDraft, p: RecipeText.Parsed, text: String, viaAi: Boolean) {
+internal suspend fun applyParsed(d: RecipeDraft, p: RecipeText.Parsed, text: String, viaAi: Boolean) {
     // ИИ сам перечисляет упомянутые продукты; встроенный разбор добирает их по базе.
     val ings = ingredientsFrom(p, if (viaAi) "" else text)
     val g = com.dasein.poryadok.logic.RecipeClassify.guess(p, text)

@@ -50,7 +50,13 @@ import java.io.File
 
 /** Видео к рецепту: файлы из галереи (копируются в папку приложения) и ссылки (YouTube, VK, Rutube…). */
 object RecipeVideos {
-    fun list(r: Recipe): List<String> = r.videos.lines().map { it.trim() }.filter { it.isNotEmpty() }
+    fun list(r: Recipe): List<String> = r.videos.lines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith(SRC) }
+
+    /** Источник рецепта (ссылка на пост, откуда взяли описание) хранится в том же поле строкой «src:…». */
+    private const val SRC = "src:"
+    fun source(r: Recipe): String? = r.videos.lines().map { it.trim() }.firstOrNull { it.startsWith(SRC) }?.removePrefix(SRC)?.takeIf { it.isNotBlank() }
+    fun join(videos: List<String>, source: String?): String = (videos + listOfNotNull(source?.let { SRC + it })).joinToString("\n")
+    fun withSource(r: Recipe, url: String): Recipe = r.copy(videos = join(list(r), url.trim()))
     fun isLink(v: String) = v.startsWith("http://") || v.startsWith("https://")
 
     fun normalizeLink(text: String): String? {
@@ -78,8 +84,23 @@ object RecipeVideos {
 @Composable
 fun RecipeVideosSection(r: Recipe) {
     RecipeVideosEditor(r.id, RecipeVideos.list(r), deleteFiles = true) { list ->
-        io { Graph.extra.setVideos(r.id, list.joinToString("\n")) }
+        io { Graph.extra.setVideos(r.id, RecipeVideos.join(list, RecipeVideos.source(r))) }
     }
+    RecipeSourceButton(r)
+}
+
+/** «Источник» — открыть пост или страницу, откуда взято описание рецепта. */
+@Composable
+fun RecipeSourceButton(r: Recipe) {
+    val ctx = LocalContext.current
+    val url = RecipeVideos.source(r) ?: return
+    com.dasein.poryadok.ui.common.OutlinedButton(
+        onClick = {
+            runCatching { ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(url)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                .onFailure { android.widget.Toast.makeText(ctx, "Не удалось открыть ссылку", android.widget.Toast.LENGTH_SHORT).show() }
+        },
+        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+    ) { com.dasein.poryadok.ui.common.Text("🔗 Источник · " + RecipeVideos.hostLabel(url)) }
 }
 
 /** Список видео рецепта с добавлением из галереи и по ссылке. [deleteFiles] — удалять файл при удалении из списка. */

@@ -79,15 +79,40 @@ private fun PeriodPicker(period: FinPeriod, onPick: (FinPeriod) -> Unit) {
     val today = Dates.today()
     var custom by remember { mutableStateOf(false) }
     var months by remember { mutableStateOf(false) }
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        QUICK.forEach { n ->
-            val p = FinPeriod(today - n + 1, today, if (n == 1) "сегодня" else "$n дн.")
-            Pill(if (n == 1) "1 день" else "$n дней", period.from == p.from && period.to == p.to && period.label == p.label) { onPick(p) }
+    // Период — одним выпадающим списком, чтобы не загромождать экран.
+    var open by remember { mutableStateOf(false) }
+    val extra = LocalExtra.current
+    Box {
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).border(1.dp, extra.line, RoundedCornerShape(12.dp))
+                .clickable { open = true }.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(btnLabel("Период: "), fontSize = 14.sp, color = extra.dim)
+            Text(
+                when {
+                    period.label == "свой" -> "свой"
+                    period.label.startsWith("м:") -> "месяц"
+                    period.label == "сегодня" -> "1 день"
+                    else -> period.label.replace("дн.", "дней")
+                },
+                Modifier.weight(1f), fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+            )
+            Text("▾", color = extra.dim)
         }
-        Pill("Месяц", months || period.label.startsWith("м:")) { months = !months }
-        Pill("Свой период", period.label == "свой") { custom = true }
+        androidx.compose.material3.DropdownMenu(open, { open = false }) {
+            QUICK.forEach { n ->
+                val p = FinPeriod(today - n + 1, today, if (n == 1) "сегодня" else "$n дн.")
+                androidx.compose.material3.DropdownMenuItem({ Text(if (n == 1) "Сегодня (1 день)" else "Последние $n дней") }, { open = false; months = false; onPick(p) })
+            }
+            androidx.compose.material3.DropdownMenuItem({ Text(btnLabel("Месяц…")) }, {
+                open = false; months = true
+                if (!period.label.startsWith("м:")) { val r = Dates.monthRange(YearMonth.now()); onPick(FinPeriod(r.first, r.last, "м:${YearMonth.now()}")) }
+            })
+            androidx.compose.material3.DropdownMenuItem({ Text(btnLabel("Свой период…")) }, { open = false; months = false; custom = true })
+        }
     }
-    if (months) Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    if (months || period.label.startsWith("м:")) Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         val cur = if (period.label.startsWith("м:")) YearMonth.parse(period.label.removePrefix("м:")) else YearMonth.now()
         fun set(ym: YearMonth) { val r = Dates.monthRange(ym); onPick(FinPeriod(r.first, r.last, "м:$ym")) }
         IconButton(onClick = { set(cur.minusMonths(1)) }) { Icon(Icons.Default.ChevronLeft, "Раньше") }

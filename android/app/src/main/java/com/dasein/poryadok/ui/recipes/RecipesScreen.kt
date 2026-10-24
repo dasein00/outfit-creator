@@ -83,13 +83,15 @@ private const val ALL = "Все"
 private const val MINE = "Мои рецепты"
 private const val FAV = "Избранное"
 
-private val RECIPE_TABS = listOf("Каталог", "Меню", "Избранное", "Мои", "Архив")
-private val RECIPE_TAB_GLYPHS = listOf("ui:book", "ui:calendar", "ui:heart", "ui:notebook", "ui:folder")
+private val RECIPE_TABS = listOf("Каталог", "Меню", "Избранное", "Мои", "Черновики", "Архив")
+private val RECIPE_TAB_GLYPHS = listOf("ui:book", "ui:calendar", "ui:heart", "ui:notebook", "ui:document", "ui:folder")
 
 @Composable
 fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int, embedded: Boolean = false) {
     var tab by rememberSaveable(initialTab) { mutableStateOf(initialTab) }
     val book = rememberRecipeBook()
+    val ctx0 = androidx.compose.ui.platform.LocalContext.current
+    androidx.compose.runtime.LaunchedEffect(Unit) { com.dasein.poryadok.ui.common.io { RecipeDrafts.reload(); RecipeAiQueue.kick(ctx0) } }
     // Один раз: свои иконки, у которых прозрачный фон стал белым, переделываются из сохранённого исходника.
     LaunchedEffect(Unit) {
         val sp = com.dasein.poryadok.Graph.app.getSharedPreferences("ui_state", android.content.Context.MODE_PRIVATE)
@@ -123,7 +125,7 @@ fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int, emb
             // Все пять вкладок видны сразу — без прокрутки вбок.
             SectionTabs(
                 RECIPE_TABS, RECIPE_TAB_GLYPHS, tab,
-                listOf(0, 0, book.recipes.count { it.favorite }, book.recipes.count { it.custom }, book.archived.size),
+                listOf(0, 0, book.recipes.count { it.favorite }, book.recipes.count { it.custom }, RecipeDrafts.list.value.size, book.archived.size),
             ) { tab = it }
             if (!book.loaded) {
                 FullCenter { CircularProgressIndicator() }
@@ -138,6 +140,7 @@ fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int, emb
                     1 -> MenuPlanner(nav, book, initialMode)
                     2 -> Favorites(nav, book)
                     3 -> Mine(nav, book)
+                    4 -> RecipeDraftsTab(nav)
                     else -> Archive(nav, book)
                 }
             }

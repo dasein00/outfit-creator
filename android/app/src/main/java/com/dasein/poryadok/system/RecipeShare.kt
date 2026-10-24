@@ -37,7 +37,7 @@ object RecipeShare {
     /** Локальный файл (не ссылка и не встроенная картинка). */
     private fun localFile(p: String): File? = p.takeIf { it.startsWith("/") }?.let(::File)?.takeIf { it.isFile }
 
-    private fun videosOf(r: Recipe) = r.videos.lines().map { it.trim() }.filter { it.isNotEmpty() }
+    private fun videosOf(r: Recipe) = r.videos.lines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("src:") }
 
     /** Сколько весят фото и видео выбранных рецептов — чтобы предупредить о размере файла. */
     suspend fun mediaSize(ids: Collection<Long>, withVideo: Boolean): Long = withContext(Dispatchers.IO) {
