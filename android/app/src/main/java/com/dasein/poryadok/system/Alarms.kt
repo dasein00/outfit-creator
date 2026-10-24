@@ -34,6 +34,7 @@ object Alarms {
     const val CH_HABITS = "habits"
     const val CH_FOCUS = "focus"
     const val CH_SUMMARY = "summary"
+    const val CH_AI = "recipe_ai"
 
     private const val PREFS = "alarms"
     private const val KEY_CODES = "codes"
@@ -46,6 +47,9 @@ object Alarms {
         nm.createNotificationChannel(NotificationChannel(CH_HABITS, "Привычки", NotificationManager.IMPORTANCE_DEFAULT))
         nm.createNotificationChannel(NotificationChannel(CH_FOCUS, "Фокус-таймер", NotificationManager.IMPORTANCE_HIGH))
         nm.createNotificationChannel(NotificationChannel(CH_SUMMARY, "Сводка дня", NotificationManager.IMPORTANCE_DEFAULT))
+        nm.createNotificationChannel(NotificationChannel(CH_AI, "Рецепты от ИИ", NotificationManager.IMPORTANCE_DEFAULT).apply {
+            description = "ИИ начал и закончил заполнять карточку рецепта"
+        })
     }
 
     fun notify(ctx: Context, id: Int, channel: String, title: String, text: String, route: String? = null) {

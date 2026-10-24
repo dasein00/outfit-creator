@@ -117,15 +117,16 @@ object Ai {
         throw AiError("ИИ не ответил: $last. Бесплатные модели иногда перегружены — попробуйте чуть позже.")
     }
 
-    private fun call(key: String, model: String, system: String, user: String): String {
-        val body = buildJsonObject {
-            put("model", model)
-            put("temperature", 0.1)
-            put("messages", buildJsonArray {
-                add(buildJsonObject { put("role", "system"); put("content", system) })
-                add(buildJsonObject { put("role", "user"); put("content", user) })
-            })
-        }.toString()
+    private fun call(key: String, model: String, system: String, user: String): String = post(key, buildJsonObject {
+        put("model", model)
+        put("temperature", 0.1)
+        put("messages", buildJsonArray {
+            add(buildJsonObject { put("role", "system"); put("content", system) })
+            add(buildJsonObject { put("role", "user"); put("content", user) })
+        })
+    }.toString())
+
+    private fun post(key: String, body: String): String {
         val c = URL("$BASE/chat/completions").openConnection() as HttpURLConnection
         c.requestMethod = "POST"
         c.doOutput = true
@@ -143,6 +144,64 @@ object Ai {
             val msg = root["choices"]?.jsonArray?.firstOrNull()?.jsonObject?.get("message")?.jsonObject
             return (msg?.get("content") as? JsonPrimitive)?.contentOrNull.orEmpty()
         } finally { c.disconnect() }
+    }
+
+    /** Бесплатные модели OpenRouter, которые понимают картинки (список обновляется раз в 2 дня). */
+    private suspend fun visionModels(ctx: Context): List<String> = withContext(Dispatchers.IO) {
+        val age = System.currentTimeMillis() - sp(ctx).getLong("vision_at", 0)
+        val cached = sp(ctx).getString("vision", "").orEmpty().split('\n').filter { it.isNotBlank() }
+        if (cached.isNotEmpty() && age < 2 * 86_400_000L) return@withContext cached
+        val list = runCatching {
+            val c = URL("$BASE/models").openConnection() as HttpURLConnection
+            c.connectTimeout = 10_000; c.readTimeout = 20_000
+            try {
+                val body = c.inputStream.use { it.readBytes().decodeToString() }
+                json.parseToJsonElement(body).jsonObject["data"]!!.jsonArray.mapNotNull { it as? JsonObject }.filter { m ->
+                    val id = m["id"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                    val input = (m["architecture"] as? JsonObject)?.get("input_modalities") as? JsonArray
+                    id.endsWith(":free") && input?.any { (it as? JsonPrimitive)?.contentOrNull == "image" } == true
+                }.mapNotNull { it["id"]?.jsonPrimitive?.contentOrNull }
+            } finally { c.disconnect() }
+        }.getOrDefault(emptyList())
+        val order = listOf("qwen", "gemma", "llama-4", "mistral", "kimi")
+        val sorted = list.sortedBy { id -> order.indexOfFirst { it in id.lowercase() }.let { if (it < 0) 99 else it } }
+        if (sorted.isNotEmpty()) sp(ctx).edit().putString("vision", sorted.joinToString("\n")).putLong("vision_at", System.currentTimeMillis()).apply()
+        sorted.ifEmpty { cached }
+    }
+
+    private val VISION_FALLBACK = listOf(
+        "qwen/qwen2.5-vl-72b-instruct:free", "google/gemma-3-27b-it:free", "meta-llama/llama-4-maverick:free",
+        "mistralai/mistral-small-3.2-24b-instruct:free",
+    )
+
+    /**
+     * Запрос к ИИ с картинками ([images] — JPEG): например, переписать текст со скриншота.
+     * Пробует бесплатные модели, которые понимают изображения (до 4 попыток).
+     */
+    suspend fun askImages(ctx: Context, prompt: String, images: List<ByteArray>): String = withContext(Dispatchers.IO) {
+        val k = key(ctx)
+        if (k.isBlank()) throw AiError("Нет ключа OpenRouter")
+        val bad = badModels(ctx)
+        val all = (visionModels(ctx) + VISION_FALLBACK).distinct()
+        val models = (all.filter { it !in bad } + all.filter { it in bad }).take(4)
+        var last = "нет ответа"
+        for (m in models) {
+            val content = buildJsonArray {
+                add(buildJsonObject { put("type", "text"); put("text", prompt) })
+                images.forEach { img ->
+                    add(buildJsonObject {
+                        put("type", "image_url")
+                        put("image_url", buildJsonObject { put("url", "data:image/jpeg;base64," + android.util.Base64.encodeToString(img, android.util.Base64.NO_WRAP)) })
+                    })
+                }
+            }
+            val r = runCatching { post(k, buildJsonObject { put("model", m); put("temperature", 0.0); put("messages", buildJsonArray { add(buildJsonObject { put("role", "user"); put("content", content) }) }) }.toString()) }
+            r.getOrNull()?.let { if (it.isNotBlank()) return@withContext it }
+            last = r.exceptionOrNull()?.message ?: "пустой ответ"
+            if ("401" in last) throw AiError("Ключ не подходит (401). Проверьте ключ OpenRouter.")
+            markBad(ctx, m)
+        }
+        throw AiError("ИИ не прочитал картинку: $last")
     }
 
     /** JSON из ответа модели: модели любят оборачивать его в ```json … ``` и пояснения. */

@@ -85,6 +85,8 @@ internal fun ExerciseShorts(exercises: List<Exercise>, sets: List<SetLog>, onAdd
     var q by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
     var muscles by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(emptySet<String>()) }
     var favOnly by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    // Фильтр «Архив»: вместо ленты — убранные в архив упражнения (вернуть или удалить насовсем).
+    var archOnly by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     var favVer by remember { mutableIntStateOf(0) }
     fun fav(id: Long): Boolean { favVer; return favPrefs(ctx).getBoolean("ex_fav_$id", false) }
     val archivedIds = com.dasein.poryadok.data.ExercisePrefs.archived.value
@@ -105,6 +107,10 @@ internal fun ExerciseShorts(exercises: List<Exercise>, sets: List<SetLog>, onAdd
         }
     }
     val archivedList = remember(exercises, archivedIds) { exercises.filter { it.id in archivedIds } }
+    val archShown = remember(archivedList, muscles, q) {
+        archivedList.filter { (muscles.isEmpty() || it.muscle in muscles) && (q.isBlank() || it.name.contains(q, true) || it.equipment.contains(q, true) || it.muscle.contains(q, true)) }
+    }
+    val shown = if (archOnly) emptyList() else list
     val doneSets = remember(sets) { sets.asSequence().filter { it.done }.groupingBy { it.exerciseId }.eachCount() }
     // Какой файл показывать у каждого упражнения: проверка файлов — в фоне, а не при прокрутке.
     val mediaOf by produceState(emptyMap<Long, String?>(), exercises) {
@@ -153,8 +159,9 @@ internal fun ExerciseShorts(exercises: List<Exercise>, sets: List<SetLog>, onAdd
             OutlinedTextField(q, { q = it }, placeholder = { Text(btnLabel("Поиск упражнения")) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))
             Column(Modifier.padding(top = 8.dp)) {
                 MuscleFilter(muscles, fitting, { muscles = it }) {
-                    Pill("Все", muscles.isEmpty() && !favOnly) { muscles = emptySet(); favOnly = false }
-                    Pill("Избранное", favOnly, glyph = Glyphs.FAV_ON) { favOnly = !favOnly }
+                    Pill("Все", muscles.isEmpty() && !favOnly && !archOnly) { muscles = emptySet(); favOnly = false; archOnly = false }
+                    Pill("Избранное", favOnly, glyph = Glyphs.FAV_ON) { favOnly = !favOnly; if (favOnly) archOnly = false }
+                    Pill("Архив" + if (archivedList.isNotEmpty()) " (${archivedList.size})" else "", archOnly) { archOnly = !archOnly; if (archOnly) favOnly = false }
                 }
                 Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Pill(if (onlyMine) "Мой инвентарь ✓" else "Мой инвентарь", onlyMine) { com.dasein.poryadok.data.ExercisePrefs.setOnlyMine(!onlyMine) }
@@ -180,8 +187,10 @@ internal fun ExerciseShorts(exercises: List<Exercise>, sets: List<SetLog>, onAdd
                     fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
                 )
             }
-        } else if (list.isEmpty()) item { Text(btnLabel("Ничего не найдено"), color = extra.dim, modifier = Modifier.padding(8.dp)) }
-        itemsIndexed(list, key = { _, e -> e.id }, contentType = { _, _ -> "short" }) { i, e ->
+        } else if (archOnly && archShown.isEmpty()) item {
+            Text(btnLabel(if (archivedList.isEmpty()) "В архиве пусто" else "Ничего не найдено"), color = extra.dim, modifier = Modifier.padding(8.dp))
+        } else if (!archOnly && list.isEmpty()) item { Text(btnLabel("Ничего не найдено"), color = extra.dim, modifier = Modifier.padding(8.dp)) }
+        itemsIndexed(shown, key = { _, e -> e.id }, contentType = { _, _ -> "short" }) { i, e ->
             val media = if (e.id in mediaOf) mediaOf[e.id] else e.media.lines().firstOrNull { it.isNotBlank() }
             ShortCard(
                 e, media, autoplay && playingId == e.id, i + 1, list.size, doneSets[e.id] ?: 0, fav(e.id),
@@ -191,12 +200,12 @@ internal fun ExerciseShorts(exercises: List<Exercise>, sets: List<SetLog>, onAdd
             )
         }
         // Архив: упражнения, убранные значком коробки. Отсюда — вернуть или удалить насовсем (даже встроенные).
-        if (archivedList.isNotEmpty()) item {
+        if (!archOnly && archivedList.isNotEmpty()) item {
             com.dasein.poryadok.ui.common.TextButton(onClick = { archiveOpen = !archiveOpen }, Modifier.fillMaxWidth()) {
                 Text((if (archiveOpen) "Скрыть архив упражнений" else "Архив упражнений") + " (${archivedList.size})")
             }
         }
-        if (archiveOpen) itemsIndexed(archivedList, key = { _, e -> "a" + e.id }) { _, e ->
+        if (archOnly || archiveOpen) itemsIndexed(if (archOnly) archShown else archivedList, key = { _, e -> "a" + e.id }) { _, e ->
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(extra.cardHigh).padding(horizontal = 14.dp, vertical = 10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Glyph(e.glyph, 24.dp)

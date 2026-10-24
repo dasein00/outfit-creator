@@ -94,6 +94,8 @@ class MainActivity : FragmentActivity() {
             runCatching { com.dasein.poryadok.system.VideoCompress.autoCompact(applicationContext) }
             // Сбер: входящие переводы, записанные как расход, и дубли SMS + пуш.
             runCatching { com.dasein.poryadok.system.Sber.repair() }
+            // Очередь заполнения рецептов: прерванные черновики (приложение закрыли) дозаполняются.
+            runCatching { com.dasein.poryadok.ui.recipes.RecipeAiQueue.kick(applicationContext) }
         }
     }
 

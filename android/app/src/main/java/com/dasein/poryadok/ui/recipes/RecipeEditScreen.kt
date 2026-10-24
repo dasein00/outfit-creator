@@ -192,7 +192,7 @@ fun RecipeEditScreen(nav: NavHostController, id: Long, draft: String? = null) {
         Column(Modifier.padding(pad).padding(horizontal = 16.dp)) {
             if (aiBusyHere) com.dasein.poryadok.ui.common.Tile(Modifier.padding(bottom = 6.dp), padding = 10.dp) {
                 Text(
-                    (if (myDraft?.ai == 2) "✨ ИИ заполняет карточку…" else "✨ Карточка в очереди ИИ…") +
+                    (if (myDraft?.ai == 2) "✨ " + myDraft?.aiStage.orEmpty().ifBlank { "ИИ заполняет карточку…" } else "✨ Карточка в очереди ИИ…") +
                         " Можно выйти и создать другую — готовая будет в «Черновиках».",
                     fontSize = 13.sp,
                 )

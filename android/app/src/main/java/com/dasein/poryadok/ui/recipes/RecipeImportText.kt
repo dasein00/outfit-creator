@@ -244,27 +244,31 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
         if (uris.isEmpty()) return@rememberLauncherForActivityResult
         shotBusy = true; aiError = null
         scope.launch {
-            val lines = uris.flatMap { com.dasein.poryadok.system.ScaleOcr.lines(ctx, it) }
-            val got = com.dasein.poryadok.logic.RecipeText.cleanOcr(lines)
+            val got = com.dasein.poryadok.system.TextOcr.read(ctx, uris) { st -> status = st }
             if (got.isBlank()) aiError = "На скриншоте не нашлось текста. Откройте пост с раскрытым описанием («ещё») и сделайте скриншот."
             else {
                 ingrText = listOf(ingrText.trim(), got).filter { it.isNotBlank() }.joinToString("\n")
                 status = "Текст со скриншота распознан. Проверьте его и нажмите «Сгенерировать рецепт» или «Разобрать без ИИ»."
             }
+            if (got.isBlank()) status = null
             shotBusy = false
         }
     }
     /** Ссылка на пост, из которого взято описание, — кнопка «Источник» под видео в карточке. */
     fun keepSource(url: String) { if (url.startsWith("http")) d.recipe = RecipeVideos.withSource(d.recipe, url) }
     /**
-     * Новая карточка: ИИ заполняет её в фоне по очереди — окно закрывается, карточку можно покинуть и делать следующую;
-     * готовая ждёт в «Черновиках». У правки существующего рецепта ИИ работает здесь же, как раньше.
+     * Новая карточка: заполняется в фоне по очереди — окно закрывается, карточку можно покинуть и делать следующую.
+     * Очередь сама дождётся подписи по ссылке и распознавания речи из видео, потом ИИ напишет рецепт; о начале и конце
+     * приходит уведомление, готовая карточка ждёт в «Черновиках». У правки существующего рецепта всё делается здесь же.
      */
     fun queueAi(): Boolean {
         val did = d.draftId ?: return false
         keepSource(postUrl)
-        RecipeAiQueue.enqueue(ctx, RecipeDrafts.from(d, did), source())
-        android.widget.Toast.makeText(ctx, "Карточка в очереди ИИ — можно выйти и создать следующую. Готовая будет в «Черновиках».", android.widget.Toast.LENGTH_LONG).show()
+        RecipeAiQueue.enqueue(ctx, RecipeDrafts.from(d, did), ingrText.trim(), text.trim(), postUrl.takeIf { it.startsWith("http") }.orEmpty())
+        android.widget.Toast.makeText(
+            ctx, "Карточка в очереди — рецепт создастся, когда загрузятся пост и речь из видео. Можно выйти и делать следующую.",
+            android.widget.Toast.LENGTH_LONG,
+        ).show()
         onDismiss()
         return true
     }
@@ -293,6 +297,17 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
             if (text.isBlank() || isOwnDraft(text) || text.trim() == d.recipe.notes.trim() && ingrText.isBlank()) {
                 if (text.trim() != sp.trim()) putSpeech(sp)
                 status = "Речь из видео рецепта уже распознана."
+            }
+        }
+    }
+    // Речь первого видео ещё распознаётся (в фоне после добавления) — дожидаемся и сами вставляем её в поле речи.
+    androidx.compose.runtime.LaunchedEffect(ownVideos.firstOrNull()) {
+        val v = ownVideos.firstOrNull() ?: return@LaunchedEffect
+        if (com.dasein.poryadok.system.VideoSpeech.cached(ctx, v) != null) return@LaunchedEffect
+        runCatching { com.dasein.poryadok.system.VideoSpeech.transcribeFile(ctx, v) }.onSuccess { sp ->
+            if (text.isBlank() || isOwnDraft(text) || text.trim() == d.recipe.notes.trim() && ingrText.isBlank()) {
+                if (text.trim() != sp.trim()) putSpeech(sp)
+                status = "Речь из видео распознана и вставлена."
             }
         }
     }
@@ -351,7 +366,11 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
             ownVideos.firstOrNull()?.let { v ->
                 speechOf(v).onSuccess { putSpeech(it) }.onFailure { if (ingrText.isBlank() && text.isBlank()) aiError = speechError(it) }
             }
-            if (text.isBlank() && ingrText.isBlank()) { status = null; bothBusy = false; return@launch }
+            if (text.isBlank() && ingrText.isBlank()) {
+                status = null; bothBusy = false
+                if (aiError == null) aiError = "Нет текста для рецепта. Добавьте видео, ссылку на пост, скриншот описания или свой текст."
+                return@launch
+            }
             val online = aiOn && com.dasein.poryadok.system.Offline.hasNetwork(ctx)
             val offline = { if (text.isNotBlank() && ingrText.isNotBlank()) RecipeText.merge(ingrText, text) else RecipeText.parse(source()) }
             if (online && queueAi()) { bothBusy = false; return@launch }
@@ -381,19 +400,6 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                         "ИИ или встроенный разбор (без интернета) заполнят название, категорию, приём пищи, порции, время, сложность, ингредиенты, этапы, теги и советы. Всё можно поправить потом.",
                     fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
                 )
-                if (ownVideos.isNotEmpty() || postUrl.startsWith("http")) Button(
-                    enabled = !bothBusy && !videoBusy && !aiBusy,
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 52.dp),
-                    onClick = { fromPostAndVideo() },
-                ) {
-                    Text(
-                        if (bothBusy) (status ?: "Заполняю…") else when {
-                            ownVideos.isNotEmpty() && postUrl.startsWith("http") -> "Заполнить из поста и речи видео"
-                            ownVideos.isNotEmpty() -> "Заполнить по речи из видео"
-                            else -> "Заполнить из поста Instagram"
-                        },
-                    )
-                }
                 bgText?.let { Text("Видео рецепта: $it", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp)) }
                 TextButton(onClick = {
                     val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -481,19 +487,13 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                 aiError?.let { Text(if ("Вставьте" in it) it else it + " Можно нажать «Разобрать без ИИ» — встроенный разбор работает без интернета.", fontSize = 12.sp, color = extra.danger, modifier = Modifier.padding(top = 6.dp)) }
                 if (!aiOn) Text("Точнее разбирает бесплатный ИИ: добавьте ключ OpenRouter в «Настройки» → «ИИ-помощник».", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
                 // Главные действия — крупно и во всю ширину, чтобы надписи не сжимались.
-                if (aiOn) Button(
-                    enabled = (text.isNotBlank() || ingrText.isNotBlank()) && !aiBusy && !videoBusy,
+                // Всегда активна: новая карточка уходит в фоновую очередь (она сама дождётся поста и речи из видео),
+                // у правки рецепта пост и речь собираются и разбираются здесь же.
+                Button(
+                    enabled = !aiBusy && !bothBusy,
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp).heightIn(min = 52.dp),
-                    onClick = {
-                        if (queueAi()) return@Button
-                        aiBusy = true; aiError = null; status = if (text.isNotBlank() && ingrText.isNotBlank()) "ИИ сводит пост и речь в один рецепт…" else "ИИ пишет подробный рецепт…"
-                        scope.launch {
-                            runCatching { aiParse(ctx, source()) }
-                                .onSuccess { applyResult(it, viaAi = true) }
-                                .onFailure { aiError = it.message ?: "ошибка"; aiBusy = false }
-                        }
-                    },
-                ) { com.dasein.poryadok.ui.common.AiLabel("Сгенерировать рецепт", aiBusy) }
+                    onClick = { aiError = null; if (!queueAi()) fromPostAndVideo() },
+                ) { com.dasein.poryadok.ui.common.AiLabel(if (aiOn) "Сгенерировать рецепт" else "Создать рецепт", aiBusy || bothBusy, status ?: "ИИ думает…") }
                 OutlinedButton(
                     enabled = preview != null && !aiBusy,
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 48.dp),
