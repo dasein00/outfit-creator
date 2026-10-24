@@ -161,6 +161,8 @@ fun VideoEditor(path: String, dir: String, addMode: Boolean, onCancel: () -> Uni
     var stopAt by remember { mutableStateOf<Long?>(null) }
     // Дошли до конца ролика — стоим; «Плей» начинает заново с начала.
     var atEnd by remember { mutableStateOf(false) }
+    // Куда только что перемотали: пока плеер туда не дошёл, его старая позиция не должна срабатывать как «конец показа».
+    val seekGuard = remember { longArrayOf(-1L, 0L) }
 
     fun applyParams() {
         val v = view ?: return
@@ -181,6 +183,7 @@ fun VideoEditor(path: String, dir: String, addMode: Boolean, onCancel: () -> Uni
         atEnd = false
         cur = i
         srcPos = pos.coerceIn(c.start, c.end)
+        seekGuard[0] = srcPos; seekGuard[1] = System.currentTimeMillis()
         val v = view ?: return
         if (c.src != loadedSrc) {
             // Кусок из другого видео — открываем его и встаём на нужное место, когда оно загрузится.
@@ -188,7 +191,7 @@ fun VideoEditor(path: String, dir: String, addMode: Boolean, onCancel: () -> Uni
             pendingSeek = srcPos
             v.setVideoPath(sources[c.src])
         } else {
-            v.seekTo(srcPos.toInt())
+            exactSeek(v, srcPos)
             applyParams()
         }
     }
@@ -235,6 +238,10 @@ fun VideoEditor(path: String, dir: String, addMode: Boolean, onCancel: () -> Uni
             val c = clips.getOrNull(cur)
             if (v != null && c != null && playing && c.src == loadedSrc && pendingSeek < 0) {
                 val p = v.currentPosition.toLong()
+                val target = seekGuard[0]
+                val settling = target >= 0 && kotlin.math.abs(p - target) > 250 && System.currentTimeMillis() - seekGuard[1] < 1500
+                if (!settling) seekGuard[0] = -1L
+                if (settling) { delay(20); continue }
                 if (p >= c.start - 300) srcPos = p.coerceIn(c.start, c.end)
                 val stop = stopAt
                 if (stop != null && p >= stop - 40) { pause(); stopAt = null; seek(cur, stop) }
@@ -326,7 +333,7 @@ fun VideoEditor(path: String, dir: String, addMode: Boolean, onCancel: () -> Uni
                                     editorSpeed.remove(mp)
                                     val at = pendingSeek.takeIf { it >= 0 } ?: srcPos
                                     pendingSeek = -1
-                                    seekTo(at.toInt().coerceAtLeast(1))
+                                    exactSeek(this, at.coerceAtLeast(1))
                                     view = this
                                     applyParams()
                                     if (playing) start()
@@ -671,6 +678,16 @@ private val HANDLE_W = 22.dp
 private const val END_PREVIEW_MS = 200L
 
 private val editorPlayers = java.util.WeakHashMap<VideoView, android.media.MediaPlayer>()
+/**
+ * Перемотка точно на кадр. Обычный seekTo встаёт на ближайший ключевой кадр — он бывает на секунду-две раньше,
+ * и показ «последних 0,3 с до конца» начинался заметно раньше. SEEK_CLOSEST (Android 8+) — ровно в нужное место.
+ */
+private fun exactSeek(v: VideoView, ms: Long) {
+    val mp = editorPlayers[v]
+    if (Build.VERSION.SDK_INT >= 26 && mp != null) runCatching { mp.seekTo(ms, android.media.MediaPlayer.SEEK_CLOSEST) }.onFailure { v.seekTo(ms.toInt()) }
+    else v.seekTo(ms.toInt())
+}
+
 private val editorSpeed = java.util.WeakHashMap<android.media.MediaPlayer, Float>()
 
 private fun clock(ms: Long): String { val t = (ms / 100).coerceAtLeast(0); return "%02d:%02d.%d".format(t / 600, (t / 10) % 60, t % 10) }
