@@ -1,5 +1,6 @@
 package com.dasein.poryadok.ui.finance
 
+import com.dasein.poryadok.ui.common.cardViewport
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -243,7 +244,7 @@ fun StatementImportScreen(nav: NavHostController, settings: Settings) {
     }
 
     Screen("Импорт выписки", onBack = { nav.popBackStack() }) { pad ->
-        LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 40.dp)) {
+        LazyColumn(Modifier.padding(pad).cardViewport(), contentPadding = PaddingValues(bottom = 40.dp)) {
             item {
                 Hint(
                     "fin_import_how",

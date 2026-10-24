@@ -328,7 +328,7 @@ fun ReviewScreen(nav: NavHostController, settings: Settings) {
     val wEnd = weights.lastOrNull { it.day <= end }?.kg
 
     Screen(title = "Итоги недели", onBack = { nav.popBackStack() }) { pad ->
-        LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 40.dp)) {
+        LazyColumn(Modifier.padding(pad).cardViewport(), contentPadding = PaddingValues(bottom = 40.dp)) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(btnLabel("‹"), fontSize = 28.sp, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { offset++ }.padding(horizontal = 14.dp))

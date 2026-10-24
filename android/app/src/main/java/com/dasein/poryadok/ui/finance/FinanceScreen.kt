@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.finance
 
+import com.dasein.poryadok.ui.common.cardViewport
 import com.dasein.poryadok.ui.common.swipeTabs
 import com.dasein.poryadok.ui.common.tabSlide
 import com.dasein.poryadok.ui.common.swipeTabsOf
@@ -225,7 +226,7 @@ private fun Operations(nav: NavHostController, monthAll: List<Txn>, cats: List<C
     }
     val inc = month.filter { it.type == TxnType.INCOME }.sumOf { it.amount }
     val exp = month.filter { it.type == TxnType.EXPENSE }.sumOf { it.amount }
-    LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
+    LazyColumn(modifier = Modifier.cardViewport(), contentPadding = PaddingValues(bottom = 96.dp)) {
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Stat(Money.format(inc, cur), "доход", Modifier.weight(1f), extra.ok)
@@ -378,7 +379,7 @@ private fun Budgets(month: List<Txn>, cats: List<Category>, budgets: List<Budget
     val today = Dates.today()
     val range = Dates.monthRange(ym)
     val daysLeft = if (today in range) (range.last - today + 1).toInt() else if (today < range.first) (range.last - range.first + 1).toInt() else 0
-    LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
+    LazyColumn(modifier = Modifier.cardViewport(), contentPadding = PaddingValues(bottom = 96.dp)) {
         if (budgets.isEmpty()) item {
             Empty(Ic.target, "Бюджетов нет", "Задайте лимит на месяц — общий или по категориям. Приложение подскажет, сколько можно тратить в день.")
         }
@@ -414,7 +415,7 @@ private fun RecurringList(list: List<Recurring>, cats: List<Category>, accounts:
     val monthlyOut = list.filter { it.active && !it.income }.sumOf {
         when (Repeat.of(it.repeat)) { Repeat.WEEKLY -> it.amount * 52 / 12; Repeat.YEARLY -> it.amount / 12; Repeat.DAILY -> it.amount * 30; else -> it.amount }
     }
-    LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
+    LazyColumn(modifier = Modifier.cardViewport(), contentPadding = PaddingValues(bottom = 96.dp)) {
         item {
             Tile {
                 Text(btnLabel("Подписки и регулярные платежи"), color = extra.dim, fontSize = 13.sp)
@@ -455,7 +456,7 @@ private fun Accounts(accounts: List<Account>, txns: List<Txn>, cur: String, onAl
     val saving = accounts.filter { AccountMeta.savings(ctx, it.id) }
     val savingSum = saving.sumOf { balanceOf(it, txns) }
     val interest = saving.sumOf { AccountMeta.monthly(balanceOf(it, txns), AccountMeta.rate(ctx, it.id)) }
-    LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
+    LazyColumn(modifier = Modifier.cardViewport(), contentPadding = PaddingValues(bottom = 96.dp)) {
         item {
             Tile {
                 Text(btnLabel("Всего на счетах"), color = extra.dim, fontSize = 13.sp)

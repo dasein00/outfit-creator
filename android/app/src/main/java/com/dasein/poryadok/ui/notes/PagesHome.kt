@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.notes
 
+import com.dasein.poryadok.ui.common.cardViewport
 import androidx.compose.foundation.clickable
 import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
@@ -144,7 +145,7 @@ fun PagesHome(nav: NavHostController, embedded: Boolean = false) {
         },
         fab = { ExtendedFloatingActionButton(onClick = { create() }, icon = { Icon(Icons.Default.Add, null) }, text = { Text(btnLabel("Страница")) }) },
     ) { pad ->
-        LazyColumn(Modifier.padding(pad).fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
+        LazyColumn(Modifier.padding(pad).fillMaxSize().cardViewport(), contentPadding = PaddingValues(bottom = 96.dp)) {
             item {
                 OutlinedTextField(
                     query, { query = it }, placeholder = { Text(btnLabel("Поиск по заголовкам и тексту")) }, singleLine = true,

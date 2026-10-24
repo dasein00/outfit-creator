@@ -164,7 +164,7 @@ fun RecipeDraftsTab(nav: androidx.navigation.NavHostController) {
                 com.dasein.poryadok.ui.common.Text(com.dasein.poryadok.ui.common.btnLabel("Очистить все черновики"))
             }
         }
-        if (list.isEmpty()) item { com.dasein.poryadok.ui.common.Empty(com.dasein.poryadok.ui.common.Ic.document, "Черновиков нет", "Начните новый рецепт — если выйти, не сохранив, он появится здесь.") }
+        if (list.isEmpty()) item { com.dasein.poryadok.ui.common.Empty("doc/00", "Черновиков нет", "Начните новый рецепт — если выйти, не сохранив, он появится здесь.") }
         items(list.size, key = { list[it].id }) { i ->
             val d = list[i]
             com.dasein.poryadok.ui.common.Tile(Modifier.padding(top = 8.dp), onClick = { nav.navigate(com.dasein.poryadok.ui.Routes.recipeDraft(d.id)) }) {

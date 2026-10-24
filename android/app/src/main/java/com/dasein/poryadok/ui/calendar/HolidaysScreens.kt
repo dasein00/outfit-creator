@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.calendar
 
+import com.dasein.poryadok.ui.common.cardViewport
 import android.content.Context
 import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
@@ -356,7 +357,7 @@ fun HolidaysTab(nav: NavHostController, selected: Long, onSelect: (Long) -> Unit
     val entries = remember(selected, custom, marks, hidden) { HolidayRepo.entries(ctx, Dates.day(selected), custom, marks, hidden) }
     val upcoming = remember(selected, custom, marks, hidden) { upcomingEntries(ctx, selected, 30, custom, marks, hidden).take(15) }
 
-    LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
+    LazyColumn(modifier = Modifier.cardViewport(), contentPadding = PaddingValues(bottom = 96.dp)) {
         item {
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { onSelect(selected - 1) }) { Icon(Icons.Default.ChevronLeft, "Раньше") }

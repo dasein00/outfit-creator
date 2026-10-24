@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.recipes
 
+import com.dasein.poryadok.ui.common.cardViewport
 import com.dasein.poryadok.ui.common.Hint
 import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
@@ -99,7 +100,7 @@ fun PresetsScreen(nav: NavHostController) {
     var editRepeat by remember { mutableStateOf<MealRepeat?>(null) }
 
     Screen("Шаблоны и повторы", onBack = { nav.popBackStack() }) { pad ->
-        LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 40.dp)) {
+        LazyColumn(Modifier.padding(pad).cardViewport(), contentPadding = PaddingValues(bottom = 40.dp)) {
             item {
                 Hint("presets_about", "Шаблон — готовый день или неделя меню. Применяйте к любому периоду.", title = "Что такое шаблон")
                 Gap(8.dp)
@@ -340,7 +341,7 @@ fun ShoppingScreen(nav: NavHostController) {
         actions = { if (items.orEmpty().any { it.bought }) IconAction(Ic.trash, "Убрать купленное") { io { x.clearBought() } } },
     ) { pad ->
         val list = items
-        LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 40.dp)) {
+        LazyColumn(Modifier.padding(pad).cardViewport(), contentPadding = PaddingValues(bottom = 40.dp)) {
             item {
                 Row {
                     Button(onClick = { generate = true }, Modifier.weight(1f)) { Text(btnLabel("Из меню")) }
@@ -460,7 +461,7 @@ fun CookHistoryScreen(nav: NavHostController) {
     val last30 = plan.filter { it.day in today - 29..today && it.status != PlanStatus.SKIPPED }
     val days = last30.map { it.day }.distinct()
     Screen("История и аналитика", onBack = { nav.popBackStack() }) { pad ->
-        LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 40.dp)) {
+        LazyColumn(Modifier.padding(pad).cardViewport(), contentPadding = PaddingValues(bottom = 40.dp)) {
             item {
                 SectionTitle("Меню за 30 дней")
                 val avgK = if (days.isEmpty()) 0 else (last30.sumOf { it.kcal * it.servings } / days.size).roundToInt()

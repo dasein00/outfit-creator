@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.recipes
 
+import com.dasein.poryadok.ui.common.cardViewport
 import com.dasein.poryadok.ui.common.swipeTabs
 import com.dasein.poryadok.ui.common.tabSlide
 import com.dasein.poryadok.ui.common.swipeTabsOf
@@ -84,7 +85,7 @@ private const val MINE = "Мои рецепты"
 private const val FAV = "Избранное"
 
 private val RECIPE_TABS = listOf("Каталог", "Меню", "Избранное", "Мои", "Черновики", "Архив")
-private val RECIPE_TAB_GLYPHS = listOf("ui:book", "ui:calendar", "ui:heart", "ui:notebook", "ui:document", "ui:folder")
+private val RECIPE_TAB_GLYPHS = listOf("ui:book", "ui:calendar", "ui:heart", "ui:notebook", "doc/00", "ui:folder")
 
 @Composable
 fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int, embedded: Boolean = false) {
@@ -334,7 +335,7 @@ private fun Catalog(nav: NavHostController, book: RecipeBook) {
         null -> Unit
     }
 
-    LazyColumn(state = listState, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp)) {
+    LazyColumn(modifier = Modifier.cardViewport(), state = listState, contentPadding = PaddingValues(bottom = 32.dp)) {
         item {
             Gap(8.dp)
             SearchField(q, { q = it }, "Блюдо, ингредиенты, тег: «курица рис -грибы»")
@@ -428,7 +429,7 @@ private fun Archive(nav: NavHostController, book: RecipeBook) {
         },
         dismissButton = { TextButton(onClick = { confirmAll = false }) { Text(btnLabel("Отмена")) } },
     )
-    LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp)) {
+    LazyColumn(modifier = Modifier.cardViewport(), contentPadding = PaddingValues(bottom = 32.dp)) {
         item {
             Text(
                 "Сюда попадают блюда, которые вам не понравились: они не видны в каталоге и не попадают в подбор меню. " +
@@ -481,7 +482,7 @@ private fun Favorites(nav: NavHostController, book: RecipeBook) {
             else -> r.category == f || MEAL_CATEGORY[f]?.let { it in MealType.parse(r.meals) } == true
         }
     }
-    LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp)) {
+    LazyColumn(modifier = Modifier.cardViewport(), contentPadding = PaddingValues(bottom = 32.dp)) {
         item {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 FAV_FILTERS.forEach { Pill(it, it == f) { f = it } }
@@ -504,7 +505,7 @@ private fun Mine(nav: NavHostController, book: RecipeBook) {
     var menuFor by remember { mutableStateOf<Recipe?>(null) }
     menuFor?.let { RecipeQuickMenu(nav, it) { menuFor = null } }
     val list = book.recipes.filter { it.custom }.sortedByDescending { it.createdAt }
-    LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp)) {
+    LazyColumn(modifier = Modifier.cardViewport(), contentPadding = PaddingValues(bottom = 32.dp)) {
         item {
             Button(onClick = { nav.navigate(Routes.recipeEdit(0)) }, Modifier.fillMaxWidth()) { Text(btnLabel("+ Добавить рецепт")) }
             Gap(8.dp)

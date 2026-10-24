@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.notes
 
+import com.dasein.poryadok.ui.common.cardViewport
 import androidx.activity.compose.BackHandler
 import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
@@ -318,7 +319,7 @@ fun TopsScreen(nav: NavHostController, embedded: Boolean = false) {
         onBack = if (embedded) null else ({ nav.popBackStack() }),
         fab = { FloatingActionButton(onClick = { create = true }, containerColor = MaterialTheme.colorScheme.primary) { Icon(Icons.Default.Add, "Новый топ") } },
     ) { pad ->
-        LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
+        LazyColumn(Modifier.padding(pad).cardViewport(), contentPadding = PaddingValues(bottom = 96.dp)) {
             if (lists.isEmpty()) item {
                 Empty(Ic.trophy, "Ваши рейтинги", "Фильмы, книги, места, желания — соберите свои топы и расставьте места.")
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -437,7 +438,7 @@ fun TopScreen(nav: NavHostController, id: Long) {
             IconAction(Ic.trash, "Удалить") { confirm = true }
         },
     ) { pad ->
-        LazyColumn(Modifier.padding(pad).imePadding(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 40.dp)) {
+        LazyColumn(Modifier.padding(pad).imePadding().cardViewport(), contentPadding = PaddingValues(bottom = 40.dp)) {
             item {
                 OutlinedTextField(
                     newText, { newText = it }, placeholder = { Text(btnLabel("Добавить в топ…")) }, singleLine = true,

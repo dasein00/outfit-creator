@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.productivity
 
+import com.dasein.poryadok.ui.common.cardViewport
 import com.dasein.poryadok.ui.common.Hint
 import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
@@ -186,7 +187,7 @@ fun TasksScreen(nav: NavHostController, onBack: (() -> Unit)? = null, showGoals:
                             if (list == L_DONE) "Пока ничего не выполнено" else "Здесь чисто",
                             if (list == L_DONE) "Отмечайте задачи — они появятся здесь." else "Добавьте задачу кнопкой «+». Можно писать «завтра в 10 !2 #работа».",
                         )
-                    } else LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
+                    } else LazyColumn(modifier = Modifier.cardViewport(), contentPadding = PaddingValues(bottom = 96.dp)) {
                         groups.forEach { (title, group) ->
                             if (title.isNotEmpty()) item(key = "h$title") {
                                 SectionTitle("$title  ${group.size}")

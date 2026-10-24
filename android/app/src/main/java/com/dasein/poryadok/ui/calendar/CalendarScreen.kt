@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.calendar
 
+import com.dasein.poryadok.ui.common.cardViewport
 import com.dasein.poryadok.ui.common.swipeTabs
 import com.dasein.poryadok.ui.common.tabSlide
 import com.dasein.poryadok.ui.common.swipeTabsOf
@@ -191,7 +192,7 @@ private fun MonthView(nav: NavHostController, selected: Long, onSelect: (Long) -
     var vacationEdit by remember { mutableStateOf<Pair<com.dasein.poryadok.logic.Vacation?, Long>?>(null) }
     vacationEdit?.let { (v, day) -> VacationDialog(v, day) { vacationEdit = null } }
 
-    LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
+    LazyColumn(modifier = Modifier.cardViewport(), contentPadding = PaddingValues(bottom = 96.dp)) {
         item {
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { ym = ym.minusMonths(1) }) { Icon(Icons.Default.ChevronLeft, "Назад") }

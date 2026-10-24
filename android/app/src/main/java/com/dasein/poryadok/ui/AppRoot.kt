@@ -442,7 +442,13 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             var editTab by remember { mutableStateOf<Pair<Int, Tab>?>(null) }
             // В нижней панели долгое нажатие — своё меню вкладки (там же меняется иконка раздела).
             androidx.compose.runtime.CompositionLocalProvider(com.dasein.poryadok.ui.common.LocalIconEditable provides false) {
-                NavigationBar(containerColor = MaterialTheme.colorScheme.background, tonalElevation = 0.dp) {
+                // Своя панель ниже стандартной (80 dp): сразу над кнопками Android, без лишнего зазора сверху.
+                Row(
+                    Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)
+                        .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.navigationBars)
+                        .padding(horizontal = 4.dp).height(62.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     barTabs.forEachIndexed { i, t ->
                         TabButton(t, current == t.base, { nav.openTab(t.route) }) { editTab = i to t }
                     }
@@ -503,7 +509,7 @@ private fun RowScope.TabButton(t: Tab, selected: Boolean, onClick: () -> Unit, o
     val look = com.dasein.poryadok.ui.common.rememberSection(t.route, t.label, t.icon)
     val primary = MaterialTheme.colorScheme.primary
     Column(
-        Modifier.weight(1f).height(72.dp).clip(RoundedCornerShape(16.dp))
+        Modifier.weight(1f).height(60.dp).clip(RoundedCornerShape(16.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick, onLongClickLabel = "Изменить раздел"),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -517,7 +523,7 @@ private fun RowScope.TabButton(t: Tab, selected: Boolean, onClick: () -> Unit, o
         Text(
             look.name, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
             fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.SemiBold else androidx.compose.ui.text.font.FontWeight.Medium,
-            color = if (selected) primary else com.dasein.poryadok.ui.theme.LocalExtra.current.dim, modifier = Modifier.padding(top = 4.dp),
+            color = if (selected) primary else com.dasein.poryadok.ui.theme.LocalExtra.current.dim, modifier = Modifier.padding(top = 2.dp),
         )
     }
 }

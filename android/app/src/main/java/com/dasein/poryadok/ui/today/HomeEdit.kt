@@ -1,5 +1,6 @@
 package com.dasein.poryadok.ui.today
 
+import com.dasein.poryadok.ui.common.cardViewport
 import androidx.compose.foundation.background
 import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.clickable
@@ -99,7 +100,7 @@ fun HomeEditScreen(nav: NavHostController) {
     val layout = HomeLayout.state.value
     var confirmReset by remember { mutableStateOf(false) }
     Screen("Настроить главное", onBack = { nav.popBackStack() }) { pad ->
-        LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 40.dp)) {
+        LazyColumn(Modifier.padding(pad).cardViewport(), contentPadding = PaddingValues(bottom = 40.dp)) {
             item {
                 Text(
                     "Стрелками меняйте порядок, кнопками — размер. Крестик убирает плашку. Внизу — что можно добавить: плашки и ярлыки на любой раздел приложения.",

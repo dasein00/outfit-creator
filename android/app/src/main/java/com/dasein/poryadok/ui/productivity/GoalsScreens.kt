@@ -1,5 +1,6 @@
 package com.dasein.poryadok.ui.productivity
 
+import com.dasein.poryadok.ui.common.cardViewport
 import androidx.activity.compose.BackHandler
 import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
@@ -102,7 +103,7 @@ fun GoalsScreen(nav: NavHostController, embedded: Boolean = false) {
         },
     ) { pad ->
         val shown = goals.filter { it.done == showDone }
-        LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
+        LazyColumn(Modifier.padding(pad).cardViewport(), contentPadding = PaddingValues(bottom = 96.dp)) {
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 10.dp)) {
                     Pill("В процессе  ${goals.count { !it.done }}", !showDone) { showDone = false }

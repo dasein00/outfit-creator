@@ -100,7 +100,7 @@ data class VideoEdit(val sources: List<String>, val clips: List<Clip>, val aspec
 }
 
 private val ASPECTS: List<Pair<String, Float?>> = listOf("Исходный" to null, "9:16" to 9f / 16f, "1:1" to 1f, "4:5" to 0.8f, "16:9" to 16f / 9f)
-private val SPEEDS = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f, 3f)
+private val SPEEDS = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f, 3f)
 
 private enum class EditPanel { NONE, SPEED, FRAME }
 
@@ -159,6 +159,8 @@ fun VideoEditor(path: String, dir: String, addMode: Boolean, onCancel: () -> Uni
     var srcPos by remember { mutableLongStateOf(0L) }
     /** Остановить превью на этом месте исходника текущего куска. */
     var stopAt by remember { mutableStateOf<Long?>(null) }
+    // Дошли до конца ролика — стоим; «Плей» начинает заново с начала.
+    var atEnd by remember { mutableStateOf(false) }
 
     fun applyParams() {
         val v = view ?: return
@@ -176,6 +178,7 @@ fun VideoEditor(path: String, dir: String, addMode: Boolean, onCancel: () -> Uni
     }
     fun seek(i: Int, pos: Long) {
         val c = clips.getOrNull(i) ?: return
+        atEnd = false
         cur = i
         srcPos = pos.coerceIn(c.start, c.end)
         val v = view ?: return
@@ -189,7 +192,10 @@ fun VideoEditor(path: String, dir: String, addMode: Boolean, onCancel: () -> Uni
             applyParams()
         }
     }
-    fun play() { playing = true; if (pendingSeek < 0) view?.start(); applyParams() }
+    fun play() {
+        if (atEnd && clips.isNotEmpty()) { atEnd = false; seek(0, clips[0].start) }
+        playing = true; if (pendingSeek < 0) view?.start(); applyParams()
+    }
     fun pause() { view?.pause(); playing = false }
     LaunchedEffect(mute) { applyParams() }
 
@@ -233,8 +239,9 @@ fun VideoEditor(path: String, dir: String, addMode: Boolean, onCancel: () -> Uni
                 val stop = stopAt
                 if (stop != null && p >= stop - 40) { pause(); stopAt = null; seek(cur, stop) }
                 else if (p >= c.end - 30) {
-                    val next = if (cur + 1 > clips.lastIndex) 0 else cur + 1
-                    seek(next, clips[next].start)
+                    // После последнего куска — стоп (без автоповтора), иначе — следующий кусок.
+                    if (cur + 1 > clips.lastIndex) { pause(); seek(cur, c.end); atEnd = true }
+                    else seek(cur + 1, clips[cur + 1].start)
                 }
                 if (px > 0f && !touching) scroll.scrollTo((VideoCut.toEdited(clips, cur, srcPos) * px).roundToInt())
             }
@@ -275,6 +282,9 @@ fun VideoEditor(path: String, dir: String, addMode: Boolean, onCancel: () -> Uni
     fun setNudge(v: Long) { nudge = v.coerceIn(1L, 60_000L); prefs.edit().putLong("nudge", nudge).apply() }
     var nudgeMenu by remember { mutableStateOf(false) }
     var nudgeCustom by remember { mutableStateOf(false) }
+    // Сколько показывать при подрезке: конец — последние N мс до нового конца, начало — первые N мс. Меняется в меню шага.
+    var previewMs by remember { mutableLongStateOf(prefs.getLong("preview_ms", 500L).coerceIn(100L, 10_000L)) }
+    fun setPreview(v: Long) { previewMs = v.coerceIn(100L, 10_000L); prefs.edit().putLong("preview_ms", previewMs).apply() }
     fun split() {
         val r = VideoCut.split(clips, playhead)
         if (r == null) toast(ctx, "Бегунок у края куска — сдвиньте его") else { commit { setClips(r.first) }; selected = r.second }
@@ -456,7 +466,7 @@ fun VideoEditor(path: String, dir: String, addMode: Boolean, onCancel: () -> Uni
                                     trimming = false
                                     // Отпустили конец — играем последние 0,2 с до него и останавливаемся на нём.
                                     clips.getOrNull(s)?.let { c ->
-                                        seek(s, maxOf(c.start, c.end - (END_PREVIEW_MS * c.speed).toLong()))
+                                        seek(s, maxOf(c.start, c.end - (previewMs * c.speed).toLong()))
                                         scrollToPlayhead()
                                         stopAt = c.end
                                         play()
@@ -497,7 +507,7 @@ fun VideoEditor(path: String, dir: String, addMode: Boolean, onCancel: () -> Uni
                         val c = clips.getOrNull(si) ?: return@TimeField
                         commit { clips[si] = c.copy(end = ms.coerceIn(c.start + VideoCut.MIN_MS, durations[c.src] ?: c.end)) }
                         val nc = clips[si]
-                        seek(si, maxOf(nc.start, nc.end - (END_PREVIEW_MS * nc.speed).toLong())); scrollToPlayhead(); stopAt = nc.end; play()
+                        seek(si, maxOf(nc.start, nc.end - (previewMs * nc.speed).toLong())); scrollToPlayhead(); stopAt = nc.end; play()
                     }
                     Spacer(Modifier.width(8.dp))
                     Text("кусок ${si + 1}/${clips.size}\n${clock(sel.len)}", color = Color.White.copy(alpha = .7f), fontSize = 11.sp)
@@ -508,15 +518,16 @@ fun VideoEditor(path: String, dir: String, addMode: Boolean, onCancel: () -> Uni
                     val nc = VideoCut.nudgeStart(c, delta)
                     if (nc == c) { toast(ctx, if (delta > 0) "Это начало видео" else "Кусок уже самый короткий"); return }
                     commit { clips[si] = nc }
-                    stopAt = null; pause(); seek(si, nc.start); scrollToPlayhead()
+                    // Показать новое начало: первые N мс — и стоп.
+                    atEnd = false; seek(si, nc.start); scrollToPlayhead(); stopAt = minOf(nc.end, nc.start + (previewMs * nc.speed).toLong()); play()
                 }
                 fun nudgeEnd(delta: Long) {
                     val c = clips.getOrNull(si) ?: return
                     val nc = VideoCut.nudgeEnd(c, delta, durations[c.src] ?: c.end)
                     if (nc == c) { toast(ctx, if (delta > 0) "Это конец видео" else "Кусок уже самый короткий"); return }
                     commit { clips[si] = nc }
-                    // Как при отпускании ручки конца: последние 0,2 с до него — и стоп на нём.
-                    seek(si, maxOf(nc.start, nc.end - (END_PREVIEW_MS * nc.speed).toLong())); scrollToPlayhead(); stopAt = nc.end; play()
+                    // Как при отпускании ручки конца: последние N мс до него — и стоп на нём.
+                    atEnd = false; seek(si, maxOf(nc.start, nc.end - (previewMs * nc.speed).toLong())); scrollToPlayhead(); stopAt = nc.end; play()
                 }
                 Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 2.dp), verticalAlignment = Alignment.Bottom) {
                     Column {
@@ -538,6 +549,13 @@ fun VideoEditor(path: String, dir: String, addMode: Boolean, onCancel: () -> Uni
                                 )
                             }
                             androidx.compose.material3.DropdownMenuItem(text = { Text("Своё значение…") }, onClick = { nudgeMenu = false; nudgeCustom = true })
+                            androidx.compose.material3.HorizontalDivider()
+                            listOf(300L, 500L, 1000L, 1500L, 2000L, 3000L).forEach { v ->
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text("Показывать ${secText(v)} после подрезки", fontWeight = if (v == previewMs) FontWeight.Bold else null) },
+                                    onClick = { setPreview(v); nudgeMenu = false },
+                                )
+                            }
                         }
                     }
                     Spacer(Modifier.weight(1f))

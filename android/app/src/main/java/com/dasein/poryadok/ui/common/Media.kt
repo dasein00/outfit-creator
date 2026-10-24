@@ -333,18 +333,25 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerControls(view: Vid
     ) { PlayerIcon(PlayerIcons.FULLSCREEN, 22.dp) }
     androidx.compose.animation.AnimatedVisibility(shown, Modifier.matchParentSize(), enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
         Box(Modifier.fillMaxSize()) {
-            // Слева вверху — скорость: касание переключает 1× → 1,25× → 1,5× → 2× → 0,5× → 0,75× → 1×.
-            if (Build.VERSION.SDK_INT >= 23) androidx.compose.foundation.layout.Row(
-                Modifier.align(Alignment.TopStart).padding(6.dp).clip(RoundedCornerShape(10.dp)).background(Color.Black.copy(alpha = .45f))
-                    .clickable(onClickLabel = "Скорость") {
-                        lastTouch = System.currentTimeMillis()
-                        val i = PLAYER_SPEEDS.indexOf(speed)
-                        onSpeed(PLAYER_SPEEDS[(if (i < 0) 0 else i + 1) % PLAYER_SPEEDS.size])
-                    }.padding(horizontal = 8.dp, vertical = 5.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                PlayerIcon(PlayerIcons.SPEED, 20.dp)
-                Text(" " + speedText(speed), color = if (speed == 1f) Color.White else Color(0xFFFBDFAB), fontSize = 13.sp, maxLines = 1)
+            // Слева вверху — скорость: список от 0,1× (очень медленно, рассмотреть движение) до 2×.
+            if (Build.VERSION.SDK_INT >= 23) Box(Modifier.align(Alignment.TopStart).padding(6.dp)) {
+                var speedMenu by remember { mutableStateOf(false) }
+                androidx.compose.foundation.layout.Row(
+                    Modifier.clip(RoundedCornerShape(10.dp)).background(Color.Black.copy(alpha = .45f))
+                        .clickable(onClickLabel = "Скорость") { lastTouch = System.currentTimeMillis(); speedMenu = true }.padding(horizontal = 8.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    PlayerIcon(PlayerIcons.SPEED, 20.dp)
+                    Text(" " + speedText(speed) + " ▾", color = if (speed == 1f) Color.White else Color(0xFFFBDFAB), fontSize = 13.sp, maxLines = 1)
+                }
+                androidx.compose.material3.DropdownMenu(speedMenu, { speedMenu = false }) {
+                    PLAYER_SPEEDS.sorted().forEach { v ->
+                        androidx.compose.material3.DropdownMenuItem(
+                            { Text(speedText(v) + if (v == 1f) " (обычная)" else if (v <= 0.25f) " (медленно)" else "", fontWeight = if (v == speed) androidx.compose.ui.text.font.FontWeight.Bold else null) },
+                            { speedMenu = false; lastTouch = System.currentTimeMillis(); onSpeed(v) },
+                        )
+                    }
+                }
             }
             // Центр: −10 с, пуск/пауза, +10 с — фирменные кнопки плеера.
             androidx.compose.foundation.layout.Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically) {
@@ -395,7 +402,8 @@ private object PlayerIcons {
     const val SPEED = 11
 }
 
-private val PLAYER_SPEEDS = listOf(1f, 1.25f, 1.5f, 2f, 0.5f, 0.75f)
+// По кругу: обычная, быстрее, потом медленнее — до 0,1× (покадрово рассмотреть движение).
+private val PLAYER_SPEEDS = listOf(1f, 1.25f, 1.5f, 1.75f, 2f, 0.1f, 0.25f, 0.5f, 0.75f)
 private fun speedText(s: Float) = (if (s == Math.floor(s.toDouble()).toFloat()) "${s.toInt()}" else s.toString().replace('.', ',')) + "×"
 
 /** MediaPlayer каждого плеера (VideoView скорость менять не умеет) и скорость, которая на нём уже стоит. */

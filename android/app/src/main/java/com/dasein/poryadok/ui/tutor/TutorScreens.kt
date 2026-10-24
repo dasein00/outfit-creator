@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.tutor
 
+import com.dasein.poryadok.ui.common.cardViewport
 import android.speech.tts.TextToSpeech
 import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.background
@@ -677,7 +678,7 @@ fun TutorWordsScreen(nav: NavHostController) {
             (q.isBlank() || q.trim().lowercase().let { it in w.en.lowercase() || it in w.ru.lowercase() })
     }
     Screen("Словарь", onBack = { nav.popBackStack() }, actions = { IconAction("ui:check", "Добавить слово") { adding = true } }) { pad ->
-        LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 40.dp)) {
+        LazyColumn(Modifier.padding(pad).cardViewport(), contentPadding = PaddingValues(bottom = 40.dp)) {
             item {
                 TextInput(q, { q = it }, "Поиск по-английски или по-русски")
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {

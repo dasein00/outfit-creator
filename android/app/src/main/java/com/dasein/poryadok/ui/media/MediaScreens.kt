@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.media
 
+import com.dasein.poryadok.ui.common.cardViewport
 import com.dasein.poryadok.ui.common.Hint
 import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
@@ -585,7 +586,7 @@ fun MediaSearchScreen(nav: NavHostController, kind: Int, fillId: Long = 0) {
     }
     val facets = remember(results, discovered) { if (discovered) emptyList<Pair<String, Int>>() to emptyList() else MediaDiscover.facets(results) }
     Screen("Найти: ${MediaKind.names[kind].lowercase()}", onBack = { nav.popBackStack() }) { pad ->
-        LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 40.dp)) {
+        LazyColumn(Modifier.padding(pad).cardViewport(), contentPadding = PaddingValues(bottom = 40.dp)) {
             item {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     sources.forEach { s -> Pill(s.title, s.name == source) { source = s.name; results = emptyList(); error = null } }

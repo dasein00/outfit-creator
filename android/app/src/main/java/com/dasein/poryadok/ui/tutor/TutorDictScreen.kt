@@ -1,5 +1,6 @@
 package com.dasein.poryadok.ui.tutor
 
+import com.dasein.poryadok.ui.common.cardViewport
 import androidx.compose.foundation.background
 import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.layout.Arrangement
@@ -70,7 +71,7 @@ fun TutorDictScreen(nav: NavHostController) {
     val offline by sp.offline
 
     Screen("Словарь английского", onBack = { nav.popBackStack() }) { pad ->
-        LazyColumn(Modifier.padding(pad), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(Modifier.padding(pad).cardViewport(), contentPadding = PaddingValues(bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
                 SearchField(q, { q = it }, "Слово по-английски или по-русски")
                 if (offline == false) Tile(Modifier.padding(top = 8.dp), color = extra.warn.copy(alpha = .15f)) {
