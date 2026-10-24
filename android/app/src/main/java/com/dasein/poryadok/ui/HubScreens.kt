@@ -83,13 +83,20 @@ fun PlanScreen(nav: NavHostController, initialTab: Int) {
     }
 }
 
-/** «Задачи и цели»: один раздел с двумя вкладками (свайп или переключатель сверху). */
+/**
+ * «Задачи, цели и заметки» — один раздел с тремя вкладками (свайп или переключатель сверху).
+ * Они связаны: пункты заметки превращаются в задачи с датой (видны в календаре), задача помнит свою заметку,
+ * у цели есть своя заметка.
+ */
 @Composable
 fun TasksGoalsScreen(nav: NavHostController, initialTab: Int, onBack: (() -> Unit)?) {
     var tab by rememberSaveable(initialTab) { mutableStateOf(initialTab) }
-    TabbedHost(listOf(0 to "Задачи", 1 to "Цели"), tab, { tab = it }) { t ->
-        if (t == 0) TasksScreen(nav, onBack, showGoals = false)
-        else com.dasein.poryadok.ui.productivity.GoalsScreen(nav, embedded = onBack == null)
+    TabbedHost(listOf(0 to "Задачи", 1 to "Цели", 2 to "Заметки"), tab, { tab = it }) { t ->
+        when (t) {
+            0 -> TasksScreen(nav, onBack, showGoals = false)
+            1 -> com.dasein.poryadok.ui.productivity.GoalsScreen(nav, embedded = onBack == null)
+            else -> com.dasein.poryadok.ui.notes.PagesHome(nav, embedded = true)
+        }
     }
 }
 

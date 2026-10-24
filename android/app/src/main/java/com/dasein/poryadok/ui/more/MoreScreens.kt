@@ -81,7 +81,7 @@ data class Hub(val icon: String, val title: String, val sub: String, val route: 
 val HUB = listOf(
     Hub("d06/00", "Финансы", "операции, бюджеты, счета", Routes.FINANCE),
     Hub("d04/00", "Привычки", "серии и статистика", Routes.HABITS),
-    Hub("d03/00", "Задачи и цели", "списки, проекты, цели и этапы", Routes.TASKS),
+    Hub("d03/00", "Задачи, цели и заметки", "списки, проекты, цели, заметки — связаны между собой и с календарём", Routes.TASKS),
     Hub("d11/00", "Питание", "КБЖУ и калории", Routes.health(0)),
     Hub("d08/00", "Давление и пульс", "дневник для вас и близких, нормы по возрасту, советы врачей", com.dasein.poryadok.ui.health.PressureRoutes.HOME),
     Hub("d08/02", "Вес и состав тела", "весы, метрики, тренд", Routes.health(1)),
@@ -89,7 +89,6 @@ val HUB = listOf(
     Hub("d08/04", "Шаги", "синхронизация с телефоном", Routes.STEPS),
     Hub("d08/06", "Сон", "автоопределение и режим", Routes.wellbeing(1)),
     Hub("d08/05", "Вода", "норма на день", Routes.wellbeing(2)),
-    Hub("d18/00", "Заметки", "страницы, статьи, картинки", Routes.NOTES),
     Hub("d17/00", "Фильмы, сериалы, книги", "коллекция и отзывы", Routes.topsHub(0)),
     Hub("books/08", "Читалка", "EPUB, FB2, MOBI, PDF, DjVu: закладки, заметки, чтение вслух", com.dasein.poryadok.ui.reader.READER_ROUTE),
     Hub("d19/00", "Гардероб", "образы на манекене", Routes.WARDROBE),

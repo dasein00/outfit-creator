@@ -317,7 +317,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
                 "${Routes.WELLBEING}?tab={tab}",
                 arguments = listOf(navArgument("tab") { type = NavType.IntType; defaultValue = 0 }),
             ) { WellbeingScreen(nav, it.int("tab")) }
-            composable(Routes.NOTES) { com.dasein.poryadok.ui.notes.PagesHome(nav) }
+            composable(Routes.NOTES) { TasksGoalsScreen(nav, 2) { nav.popBackStack() } }
             composable("page/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
                 com.dasein.poryadok.ui.notes.PageScreen(nav, it.long("id"))
             }

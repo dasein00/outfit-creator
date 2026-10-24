@@ -214,8 +214,15 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
 }
 
 @Composable
-private fun Operations(nav: NavHostController, month: List<Txn>, cats: List<Category>, accounts: List<Account>, cur: String) {
+private fun Operations(nav: NavHostController, monthAll: List<Txn>, cats: List<Category>, accounts: List<Account>, cur: String) {
     val extra = LocalExtra.current
+    // Фильтр по категории (всплывающий список) и поиск по заметке.
+    var catFilter by rememberSaveable { mutableStateOf<Long?>(null) }
+    var query by rememberSaveable { mutableStateOf("") }
+    val month = monthAll.filter { t ->
+        (catFilter == null || (t.categoryId ?: -1L) == catFilter) &&
+            (query.isBlank() || t.note.contains(query, true) || (cats.firstOrNull { it.id == t.categoryId }?.name?.contains(query, true) == true))
+    }
     val inc = month.filter { it.type == TxnType.INCOME }.sumOf { it.amount }
     val exp = month.filter { it.type == TxnType.EXPENSE }.sumOf { it.amount }
     LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
@@ -228,6 +235,10 @@ private fun Operations(nav: NavHostController, month: List<Txn>, cats: List<Cate
             Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Pill("− Расход", false) { nav.navigate(Routes.txn(0)) }
                 Pill("+ Доход", false) { nav.navigate(Routes.txn(0, income = true)) }
+            }
+            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CategoryDropdown(cats, monthAll.filter { it.type != TxnType.TRANSFER }.groupingBy { it.categoryId ?: -1L }.eachCount(), catFilter, Modifier.weight(1f)) { catFilter = it }
+                com.dasein.poryadok.ui.common.TextInput(query, { query = it }, "Поиск", Modifier.weight(1f))
             }
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Pill("Выписка", false, glyph = "ui:document") { nav.navigate(STATEMENT_ROUTE) }

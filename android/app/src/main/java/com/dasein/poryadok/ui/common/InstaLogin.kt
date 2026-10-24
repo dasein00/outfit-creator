@@ -76,6 +76,12 @@ fun InstaLoginDialog(onDone: () -> Unit) {
                 }
                 Button(onClick = { close() }, modifier = Modifier.padding(start = 8.dp)) { Text(btnLabel("Готово")) }
             }
+            // Если страница «замерла» (ничего не нажимается) или показала свою ошибку — открыть форму входа напрямую или обновить.
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { web?.let { InstaWeb.setup(it, false); it.loadUrl(InstaWeb.LOGIN_URL) } }) { Text(btnLabel("Форма входа")) }
+                TextButton(onClick = { web?.let { InstaWeb.setup(it, true); it.loadUrl(InstaWeb.LOGIN_URL) } }) { Text(btnLabel("Как на компьютере")) }
+                TextButton(onClick = { web?.reload() }) { Text(btnLabel("Обновить")) }
+            }
             failed?.let { err ->
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(

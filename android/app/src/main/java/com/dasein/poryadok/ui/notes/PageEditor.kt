@@ -93,6 +93,7 @@ import com.dasein.poryadok.data.Page
 import com.dasein.poryadok.data.PageBlock
 import com.dasein.poryadok.data.PagesRepo
 import com.dasein.poryadok.logic.InlineMarkdown
+import com.dasein.poryadok.logic.Dates
 import com.dasein.poryadok.logic.MdStyle
 import com.dasein.poryadok.ui.Routes
 import com.dasein.poryadok.ui.common.Glyph
@@ -334,6 +335,8 @@ fun PageScreen(nav: NavHostController, id: Long) {
     var editing by remember(id) { mutableStateOf<Boolean?>(null) }
     var findReplace by remember { mutableStateOf(false) }
     var outline by remember { mutableStateOf(false) }
+    // Пункты заметки → задачи (с датой — появятся в календаре и на главной).
+    var toTasks by remember { mutableStateOf<List<Long>?>(null) }
 
     LaunchedEffect(id) { st.load(Graph.pages.blocksNow(id)) }
     LaunchedEffect(page?.id) { if (title == null && page != null) title = page!!.title }
@@ -449,6 +452,8 @@ fun PageScreen(nav: NavHostController, id: Long) {
                     DropdownMenuItem({ Text(btnLabel(if (canEdit) "Готово (режим чтения)" else "Редактировать")) }, { menu = false; if (canEdit) stopEdit() else startEdit() })
                     DropdownMenuItem({ Text(btnLabel("Найти и заменить…")) }, { menu = false; findReplace = true })
                     DropdownMenuItem({ Text(btnLabel("Оглавление")) }, { menu = false; outline = true })
+                    val openTodos = st.blocks.filter { it.type == BlockType.TODO && !it.checked && st.plain(it.id).isNotBlank() }
+                    if (openTodos.isNotEmpty()) DropdownMenuItem({ Text("Пункты → в задачи (${openTodos.size})") }, { menu = false; toTasks = openTodos.map { it.id } })
                     DropdownMenuItem({ Text(btnLabel("Копировать весь текст")) }, {
                         menu = false
                         val text = listOf(title.orEmpty()) + st.blocks.filter { it.type in BlockType.TEXTUAL }.map { InlineMarkdown.plain(st.plain(it.id)) }
@@ -612,6 +617,7 @@ fun PageScreen(nav: NavHostController, id: Long) {
                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { st.format(MdStyle.HIGHLIGHT) }
                             .background(Color(0x66E0B040)).padding(horizontal = 10.dp, vertical = 6.dp),
                     )
+                    if (st.blocks.getOrNull(st.index(fid))?.let { it.type == BlockType.TODO && st.plain(it.id).isNotBlank() } == true) Tool("→ Задача") { toTasks = listOf(fid) }
                     Tool("☐") { st.setType(fid, if (st.blocks.getOrNull(st.index(fid))?.type == BlockType.TODO) BlockType.TEXT else BlockType.TODO) }
                     Tool("•") { st.setType(fid, if (st.blocks.getOrNull(st.index(fid))?.type == BlockType.BULLET) BlockType.TEXT else BlockType.BULLET) }
                     Tool("⇥") { st.update(fid) { if (it.type in BlockType.CONTINUES) it.copy(indent = (it.indent + 1).coerceAtMost(4)) else it } }
@@ -632,6 +638,22 @@ fun PageScreen(nav: NavHostController, id: Long) {
         }
     }
 
+    toTasks?.let { ids ->
+        com.dasein.poryadok.ui.common.DatePickDialog(Dates.today(), onDismiss = { toTasks = null }, allowClear = true, onPick = { day ->
+            toTasks = null
+            st.save()
+            val pageTitle = title.orEmpty().ifBlank { "Без названия" }
+            val items = ids.mapNotNull { bid -> InlineMarkdown.plain(st.plain(bid)).trim().takeIf { it.isNotBlank() } }
+            io {
+                items.forEach { t ->
+                    Graph.dao.upsertTask(com.dasein.poryadok.data.TaskItem(title = t, dueDay = day, note = "Из заметки «$pageTitle» [page:$id]", createdAt = System.currentTimeMillis()))
+                }
+            }
+            android.widget.Toast.makeText(
+                ctx, "Задач добавлено: ${items.size}" + (day?.let { " на ${Dates.label(it)} — они видны в календаре" } ?: " (без даты)"), android.widget.Toast.LENGTH_LONG,
+            ).show()
+        })
+    }
     if (findReplace) FindReplaceDialog(
         count = { q -> if (q.isBlank()) 0 else st.blocks.filter { it.type in BlockType.TEXTUAL }.sumOf { b -> Regex(Regex.escape(q), RegexOption.IGNORE_CASE).findAll(st.plain(b.id)).count() } },
         onDismiss = { findReplace = false },

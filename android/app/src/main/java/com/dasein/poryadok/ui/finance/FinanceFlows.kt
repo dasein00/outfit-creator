@@ -77,8 +77,7 @@ private val QUICK = listOf(1, 7, 30, 90, 180, 360)
 @Composable
 private fun PeriodPicker(period: FinPeriod, onPick: (FinPeriod) -> Unit) {
     val today = Dates.today()
-    var pickFrom by remember { mutableStateOf(false) }
-    var pickTo by remember { mutableStateOf<Long?>(null) }
+    var custom by remember { mutableStateOf(false) }
     var months by remember { mutableStateOf(false) }
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         QUICK.forEach { n ->
@@ -86,7 +85,7 @@ private fun PeriodPicker(period: FinPeriod, onPick: (FinPeriod) -> Unit) {
             Pill(if (n == 1) "1 день" else "$n дней", period.from == p.from && period.to == p.to && period.label == p.label) { onPick(p) }
         }
         Pill("Месяц", months || period.label.startsWith("м:")) { months = !months }
-        Pill("Свой период", period.label == "свой") { pickFrom = true }
+        Pill("Свой период", period.label == "свой") { custom = true }
     }
     if (months) Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         val cur = if (period.label.startsWith("м:")) YearMonth.parse(period.label.removePrefix("м:")) else YearMonth.now()
@@ -95,15 +94,41 @@ private fun PeriodPicker(period: FinPeriod, onPick: (FinPeriod) -> Unit) {
         Text(Dates.monthTitle(cur), Modifier.weight(1f).clickable { set(cur) }, textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold)
         IconButton(onClick = { set(cur.plusMonths(1)) }) { Icon(Icons.Default.ChevronRight, "Позже") }
     }
-    if (pickFrom) DatePickDialog(period.from, onDismiss = { pickFrom = false }, allowClear = false, onPick = { d ->
-        pickFrom = false
-        if (d != null) pickTo = d
-    })
-    pickTo?.let { from ->
-        DatePickDialog(maxOf(from, period.to), onDismiss = { pickTo = null }, allowClear = false, onPick = { d ->
-            pickTo = null
-            if (d != null) onPick(FinPeriod(minOf(from, d), maxOf(from, d), "свой"))
-        })
+    // Свой период: в календаре — начальный день, потом конечный; или ввести две даты вручную.
+    if (custom) com.dasein.poryadok.ui.common.DateRangeDialog(period.from, period.to, onDismiss = { custom = false }) { f, t ->
+        custom = false
+        onPick(FinPeriod(f, t, "свой"))
+    }
+}
+
+/** Фильтр по категории — всплывающим списком: «Все категории» или одна (с числом операций). */
+@Composable
+fun CategoryDropdown(cats: List<Category>, counts: Map<Long, Int>, selected: Long?, modifier: Modifier = Modifier, onSelect: (Long?) -> Unit) {
+    val extra = LocalExtra.current
+    var open by remember { mutableStateOf(false) }
+    val cur = cats.firstOrNull { it.id == selected }
+    Box(modifier) {
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).border(1.dp, extra.line, RoundedCornerShape(12.dp))
+                .clickable { open = true }.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (cur != null) Glyph(cur.emoji, 18.dp)
+            Text(
+                if (selected == null) "Все категории" else if (selected == -1L) "Без категории" else " ${cur?.name ?: "Категория"}",
+                Modifier.weight(1f), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+            Text("▾", color = extra.dim)
+        }
+        androidx.compose.material3.DropdownMenu(open, { open = false }) {
+            androidx.compose.material3.DropdownMenuItem({ Text(btnLabel("Все категории")) }, { open = false; onSelect(null) })
+            cats.filter { (counts[it.id] ?: 0) > 0 }.sortedByDescending { counts[it.id] ?: 0 }.forEach { c ->
+                androidx.compose.material3.DropdownMenuItem(
+                    { Text("${c.name} · ${counts[c.id]}") }, { open = false; onSelect(c.id) }, leadingIcon = { Glyph(c.emoji, 20.dp) },
+                )
+            }
+            if ((counts[-1L] ?: 0) > 0) androidx.compose.material3.DropdownMenuItem({ Text("Без категории · ${counts[-1L]}") }, { open = false; onSelect(-1L) })
+        }
     }
 }
 
@@ -156,6 +181,7 @@ fun FlowTab(nav: NavHostController, all: List<Txn>, cats: List<Category>, accoun
 
     Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         PeriodPicker(period) { p -> from = p.from; to = p.to; label = p.label; catFilter = null }
+        CategoryDropdown(cats, list.groupingBy { it.categoryId ?: -1L }.eachCount(), catFilter, Modifier.fillMaxWidth().padding(top = 8.dp)) { catFilter = it }
         Gap(8.dp)
         Tile {
             Text(periodTitle(period), fontSize = 12.sp, color = extra.dim)

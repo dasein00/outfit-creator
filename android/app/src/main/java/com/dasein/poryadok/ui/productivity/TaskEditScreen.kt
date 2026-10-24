@@ -153,6 +153,10 @@ fun TaskEditScreen(nav: NavHostController, id: Long, day: Long, goal: Long) {
                 value = t.note, onValueChange = { t = t.copy(note = it) }, label = { Text(btnLabel("Заметка")) },
                 modifier = Modifier.fillMaxWidth(), minLines = 2, shape = RoundedCornerShape(14.dp),
             )
+            // Заметка к задаче: задачи из пунктов заметки уже ссылаются на неё; к любой другой можно создать новую.
+            if (t.title.isNotBlank() || com.dasein.poryadok.ui.notes.NoteLinks.pageOf(t.note) != null) com.dasein.poryadok.ui.notes.NoteLinkButton(
+                nav, com.dasein.poryadok.ui.notes.NoteLinks.pageOf(t.note), t.title,
+            ) { pid -> t = t.copy(note = (t.note.trim() + "\n" + com.dasein.poryadok.ui.notes.NoteLinks.tag(pid)).trim()); if (t.id != 0L) io { dao.upsertTask(t) } }
 
             SectionTitle("Когда")
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

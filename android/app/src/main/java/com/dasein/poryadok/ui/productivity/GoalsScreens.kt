@@ -213,6 +213,11 @@ fun GoalScreen(nav: NavHostController, id: Long) {
             TextInput(g.why, { g = g.copy(why = it) }, "Зачем это мне? (мотивация)", singleLine = false, minLines = 2)
             Gap(8.dp)
             FieldButton("Срок", g.deadline?.let { Dates.full(it) } ?: "Без срока", Modifier.fillMaxWidth()) { pickDate = true }
+            // Заметка цели: план, мысли, материалы — открывается отсюда.
+            if (g.id != 0L) {
+                var linked by remember(g.id) { mutableStateOf(com.dasein.poryadok.ui.notes.NoteLinks.goalPage(g.id)) }
+                com.dasein.poryadok.ui.notes.NoteLinkButton(nav, linked, "Цель: ${g.title}") { pid -> com.dasein.poryadok.ui.notes.NoteLinks.setGoalPage(g.id, pid); linked = pid }
+            }
 
             SectionTitle("Измеримый результат (необязательно)")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

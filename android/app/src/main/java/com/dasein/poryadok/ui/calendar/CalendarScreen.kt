@@ -102,6 +102,7 @@ import java.time.YearMonth
 fun CalendarScreen(nav: NavHostController, initialTab: Int, onBack: (() -> Unit)? = null) {
     var tab by rememberSaveable(initialTab) { mutableStateOf(initialTab) }
     var addMenu by remember { mutableStateOf(false) }
+    var newVacation by remember { mutableStateOf(false) }
     var editReminder by remember { mutableStateOf<Reminder?>(null) }
     var quickTask by remember { mutableStateOf(false) }
     var selected by rememberSaveable { mutableStateOf(Dates.today()) }
@@ -120,6 +121,7 @@ fun CalendarScreen(nav: NavHostController, initialTab: Int, onBack: (() -> Unit)
                 DropdownMenu(expanded = addMenu, onDismissRequest = { addMenu = false }) {
                     DropdownMenuItem(text = { Text(btnLabel("Событие")) }, leadingIcon = { Glyph(Glyphs.EVENT, 20.dp) }, onClick = { addMenu = false; nav.navigate(Routes.event(0, selected)) })
                     DropdownMenuItem(text = { Text(btnLabel("Задача")) }, leadingIcon = { Glyph(Glyphs.CHECK, 20.dp) }, onClick = { addMenu = false; quickTask = true })
+                    DropdownMenuItem(text = { Text(btnLabel("Отпуск")) }, leadingIcon = { Glyph("ui:sun", 20.dp) }, onClick = { addMenu = false; newVacation = true })
                     DropdownMenuItem(text = { Text(btnLabel("Напоминалка")) }, leadingIcon = { Glyph(Glyphs.REMINDER, 20.dp) }, onClick = {
                         addMenu = false
                         editReminder = Reminder(title = "", day = selected, min = (Dates.nowMinutes() / 60 + 1).coerceAtMost(23) * 60)
@@ -151,6 +153,7 @@ fun CalendarScreen(nav: NavHostController, initialTab: Int, onBack: (() -> Unit)
     }
     editReminder?.let { r -> ReminderDialog(r) { editReminder = null } }
     if (quickTask) QuickAddSheet(onDismiss = { quickTask = false }, defaultDay = selected)
+    if (newVacation) VacationDialog(null, selected) { newVacation = false }
 }
 
 @Composable
@@ -384,7 +387,10 @@ private fun VacationDialog(initial: com.dasein.poryadok.logic.Vacation?, day: Lo
     var end by remember { mutableStateOf(initial?.end ?: (day + 13)) }
     var title by remember { mutableStateOf(initial?.title.orEmpty()) }
     var pick by remember { mutableStateOf(0) }
+    var range by remember { mutableStateOf(initial == null) }
     var deleting by remember { mutableStateOf(false) }
+    // Даты отпуска: в календаре — первый день, потом последний, или вручную.
+    if (range) com.dasein.poryadok.ui.common.DateRangeDialog(start, end, onDismiss = { range = false }, title = "Даты отпуска") { f, t -> start = f; end = t; range = false }
     if (pick != 0) DatePickDialog(if (pick == 1) start else end, { pick = 0 }, { d ->
         if (d != null) {
             if (pick == 1) { start = d; if (end < d) end = d } else { end = d; if (start > d) start = d }
@@ -399,6 +405,8 @@ private fun VacationDialog(initial: com.dasein.poryadok.logic.Vacation?, day: Lo
         title = { Text(if (initial == null) "Новый отпуск" else "Отпуск") },
         text = {
             Column {
+                com.dasein.poryadok.ui.common.OutlinedButton(onClick = { range = true }, modifier = Modifier.fillMaxWidth()) { Text(btnLabel("Отметить даты в календаре")) }
+                Gap(8.dp)
                 Row {
                     FieldButton("Начало", Dates.label(start), Modifier.weight(1f)) { pick = 1 }
                     HGap(8.dp)

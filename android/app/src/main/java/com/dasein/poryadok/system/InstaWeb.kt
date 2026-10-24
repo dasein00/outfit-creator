@@ -43,6 +43,13 @@ object InstaWeb {
         w.settings.javaScriptEnabled = true
         w.settings.domStorageEnabled = true
         w.settings.userAgentString = if (desktop) DESKTOP_UA else mobileUa(w)
+        w.settings.javaScriptCanOpenWindowsAutomatically = true
+        w.settings.setSupportMultipleWindows(false)
+        w.settings.useWideViewPort = desktop
+        w.settings.loadWithOverviewMode = desktop
+        @Suppress("DEPRECATION") runCatching { w.settings.databaseEnabled = true }
+        // Без WebChromeClient окна страницы (согласие на куки, подтверждения) не показываются, и она «замирает» под затемнением.
+        if (w.webChromeClient == null) w.webChromeClient = android.webkit.WebChromeClient()
         runCatching { CookieManager.getInstance().setAcceptCookie(true); CookieManager.getInstance().setAcceptThirdPartyCookies(w, true) }
         // Без заголовка с именем приложения — для сайта это обычный браузер.
         runCatching {
