@@ -1,5 +1,6 @@
 package com.dasein.poryadok.ui.more
 
+import com.dasein.poryadok.ui.common.cardViewport
 import com.dasein.poryadok.ui.common.Hint
 import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
@@ -184,10 +185,10 @@ fun MoreScreen(nav: NavHostController) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             state = grid,
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
+            contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.padding(pad),
+            modifier = Modifier.padding(pad).cardViewport(),
         ) {
             item(key = "search", span = { GridItemSpan(2) }) { SectionSearchBar(nav, Modifier.padding(bottom = 4.dp)) }
             if (moving != null) item(key = "moving_hint", span = { GridItemSpan(2) }) {

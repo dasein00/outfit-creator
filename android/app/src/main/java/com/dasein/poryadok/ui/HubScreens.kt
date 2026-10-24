@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui
 
+import com.dasein.poryadok.ui.common.cardViewport
 import com.dasein.poryadok.ui.common.swipeTabs
 import com.dasein.poryadok.ui.common.tabSlide
 import com.dasein.poryadok.ui.common.swipeTabsOf
@@ -159,8 +160,8 @@ fun HealthHubScreen(nav: NavHostController) {
     editing?.let { t -> com.dasein.poryadok.ui.common.SectionEditDialog(t.route, t.title, t.icon) { editing = null } }
     Screen(title = "Здоровье") { pad ->
         LazyVerticalGrid(
-            GridCells.Fixed(2), Modifier.padding(pad),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
+            GridCells.Fixed(2), Modifier.padding(pad).cardViewport(),
+            contentPadding = PaddingValues(bottom = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item(span = { GridItemSpan(2) }) {

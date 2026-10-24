@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -76,3 +77,11 @@ fun Modifier.safeBottom(extra: Dp = 8.dp, withIme: Boolean = false): Modifier {
     val p = barsPx(withIme)
     return with(LocalDensity.current) { padding(bottom = p[1].toDp() + extra) }
 }
+
+/**
+ * Окно прокрутки карточек со скруглёнными краями: карточка, уходящая за верх или низ ленты, обрезается
+ * по радиусу карточек, а не прямой линией. Отступ по бокам — здесь, у ленты [contentPadding] по бокам не нужен.
+ */
+@androidx.compose.runtime.Composable
+fun Modifier.cardViewport(side: androidx.compose.ui.unit.Dp = 16.dp): Modifier =
+    this.padding(horizontal = side).clip(androidx.compose.foundation.shape.RoundedCornerShape(com.dasein.poryadok.ui.theme.LocalLook.current.cardRound.dp))

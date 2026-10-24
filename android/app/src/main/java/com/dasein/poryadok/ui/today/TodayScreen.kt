@@ -1,5 +1,6 @@
 package com.dasein.poryadok.ui.today
 
+import com.dasein.poryadok.ui.common.cardViewport
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.systemBars
@@ -149,10 +150,10 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
         val layout = HomeLayout.state.value
         val homeRows = HomeLayout.rows(layout)
         LazyColumn(
-            Modifier.fillMaxSize().padding(pad),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 8.dp),
+            // Отступ от строки состояния уже в pad — второй не нужен (иначе сверху пустая полоса).
+            Modifier.fillMaxSize().padding(pad).cardViewport(),
+            contentPadding = PaddingValues(top = 4.dp, bottom = 8.dp),
         ) {
-            item(key = "top") { Spacer(Modifier.statusBarsPadding().padding(top = 8.dp)) }
             // Системные кнопки стоят на месте блока «Кнопки» (по умолчанию — между весом и погодой); если блок скрыт — сверху.
             if (homeRows.none { layout[it.first()].id == "greeting" }) item(key = "buttons") { HomeButtons(nav) { quickAdd = true } }
             homeRows.forEach { row ->
@@ -417,7 +418,7 @@ private fun HomeButtons(nav: NavHostController, onAdd: () -> Unit) {
     val extra = LocalExtra.current
     val editor = com.dasein.poryadok.data.UiTexts.editorMode.value
     Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onAdd) { Icon(Icons.Default.Add, "Новая задача", tint = MaterialTheme.colorScheme.primary) }
+        IconButton(onClick = { nav.navigate(Routes.TASKS) }) { Icon(Icons.Default.Add, "Новая задача", tint = MaterialTheme.colorScheme.primary) }
         IconButton(onClick = { com.dasein.poryadok.data.UiTexts.setEditorMode(!editor) }) {
             Icon(Icons.Default.Edit, "Режим редактора", tint = if (editor) MaterialTheme.colorScheme.primary else extra.dim)
         }
