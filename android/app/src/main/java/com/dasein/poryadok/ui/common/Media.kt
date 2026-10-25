@@ -269,6 +269,7 @@ fun VideoPlayer(path: String, modifier: Modifier = Modifier, maxHeight: androidx
     }
     if (full) {
         var big by remember { mutableStateOf<VideoView?>(null) }
+        var bigUi by remember { mutableStateOf(true) }
         fun close() {
             val b = big
             val pos = b?.currentPosition ?: startAt
@@ -285,9 +286,9 @@ fun VideoPlayer(path: String, modifier: Modifier = Modifier, maxHeight: androidx
                         onRelease = { it.stopPlayback() },
                         modifier = Modifier.fillMaxSize(),
                     )
-                    PlayerControls(big, paused = false, speed = speed, onSpeed = { speed = it }, onFull = null)
+                    PlayerControls(big, paused = false, speed = speed, onSpeed = { speed = it }, onFull = null, onShown = { bigUi = it })
                 }
-                Box(
+                if (bigUi) Box(
                     Modifier.align(Alignment.TopEnd).padding(14.dp).clip(RoundedCornerShape(12.dp))
                         .background(Color.Black.copy(alpha = .45f)).clickable { close() }.padding(8.dp),
                 ) { PlayerIcon(PlayerIcons.EXIT_FULLSCREEN, 26.dp) }
@@ -298,10 +299,13 @@ fun VideoPlayer(path: String, modifier: Modifier = Modifier, maxHeight: androidx
 
 /**
  * Кнопки плеера поверх кадра: касание показывает/прячет их, во время воспроизведения они сами скрываются через 2,5 с.
- * [paused] — плеер сейчас не главный (открыт на весь экран), кнопки не показываем.
+ * На паузе касание по кадру (не по кнопке) тоже прячет всё — чистый кадр для скриншота; следующее касание возвращает кнопки.
+ * [paused] — плеер сейчас не главный (открыт на весь экран), кнопки не показываем. [onShown] — видны ли кнопки.
  */
 @Composable
-private fun androidx.compose.foundation.layout.BoxScope.PlayerControls(view: VideoView?, paused: Boolean, speed: Float, onSpeed: (Float) -> Unit, onFull: (() -> Unit)?) {
+private fun androidx.compose.foundation.layout.BoxScope.PlayerControls(
+    view: VideoView?, paused: Boolean, speed: Float, onSpeed: (Float) -> Unit, onFull: (() -> Unit)?, onShown: (Boolean) -> Unit = {},
+) {
     val wantSpeed by androidx.compose.runtime.rememberUpdatedState(speed)
     var shown by remember { mutableStateOf(true) }
     var playing by remember { mutableStateOf(false) }
@@ -309,6 +313,8 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerControls(view: Vid
     var dur by remember { mutableStateOf(0) }
     var dragging by remember { mutableStateOf<Float?>(null) }
     var lastTouch by remember { mutableStateOf(System.currentTimeMillis()) }
+    var wasPlaying by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(shown) { onShown(shown) }
     androidx.compose.runtime.LaunchedEffect(view) {
         while (true) {
             view?.let { v ->
@@ -318,7 +324,9 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerControls(view: Vid
                 applySpeed(v, wantSpeed)
             }
             if (playing && shown && System.currentTimeMillis() - lastTouch > 2500) shown = false
-            if (!playing) shown = true
+            // Видео встало на паузу (само или кнопкой) — кнопки показываются; дальше касание по кадру их прячет.
+            if (!playing && wasPlaying) shown = true
+            wasPlaying = playing
             kotlinx.coroutines.delay(250)
         }
     }
@@ -327,12 +335,12 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerControls(view: Vid
     Box(Modifier.fillMaxSize().clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) {
         shown = !shown; lastTouch = System.currentTimeMillis()
     })
-    if (onFull != null) Box(
-        Modifier.align(Alignment.TopEnd).padding(6.dp).clip(RoundedCornerShape(10.dp))
-            .background(Color.Black.copy(alpha = .45f)).clickable { onFull() }.padding(6.dp),
-    ) { PlayerIcon(PlayerIcons.FULLSCREEN, 22.dp) }
     androidx.compose.animation.AnimatedVisibility(shown, Modifier.matchParentSize(), enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
         Box(Modifier.fillMaxSize()) {
+            if (onFull != null) Box(
+                Modifier.align(Alignment.TopEnd).padding(6.dp).clip(RoundedCornerShape(10.dp))
+                    .background(Color.Black.copy(alpha = .45f)).clickable { onFull() }.padding(6.dp),
+            ) { PlayerIcon(PlayerIcons.FULLSCREEN, 22.dp) }
             // Слева вверху — скорость: список от 0,1× (очень медленно, рассмотреть движение) до 2×.
             if (Build.VERSION.SDK_INT >= 23) Box(Modifier.align(Alignment.TopStart).padding(6.dp)) {
                 var speedMenu by remember { mutableStateOf(false) }

@@ -38,6 +38,8 @@ data class PbnProject(
     val medium: Int = 0,
     /** Чувствительность контуров 0..100: выше — больше границ и мелких деталей. */
     val edges: Int = 60,
+    /** Убрать дубликаты: на глаз одинаковые карандаши (краски) не берутся дважды. */
+    val noDupes: Boolean = false,
 )
 
 /** Свой карандаш, которого нет в стандартном списке. */
@@ -124,7 +126,7 @@ object PbnStore {
         val px = IntArray(w * h).also { small.getPixels(it, 0, w, 0, 0, w, h) }.map { it and 0xFFFFFF }.toIntArray()
         val m = PaintByNumbers.Medium.of(p.medium)
         val pencils = pencils(ctx, m).takeIf { it.size >= 2 } ?: m.catalog
-        PaintByNumbers.build(px, w, h, pencils, p.colors, p.detail, p.edges)
+        PaintByNumbers.build(px, w, h, pencils, p.colors, p.detail, p.edges, dedupe = p.noDupes)
     }
 
     /** Картинка для экрана: [colored] — раскрашенная, иначе — контуры с номерами, как на печати. */

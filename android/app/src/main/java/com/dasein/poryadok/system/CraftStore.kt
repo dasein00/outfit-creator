@@ -51,6 +51,8 @@ data class CraftProject(
     val replace: Map<String, String> = emptyMap(),
     /** Вид схемы: 0 — цветная, как в наборах (цвет клетки + символ), 1 — светлый оттенок + символ, 2 — только символы (ч/б печать). */
     val chartStyle: Int = 0,
+    /** Убрать дубликаты: на глаз одинаковые цвета сливаются в один. */
+    val noDupes: Boolean = false,
     /** Подпись схемы, к которой относятся отметки клеток. */
     val progressSig: String = "",
 ) {
@@ -190,7 +192,8 @@ object CraftStore {
         val skip = if (p.removeBg) CraftPattern.backgroundMask(small, w, h) else null
         val mine = if (p.onlyMine) mine(ctx).map { it.thread() }.takeIf { it.size >= 2 } else null
         val pat = CraftPattern.build(small, w, h, p.colors, p.dither, allowed = allowed, skip = skip, custom = mine)
-        CraftPattern.replace(if (p.cleanup) CraftPattern.cleanup(pat) else pat, p.replace, mine.orEmpty())
+        val clean = (if (p.cleanup) CraftPattern.cleanup(pat) else pat).let { if (p.noDupes) CraftPattern.dedupe(it) else it }
+        CraftPattern.replace(clean, p.replace, mine.orEmpty()).let { if (p.noDupes) CraftPattern.dedupe(it) else it }
     }
 
     // ---------- Отметки выложенных клеток ----------

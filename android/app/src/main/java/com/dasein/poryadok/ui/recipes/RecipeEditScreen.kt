@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -270,6 +271,17 @@ private fun StepBasics(d: RecipeDraft) {
         }
         if (r.photo.isNotBlank()) TextButton(onClick = { d.recipe = r.copy(photo = "") }) { Text(btnLabel("Убрать")) }
     }
+    // Горизонтальная обложка сверху карточки блюда (необязательно).
+    val pickCover = com.dasein.poryadok.ui.common.rememberImagePickerWithCrop(16f / 9f, "recipes", outW = 1600) { d.recipe = d.recipe.copy(cover = it) }
+    Gap(8.dp)
+    if (r.cover.isNotBlank()) {
+        val cov by rememberImage(r.cover, 1200)
+        cov?.let { Image(it, null, Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(14.dp)), contentScale = ContentScale.Crop) }
+        Row {
+            OutlinedButton(onClick = { pickCover() }) { Text(btnLabel("Заменить обложку")) }
+            TextButton(onClick = { d.recipe = r.copy(cover = "") }) { Text(btnLabel("Убрать обложку")) }
+        }
+    } else OutlinedButton(onClick = { pickCover() }) { Text(btnLabel("+ Обложка сверху карточки")) }
     if (recrop) com.dasein.poryadok.ui.common.CropDialog(com.dasein.poryadok.ui.common.Crop.sourceFor(r.photo), 1f, "recipes", png = true, onDismiss = { recrop = false }) {
         recrop = false; setPhoto(it)
     }

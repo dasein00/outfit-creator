@@ -82,9 +82,14 @@ object PaintByNumbers {
      * [sensitivity] 0..100 — чувствительность контуров: чем выше, тем больше различаются близкие оттенки, тем меньше
      * сглаживание и мельче сохраняемые детали, и тем больше резких краёв фото становятся контурами внутри одного цвета.
      */
-    fun build(px: IntArray, w: Int, h: Int, pencils: List<Pencil>, maxColors: Int, level: Int, sensitivity: Int = 50): Result {
+    fun build(px: IntArray, w: Int, h: Int, pencils: List<Pencil>, maxColors: Int, level: Int, sensitivity: Int = 50, dedupe: Boolean = false): Result {
         val sv = sensitivity.coerceIn(0, 100) / 100.0
-        val colors0 = choose(px, pencils, maxColors, mergeDe = 12 - 9 * sv)
+        val chosen = choose(px, pencils, maxColors, mergeDe = 12 - 9 * sv)
+        // Убрать дубликаты: карандаши одного оттенка (у разных наборов бывают одинаковые цвета) не берём дважды.
+        val colors0 = if (!dedupe) chosen else ArrayList<Pencil>().also { kept ->
+            val kl = ArrayList<DoubleArray>()
+            chosen.forEach { p -> val l = CraftPattern.lab(p.rgb); if (kl.none { sqrt(d2(it, l)) < 6.0 }) { kept += p; kl += l } }
+        }
         val pl = colors0.map { CraftPattern.lab(it.rgb) }
         val det = detail(level, w, h)
         // Лёгкое размытие убирает шум фото до подбора цвета.

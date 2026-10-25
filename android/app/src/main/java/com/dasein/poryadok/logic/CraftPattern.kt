@@ -185,6 +185,23 @@ object CraftPattern {
         return Pattern(p.width, p.height, IntArray(cells0.size) { val c = cells0[it]; if (c < 0) -1 else remap[c] }, order.map { uniq[it] })
     }
 
+    /**
+     * Убрать дубликаты: цвета, которые на глаз не отличить (ΔE меньше [de]) — например, два номера с одинаковым оттенком
+     * или повторы в «Моих стразах», — сливаются в самый частый из них.
+     */
+    fun dedupe(p: Pattern, de: Double = 6.0): Pattern {
+        val count = p.counts()
+        val labs = p.colors.map { lab(it.rgb) }
+        val kept = ArrayList<Int>()
+        val to = IntArray(p.colors.size) { it }
+        p.colors.indices.sortedByDescending { count[it] }.forEach { i ->
+            val twin = kept.firstOrNull { k -> Math.sqrt(d2(labs[i], labs[k])) < de }
+            if (twin != null) to[i] = twin else kept += i
+        }
+        if (kept.size == p.colors.size) return p
+        return compact(p.copy(cells = IntArray(p.cells.size) { val c = p.cells[it]; if (c < 0) -1 else to[c] }))
+    }
+
     /** Замены цветов пользователем: номер DMC → другой номер (можно слить два цвета в один или взять соседний оттенок). */
     fun replace(p: Pattern, map: Map<String, String>, mine: List<Thread> = emptyList()): Pattern {
         if (map.isEmpty()) return p

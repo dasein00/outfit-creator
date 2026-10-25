@@ -94,6 +94,7 @@ object PagesRepo {
                 BlockType.DIVIDER -> "---"
                 BlockType.IMAGE -> "![${b.text}](${b.media.substringAfterLast('/')})"
                 BlockType.PAGE -> "📄 ${titles[b.media.toLongOrNull()] ?: "Страница"}"
+                BlockType.VIDEO -> "▶ [${b.text.ifBlank { if (b.media.startsWith("/")) "Видео" else com.dasein.poryadok.logic.VideoEmbed.provider(b.media) }}](${if (b.media.startsWith("/")) b.media.substringAfterLast('/') else b.media})"
                 BlockType.TOGGLE -> "▸ ${b.text}\n${b.media.lines().joinToString("\n") { "    $it" }}"
                 else -> b.text
             }
@@ -125,6 +126,30 @@ object PagesRepo {
     fun templates(): List<Pair<String, List<PageBlock>>> {
         fun b(type: String, text: String = "", checked: Boolean = false) = PageBlock(pageId = 0, type = type, text = text, checked = checked)
         return listOf(
+            "Конспект видео" to listOf(
+                b(BlockType.VIDEO),
+                b(BlockType.CALLOUT, "О чём видео — одной фразой"),
+                b(BlockType.H2, "Главные мысли"), b(BlockType.BULLET),
+                b(BlockType.H2, "Таймкоды"), b(BlockType.BULLET, "00:00 — "),
+                b(BlockType.H2, "Что применить"), b(BlockType.TODO),
+                b(BlockType.TEXT, "Теги: #видео"),
+            ),
+            "Сохранённая статья" to listOf(
+                b(BlockType.VIDEO),
+                b(BlockType.TEXT, "Автор и источник: "),
+                b(BlockType.CALLOUT, "Главная мысль статьи"),
+                b(BlockType.H2, "Ключевые идеи"), b(BlockType.BULLET),
+                b(BlockType.H2, "Цитаты"), b(BlockType.QUOTE),
+                b(BlockType.H2, "Мои выводы"), b(BlockType.TEXT),
+                b(BlockType.TEXT, "Связано: [[ ]] · Теги: #статья"),
+            ),
+            "Тема базы знаний" to listOf(
+                b(BlockType.CALLOUT, "Что это за тема и зачем она мне"),
+                b(BlockType.H2, "Основы"), b(BlockType.BULLET),
+                b(BlockType.H2, "Материалы"), b(BlockType.TEXT, "Видео, статьи и книги по теме — блоком «/ Видео или ссылка» или ссылкой [[Название]]"),
+                b(BlockType.H2, "Вопросы, которые остались"), b(BlockType.TODO),
+                b(BlockType.TEXT, "Теги: #тема"),
+            ),
             "Статья" to listOf(
                 b(BlockType.CALLOUT, "Главная мысль статьи в одном предложении"),
                 b(BlockType.H2, "Введение"), b(BlockType.TEXT),

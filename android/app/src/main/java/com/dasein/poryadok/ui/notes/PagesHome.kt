@@ -112,9 +112,30 @@ fun PagesHome(nav: NavHostController, embedded: Boolean = false) {
         val id = PagesRepo.create(parent)
         withContext(Dispatchers.Main) { open(id) }
     }
+    fun createFolder(parent: Long?) = io {
+        val id = PagesRepo.create(parent, "Новая папка")
+        Graph.pages.pageNow(id)?.let { Graph.pages.upsertPage(it.copy(icon = "ui:folder")) }
+        withContext(Dispatchers.Main) { open(id) }
+    }
+    // Папки: открытая папка (null — все заметки), сортировка и быстрые фильтры. Сортировка запоминается.
+    var folder by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<Long?>(null) }
+    val prefs = remember { ctx.getSharedPreferences("ui_state", android.content.Context.MODE_PRIVATE) }
+    var sortMode by remember { mutableStateOf(prefs.getInt("pages_sort", 0)) }
+    var filter by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(0) }
+    var moving by remember { mutableStateOf<Page?>(null) }
+    val videoPages by observe(emptyList()) { Graph.pages.videoPages() }
+    val order: Comparator<Page> = when (sortMode) {
+        1 -> compareByDescending { it.updatedAt }
+        2 -> compareBy { it.title.lowercase() }
+        3 -> compareByDescending { it.createdAt }
+        else -> compareBy<Page>({ it.sort }, { it.createdAt })
+    }
+    androidx.activity.compose.BackHandler(enabled = folder != null) { folder = pages.firstOrNull { it.id == folder }?.parentId }
 
     val live = pages.filter { !it.archived }
     val children = live.groupBy { it.parentId }
+    fun isFolder(p: Page) = p.icon == "ui:folder" || !children[p.id].isNullOrEmpty()
+    fun countIn(id: Long): Int = children[id].orEmpty().sumOf { 1 + countIn(it.id) }
     val q = query.trim().lowercase()
     val results = remember(q, pages, blocks) {
         if (q.isEmpty()) emptyList() else {
@@ -133,17 +154,14 @@ fun PagesHome(nav: NavHostController, embedded: Boolean = false) {
             Box {
                 androidx.compose.material3.IconButton(onClick = { menu = true }) { Icon(androidx.compose.material.icons.Icons.Default.MoreVert, "Ещё") }
                 DropdownMenu(menu, { menu = false }) {
-                    DropdownMenuItem({ Text(btnLabel("Новая папка")) }, {
-                        menu = false
-                        io { val id = PagesRepo.create(null, "Новая папка"); Graph.pages.pageNow(id)?.let { Graph.pages.upsertPage(it.copy(icon = "ui:folder")) }; withContext(Dispatchers.Main) { open(id) } }
-                    })
+                    DropdownMenuItem({ Text(btnLabel("Новая папка")) }, { menu = false; createFolder(folder) })
                     DropdownMenuItem({ Text(btnLabel("Импорт .md / .txt")) }, { menu = false; importMd.launch(arrayOf("text/*", "application/octet-stream")) })
                     DropdownMenuItem({ Text(btnLabel("Экспорт всех заметок (Markdown, ZIP)")) }, { menu = false; exportZip.launch("DASEIN-заметки.zip") })
                     DropdownMenuItem({ Text(btnLabel("Резервная копия заметок")) }, { menu = false; backup.launch("DASEIN-заметки-копия-${java.time.LocalDate.now()}.zip") })
                 }
             }
         },
-        fab = { ExtendedFloatingActionButton(onClick = { create() }, icon = { Icon(Icons.Default.Add, null) }, text = { Text(btnLabel("Страница")) }) },
+        fab = { ExtendedFloatingActionButton(onClick = { create(folder) }, icon = { Icon(Icons.Default.Add, null) }, text = { Text(btnLabel("Страница")) }) },
     ) { pad ->
         LazyColumn(Modifier.padding(pad).fillMaxSize().cardViewport(), contentPadding = PaddingValues(bottom = 96.dp)) {
             item {
@@ -163,6 +181,76 @@ fun PagesHome(nav: NavHostController, embedded: Boolean = false) {
                         }
                         if (snippet.isNotBlank()) Text(snippet, fontSize = 13.sp, color = extra.dim, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
+                }
+                return@LazyColumn
+            }
+            // Открытая папка: путь к ней, вложенные папки и страницы, создать прямо здесь.
+            val opened = folder?.let { f -> live.firstOrNull { it.id == f } }
+            if (opened != null) {
+                val byId = live.associateBy { it.id }
+                val path = generateSequence(opened) { it.parentId?.let { pid -> byId[pid] } }.toList().reversed()
+                item {
+                    androidx.compose.foundation.layout.FlowRow(Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.Center) {
+                        Text(
+                            "‹ Заметки", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium,
+                            modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { folder = null }.padding(6.dp),
+                        )
+                        path.forEach { f ->
+                            Text(" / ", color = extra.dim, modifier = Modifier.padding(vertical = 6.dp))
+                            Text(
+                                f.title.ifBlank { "Без названия" }, fontWeight = if (f.id == opened.id) FontWeight.SemiBold else FontWeight.Medium,
+                                color = if (f.id == opened.id) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { folder = f.id }.padding(6.dp),
+                            )
+                        }
+                    }
+                    Row(Modifier.padding(bottom = 6.dp)) {
+                        TextButton(onClick = { create(opened.id) }) { Text(btnLabel("+ Страница")) }
+                        TextButton(onClick = { createFolder(opened.id) }) { Text(btnLabel("+ Папка")) }
+                        TextButton(onClick = { open(opened.id) }) { Text(btnLabel("Открыть как страницу")) }
+                    }
+                }
+                val inside = children[opened.id].orEmpty().sortedWith(compareByDescending<Page> { isFolder(it) }.then(order))
+                if (inside.isEmpty()) item { Text(btnLabel("Папка пуста — добавьте страницу или папку."), color = extra.dim, modifier = Modifier.padding(8.dp)) }
+                items(inside, key = { "in" + it.id }) { p ->
+                    TreeRow(
+                        p, 0, hasChildren = false, expanded = false, onToggle = {},
+                        onOpen = { if (isFolder(p)) folder = p.id else open(p.id) },
+                        onFavorite = { io { Graph.pages.upsertPage(p.copy(favorite = !p.favorite)) } },
+                        onSub = { create(p.id) },
+                        onDuplicate = { io { PagesRepo.duplicate(p.id) } },
+                        onTrash = { io { PagesRepo.archive(p.id) } },
+                        onMove = { moving = p },
+                        count = if (isFolder(p)) countIn(p.id) else null,
+                    )
+                }
+                return@LazyColumn
+            }
+            // Быстрые фильтры.
+            item {
+                androidx.compose.foundation.layout.FlowRow(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("Все", "Избранное", "С видео и ссылками", "Без папки").forEachIndexed { i, t ->
+                        com.dasein.poryadok.ui.common.Pill(t, filter == i) { filter = i }
+                    }
+                }
+            }
+            if (filter != 0) {
+                val vids = videoPages.toSet()
+                val list = live.filter { p ->
+                    when (filter) {
+                        1 -> p.favorite
+                        2 -> p.id in vids
+                        else -> p.parentId == null && !isFolder(p)
+                    }
+                }.sortedWith(order)
+                item { SectionTitle("Страниц: ${list.size}") }
+                items(list, key = { "fl" + it.id }) { p ->
+                    TreeRow(
+                        p, 0, hasChildren = false, expanded = false, onToggle = {}, onOpen = { open(p.id) },
+                        onFavorite = { io { Graph.pages.upsertPage(p.copy(favorite = !p.favorite)) } },
+                        onSub = { create(p.id) }, onDuplicate = { io { PagesRepo.duplicate(p.id) } }, onTrash = { io { PagesRepo.archive(p.id) } },
+                        onMove = { moving = p },
+                    )
                 }
                 return@LazyColumn
             }
@@ -196,6 +284,27 @@ fun PagesHome(nav: NavHostController, embedded: Boolean = false) {
                     }
                 }
             }
+            // Папки верхнего уровня — плитками: нажатие открывает папку со всем, что внутри.
+            val folders = live.filter { it.parentId == null && isFolder(it) }.sortedWith(order)
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f)) { SectionTitle("Папки") }
+                    TextButton(onClick = { createFolder(null) }) { Text(btnLabel("+ Папка")) }
+                }
+            }
+            if (folders.isEmpty()) item {
+                Text(btnLabel("Папок пока нет. Папка — страница, в которой лежат другие страницы и папки."), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(bottom = 6.dp))
+            } else item {
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    folders.forEach { f ->
+                        Tile(Modifier.width(160.dp), onClick = { folder = f.id }, padding = 12.dp) {
+                            Glyph(f.icon.ifBlank { "ui:folder" }, 26.dp, badge = false)
+                            Text(f.title.ifBlank { "Без названия" }, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+                            Text("${countIn(f.id)} стр.", fontSize = 11.sp, color = extra.dim)
+                        }
+                    }
+                }
+            }
             // Теги: #слово в тексте любой страницы — указатель, нажатие показывает страницы с тегом.
             val tagCounts = blocks.flatMap { b -> com.dasein.poryadok.logic.NoteRefs.tags(b.text).map { it to b.pageId } }.distinct()
                 .groupingBy { it.first }.eachCount().entries.sortedByDescending { it.value }
@@ -222,10 +331,26 @@ fun PagesHome(nav: NavHostController, embedded: Boolean = false) {
                     }
                 }
             }
-            if (live.isNotEmpty()) item { SectionTitle("Все страницы") }
+            if (live.isNotEmpty()) item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f)) { SectionTitle("Все страницы") }
+                    Box {
+                        var sortMenu by remember { mutableStateOf(false) }
+                        val names = listOf("По порядку", "Недавно изменённые", "По названию", "Недавно созданные")
+                        TextButton(onClick = { sortMenu = true }) { Text(names[sortMode] + " ▾", fontSize = 13.sp) }
+                        DropdownMenu(sortMenu, { sortMenu = false }) {
+                            names.forEachIndexed { i, n ->
+                                DropdownMenuItem({ Text(n, fontWeight = if (i == sortMode) FontWeight.Bold else null) }, {
+                                    sortMenu = false; sortMode = i; prefs.edit().putInt("pages_sort", i).apply()
+                                })
+                            }
+                        }
+                    }
+                }
+            }
             val rows = mutableListOf<Pair<Page, Int>>()
             fun walk(parent: Long?, depth: Int) {
-                children[parent].orEmpty().sortedWith(compareBy({ it.sort }, { it.createdAt })).forEach { p ->
+                children[parent].orEmpty().sortedWith(order).forEach { p ->
                     rows += p to depth
                     if (expanded[p.id] == true) walk(p.id, depth + 1)
                 }
@@ -242,6 +367,7 @@ fun PagesHome(nav: NavHostController, embedded: Boolean = false) {
                     onSub = { expanded[p.id] = true; create(p.id) },
                     onDuplicate = { io { PagesRepo.duplicate(p.id) } },
                     onTrash = { io { PagesRepo.archive(p.id) } },
+                    onMove = { moving = p },
                 )
             }
             val trash = pages.filter { it.archived }
@@ -262,6 +388,7 @@ fun PagesHome(nav: NavHostController, embedded: Boolean = false) {
             item { HowTo("notes") }
         }
     }
+    moving?.let { p -> MovePageDialog(p, pages, onDismiss = { moving = null }) { to -> io { PagesRepo.move(p.id, to) } } }
     purge?.let { p ->
         ConfirmDialog("Удалить навсегда?", "«${p.title.ifBlank { "Без названия" }}» и вложенные страницы будут удалены без возможности восстановления.", onDismiss = { purge = null }) {
             io { PagesRepo.deleteForever(p.id) }
@@ -281,6 +408,8 @@ private fun TreeRow(
     onSub: () -> Unit,
     onDuplicate: () -> Unit,
     onTrash: () -> Unit,
+    onMove: () -> Unit = {},
+    count: Int? = null,
 ) {
     val extra = LocalExtra.current
     var menu by remember { mutableStateOf(false) }
@@ -297,11 +426,13 @@ private fun TreeRow(
             Glyph(p.icon.ifBlank { "ui:document" }, 20.dp, badge = false)
             HGap(10.dp)
             Text(p.title.ifBlank { "Без названия" }, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium)
+            count?.let { Text("$it  ", fontSize = 12.sp, color = extra.dim) }
             if (p.favorite) Icon(Icons.Default.Star, null, tint = MaterialTheme.colorScheme.primary)
         }
         DropdownMenu(menu, { menu = false }) {
             DropdownMenuItem({ Text(if (p.favorite) "Убрать из избранного" else "В избранное") }, { menu = false; onFavorite() })
             DropdownMenuItem({ Text(btnLabel("Добавить подстраницу")) }, { menu = false; onSub() })
+            DropdownMenuItem({ Text(btnLabel("Переместить в папку…")) }, { menu = false; onMove() })
             DropdownMenuItem({ Text(btnLabel("Дублировать")) }, { menu = false; onDuplicate() })
             DropdownMenuItem({ Text(btnLabel("В корзину"), color = extra.danger) }, { menu = false; onTrash() })
         }

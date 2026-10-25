@@ -124,7 +124,7 @@ object NoteNav {
                     zip.putNextEntry(ZipEntry(path(p.id) + ".md"))
                     zip.write(PagesRepo.markdown(p.id).toByteArray())
                     zip.closeEntry(); n++
-                    Graph.pages.blocksNow(p.id).filter { it.type == BlockType.IMAGE && it.media.isNotBlank() }.forEach { b ->
+                    Graph.pages.blocksNow(p.id).filter { (it.type == BlockType.IMAGE || it.type == BlockType.VIDEO) && it.media.startsWith("/") }.forEach { b ->
                         val f = File(b.media)
                         if (f.exists() && usedMedia.add(f.name)) { zip.putNextEntry(ZipEntry("media/" + f.name)); f.inputStream().use { it.copyTo(zip) }; zip.closeEntry() }
                     }

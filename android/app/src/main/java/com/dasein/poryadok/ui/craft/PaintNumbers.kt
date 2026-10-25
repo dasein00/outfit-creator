@@ -181,7 +181,7 @@ fun PbnScreen(nav: NavHostController, id: Long) {
     var message by remember { mutableStateOf<String?>(null) }
     fun save(n: PbnProject) { project = n; PbnStore.save(ctx, n) }
 
-    LaunchedEffect(p0.colors, p0.detail, p0.medium, p0.edges, ver) {
+    LaunchedEffect(p0.colors, p0.detail, p0.medium, p0.edges, p0.noDupes, ver) {
         busy = true
         val r = PbnStore.build(ctx, p0)
         result = r
@@ -258,6 +258,7 @@ fun PbnScreen(nav: NavHostController, id: Long) {
                         "Ниже — меньше линий и крупнее области.",
                     fontSize = 12.sp, color = extra.dim,
                 )
+                Toggle("Убрать дубликаты цветов", "Одинаковые на глаз цвета не повторяются — меньше номеров в легенде", p0.noDupes) { on -> save(p0.copy(noDupes = on)) }
                 var k by remember(p0.id) { mutableFloatStateOf(p0.colors.toFloat()) }
                 FieldLabel("Цветов", "до ${k.toInt()} · у вас ${pencils.size}")
                 Slider(k, { k = it }, valueRange = 4f..maxOf(5f, minOf(200f, pencils.size.toFloat())), onValueChangeFinished = { save(p0.copy(colors = k.toInt())) })

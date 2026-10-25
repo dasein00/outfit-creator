@@ -8,6 +8,7 @@ import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -185,7 +186,13 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
             // Нажатие на фото или иконку — сменить иконку только этого рецепта.
             var changeIcon by remember { mutableStateOf(false) }
             if (changeIcon) RecipeIconDialog(r) { changeIcon = false }
-            val img by rememberImage(r.photo.takeIf { it.isNotBlank() && !it.startsWith("dish/") && !it.startsWith("u:") && !RecipeIcons.isIcon(it) }, 1200)
+            // Горизонтальная обложка сверху; без неё — обычный вид карточки (фото или иконка рядом с описанием).
+            val cover by rememberImage(r.cover.takeIf { it.isNotBlank() }, 1600)
+            cover?.let {
+                Image(it, null, Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(18.dp)).clickable { changeIcon = true }, contentScale = ContentScale.Crop)
+                Gap(10.dp)
+            }
+            val img by rememberImage(r.photo.takeIf { cover == null && it.isNotBlank() && !it.startsWith("dish/") && !it.startsWith("u:") && !RecipeIcons.isIcon(it) }, 1200)
             img?.let {
                 Image(it, null, Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(18.dp)).clickable { changeIcon = true }, contentScale = ContentScale.Crop)
                 Gap(10.dp)

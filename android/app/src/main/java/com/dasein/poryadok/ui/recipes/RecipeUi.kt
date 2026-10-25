@@ -315,6 +315,11 @@ fun RecipeIconDialog(r: Recipe, onDismiss: () -> Unit) {
         }
         onDismiss()
     }
+    // Горизонтальная обложка сверху карточки блюда.
+    val pickCover = com.dasein.poryadok.ui.common.rememberImagePickerWithCrop(16f / 9f, "recipes", outW = 1600) { path ->
+        io { com.dasein.poryadok.Graph.extra.upsertRecipe(r.copy(cover = path)) }
+        onDismiss()
+    }
     if (pickIllustration) {
         com.dasein.poryadok.ui.common.GlyphPickerDialog(r.photo, { pickIllustration = false; onDismiss() }, dishes = true) { key ->
             io { com.dasein.poryadok.Graph.extra.upsertRecipe(r.copy(photo = key)) }
@@ -324,7 +329,7 @@ fun RecipeIconDialog(r: Recipe, onDismiss: () -> Unit) {
     }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(btnLabel("Иконка рецепта")) },
+        title = { Text(btnLabel("Иконка и обложка")) },
         text = {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -334,6 +339,12 @@ fun RecipeIconDialog(r: Recipe, onDismiss: () -> Unit) {
                 com.dasein.poryadok.ui.common.Gap(12.dp)
                 com.dasein.poryadok.ui.common.OutlinedButton(onClick = { pickPhoto() }, Modifier.fillMaxWidth()) { Text(btnLabel("Своё фото или иконка")) }
                 com.dasein.poryadok.ui.common.OutlinedButton(onClick = { pickIllustration = true }, Modifier.fillMaxWidth()) { Text(btnLabel("Иллюстрация из набора")) }
+                com.dasein.poryadok.ui.common.OutlinedButton(onClick = { pickCover() }, Modifier.fillMaxWidth()) {
+                    Text(btnLabel(if (r.cover.isBlank()) "Обложка сверху карточки" else "Заменить обложку"))
+                }
+                if (r.cover.isNotBlank()) com.dasein.poryadok.ui.common.TextButton(onClick = {
+                    io { com.dasein.poryadok.Graph.extra.upsertRecipe(r.copy(cover = "")) }; onDismiss()
+                }, Modifier.fillMaxWidth()) { Text(btnLabel("Убрать обложку")) }
             }
         },
         confirmButton = { com.dasein.poryadok.ui.common.TextButton(onClick = onDismiss) { Text(btnLabel("Закрыть")) } },

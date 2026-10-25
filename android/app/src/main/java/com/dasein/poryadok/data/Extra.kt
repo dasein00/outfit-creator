@@ -72,6 +72,8 @@ data class Recipe(
     @androidx.room.ColumnInfo(defaultValue = "0") val portionGrams: Double = 0.0,
     /** Вес готового блюда, г (после варки или жарки). 0 — сумма веса ингредиентов. */
     @androidx.room.ColumnInfo(defaultValue = "0") val dishGrams: Double = 0.0,
+    /** Горизонтальная обложка сверху карточки блюда (путь к картинке). Пусто — карточка без обложки. */
+    val cover: String = "",
 )
 
 /** Ингредиент рецепта. КБЖУ на 100 г копируется из продукта, чтобы рецепт не зависел от правок базы. */
@@ -570,7 +572,7 @@ interface ExtraDao {
         MediaList::class, MediaListItem::class, Page::class, PageBlock::class, Exercise::class, WorkoutPlan::class,
         PlanExercise::class, WorkoutSession::class, SetLog::class, CustomDay::class, HolidayMark::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = false,
 )
 abstract class ExtraDb : RoomDatabase() {
@@ -726,9 +728,16 @@ abstract class ExtraDb : RoomDatabase() {
             }
         }
 
+        /** v11: горизонтальная обложка у рецепта. */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `recipes` ADD COLUMN `cover` TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun create(context: Context): ExtraDb =
             Room.databaseBuilder(context, ExtraDb::class.java, "dasein_extra.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10).build()
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11).build()
     }
 }
 

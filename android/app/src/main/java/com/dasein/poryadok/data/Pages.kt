@@ -44,6 +44,8 @@ object BlockType {
     const val IMAGE = "image"
     const val PAGE = "page"
     const val TOGGLE = "toggle"
+    /** Видео или ссылка: media — адрес (YouTube, Instagram, VK…) или путь к видео на телефоне, text — подпись. */
+    const val VIDEO = "video"
 
     /** Блоки, в которых Enter продолжает тот же тип. */
     val CONTINUES = setOf(BULLET, NUMBER, TODO)
@@ -80,6 +82,8 @@ interface PageDao {
     @Query("SELECT * FROM page_blocks WHERE pageId = :pageId ORDER BY pos") fun blocks(pageId: Long): Flow<List<PageBlock>>
     @Query("SELECT * FROM page_blocks WHERE pageId = :pageId ORDER BY pos") suspend fun blocksNow(pageId: Long): List<PageBlock>
     @Query("SELECT * FROM page_blocks") suspend fun allBlocks(): List<PageBlock>
+    /** Страницы, в которых есть видео или ссылки. */
+    @Query("SELECT DISTINCT pageId FROM page_blocks WHERE type = 'video'") fun videoPages(): Flow<List<Long>>
     @Query("SELECT * FROM page_blocks WHERE type IN ('text','h1','h2','h3','bullet','number','todo','quote','callout','code','toggle')") fun textBlocks(): Flow<List<PageBlock>>
     @Upsert suspend fun upsertBlock(b: PageBlock): Long
     @Upsert suspend fun upsertBlocks(b: List<PageBlock>)

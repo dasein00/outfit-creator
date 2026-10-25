@@ -135,6 +135,7 @@ internal val BLOCK_KINDS = listOf(
     BlockKind(BlockType.CODE, "Код", "</>", "Моноширинный текст  ```"),
     BlockKind(BlockType.DIVIDER, "Разделитель", "—", "Горизонтальная линия  ---"),
     BlockKind(BlockType.IMAGE, "Картинка или GIF", "▣", "Из галереи"),
+    BlockKind(BlockType.VIDEO, "Видео или ссылка", "▶", "YouTube, Instagram, VK, Rutube, TikTok — смотреть в статье"),
     BlockKind(BlockType.PAGE, "Подстраница", "▤", "Вложенная страница"),
 )
 
@@ -345,6 +346,8 @@ fun PageScreen(nav: NavHostController, id: Long) {
     var moving by remember { mutableStateOf(false) }
     var typeMenu by remember { mutableStateOf(false) }
     var imageFor by remember { mutableStateOf<Long?>(null) }
+    var videoFor by remember { mutableStateOf<Long?>(null) }
+    var videoDialog by remember { mutableStateOf(false) }
     // Готовая страница открывается для чтения; «✎ Редактировать» включает правку, «✓» — снова чтение. Новая — сразу правка.
     var editing by remember(id) { mutableStateOf<Boolean?>(null) }
     var findReplace by remember { mutableStateOf(false) }
@@ -389,6 +392,19 @@ fun PageScreen(nav: NavHostController, id: Long) {
         }
     }
 
+    fun putVideo(media: String) {
+        val target = videoFor
+        videoFor = null; videoDialog = false
+        if (target != null && st.index(target) >= 0 && st.blocks[st.index(target)].type == BlockType.VIDEO && st.blocks[st.index(target)].media.isBlank()) {
+            st.update(target) { it.copy(media = media) }
+        } else {
+            val nb = st.insertAfter(target ?: st.focused ?: st.blocks.lastOrNull()?.id, st.newBlock(BlockType.VIDEO).copy(media = media))
+            st.insertAfter(nb.id, st.newBlock()).also { st.focusRequest = it.id to 1 }
+        }
+        st.dirty++
+    }
+    if (videoDialog) VideoLinkDialog(onDismiss = { videoDialog = false; videoFor = null }) { putVideo(it) }
+
     fun addSubpage(after: Long?) {
         io {
             st.save()
@@ -409,6 +425,11 @@ fun PageScreen(nav: NavHostController, id: Long) {
                 st.values[target] = TextFieldValue(ZWS, TextRange(1))
                 if (st.plain(target).isBlank() && st.blocks.getOrNull(st.index(target))?.type == BlockType.TEXT) st.setType(target, BlockType.IMAGE)
                 imageFor = target; pickImage()
+            }
+            BlockType.VIDEO -> {
+                st.values[target] = TextFieldValue(ZWS, TextRange(1))
+                if (st.plain(target).isBlank() && st.blocks.getOrNull(st.index(target))?.type == BlockType.TEXT) st.setType(target, BlockType.VIDEO)
+                videoFor = target; videoDialog = true
             }
             BlockType.PAGE -> {
                 val i = st.index(target)
@@ -580,6 +601,7 @@ fun PageScreen(nav: NavHostController, id: Long) {
                             onOpenPage = { pid -> st.save(); nav.navigate(Routes.page(pid)) },
                             onKind = { k -> applyKind(b.id, k) },
                             onPickImage = { imageFor = b.id; pickImage() },
+                            onPickVideo = { videoFor = b.id; videoDialog = true },
                             onRef = { r -> scope.launch { openRef(ctx, nav, r) { tagShown = it } } },
                         )
                     }
@@ -774,6 +796,7 @@ private fun BlockView(
     onOpenPage: (Long) -> Unit,
     onKind: (BlockKind) -> Unit,
     onPickImage: () -> Unit,
+    onPickVideo: () -> Unit = {},
     onRef: (com.dasein.poryadok.logic.NoteRefs.Ref) -> Unit = {},
 ) {
     val extra = LocalExtra.current
@@ -811,6 +834,13 @@ private fun BlockView(
                 decorationBox = { inner -> Box { if (b.text.isEmpty()) Text(btnLabel("Подпись"), fontSize = 13.sp, color = extra.dim.copy(alpha = .5f)); inner() } },
             )
         }
+
+        BlockType.VIDEO -> NoteVideoBlock(
+            b.media, b.text, isSelected, readOnly,
+            onSelect = { st.selected = b.id; st.focused = null },
+            onCaption = { t -> st.update(b.id) { it.copy(text = t) } },
+            onPick = onPickVideo,
+        )
 
         BlockType.PAGE -> {
             val child = pages.firstOrNull { it.id == b.media.toLongOrNull() }

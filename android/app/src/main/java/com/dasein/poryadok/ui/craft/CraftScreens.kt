@@ -251,7 +251,7 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
     // Настройки, влияющие на расчёт схемы.
     val mineVer = CraftStore.mineVersion.intValue
     val mineThreads = remember(mineVer) { CraftStore.mine(ctx).map { it.thread() } }
-    val key = listOf(p0.kind, p0.width, p0.colors, p0.dither, p0.cleanup, p0.brightness, p0.contrast, p0.saturation, p0.removeBg, p0.onlyStash, p0.onlyMine, p0.replace, photoVersion, if (p0.onlyMine) mineVer else 0)
+    val key = listOf(p0.kind, p0.width, p0.colors, p0.dither, p0.cleanup, p0.brightness, p0.contrast, p0.saturation, p0.removeBg, p0.onlyStash, p0.onlyMine, p0.replace, p0.noDupes, photoVersion, if (p0.onlyMine) mineVer else 0)
     LaunchedEffect(key, p0.round) {
         busy = true
         val pat = CraftStore.pattern(ctx, p0)
@@ -265,8 +265,8 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
     /** Изменение, которое пересчитает схему: если уже есть отметки выложенных клеток — сначала спросить. */
     fun update(f: (CraftProject) -> CraftProject) {
         val n = f(p0)
-        val changesPattern = listOf(n.kind, n.width, n.colors, n.dither, n.cleanup, n.brightness, n.contrast, n.saturation, n.removeBg, n.onlyStash, n.onlyMine, n.replace) !=
-            listOf(p0.kind, p0.width, p0.colors, p0.dither, p0.cleanup, p0.brightness, p0.contrast, p0.saturation, p0.removeBg, p0.onlyStash, p0.onlyMine, p0.replace)
+        val changesPattern = listOf(n.kind, n.width, n.colors, n.dither, n.cleanup, n.brightness, n.contrast, n.saturation, n.removeBg, n.onlyStash, n.onlyMine, n.replace, n.noDupes) !=
+            listOf(p0.kind, p0.width, p0.colors, p0.dither, p0.cleanup, p0.brightness, p0.contrast, p0.saturation, p0.removeBg, p0.onlyStash, p0.onlyMine, p0.replace, p0.noDupes)
         if (changesPattern && CraftStore.hasProgress(ctx, p0)) pending = n else save(n)
     }
     val original = remember(id, photoVersion) { runCatching { BitmapFactory.decodeFile(CraftStore.photo(ctx, id).absolutePath) }.getOrNull() }
@@ -452,6 +452,7 @@ fun CraftEditorScreen(nav: NavHostController, id: Long) {
             if (p0.kindEnum == CraftPattern.Kind.DIAMOND) Toggle("Круглые стразы", "2,8 мм вместо квадратных 2,5 мм — холст получится крупнее", p0.round) { on -> save(p0.copy(round = on)) }
             Toggle("Плавные переходы", "Смешивает соседние цвета точками — для портретов и неба", p0.dither) { on -> update { it.copy(dither = on) } }
             Toggle("Убрать одиночные клетки", "Меньше «конфетти» — работать быстрее", p0.cleanup) { on -> update { it.copy(cleanup = on) } }
+            Toggle("Убрать дубликаты цветов", "Цвета, которые на глаз не отличить, сливаются в один — меньше номеров в легенде", p0.noDupes) { on -> update { it.copy(noDupes = on) } }
             Toggle("Не заполнять фон", "Однотонный фон у краёв остаётся пустым — как в вышивке без фона", p0.removeBg) { on -> update { it.copy(removeBg = on) } }
             val stashSize = CraftStore.stash(ctx).size
             Toggle("Только из моих запасов", if (stashSize < 2) "Сначала отметьте цвета в «Мои запасы»" else "Подбирать из $stashSize цветов, которые у вас уже есть", p0.onlyStash) { on ->
@@ -708,7 +709,7 @@ private fun AdjustSlider(label: String, value: Int, onSet: (Int) -> Unit) {
 }
 
 @Composable
-private fun Toggle(title: String, sub: String, on: Boolean, onChange: (Boolean) -> Unit) {
+internal fun Toggle(title: String, sub: String, on: Boolean, onChange: (Boolean) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
         Column(Modifier.weight(1f)) {
             Text(title, fontSize = 14.sp)
