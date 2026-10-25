@@ -80,10 +80,11 @@ object RecipeVideos {
     }
 }
 
-/** Видео в карточке рецепта: изменения сразу сохраняются в базе. */
+/** Видео в карточке рецепта (режим просмотра): только ролики и «Источник»; менять видео — в «Изменить». */
 @Composable
 fun RecipeVideosSection(r: Recipe) {
-    RecipeVideosEditor(r.id, RecipeVideos.list(r), deleteFiles = true) { list ->
+    val videos = RecipeVideos.list(r)
+    if (videos.isNotEmpty()) RecipeVideosEditor(r.id, videos, deleteFiles = true, viewOnly = true) { list ->
         io { Graph.extra.setVideos(r.id, RecipeVideos.join(list, RecipeVideos.source(r))) }
     }
     RecipeSourceButton(r)
@@ -103,18 +104,27 @@ fun RecipeSourceButton(r: Recipe) {
     ) { com.dasein.poryadok.ui.common.Text("🔗 Источник · " + RecipeVideos.hostLabel(url)) }
 }
 
-/** Список видео рецепта с добавлением из галереи и по ссылке. [deleteFiles] — удалять файл при удалении из списка. */
+/**
+ * Список видео рецепта. [viewOnly] — режим просмотра: только проигрыватели, без кнопок.
+ * В редактировании под видео: «Изменить» (монтаж того же ролика), «Заменить» (другое видео из галереи),
+ * «Заменить ссылку» (ссылка на первоисточник, [source]/[onSource]) и «Убрать»; ниже — добавление из галереи и по ссылке.
+ * [deleteFiles] — удалять файл при удалении из списка.
+ */
 @Composable
-fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolean, onChange: (List<String>) -> Unit) {
+fun RecipeVideosEditor(
+    recipeId: Long, videos: List<String>, deleteFiles: Boolean, viewOnly: Boolean = false,
+    source: String? = null, onSource: ((String?) -> Unit)? = null, onChange: (List<String>) -> Unit,
+) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     val scope = rememberCoroutineScope()
     var addLink by remember { mutableStateOf(false) }
+    var editSource by remember { mutableStateOf(false) }
     var remove by remember { mutableStateOf<String?>(null) }
     fun save(list: List<String>) = onChange(list.distinct())
 
     com.dasein.poryadok.ui.common.FoldSection("recipe_videos", "Видео рецепта") {
-    if (videos.isEmpty()) Text(
+    if (videos.isEmpty() && !viewOnly) Text(
         "Прикрепите ролик из галереи или ссылку на видео (YouTube, VK, Rutube) — он будет под рукой во время готовки.",
         fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(bottom = 8.dp),
     )
@@ -149,17 +159,17 @@ fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolea
                         .forEach { r -> Graph.extra.setVideos(r.id, RecipeVideos.list(r).map { x -> if (x == v) new else x }.joinToString("\n")) }
                 }
             }
-            if (size > 0) Text(
+            if (size > 0 && !viewOnly) Text(
                 "Видео ${i + 1} · ${com.dasein.poryadok.system.VideoCompress.mb(size)}",
                 fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
             )
-            androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End) {
-                if (size > 0) com.dasein.poryadok.ui.common.EditVideoButton(v, swap)
+            if (!viewOnly) androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End) {
+                if (size > 0) com.dasein.poryadok.ui.common.EditVideoButton(v, "Изменить", swap)
                 if (size > 0) TextButton(onClick = { replacing = !replacing }) { Text(btnLabel(if (replacing) "Не заменять" else "Заменить")) }
-                if (size > 0) com.dasein.poryadok.ui.common.CompressVideoButton(v, swap)
+                if (onSource != null) TextButton(onClick = { editSource = true }) { Text(btnLabel(if (source != null) "Заменить ссылку" else "Ссылка на источник")) }
                 TextButton(onClick = { remove = v }) { Text(btnLabel("Убрать"), color = extra.danger) }
             }
-            if (replacing) {
+            if (replacing && !viewOnly) {
                 Text("Новое видео встанет на место этого — сначала откроется монтаж.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(vertical = 4.dp))
                 com.dasein.poryadok.ui.common.VideoAddButtons("recipes/video", galleryLabel = "Из галереи", filesLabel = "Из файлов") { new ->
                     replacing = false
@@ -172,7 +182,10 @@ fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolea
             }
         }
     }
-    Row {
+    if (!viewOnly && videos.isEmpty() && onSource != null) TextButton(onClick = { editSource = true }) {
+        Text(btnLabel(if (source != null) "Заменить ссылку" else "Ссылка на источник"))
+    }
+    if (!viewOnly) Row {
         Column(Modifier.weight(1f)) {
             // Речь из нового видео распознаётся сразу в фоне — для «Рецепта из видео» его не нужно загружать второй раз.
             com.dasein.poryadok.ui.common.VideoAddButtons("recipes/video") { path -> save(videos + path); com.dasein.poryadok.system.VideoSpeech.prefetch(ctx, path) }
@@ -198,6 +211,29 @@ fun RecipeVideosEditor(recipeId: Long, videos: List<String>, deleteFiles: Boolea
                 TextButton(enabled = url != null, onClick = { url?.let { save(videos + it) }; addLink = false }) { Text(btnLabel("Добавить")) }
             },
             dismissButton = { TextButton(onClick = { addLink = false }) { Text(btnLabel("Отмена")) } },
+        )
+    }
+    // Ссылка на первоисточник (пост Instagram, сайт) — кнопка «Источник» под видео в карточке.
+    if (editSource && onSource != null) {
+        var text by remember { mutableStateOf(source.orEmpty()) }
+        val url = RecipeVideos.normalizeLink(text)
+        AlertDialog(
+            onDismissRequest = { editSource = false },
+            title = { Text(btnLabel("Ссылка на первоисточник")) },
+            text = {
+                Column {
+                    TextInput(text, { text = it }, "https://www.instagram.com/…")
+                    Gap(6.dp)
+                    Text("Пост Instagram или страница, откуда взят рецепт. В карточке под видео появится кнопка «Источник».", fontSize = 12.sp, color = extra.dim)
+                }
+            },
+            confirmButton = { TextButton(enabled = url != null, onClick = { onSource(url); editSource = false }) { Text(btnLabel("Сохранить")) } },
+            dismissButton = {
+                Row {
+                    if (source != null) TextButton(onClick = { onSource(null); editSource = false }) { Text(btnLabel("Убрать ссылку"), color = extra.danger) }
+                    TextButton(onClick = { editSource = false }) { Text(btnLabel("Отмена")) }
+                }
+            },
         )
     }
     remove?.let { v ->

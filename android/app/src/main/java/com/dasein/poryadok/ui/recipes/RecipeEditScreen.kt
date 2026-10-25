@@ -286,7 +286,10 @@ private fun StepBasics(d: RecipeDraft) {
         recrop = false; setPhoto(it)
     }
         if (pickIllustration) GlyphPickerDialog(r.photo, { pickIllustration = false }, dishes = true) { d.recipe = d.recipe.copy(photo = it) }
-    RecipeVideosEditor(r.id, RecipeVideos.list(r), deleteFiles = false) { list -> d.recipe = d.recipe.copy(videos = RecipeVideos.join(list, RecipeVideos.source(d.recipe))) }
+    RecipeVideosEditor(
+        r.id, RecipeVideos.list(r), deleteFiles = false, source = RecipeVideos.source(r),
+        onSource = { url -> d.recipe = d.recipe.copy(videos = RecipeVideos.join(RecipeVideos.list(d.recipe), url)) },
+    ) { list -> d.recipe = d.recipe.copy(videos = RecipeVideos.join(list, RecipeVideos.source(d.recipe))) }
     RecipeSourceButton(r)
     SectionTitle("Категория")
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

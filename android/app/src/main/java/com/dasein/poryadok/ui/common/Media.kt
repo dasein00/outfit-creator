@@ -479,7 +479,7 @@ private fun playerView(c: Context, path: String, autoplay: Boolean, startAt: Int
 
 /** Кнопка «Монтаж» для уже добавленного видео: те же обрезка, куски и скорость, что при добавлении. Файл заменяется. */
 @Composable
-fun EditVideoButton(path: String, onDone: (String) -> Unit) {
+fun EditVideoButton(path: String, label: String = "Монтаж", onDone: (String) -> Unit) {
     val ctx = LocalContext.current
     var open by remember(path) { mutableStateOf(false) }
     var busy by remember(path) { mutableStateOf(false) }
@@ -488,7 +488,7 @@ fun EditVideoButton(path: String, onDone: (String) -> Unit) {
         Text(btnLabel("Монтирую…"), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp))
         return
     }
-    com.dasein.poryadok.ui.common.TextButton(onClick = { open = true }) { Text(btnLabel("Монтаж")) }
+    com.dasein.poryadok.ui.common.TextButton(onClick = { open = true }) { Text(btnLabel(label)) }
     // Добавленные в монтаже видео копируются в ту же папку, что и этот ролик.
     val dir = remember(path) { File(path).parentFile?.absolutePath.orEmpty().removePrefix(ctx.filesDir.absolutePath).trimStart('/').ifBlank { "video" } }
     if (open) VideoEditor(path, dir, addMode = false, onCancel = { open = false }, onSkip = { open = false }) { e ->

@@ -7,6 +7,7 @@ import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Arrangement
@@ -197,31 +198,53 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                 Image(it, null, Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(18.dp)).clickable { changeIcon = true }, contentScale = ContentScale.Crop)
                 Gap(10.dp)
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (img == null) { Box(Modifier.clip(RoundedCornerShape(14.dp)).clickable { changeIcon = true }) { RecipeThumb(r, if (r.photo.startsWith("dish/") || RecipeIcons.isIcon(r.photo)) 96.dp else 56.dp) }; HGap(12.dp) }
-                Column(Modifier.weight(1f)) {
-                    Text(r.category + if (r.custom) " · мой рецепт" else "", color = extra.dim, fontSize = 13.sp)
-                    Text(
-                        listOf(
-                            "Подготовка ${minutes(r.prepMin)}", if (r.cookMin > 0) "готовка ${minutes(r.cookMin)}" else "без готовки",
-                            DIFFICULTY.getOrElse(r.difficulty - 1) { "" }.lowercase(),
-                        ).joinToString(" · "),
-                        fontSize = 13.sp,
-                    )
-                    val meals = MealType.parse(r.meals)
-                    if (meals.isNotEmpty()) Text(btnLabel("Подходит: ") + meals.joinToString { MealType.name(it).lowercase() }, fontSize = 12.sp, color = extra.dim)
+            // Шапка карточки: категория, название, время и сложность чипами, приёмы пищи, видео и теги.
+            // С обложкой иконка блюда не повторяется.
+            val accent = MaterialTheme.colorScheme.primary
+            Tile(padding = 14.dp) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (img == null && cover == null) {
+                        Box(Modifier.clip(RoundedCornerShape(16.dp)).clickable { changeIcon = true }) { RecipeThumb(r, if (r.photo.startsWith("dish/") || RecipeIcons.isIcon(r.photo)) 88.dp else 56.dp) }
+                        HGap(14.dp)
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            (r.category + if (r.custom) " · мой рецепт" else "").uppercase(), color = accent, fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold, letterSpacing = 1.2.sp,
+                        )
+                        Text(r.name, fontSize = 20.sp, fontWeight = FontWeight.Bold, lineHeight = 25.sp, modifier = Modifier.padding(top = 2.dp))
+                    }
                 }
-            }
-            val videoCount = RecipeVideos.list(r).size
-            Text(
-                if (videoCount > 0) "▶ Видео рецепта: $videoCount — смотреть" else "▶ Добавить видео рецепта",
-                color = MaterialTheme.colorScheme.primary, fontSize = 13.sp, fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(top = 8.dp).clip(RoundedCornerShape(8.dp)).clickable { scope.launch { scroll.animateScrollTo(videoY) } }.padding(vertical = 4.dp),
-            )
-            if (r.tagList().isNotEmpty()) {
-                Gap(8.dp)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    r.tagList().forEach { Text("#$it", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary) }
+                FlowRow(
+                    Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    MetaChip("Подготовка ${minutes(r.prepMin)}")
+                    MetaChip(if (r.cookMin > 0) "готовка ${minutes(r.cookMin)}" else "без готовки")
+                    val diff = r.difficulty.coerceIn(1, 3)
+                    MetaChip("●".repeat(diff) + "○".repeat(3 - diff) + "  " + DIFFICULTY.getOrElse(r.difficulty - 1) { "" }.lowercase())
+                }
+                val meals = MealType.parse(r.meals)
+                if (meals.isNotEmpty()) Text(
+                    btnLabel("Подходит: ") + meals.joinToString { MealType.name(it).lowercase() }, fontSize = 12.sp, color = extra.dim,
+                    modifier = Modifier.padding(top = 10.dp),
+                )
+                val videoCount = RecipeVideos.list(r).size
+                Text(
+                    if (videoCount > 0) "▶ Видео рецепта: $videoCount — смотреть" else "▶ Добавить видео рецепта",
+                    color = accent, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 10.dp).clip(RoundedCornerShape(50)).background(accent.copy(alpha = .12f))
+                        .clickable { if (videoCount > 0) scope.launch { scroll.animateScrollTo(videoY) } else nav.navigate(Routes.recipeEdit(r.id)) }
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                )
+                if (r.tagList().isNotEmpty()) {
+                    FlowRow(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        r.tagList().forEach {
+                            Text(
+                                "#$it", fontSize = 12.sp, color = accent,
+                                modifier = Modifier.clip(RoundedCornerShape(50)).border(1.dp, accent.copy(alpha = .35f), RoundedCornerShape(50)).padding(horizontal = 10.dp, vertical = 4.dp),
+                            )
+                        }
+                    }
                 }
             }
 
@@ -382,7 +405,10 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                     Row {
                         CheckDot(isDone, green, onClick = { done[i] = !isDone }, size = 24.dp)
                         Column(Modifier.padding(start = 10.dp).weight(1f)) {
-                            Text(if (isDone) "Этап ${i + 1} · готово" else "Этап ${i + 1}", fontSize = 12.sp, color = if (isDone) green else extra.dim, fontWeight = if (isDone) FontWeight.SemiBold else FontWeight.Normal)
+                            Text(
+                                (if (isDone) "Этап ${i + 1} · готово" else "Этап ${i + 1}").uppercase(), fontSize = 11.sp, letterSpacing = 1.sp,
+                                color = if (isDone) green else MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold,
+                            )
                             Text(stepText, color = MaterialTheme.colorScheme.onSurface, lineHeight = 21.sp)
                             if (showHints && !isDone) hints.getOrNull(i).orEmpty().forEach { h ->
                                 Text(
@@ -508,6 +534,15 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
     if (confirmDelete) ConfirmDialog("Удалить рецепт навсегда?", "Рецепт исчезнет из архива и базы. Уже запланированные блюда останутся в меню.", onDismiss = { confirmDelete = false }) {
         scope.launch { RecipeRepo.deleteRecipe(r.id); nav.popBackStack() }
     }
+}
+
+/** Чип с временем или сложностью в шапке карточки блюда. */
+@Composable
+private fun MetaChip(text: String) {
+    Text(
+        text, fontSize = 13.sp, fontWeight = FontWeight.Medium,
+        modifier = Modifier.clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = .06f)).padding(horizontal = 12.dp, vertical = 6.dp),
+    )
 }
 
 @Composable
