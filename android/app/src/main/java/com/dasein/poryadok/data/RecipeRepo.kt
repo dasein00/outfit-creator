@@ -121,6 +121,29 @@ object RecipeRepo {
         return id
     }
 
+    /**
+     * Привести уже сохранённые рецепты к единому стилю ([com.dasein.poryadok.logic.RecipeStyle]): название, продукты,
+     * этапы, советы, замены и теги. Количества, КБЖУ и фото не меняются. Возвращает, сколько карточек поправлено.
+     */
+    suspend fun restyleAll(): Int {
+        val st = com.dasein.poryadok.logic.RecipeStyle
+        var n = 0
+        x.recipesNow().forEach { r ->
+            val ing = x.ingredientsOfNow(r.id)
+            val steps = x.stepsOfNow(r.id).map { it.text }
+            val r2 = r.copy(
+                name = st.title(r.name).ifBlank { r.name },
+                tips = if (r.tips.isBlank()) r.tips else st.bullets(r.tips),
+                swaps = if (r.swaps.isBlank()) r.swaps else st.bullets(r.swaps),
+                tags = r.tags.split(',').map { st.tag(it) }.filter { it.isNotEmpty() }.distinct().joinToString(", "),
+            )
+            val ing2 = ing.map { it.copy(name = st.ingredient(it.name).ifBlank { it.name }) }
+            val steps2 = steps.map { st.step(it) }.filter { it.isNotBlank() }
+            if (r2 != r || ing2.map { it.name } != ing.map { it.name } || steps2 != steps) { saveRecipe(r2, ing2, steps2); n++ }
+        }
+        return n
+    }
+
     suspend fun duplicate(id: Long): Long? {
         val r = x.recipeNow(id) ?: return null
         val ing = x.ingredientsOfNow(id)

@@ -42,6 +42,7 @@ object RecipeDetail {
             "(цвет, запах, консистенция); если есть — частую ошибку и как её избежать. Объясняй кулинарные термины простыми словами. " +
             "Не меняй ингредиенты и их количество, не добавляй новых продуктов. Можно разбить длинный шаг на несколько. " +
             "Добавь в начало шаг подготовки (что достать, помыть, нарезать), если его нет. Пиши по-русски, обращайся на «вы». " +
+            "Каждый шаг начинай с глагола в повелительном наклонении («Нарежьте», «Обжарьте»), температуру пиши в °C, без нумерации и эмодзи. " +
             "Ответ строго JSON: {\"steps\":[{\"text\":\"…\",\"minutes\":0}]}, где minutes — время ожидания на этом шаге (0, если не нужно)."
         val user = buildString {
             appendLine("Блюдо: $name")
@@ -53,7 +54,7 @@ object RecipeDetail {
         val out = obj.arr("steps").orEmpty().mapNotNull { e ->
             val o = e as? JsonObject ?: return@mapNotNull null
             val t = o.str("text")?.trim().orEmpty()
-            if (t.isEmpty()) null else Step(t, o.num("minutes")?.toInt()?.coerceIn(0, 600) ?: 0)
+            if (t.isEmpty()) null else Step(com.dasein.poryadok.logic.RecipeStyle.step(t), o.num("minutes")?.toInt()?.coerceIn(0, 600) ?: 0)
         }
         if (out.isEmpty()) throw Ai.AiError("ИИ не прислал шаги — попробуйте ещё раз.")
         file(ctx, id).apply { parentFile?.mkdirs() }.writeText(json.encodeToString(Saved.serializer(), Saved(srcHash(steps, ingredients), out)))

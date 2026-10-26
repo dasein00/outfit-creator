@@ -102,6 +102,17 @@ internal suspend fun ingredientsFrom(parsed: RecipeText.Parsed, text: String = "
 
 private val AI_UNITS = setOf("г", "кг", "мл", "л", "шт", "ст.л.", "ч.л.", "стакан", "щепотка", "по вкусу")
 
+/**
+ * Единый стиль карточек — одинаковый для всех рецептов, как в кулинарном приложении. Дублируется в описании блюда
+ * и подробных шагах; что бы ни прислала модель, текст ещё раз выравнивает [com.dasein.poryadok.logic.RecipeStyle].
+ */
+internal const val RECIPE_STYLE = """СТИЛЬ (одинаковый для всех карточек, как в профессиональном кулинарном приложении):
+— Название: 2–6 слов, с заглавной буквы, без эмодзи, кавычек, хештегов и точки; по-русски; главное блюдо и уточнение («Хачапури по-аджарски из творога», «Курица в сливочном соусе»).
+— Продукты: обычные магазинные названия в именительном падеже, с заглавной буквы, остальное строчными; без брендов и пояснений в скобках, кроме жирности или сорта («Творог 5%», «Рис басмати»).
+— Этапы: 4–10 этапов, каждый начинается с глагола в повелительном наклонении на «вы» («Нарежьте», «Обжарьте», «Запекайте»), 1–3 предложения; обязательно конкретика: огонь (слабый, средний, сильный), температура в °C, время в минутах, признак готовности. Без нумерации и эмодзи внутри текста, в конце точка.
+— Советы: 2–4 коротких законченных предложения. Замены: «Продукт — чем заменить».
+— Теги: строчными буквами, без «#»."""
+
 /** Инструкция для ИИ: вернуть рецепт строго в JSON. */
 private const val AI_RECIPE_PROMPT = """Ты помощник кулинарного приложения. На входе до двух источников об одном блюде:
 «ТЕКСТ ПОСТА» — подпись под видео в Instagram или текст сайта (обычно ингредиенты с граммовками, иногда шаги и советы);
@@ -121,7 +132,8 @@ private const val AI_RECIPE_PROMPT = """Ты помощник кулинарно
 Если для продукта указано несколько количеств («150 г + 20 г на обвалку»), сложи их. Проценты жирности оставь в названии.
 Если количество сказано на глаз («горсть», «пара ложек», «кусочек») — переведи в граммы или ложки примерно. Если не сказано совсем — оцени разумное количество на указанные порции.
 Этапы пиши подробно и понятно новичку: что сделать, какой огонь или температура духовки, сколько минут, как понять, что готово. Не выдумывай продукты, которых нет в источниках.
-Даты, хештеги, рекламу, приветствия, просьбы подписаться и «ещё/меньше» игнорируй."""
+Даты, хештеги, рекламу, приветствия, просьбы подписаться и «ещё/меньше» игнорируй.
+""" + RECIPE_STYLE
 
 /** Текст для разбора из двух источников с подписями — ИИ сводит их, встроенный разбор берёт продукты из поста, этапы из речи. */
 internal fun recipeSource(post: String, speech: String): String = when {
@@ -525,11 +537,11 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
  */
 internal suspend fun applyParsed(d: RecipeDraft, p: RecipeText.Parsed, text: String, viaAi: Boolean) {
     // ИИ сам перечисляет упомянутые продукты; встроенный разбор добирает их по базе.
-    val ings = ingredientsFrom(p, if (viaAi) "" else text)
+    val ings = ingredientsFrom(p, if (viaAi) "" else text).map { it.copy(name = com.dasein.poryadok.logic.RecipeStyle.ingredient(it.name)) }
     val g = com.dasein.poryadok.logic.RecipeClassify.guess(p, text)
     var r = d.recipe.copy(notes = text.trim())
     val title = p.title ?: g.title
-    if (r.name.isBlank() && title != null) r = r.copy(name = title)
+    if (r.name.isBlank() && title != null) r = r.copy(name = com.dasein.poryadok.logic.RecipeStyle.title(title))
     val total = ings.sumOf { it.grams }
     val servings = p.servings ?: RecipeText.guessServings(total)
     // Порции из текста задают вес порции: блюдо делится на столько тарелок.
@@ -542,7 +554,7 @@ internal suspend fun applyParsed(d: RecipeDraft, p: RecipeText.Parsed, text: Str
         if (protein >= 25) add("высокобелковые")
         if (kcal > 0 && carbs <= 15) add("низкоуглеводные")
     }
-    val tags = (r.tagList() + p.tags.take(if (viaAi) 6 else 3) + g.tags + kbjuTags).map { it.trim() }.filter { it.isNotEmpty() }.distinct().take(10)
+    val tags = (r.tagList() + p.tags.take(if (viaAi) 6 else 3) + g.tags + kbjuTags).map { com.dasein.poryadok.logic.RecipeStyle.tag(it) }.filter { it.isNotEmpty() }.distinct().take(10)
     val meals = (p.meals ?: g.meals).toSet()
     r = r.copy(
         category = p.category ?: g.category,
@@ -552,12 +564,12 @@ internal suspend fun applyParsed(d: RecipeDraft, p: RecipeText.Parsed, text: Str
         // У ИИ «totalMinutes» — время готовки; у встроенного разбора время делит RecipeClassify.
         cookMin = if (p.prepMinutes != null) (p.totalMinutes ?: g.cookMin) else g.cookMin,
         tags = tags.joinToString(", "),
-        tips = r.tips.ifBlank { p.tips ?: g.tips },
-        swaps = r.swaps.ifBlank { p.swaps ?: g.swaps },
+        tips = r.tips.ifBlank { (p.tips ?: g.tips).let { com.dasein.poryadok.logic.RecipeStyle.bullets(it) } },
+        swaps = r.swaps.ifBlank { (p.swaps ?: g.swaps).let { com.dasein.poryadok.logic.RecipeStyle.bullets(it) } },
     )
     d.recipe = r
     if (ings.isNotEmpty()) { d.ingredients.clear(); d.ingredients.addAll(ings) }
-    if (p.steps.isNotEmpty()) { d.steps.clear(); d.steps.addAll(p.steps.map { it.text }) }
+    if (p.steps.isNotEmpty()) { d.steps.clear(); d.steps.addAll(p.steps.map { com.dasein.poryadok.logic.RecipeStyle.step(it.text) }.filter { it.isNotBlank() }) }
     // Сразу показать, что получилось: ингредиенты можно поправить.
     d.step = 1
 }

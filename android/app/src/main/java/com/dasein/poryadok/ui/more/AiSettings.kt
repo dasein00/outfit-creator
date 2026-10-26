@@ -57,14 +57,18 @@ fun AiSettingsSection() {
         }
         Gap(6.dp)
         TextInput(key, { key = it; Ai.setKey(ctx, it) }, "Ключ OpenRouter (sk-or-…)")
-        // Речь из видео рецептов: бесплатный Whisper от Groq.
-        var groq by remember { mutableStateOf(com.dasein.poryadok.system.VideoSpeech.groqKey(ctx)) }
+        // Запасные ИИ: если OpenRouter не отвечает или кончился лимит, приложение само переходит к следующему.
         Text(
-            "Распознавание речи из видео рецептов: бесплатный ключ Groq (console.groq.com → API Keys → Create). Без ключа на Android 13+ речь распознаёт сам телефон, но хуже.",
-            fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 8.dp),
+            "Запасные ИИ (бесплатно, необязательно). Если основной не отвечает или закончился дневной лимит, приложение само переключится " +
+                "на следующий, у которого есть ключ, — и обратно. Чем больше ключей, тем надёжнее. Ключ Groq ещё и распознаёт речь из видео рецептов " +
+                "(без него на Android 13+ речь распознаёт сам телефон, но хуже). Gemini из России открывается только через VPN.",
+            fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp, modifier = Modifier.padding(top = 10.dp),
         )
-        TextInput(groq, { groq = it; com.dasein.poryadok.system.VideoSpeech.setGroqKey(ctx, it) }, "Ключ Groq (gsk_…) — необязательно")
-        TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.groq.com/keys"))) } }) { Text("Получить ключ Groq") }
+        Ai.BACKUPS.forEach { b ->
+            var k by remember(b.id) { mutableStateOf(b.key(ctx)) }
+            TextInput(k, { k = it; b.setKey(ctx, it) }, b.keyHint, Modifier.padding(top = 6.dp))
+            TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(b.keyUrl))) } }) { Text("Получить ключ ${b.title}") }
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
             OutlinedButton(onClick = {
                 busy = true
@@ -78,13 +82,21 @@ fun AiSettingsSection() {
             Button(onClick = {
                 busy = true; status = null
                 scope.launch {
-                    status = runCatching { Ai.ask(ctx, "Отвечай одним словом.", "Скажи «работает»") }
-                        .fold({ "✓ Связь есть: ${it.take(40)}" }, { "✕ ${it.message}" })
+                    status = Ai.check(ctx).joinToString("\n").ifBlank { "Нет ни одного ключа ИИ" }
                     busy = false
                 }
-            }, enabled = !busy && key.isNotBlank(), modifier = Modifier.weight(1f)) { Text(if (busy) "Проверяю…" else "Проверить") }
+            }, enabled = !busy, modifier = Modifier.weight(1f)) { Text(if (busy) "Проверяю…" else "Проверить") }
         }
         status?.let { Text(it, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp)) }
+        // Новые карточки ИИ заполняет в едином стиле сам; уже сохранённые можно выровнять одной кнопкой.
+        OutlinedButton(onClick = {
+            busy = true
+            scope.launch {
+                val n = runCatching { com.dasein.poryadok.data.RecipeRepo.restyleAll() }.getOrDefault(0)
+                status = if (n > 0) "Карточек приведено к единому стилю: $n" else "Все карточки уже в едином стиле"
+                busy = false
+            }
+        }, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text(btnLabel("Привести все рецепты к единому стилю")) }
         if (models.isNotEmpty()) {
             Text("Модель (если занята — приложение само возьмёт следующую):", fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {

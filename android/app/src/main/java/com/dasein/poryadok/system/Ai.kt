@@ -18,8 +18,10 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Бесплатный ИИ через OpenRouter: один ключ — много бесплатных моделей (Qwen, Kimi, DeepSeek, Llama…).
- * Ключ хранится только на телефоне. Если модель занята или исчезла из бесплатных — пробуем следующую.
+ * Бесплатный ИИ. Основной — OpenRouter: один ключ — много бесплатных моделей (Qwen, Kimi, DeepSeek, Llama…).
+ * Запасные — Groq, Google Gemini и Mistral (у каждого свой бесплатный ключ): если OpenRouter не отвечает или кончился
+ * дневной лимит, запрос сам уходит к следующему, у которого есть ключ; первым потом пробуется тот, что ответил последним.
+ * Ключи хранятся только на телефоне. Если модель занята или исчезла — пробуем следующую.
  */
 object Ai {
     private const val BASE = "https://openrouter.ai/api/v1"
@@ -37,7 +39,56 @@ object Ai {
     private fun sp(ctx: Context) = ctx.getSharedPreferences("ai", Context.MODE_PRIVATE)
     fun key(ctx: Context): String = sp(ctx).getString("key", "").orEmpty()
     fun setKey(ctx: Context, k: String) = sp(ctx).edit().putString("key", k.trim()).apply()
-    fun enabled(ctx: Context) = key(ctx).isNotBlank()
+    /** Есть ключ хотя бы одного ИИ. */
+    fun enabled(ctx: Context) = key(ctx).isNotBlank() || BACKUPS.any { it.key(ctx).isNotBlank() }
+
+    /** Запасной ИИ с совместимым API (как у OpenAI): адрес, ключ и модели (первая — основная, [vision] — понимают картинки). */
+    class Backup(val id: String, val title: String, val base: String, val models: List<String>, val vision: List<String>, val keyUrl: String, val keyHint: String) {
+        fun key(ctx: Context): String = if (id == "groq") VideoSpeech.groqKey(ctx) else sp(ctx).getString("key_$id", "").orEmpty().trim()
+        fun setKey(ctx: Context, k: String) = if (id == "groq") VideoSpeech.setGroqKey(ctx, k) else sp(ctx).edit().putString("key_$id", k.trim()).apply()
+    }
+
+    val BACKUPS = listOf(
+        Backup(
+            "groq", "Groq", "https://api.groq.com/openai/v1",
+            listOf("llama-3.3-70b-versatile", "moonshotai/kimi-k2-instruct", "qwen/qwen3-32b", "meta-llama/llama-4-scout-17b-16e-instruct", "llama-3.1-8b-instant"),
+            listOf("meta-llama/llama-4-scout-17b-16e-instruct", "meta-llama/llama-4-maverick-17b-128e-instruct"),
+            "https://console.groq.com/keys", "Ключ Groq (gsk_…)",
+        ),
+        Backup(
+            "gemini", "Google Gemini", "https://generativelanguage.googleapis.com/v1beta/openai",
+            listOf("gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite"), listOf("gemini-2.5-flash", "gemini-2.0-flash"),
+            "https://aistudio.google.com/apikey", "Ключ Gemini (AIza…)",
+        ),
+        Backup(
+            "mistral", "Mistral", "https://api.mistral.ai/v1",
+            listOf("mistral-small-latest", "open-mistral-nemo", "mistral-large-latest"), listOf("mistral-small-latest", "pixtral-12b-2409"),
+            "https://console.mistral.ai/api-keys", "Ключ Mistral",
+        ),
+    )
+
+    /** Порядок ИИ: тот, что ответил последним, — первым; потом OpenRouter и запасные. */
+    private fun order(ctx: Context): List<String> {
+        val all = listOf("openrouter") + BACKUPS.map { it.id }
+        val last = sp(ctx).getString("last_provider", "").orEmpty()
+        return (listOf(last).filter { it in all } + all).distinct()
+    }
+
+    /** Ответ без «размышлений» модели (<think>…</think> у Qwen и DeepSeek). */
+    private fun clean(s: String) = s.replace(Regex("(?s)<think>.*?</think>"), "").trim()
+
+    /** Один запасной ИИ: модели по очереди, пока какая-то не ответит. */
+    private fun askBackup(ctx: Context, b: Backup, models: List<String>, body: (String) -> String): String {
+        val k = b.key(ctx)
+        var last = "нет ответа"
+        for (m in models) {
+            val r = runCatching { clean(post(k, body(m), b.base)) }
+            r.getOrNull()?.let { if (it.isNotBlank()) return it }
+            last = r.exceptionOrNull()?.message ?: "пустой ответ"
+            if ("401" in last || "403" in last) break
+        }
+        throw AiError(last.take(120))
+    }
     fun model(ctx: Context): String = sp(ctx).getString("model", "").orEmpty()
     fun setModel(ctx: Context, m: String) = sp(ctx).edit().putString("model", m).apply()
     fun cachedModels(ctx: Context): List<String> = sp(ctx).getString("models", "").orEmpty().split('\n').filter { it.isNotBlank() }
@@ -89,6 +140,42 @@ object Ai {
      * Пробует выбранную модель, потом другие бесплатные (до 4 попыток).
      */
     suspend fun ask(ctx: Context, system: String, user: String): String = withContext(Dispatchers.IO) {
+        val errors = ArrayList<String>()
+        for (id in order(ctx)) {
+            val b = BACKUPS.firstOrNull { it.id == id }
+            if ((b?.key(ctx) ?: key(ctx)).isBlank()) continue
+            val r = runCatching {
+                if (b == null) askOpenRouter(ctx, system, user)
+                else askBackup(ctx, b, b.models) { m -> chatBody(m, system, user) }
+            }
+            r.getOrNull()?.let { sp(ctx).edit().putString("last_provider", id).apply(); return@withContext it }
+            errors += (b?.title ?: "OpenRouter") + ": " + (r.exceptionOrNull()?.message ?: "нет ответа").take(140)
+        }
+        if (errors.isEmpty()) throw AiError("Нет ключа ИИ — добавьте ключ OpenRouter, Groq, Gemini или Mistral в «Настройки» → «ИИ-помощник».")
+        throw AiError("ИИ не ответил — " + errors.joinToString("; ") + ". Бесплатные модели иногда перегружены — попробуйте чуть позже.")
+    }
+
+    /** Проверка каждого ИИ, у которого есть ключ: «OpenRouter ✓», «Groq ✕ 429…». */
+    suspend fun check(ctx: Context): List<String> = withContext(Dispatchers.IO) {
+        val out = ArrayList<String>()
+        if (key(ctx).isNotBlank()) out += "OpenRouter: " + runCatching { askOpenRouter(ctx, "Отвечай одним словом.", "Скажи «работает»") }.fold({ "✓ " + it.take(30) }, { "✕ " + it.message?.take(100) })
+        BACKUPS.filter { it.key(ctx).isNotBlank() }.forEach { b ->
+            out += b.title + ": " + runCatching { askBackup(ctx, b, b.models) { m -> chatBody(m, "Отвечай одним словом.", "Скажи «работает»") } }
+                .fold({ "✓ " + it.take(30) }, { "✕ " + it.message?.take(100) })
+        }
+        out
+    }
+
+    private fun chatBody(model: String, system: String, user: String) = buildJsonObject {
+        put("model", model)
+        put("temperature", 0.1)
+        put("messages", buildJsonArray {
+            add(buildJsonObject { put("role", "system"); put("content", system) })
+            add(buildJsonObject { put("role", "user"); put("content", user) })
+        })
+    }.toString()
+
+    private suspend fun askOpenRouter(ctx: Context, system: String, user: String): String {
         val k = key(ctx)
         if (k.isBlank()) throw AiError("Нет ключа OpenRouter — добавьте его в «Настройки» → «ИИ-помощник».")
         // Порядок: выбранная → та, что ответила последней → свежий список бесплатных → запасной; недавно сбойные — в конце.
@@ -103,7 +190,7 @@ object Ai {
         while (tried < 6 && queue.isNotEmpty()) {
             val m = queue.first(); queue = queue.drop(1); tried++
             val r = runCatching { call(k, m, system, user) }
-            r.getOrNull()?.let { if (it.isNotBlank()) { sp(ctx).edit().putString("last_ok", m).apply(); return@withContext it } }
+            r.getOrNull()?.let { if (it.isNotBlank()) { sp(ctx).edit().putString("last_ok", m).apply(); return clean(it) } }
             last = r.exceptionOrNull()?.message ?: "пустой ответ"
             if ("401" in last) throw AiError("Ключ не подходит (401). Проверьте ключ OpenRouter.")
             markBad(ctx, m)
@@ -114,20 +201,13 @@ object Ai {
                 if (fresh.isNotEmpty()) queue = (fresh + queue).distinct()
             }
         }
-        throw AiError("ИИ не ответил: $last. Бесплатные модели иногда перегружены — попробуйте чуть позже.")
+        throw AiError(last.take(140))
     }
 
-    private fun call(key: String, model: String, system: String, user: String): String = post(key, buildJsonObject {
-        put("model", model)
-        put("temperature", 0.1)
-        put("messages", buildJsonArray {
-            add(buildJsonObject { put("role", "system"); put("content", system) })
-            add(buildJsonObject { put("role", "user"); put("content", user) })
-        })
-    }.toString())
+    private fun call(key: String, model: String, system: String, user: String): String = post(key, chatBody(model, system, user))
 
-    private fun post(key: String, body: String): String {
-        val c = URL("$BASE/chat/completions").openConnection() as HttpURLConnection
+    private fun post(key: String, body: String, base: String = BASE): String {
+        val c = URL("$base/chat/completions").openConnection() as HttpURLConnection
         c.requestMethod = "POST"
         c.doOutput = true
         c.connectTimeout = 15_000; c.readTimeout = 90_000
@@ -179,6 +259,28 @@ object Ai {
      * Пробует бесплатные модели, которые понимают изображения (до 4 попыток).
      */
     suspend fun askImages(ctx: Context, prompt: String, images: List<ByteArray>): String = withContext(Dispatchers.IO) {
+        val content = buildJsonArray {
+            add(buildJsonObject { put("type", "text"); put("text", prompt) })
+            images.forEach { img ->
+                add(buildJsonObject {
+                    put("type", "image_url")
+                    put("image_url", buildJsonObject { put("url", "data:image/jpeg;base64," + android.util.Base64.encodeToString(img, android.util.Base64.NO_WRAP)) })
+                })
+            }
+        }
+        fun body(m: String) = buildJsonObject { put("model", m); put("temperature", 0.0); put("messages", buildJsonArray { add(buildJsonObject { put("role", "user"); put("content", content) }) }) }.toString()
+        val errors = ArrayList<String>()
+        for (id in order(ctx)) {
+            val b = BACKUPS.firstOrNull { it.id == id }
+            if ((b?.key(ctx) ?: key(ctx)).isBlank()) continue
+            val r = runCatching { if (b == null) imagesOpenRouter(ctx, prompt, images) else askBackup(ctx, b, b.vision) { m -> body(m) } }
+            r.getOrNull()?.let { return@withContext it }
+            errors += (b?.title ?: "OpenRouter") + ": " + (r.exceptionOrNull()?.message ?: "нет ответа").take(100)
+        }
+        throw AiError("ИИ не прочитал картинку — " + errors.joinToString("; ").ifBlank { "нет ключа" })
+    }
+
+    private suspend fun imagesOpenRouter(ctx: Context, prompt: String, images: List<ByteArray>): String = withContext(Dispatchers.IO) {
         val k = key(ctx)
         if (k.isBlank()) throw AiError("Нет ключа OpenRouter")
         val bad = badModels(ctx)
