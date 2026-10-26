@@ -405,6 +405,13 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                     }
                     // Цитаты и слова на главной не показываем — только полезная информация.
                     "quote" -> Unit
+                    "rareword" -> item(key = "rareword") {
+                        Gap(14.dp)
+                        com.dasein.poryadok.ui.talk.HomeRareWordCard {
+                            com.dasein.poryadok.ui.talk.TalkNav.openTab = com.dasein.poryadok.ui.talk.WORD_TAB
+                            nav.navigate(Routes.SMALL_TALK)
+                        }
+                    }
                 }
             }
         }

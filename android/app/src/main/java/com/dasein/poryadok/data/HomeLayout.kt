@@ -38,12 +38,13 @@ object HomeLayout {
         Block("money", "Деньги", "d06/00", "Баланс, месяц, бюджет, ближайший платёж"),
         Block("goals", "Цели", "d03/11", "Прогресс целей", SIZES3),
         Block("talk", "Факт для разговора", "d22/00", "Small Talks"),
+        Block("rareword", "Слово дня (редкие слова)", "d01/09", "Редкое слово: определение, этимология и история — из Small Talks"),
         Block("quote", "Цитата дня", "d01/14", "Цитата и итог дня"),
     )
 
     val DEFAULT = listOf(
         "activity", "weight", "greeting", "weather", "holiday", "tutor", "history", "culture", "rings", "metrics", "health", "pressure",
-        "tasks", "habits", "calendar", "wellbeing", "menu", "money", "goals", "talk", "quote",
+        "tasks", "habits", "calendar", "wellbeing", "menu", "money", "goals", "talk", "quote", "rareword",
     ).map { Entry(it, CATALOG.first { b -> b.id == it }.defaultSize) }
 
     fun block(id: String): Block? = CATALOG.firstOrNull { it.id == id }
@@ -66,7 +67,7 @@ object HomeLayout {
 
     /** Текущая раскладка; экраны перерисовываются при изменении. */
     /** Новые плашки, которые появились после того, как раскладку уже настроили, — вставляются после «Праздников» один раз. */
-    private val ADDED = listOf(2 to listOf("tutor", "history"), 3 to listOf("culture"))
+    private val ADDED = listOf(2 to listOf("tutor", "history"), 3 to listOf("culture"), 4 to listOf("rareword"))
     private const val VERSION_KEY = "home_layout_v"
 
     fun migrate(saved: List<Entry>, version: Int): List<Entry> {
@@ -76,7 +77,8 @@ object HomeLayout {
             if (missing.isEmpty()) return@forEach
             // Новые плашки — после «Истории» (для «Культуры»), иначе после «Праздников», иначе после «Погоды».
             fun after(id: String) = l.indexOfFirst { it.id == id }.takeIf { it >= 0 }?.plus(1)
-            val at = (if ("culture" in ids) after("history") else null) ?: after("holiday") ?: after("weather") ?: 0
+            // «Слово дня» — в самом конце главной.
+            val at = if ("rareword" in ids) l.size else (if ("culture" in ids) after("history") else null) ?: after("holiday") ?: after("weather") ?: 0
             l = l.take(at) + missing + l.drop(at)
         }
         return l

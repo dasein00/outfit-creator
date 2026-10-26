@@ -90,6 +90,8 @@ fun HistoryTab(selectedDay: Long) {
                 list.forEachIndexed { i, e -> EventCard(e, startOpen = i == 0, date = date) }
             }
         }
+        // Мало событий — ИИ найдёт ещё именно этой даты (можно задать тему).
+        com.dasein.poryadok.ui.talk.AiFactsPanel(Modifier.padding(top = 12.dp), com.dasein.poryadok.ui.talk.AiFacts.Mode.HISTORY, date)
         Text("Источники: подборка DASEIN и раздел «В этот день» русской Википедии.", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 16.dp))
         com.dasein.poryadok.ui.common.OfflineStatusLine(Modifier.padding(top = 4.dp, bottom = 16.dp))
     }

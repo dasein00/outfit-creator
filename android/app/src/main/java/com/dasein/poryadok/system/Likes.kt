@@ -26,7 +26,8 @@ object Likes {
     const val CULTURE = "culture"
     const val FACT = "fact"
     const val HOLIDAY = "holiday"
-    val KIND_NAMES = linkedMapOf(HISTORY to "История", CULTURE to "Культура", FACT to "Интересные факты", HOLIDAY to "Праздники")
+    const val WORD = "word"
+    val KIND_NAMES = linkedMapOf(HISTORY to "История", CULTURE to "Культура", FACT to "Интересные факты", HOLIDAY to "Праздники", WORD to "Редкие слова")
 
     @Serializable
     data class Like(

@@ -213,9 +213,13 @@ fun TalkFactCard(onOpen: () -> Unit) {
     }
 }
 
-private val TABS = listOf("Факты", "Поиск", "Истории", "Вопросы", "Темы", "Школа", "Тренажёр", "Фразы", "Избранное")
+private val TABS = listOf("Факты", "Поиск", "Истории", "Вопросы", "Темы", "Школа", "Тренажёр", "Фразы", "Избранное", "Слово дня")
 private const val FAV_TAB = 8
-private val TAB_GLYPHS = listOf("ui:bulb", "ui:search", "ui:book", "ui:people", "ui:globe", "ui:cap", "ui:target", "ui:notebook", "ui:heart")
+/** Вкладка «Слово дня» — её открывает плашка на главной. */
+const val WORD_TAB = 9
+/** С какой вкладки открыть Small Talks (плашка «Слово дня» на главной); сбрасывается после открытия. */
+object TalkNav { var openTab: Int? = null }
+private val TAB_GLYPHS = listOf("ui:bulb", "ui:search", "ui:book", "ui:people", "ui:globe", "ui:cap", "ui:target", "ui:notebook", "ui:heart", "ui:book")
 private val TAB_HINTS = listOf(
     "Факт дня по выбранным сферам — те же, что на главной. Ниже весь каталог фактов: поиск, страницы, переход на страницу по номеру.",
     "Поиск по всей базе сразу: факты, истории, вопросы, приёмы, фразы и темы. Можно искать точные выражения в кавычках.",
@@ -226,6 +230,7 @@ private val TAB_HINTS = listOf(
     "Упражнения: упражнение дня, светофор реплики, мнение за 3 секунды, конструктор историй.",
     "Готовые фразы для трудных моментов. Нажмите на фразу — она скопируется.",
     "Сохранённые факты и истории — освежите их перед встречей.",
+    "Редкие красивые слова — определение, этимология и история. С ключом ИИ каждый день новое слово.",
 )
 
 /** Как сортировать каталог. */
@@ -236,7 +241,8 @@ fun SmallTalkScreen(nav: NavHostController) {
     val ctx = LocalContext.current
     val data = remember(TalkRepo.version.intValue) { TalkRepo.load(ctx) }
     val settings by observe(null) { Graph.prefs.settings }
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    var tab by rememberSaveable { mutableIntStateOf(TalkNav.openTab ?: 0) }
+    LaunchedEffect(Unit) { TalkNav.openTab = null }
     Screen("Small Talks", onBack = { nav.popBackStack() }) { pad ->
         val s = settings ?: return@Screen
         val favorites = SmallTalk.decodeIds(s.talkFavorites)
@@ -253,7 +259,8 @@ fun SmallTalkScreen(nav: NavHostController) {
                     5 -> TabList(5) { guideTab(data) }
                     6 -> TabList(6) { trainerTab(data, s) }
                     7 -> TabList(7) { phrasesTab(data) }
-                    else -> TabList(FAV_TAB) { favoritesTab(data, favorites) { tab = it } }
+                    FAV_TAB -> TabList(FAV_TAB) { favoritesTab(data, favorites) { tab = it } }
+                    else -> RareWordsTab()
                 }
             }
         }
