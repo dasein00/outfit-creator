@@ -76,9 +76,11 @@ class TutorTest {
         assertEquals(1889, merged.first().year)
         assertEquals(2, merged.size) // встроенное 1889 + 1950 из Википедии (1889 из Википедии — повтор)
         val old = listOf(HomeLayout.Entry("greeting"), HomeLayout.Entry("holiday"), HomeLayout.Entry("tasks"))
-        assertEquals(listOf("greeting", "holiday", "tutor", "history", "culture", "tasks"), HomeLayout.migrate(old, 1).map { it.id })
-        assertEquals(listOf("greeting", "holiday", "culture", "tasks"), HomeLayout.migrate(old, 2).map { it.id })
-        assertEquals(old, HomeLayout.migrate(old, 3))
+        assertEquals(listOf("greeting", "holiday", "tutor", "history", "culture", "tasks", "rareword"), HomeLayout.migrate(old, 1).map { it.id })
+        assertEquals(listOf("greeting", "holiday", "culture", "tasks", "rareword"), HomeLayout.migrate(old, 2).map { it.id })
+        // «Слово дня» добавляется в самый конец главной.
+        assertEquals(listOf("greeting", "holiday", "tasks", "rareword"), HomeLayout.migrate(old, 3).map { it.id })
+        assertEquals(old, HomeLayout.migrate(old, 4))
         assertNull(HomeLayout.decode(""))
     }
 }
