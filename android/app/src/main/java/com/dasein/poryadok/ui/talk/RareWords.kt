@@ -145,7 +145,10 @@ object RareWords {
 
 /** Карточка слова: слово, часть речи, определение; раскрытая — этимология, история и пример. */
 @Composable
-fun RareWordCard(w: RareWords.Word, open: Boolean, modifier: Modifier = Modifier, title: String? = null, onClick: (() -> Unit)? = null) {
+fun RareWordCard(
+    w: RareWords.Word, open: Boolean, modifier: Modifier = Modifier, title: String? = null, onClick: (() -> Unit)? = null,
+    footer: (@Composable () -> Unit)? = null,
+) {
     val extra = LocalExtra.current
     val accent = MaterialTheme.colorScheme.primary
     val likes = rememberLikes()
@@ -172,6 +175,30 @@ fun RareWordCard(w: RareWords.Word, open: Boolean, modifier: Modifier = Modifier
         } else if (w.e.isNotBlank()) Text(
             btnLabel("Происхождение и история ›"), fontSize = 13.sp, color = accent, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp),
         )
+        footer?.invoke()
+    }
+}
+
+/**
+ * ‹ › под словом дня: листать слова прошлых дней (те, что уже изучили) и вернуться к сегодняшнему.
+ * [back] — на сколько дней назад сейчас.
+ */
+@Composable
+private fun DayArrows(back: Int, onBack: (Int) -> Unit) {
+    val extra = LocalExtra.current
+    val accent = MaterialTheme.colorScheme.primary
+    Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        androidx.compose.material3.OutlinedIconButton(onClick = { onBack(back + 1) }) {
+            androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, "Предыдущее слово")
+        }
+        Text(
+            when (back) { 0 -> "Сегодня"; 1 -> "Вчера"; else -> "$back дн. назад" },
+            fontSize = 13.sp, color = extra.dim, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        androidx.compose.material3.FilledIconButton(
+            onClick = { onBack(back - 1) }, enabled = back > 0,
+            colors = androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(containerColor = accent),
+        ) { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowForward, "Следующее слово") }
     }
 }
 
@@ -187,8 +214,9 @@ fun HomeRareWordCard(onOpen: () -> Unit) {
     val ctx = LocalContext.current
     val v = RareWords.version.intValue
     LaunchedEffect(Unit) { RareWords.ensureDaily(ctx) }
-    val w = remember(v, Dates.today()) { RareWords.today(ctx) } ?: return
-    RareWordCard(w, open = false, title = "Слово дня", onClick = onOpen)
+    var back by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(0) }
+    val w = remember(v, back, Dates.today()) { RareWords.today(ctx, Dates.today() - back) } ?: return
+    RareWordCard(w, open = false, title = if (back == 0) "Слово дня" else "Слово дня · раньше", onClick = onOpen) { DayArrows(back) { back = it.coerceAtLeast(0) } }
 }
 
 /** Вкладка Small Talks «Слово дня»: слово дня, слова от ИИ (в том числе на тему) и весь словарь. */
@@ -199,7 +227,8 @@ internal fun RareWordsTab() {
     val scope = rememberCoroutineScope()
     val v = RareWords.version.intValue
     LaunchedEffect(Unit) { RareWords.ensureDaily(ctx) }
-    val today = remember(v) { RareWords.today(ctx) }
+    var back by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(0) }
+    val today = remember(v, back) { RareWords.today(ctx, Dates.today() - back) }
     val all = remember(v) { RareWords.all(ctx) }
     val aiOn = remember { Ai.enabled(ctx) }
     var topic by remember { mutableStateOf("") }
@@ -216,7 +245,7 @@ internal fun RareWordsTab() {
     }
     val shown = remember(all, q) { all.filter { q.isBlank() || it.w.contains(q, true) || it.d.contains(q, true) } }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp)) {
-        today?.let { item { RareWordCard(it, open = true, title = "Слово дня") } }
+        today?.let { item { RareWordCard(it, open = true, title = "Слово дня") { DayArrows(back) { b -> back = b.coerceAtLeast(0) } } } }
         item {
             Column(Modifier.padding(top = 12.dp).fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(extra.card).padding(14.dp)) {
                 Text(btnLabel("Слова от ИИ"), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)

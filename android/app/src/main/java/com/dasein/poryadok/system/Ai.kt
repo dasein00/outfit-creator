@@ -155,6 +155,70 @@ object Ai {
         throw AiError("ИИ не ответил — " + errors.joinToString("; ") + ". Бесплатные модели иногда перегружены — попробуйте чуть позже.")
     }
 
+    /** Реплика чата: [role] — "user" или "assistant", [images] — JPEG (фото, кадры видео). */
+    class Turn(val role: String, val text: String, val images: List<ByteArray> = emptyList())
+
+    /**
+     * Разговор с ИИ: вся переписка уходит модели, картинки — только у последних реплик (меньше трафика).
+     * С картинками — модели, которые их понимают. Так же, как [ask], переключается на запасной ИИ, если этот не ответил.
+     */
+    suspend fun chat(ctx: Context, system: String, turns: List<Turn>): String = withContext(Dispatchers.IO) {
+        val recent = turns.takeLast(24)
+        val vision = recent.takeLast(4).any { it.images.isNotEmpty() }
+        fun body(m: String) = buildJsonObject {
+            put("model", m)
+            put("temperature", 0.5)
+            put("messages", buildJsonArray {
+                add(buildJsonObject { put("role", "system"); put("content", system) })
+                recent.forEachIndexed { i, t ->
+                    val withImages = t.images.isNotEmpty() && i >= recent.size - 4
+                    add(buildJsonObject {
+                        put("role", t.role)
+                        if (!withImages) put("content", t.text.ifBlank { "(без текста)" })
+                        else put("content", buildJsonArray {
+                            add(buildJsonObject { put("type", "text"); put("text", t.text.ifBlank { "Что на изображении?" }) })
+                            t.images.take(8).forEach { img ->
+                                add(buildJsonObject {
+                                    put("type", "image_url")
+                                    put("image_url", buildJsonObject { put("url", "data:image/jpeg;base64," + android.util.Base64.encodeToString(img, android.util.Base64.NO_WRAP)) })
+                                })
+                            }
+                        })
+                    })
+                }
+            })
+        }.toString()
+        val errors = ArrayList<String>()
+        for (id in order(ctx)) {
+            val b = BACKUPS.firstOrNull { it.id == id }
+            if ((b?.key(ctx) ?: key(ctx)).isBlank()) continue
+            val r = runCatching {
+                if (b != null) askBackup(ctx, b, if (vision) b.vision else b.models) { m -> body(m) }
+                else {
+                    val k = key(ctx)
+                    val bad = badModels(ctx)
+                    val models = if (vision) (visionModels(ctx) + VISION_FALLBACK).distinct()
+                    else (listOf(model(ctx), sp(ctx).getString("last_ok", "").orEmpty()) + freshModels(ctx) + FALLBACK).filter { it.isNotBlank() }.distinct()
+                    var last = "нет ответа"
+                    var answer: String? = null
+                    for (m in (models.filter { it !in bad } + models.filter { it in bad }).take(5)) {
+                        val res = runCatching { clean(post(k, body(m))) }
+                        res.getOrNull()?.takeIf { it.isNotBlank() }?.let { answer = it }
+                        if (answer != null) break
+                        last = res.exceptionOrNull()?.message ?: "пустой ответ"
+                        if ("401" in last) break
+                        markBad(ctx, m)
+                    }
+                    answer ?: throw AiError(last.take(140))
+                }
+            }
+            r.getOrNull()?.let { sp(ctx).edit().putString("last_provider", id).apply(); return@withContext it }
+            errors += (b?.title ?: "OpenRouter") + ": " + (r.exceptionOrNull()?.message ?: "нет ответа").take(120)
+        }
+        if (errors.isEmpty()) throw AiError("Нет ключа ИИ — добавьте ключ OpenRouter, Groq или Gemini в «Настройки» → «ИИ-помощник».")
+        throw AiError("ИИ не ответил — " + errors.joinToString("; "))
+    }
+
     /** Проверка каждого ИИ, у которого есть ключ: «OpenRouter ✓», «Groq ✕ 429…». */
     suspend fun check(ctx: Context): List<String> = withContext(Dispatchers.IO) {
         val out = ArrayList<String>()

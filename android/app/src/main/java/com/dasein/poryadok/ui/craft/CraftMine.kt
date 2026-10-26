@@ -236,6 +236,12 @@ fun CraftMineScreen(nav: NavHostController) {
                 "Из этих цветов собирается картина, если в схеме включить «Только из моих страз». Нажмите на цвет, чтобы поправить оттенок, название или удалить.",
                 fontSize = 12.sp, color = extra.dim,
             )
+            // Дубликаты: цвета, которые на глаз не отличить, — удаляются одной кнопкой (остаётся первый).
+            val dupes = remember(stones) { CraftStore.mineDuplicates(ctx) }
+            if (dupes > 0) OutlinedButton(onClick = {
+                val n = CraftStore.dedupeMine(ctx)
+                android.widget.Toast.makeText(ctx, "Удалено дубликатов: $n", android.widget.Toast.LENGTH_SHORT).show()
+            }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("Удалить дубликаты цветов ($dupes)") }
             Gap(6.dp)
             stones.forEach { st ->
                 Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { edit = st }.padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {

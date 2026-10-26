@@ -110,6 +110,23 @@ object PbnStore {
             custom(ctx, m).map { PaintByNumbers.Pencil("С${it.n}", it.name.ifBlank { "Свой цвет ${it.n}" }, it.rgb) }
     }
 
+    /** Сколько дубликатов среди своих материалов (отмеченные из каталога + свои цвета): на глаз одинаковые цвета. */
+    fun duplicates(ctx: Context, m: PaintByNumbers.Medium): Int = com.dasein.poryadok.logic.CraftPattern.duplicateIndexes(pencils(ctx, m).map { it.rgb }).size
+
+    /**
+     * Удалить дубликаты среди своих материалов: из похожих остаётся первый, остальные свои цвета удаляются,
+     * а повторы из каталога снимаются с отметки. Возвращает, сколько убрано.
+     */
+    fun dedupe(ctx: Context, m: PaintByNumbers.Medium): Int {
+        val all = pencils(ctx, m)
+        val dup = com.dasein.poryadok.logic.CraftPattern.duplicateIndexes(all.map { it.rgb })
+        if (dup.isEmpty()) return 0
+        val drop = dup.map { all[it].code }.toSet()
+        setOwned(ctx, owned(ctx, m) - drop, m)
+        setCustom(ctx, custom(ctx, m).filter { "С${it.n}" !in drop }, m)
+        return dup.size
+    }
+
     /** Какой материал выбран последним — с него начинается новая раскраска. */
     fun lastMedium(ctx: Context): Int = sp(ctx).getInt("pbn_medium", 0)
     fun setLastMedium(ctx: Context, m: Int) { sp(ctx).edit().putInt("pbn_medium", m).apply() }

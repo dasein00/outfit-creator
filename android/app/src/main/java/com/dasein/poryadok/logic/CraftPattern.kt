@@ -202,6 +202,14 @@ object CraftPattern {
         return compact(p.copy(cells = IntArray(p.cells.size) { val c = p.cells[it]; if (c < 0) -1 else to[c] }))
     }
 
+    /** Дубликаты в своей палитре: индексы цветов, которые на глаз не отличить (ΔE < [de]) от какого-то из предыдущих. */
+    fun duplicateIndexes(rgbs: List<Int>, de: Double = 4.0): Set<Int> {
+        val labs = rgbs.map { lab(it) }
+        val out = HashSet<Int>()
+        labs.forEachIndexed { i, l -> if ((0 until i).any { j -> j !in out && Math.sqrt(d2(l, labs[j])) < de }) out += i }
+        return out
+    }
+
     /** Замены цветов пользователем: номер DMC → другой номер (можно слить два цвета в один или взять соседний оттенок). */
     fun replace(p: Pattern, map: Map<String, String>, mine: List<Thread> = emptyList()): Pattern {
         if (map.isEmpty()) return p

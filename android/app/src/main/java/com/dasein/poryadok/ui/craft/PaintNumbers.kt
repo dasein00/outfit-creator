@@ -325,6 +325,12 @@ fun PencilsScreen(nav: NavHostController) {
                     Pill("Снять все", false) { PbnStore.setOwned(ctx, emptySet(), medium) }
                 }
                 Text("Отмечено: ${owned.size} из ${medium.catalog.size} + своих ${custom.size}", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))
+                // Дубликаты: одинаковые на глаз цвета среди отмеченных и своих — убираются одной кнопкой (остаётся первый).
+                val dupes = remember(ver, medium) { PbnStore.duplicates(ctx, medium) }
+                if (dupes > 0) OutlinedButton(onClick = {
+                    val n = PbnStore.dedupe(ctx, medium)
+                    android.widget.Toast.makeText(ctx, "Убрано дубликатов: $n", android.widget.Toast.LENGTH_SHORT).show()
+                }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Text("Удалить дубликаты цветов ($dupes)") }
             }
             SettingsCard("Свои цвета") {
                 Text("Если оттенка нет в каталоге — добавьте его пипеткой по фото выше, ползунками, HEX-кодом или по номеру DMC.", fontSize = 12.sp, color = extra.dim)

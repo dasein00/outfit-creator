@@ -154,6 +154,17 @@ object CraftStore {
         runCatching { mineFile(ctx).writeText(json.encodeToString(kotlinx.serialization.builtins.ListSerializer(MyStone.serializer()), list)) }
     }
 
+    /** Сколько в «Моих стразах» дубликатов — цветов, которые на глаз не отличить от другого. */
+    fun mineDuplicates(ctx: Context): Int = CraftPattern.duplicateIndexes(mine(ctx).map { it.rgb }).size
+
+    /** Удалить дубликаты из «Моих страз» (остаётся первый из похожих). Возвращает, сколько удалено. */
+    fun dedupeMine(ctx: Context): Int {
+        val cur = mine(ctx)
+        val dup = CraftPattern.duplicateIndexes(cur.map { it.rgb })
+        if (dup.isNotEmpty()) setMine(ctx, cur.filterIndexed { i, _ -> i !in dup })
+        return dup.size
+    }
+
     /** Добавить цвета; почти одинаковые (ΔE < [same]) с уже имеющимися пропускаются. Возвращает, сколько добавлено. */
     fun addMine(ctx: Context, rgbs: List<Int>, auto: Boolean, same: Double = 4.0): Int {
         val cur = mine(ctx).toMutableList()

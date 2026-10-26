@@ -1,6 +1,7 @@
 package com.dasein.poryadok.ui
 
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.layout.navigationBars
 
 import androidx.compose.foundation.layout.Column
@@ -229,14 +230,34 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
         }
     }
 
-    Column(Modifier.fillMaxSize().editorModeHold()) {
+    // Самовосстановление: изредка после возврата в приложение экран вкладки сжимается до нуля — нижняя панель
+    // оказывается вверху, а под ней пусто (раньше помогал только перезапуск). Если так держится 2 секунды,
+    // интерфейс пересоздаётся сам: открытый раздел и введённое сохраняются, как при повороте экрана.
+    var rootH by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    var navH by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val activity = androidx.compose.ui.platform.LocalContext.current as? android.app.Activity
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(Unit) {
+        var bad = 0
+        while (true) {
+            kotlinx.coroutines.delay(1000)
+            val resumed = lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)
+            bad = if (resumed && rootH > 0 && navH < rootH / 4) bad + 1 else 0
+            if (bad >= 2 && System.currentTimeMillis() - LayoutGuard.lastFix > 30_000) {
+                LayoutGuard.lastFix = System.currentTimeMillis()
+                activity?.recreate()
+                break
+            }
+        }
+    }
+    Column(Modifier.fillMaxSize().onSizeChanged { rootH = it.height }.editorModeHold()) {
         // Полоса режима редактора — сверху, подальше от системных кнопок Android внизу.
         if (com.dasein.poryadok.data.UiTexts.editorMode.value) EditorModeStrip()
         // Под экранами вкладок стоит нижняя панель, и отступ от кнопок Android даёт она сама — экранам он не нужен,
         // иначе над панелью остаётся пустая полоса.
         NavHost(
             nav, startDestination = Routes.TODAY,
-            modifier = Modifier.weight(1f).then(
+            modifier = Modifier.weight(1f).onSizeChanged { navH = it.height }.then(
                 if (showBar) Modifier.consumeWindowInsets(androidx.compose.foundation.layout.WindowInsets.navigationBars) else Modifier,
             ),
         ) {
@@ -329,6 +350,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable(Routes.WIDGET_EDITOR) { com.dasein.poryadok.ui.more.WidgetEditorScreen(nav) }
             composable(Routes.WEATHER) { com.dasein.poryadok.ui.weather.WeatherScreen(nav) }
             composable(Routes.SMALL_TALK) { com.dasein.poryadok.ui.talk.SmallTalkScreen(nav) }
+            composable(com.dasein.poryadok.ui.more.AI_CHAT_ROUTE) { com.dasein.poryadok.ui.more.AiChatScreen(nav) }
             composable(
                 "${Routes.TRAINING}?tab={tab}",
                 arguments = listOf(navArgument("tab") { type = NavType.IntType; defaultValue = 0 }),
@@ -461,6 +483,9 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
         com.dasein.poryadok.ui.more.TextEditHost()
     }
 }
+
+/** Когда интерфейс последний раз пересоздавался из-за «сжатого» экрана — не чаще раза в 30 секунд. */
+private object LayoutGuard { var lastFix = 0L }
 
 /**
  * Удержание пальца на экране 3 секунды без движения включает режим редактора текстов. Касание только наблюдаем
