@@ -9,6 +9,8 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -90,6 +92,21 @@ fun RecipeVideosSection(r: Recipe) {
     RecipeSourceButton(r)
 }
 
+/** Кнопка панели действий под видео: иконка над подписью, делит ширину поровну с соседями. */
+@Composable
+private fun androidx.compose.foundation.layout.RowScope.VideoAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector, label: String,
+    color: androidx.compose.ui.graphics.Color = androidx.compose.material3.MaterialTheme.colorScheme.primary, onClick: () -> Unit,
+) {
+    Column(
+        Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).clickable(onClick = onClick).padding(vertical = 6.dp, horizontal = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        androidx.compose.material3.Icon(icon, null, tint = color, modifier = Modifier.size(22.dp))
+        Text(btnLabel(label), fontSize = 11.sp, lineHeight = 13.sp, color = color, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(top = 2.dp))
+    }
+}
+
 /** «Источник» — открыть пост или страницу, откуда взято описание рецепта. */
 @Composable
 fun RecipeSourceButton(r: Recipe) {
@@ -163,11 +180,17 @@ fun RecipeVideosEditor(
                 "Видео ${i + 1} · ${com.dasein.poryadok.system.VideoCompress.mb(size)}",
                 fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),
             )
-            if (!viewOnly) androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End) {
-                if (size > 0) com.dasein.poryadok.ui.common.EditVideoButton(v, "Изменить", swap)
-                if (size > 0) TextButton(onClick = { replacing = !replacing }) { Text(btnLabel(if (replacing) "Не заменять" else "Заменить")) }
-                if (onSource != null) TextButton(onClick = { editSource = true }) { Text(btnLabel(if (source != null) "Заменить ссылку" else "Ссылка на источник")) }
-                TextButton(onClick = { remove = v }) { Text(btnLabel("Убрать"), color = extra.danger) }
+            // Действия с видео — одной панелью: иконка и подпись, все кнопки одной ширины.
+            if (!viewOnly) Row(
+                Modifier.fillMaxWidth().padding(top = 8.dp).clip(RoundedCornerShape(14.dp))
+                    .background(androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = .05f)).padding(vertical = 4.dp),
+            ) {
+                if (size > 0) com.dasein.poryadok.ui.common.EditVideoButton(v, "Изменить", trigger = { open ->
+                    VideoAction(androidx.compose.material.icons.Icons.Default.Edit, "Изменить", onClick = open)
+                }, onDone = swap)
+                if (size > 0) VideoAction(androidx.compose.material.icons.Icons.Default.SwapHoriz, if (replacing) "Не заменять" else "Заменить") { replacing = !replacing }
+                if (onSource != null) VideoAction(androidx.compose.material.icons.Icons.Default.Link, if (source != null) "Заменить ссылку" else "Ссылка на источник") { editSource = true }
+                VideoAction(androidx.compose.material.icons.Icons.Default.Delete, "Убрать", extra.danger) { remove = v }
             }
             if (replacing && !viewOnly) {
                 Text("Новое видео встанет на место этого — сначала откроется монтаж.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(vertical = 4.dp))

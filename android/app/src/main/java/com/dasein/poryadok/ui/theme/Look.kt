@@ -25,6 +25,7 @@ data class LookSettings(
 object Look {
     /** Шрифты: заголовки / основной текст. */
     val FONTS = listOf(
+        "Medeo — современный шрифт интерфейсов" to 5,
         "Классика: заголовки с засечками" to 0,
         "Современный: всё без засечек" to 1,
         "Книжный: всё с засечками" to 2,
@@ -64,7 +65,8 @@ object Look {
             val p = sp(ctx)
             state.value = LookSettings(
                 accentRgb = p.getInt("look_accent", 0), bgRgb = p.getInt("look_bg", 0), textRgb = p.getInt("look_text", 0),
-                font = p.getInt("look_font", 0), scale = p.getFloat("look_scale", 1f).coerceIn(.8f, 1.5f),
+                // Medeo ставится один раз для всех (потом можно выбрать другой шрифт в «Оформлении»).
+                font = if (!p.getBoolean("look_medeo", false)) { p.edit().putBoolean("look_medeo", true).putInt("look_font", 5).apply(); 5 } else p.getInt("look_font", 5), scale = p.getFloat("look_scale", 1f).coerceIn(.8f, 1.5f),
                 icons = p.getInt("look_icons", 0), iconRgb = p.getInt("look_icon_rgb", 0), contrast = p.getBoolean("look_contrast", false),
                 cardRound = p.getInt("look_round", 18).coerceIn(4, 32),
             )

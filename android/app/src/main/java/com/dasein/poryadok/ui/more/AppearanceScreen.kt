@@ -186,7 +186,7 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
 
             SectionTitle("Шрифт")
             Look.FONTS.forEach { (label, id) ->
-                val family = when (id) { 1 -> FontFamily.SansSerif; 2 -> FontFamily.Serif; 3 -> FontFamily.Monospace; 4 -> FontFamily.Cursive; else -> FontFamily.Serif }
+                val family = when (id) { 5 -> com.dasein.poryadok.ui.theme.Medeo; 1 -> FontFamily.SansSerif; 2 -> FontFamily.Serif; 3 -> FontFamily.Monospace; 4 -> FontFamily.Cursive; else -> FontFamily.Serif }
                 Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { set { it.copy(font = id) } }.padding(vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,

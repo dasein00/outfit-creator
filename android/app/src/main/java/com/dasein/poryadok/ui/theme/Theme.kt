@@ -85,8 +85,46 @@ val LocalExtra = staticCompositionLocalOf { DarkExtra }
 
 val Serif = FontFamily.Serif
 
+/**
+ * Medeo Sans (DNF, лицензия OFL — assets/medeo_OFL.txt): вариативный гротеск для интерфейсов, латиница и кириллица.
+ * Один файл, насыщенность задаётся осью wght — каждому начертанию свой вес.
+ */
+@OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
+val Medeo = FontFamily(
+    listOf(300, 400, 500, 600, 700, 800).map { w ->
+        androidx.compose.ui.text.font.Font(
+            com.dasein.poryadok.R.font.medeo_sans, FontWeight(w),
+            variationSettings = androidx.compose.ui.text.font.FontVariation.Settings(androidx.compose.ui.text.font.FontVariation.weight(w)),
+        )
+    },
+)
+
+/**
+ * Типографика Medeo: крупные заголовки — плотнее (лёгкий отрицательный трекинг), текст — 15 sp с воздухом 1,5,
+ * подписи — чуть разреженнее. Иерархия держится насыщенностью, а не только кеглем.
+ */
+private fun medeoTypography(): Typography {
+    fun s(size: Int, line: Double, weight: Int, track: Double) = TextStyle(
+        fontFamily = Medeo, fontSize = size.sp, lineHeight = line.em, fontWeight = FontWeight(weight), letterSpacing = track.sp,
+    )
+    return Typography(
+        displayLarge = s(52, 1.1, 700, -1.2), displayMedium = s(42, 1.12, 700, -0.9), displaySmall = s(34, 1.15, 700, -0.6),
+        headlineLarge = s(30, 1.2, 700, -0.5), headlineMedium = s(26, 1.22, 600, -0.4), headlineSmall = s(23, 1.25, 600, -0.3),
+        titleLarge = s(21, 1.28, 600, -0.25),
+        titleMedium = s(16, 1.4, 600, -0.1),
+        titleSmall = s(14, 1.4, 600, 0.0),
+        bodyLarge = s(16, 1.5, 400, 0.0),
+        bodyMedium = s(15, 1.5, 400, 0.0),
+        bodySmall = s(12, 1.45, 400, 0.1),
+        labelLarge = s(14, 1.3, 600, 0.05),
+        labelMedium = s(12, 1.3, 600, 0.2),
+        labelSmall = s(11, 1.3, 500, 0.3),
+    )
+}
+
 /** Шрифты по выбору в «Оформлении»: заголовки и основной текст. */
 private fun typographyFor(font: Int): Typography {
+    if (font == 5) return medeoTypography()
     val (head, body) = when (font) {
         1 -> FontFamily.SansSerif to FontFamily.SansSerif
         2 -> Serif to Serif

@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -251,7 +252,10 @@ fun VideoPlayer(path: String, modifier: Modifier = Modifier, maxHeight: androidx
         lifecycle.addObserver(obs)
         onDispose { lifecycle.removeObserver(obs); mini?.visibility = android.view.View.INVISIBLE }
     }
-    Box(modifier, contentAlignment = Alignment.Center) {
+    Box(modifier.clip(RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+        // Вертикальное видео уже экрана: по бокам — тот же кадр, обрезанный по ширине (не растянутый) и притушенный,
+        // вместо пустых полос.
+        if (ratio < 1.2f) VideoBackdrop(path, Modifier.matchParentSize())
         Box(
             Modifier.heightIn(max = maxHeight).aspectRatio(ratio, matchHeightConstraintsFirst = true)
                 .clip(RoundedCornerShape(12.dp)).background(Color.Black),
@@ -371,7 +375,7 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerControls(
                 androidx.compose.foundation.layout.Spacer(Modifier.size(18.dp))
                 RoundPlayerButton(if (playing) PlayerIcons.PAUSE else PlayerIcons.PLAY, 60.dp, 34.dp, if (playing) "Пауза" else "Смотреть") {
                     lastTouch = System.currentTimeMillis()
-                    view?.let { v -> if (v.isPlaying) v.pause() else v.start(); playing = v.isPlaying }
+                    view?.let { v -> if (v.isPlaying) v.pause() else { takeAudioFocus(v.context); v.start() }; playing = v.isPlaying }
                 }
                 androidx.compose.foundation.layout.Spacer(Modifier.size(18.dp))
                 RoundPlayerButton(PlayerIcons.FORWARD, 44.dp, 26.dp, "Вперёд на 10 секунд") { skip(10_000) }
@@ -463,6 +467,8 @@ private fun videoRatio(path: String): Float? = runCatching {
 }.getOrNull()?.coerceIn(.3f, 3f)
 
 private fun playerView(c: Context, path: String, autoplay: Boolean, startAt: Int) = VideoView(c).apply {
+    // Открытие карточки не должно останавливать музыку или YouTube в фоне: звук забираем, только когда видео запускают.
+    if (Build.VERSION.SDK_INT >= 26) setAudioFocusRequest(android.media.AudioManager.AUDIOFOCUS_NONE)
     setVideoPath(path)
     setOnPreparedListener { mp ->
         mp.setVolume(1f, 1f)
@@ -473,13 +479,44 @@ private fun playerView(c: Context, path: String, autoplay: Boolean, startAt: Int
         val resume = tag as? Int
         tag = null
         if (resume != null) seekTo(resume) else if (startAt > 0) seekTo(startAt) else if (!autoplay) seekTo(1)
-        if (autoplay) start()
+        if (autoplay) { takeAudioFocus(context); start() }
+    }
+}
+
+/** Видео запустили — просим звук у системы (другие плееры встают на паузу), как обычный проигрыватель. */
+private fun takeAudioFocus(ctx: Context) = runCatching {
+    val am = ctx.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+    if (Build.VERSION.SDK_INT >= 26) am.requestAudioFocus(
+        android.media.AudioFocusRequest.Builder(android.media.AudioManager.AUDIOFOCUS_GAIN_TRANSIENT).build(),
+    )
+}
+
+/** Кадр видео во всю площадь (обрезан, не растянут) с затемнением — фон по бокам вертикального ролика. */
+@Composable
+private fun VideoBackdrop(path: String, modifier: Modifier) {
+    val frame by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, path) {
+        value = withContext(Dispatchers.IO) {
+            runCatching {
+                val r = android.media.MediaMetadataRetriever()
+                try {
+                    r.setDataSource(path)
+                    r.getFrameAtTime(500_000, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)?.let { b ->
+                        val k = 720f / maxOf(b.width, b.height)
+                        (if (k < 1f) android.graphics.Bitmap.createScaledBitmap(b, (b.width * k).toInt(), (b.height * k).toInt(), true) else b).asImageBitmap()
+                    }
+                } finally { runCatching { r.release() } }
+            }.getOrNull()
+        }
+    }
+    Box(modifier.background(Color.Black)) {
+        frame?.let { androidx.compose.foundation.Image(it, null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop) }
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .45f)))
     }
 }
 
 /** Кнопка «Монтаж» для уже добавленного видео: те же обрезка, куски и скорость, что при добавлении. Файл заменяется. */
 @Composable
-fun EditVideoButton(path: String, label: String = "Монтаж", onDone: (String) -> Unit) {
+fun EditVideoButton(path: String, label: String = "Монтаж", trigger: (@Composable (open: () -> Unit) -> Unit)? = null, onDone: (String) -> Unit) {
     val ctx = LocalContext.current
     var open by remember(path) { mutableStateOf(false) }
     var busy by remember(path) { mutableStateOf(false) }
@@ -488,7 +525,8 @@ fun EditVideoButton(path: String, label: String = "Монтаж", onDone: (Strin
         Text(btnLabel("Монтирую…"), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp))
         return
     }
-    com.dasein.poryadok.ui.common.TextButton(onClick = { open = true }) { Text(btnLabel(label)) }
+    if (trigger != null) trigger { open = true }
+    else com.dasein.poryadok.ui.common.TextButton(onClick = { open = true }) { Text(btnLabel(label)) }
     // Добавленные в монтаже видео копируются в ту же папку, что и этот ролик.
     val dir = remember(path) { File(path).parentFile?.absolutePath.orEmpty().removePrefix(ctx.filesDir.absolutePath).trimStart('/').ifBlank { "video" } }
     if (open) VideoEditor(path, dir, addMode = false, onCancel = { open = false }, onSkip = { open = false }) { e ->

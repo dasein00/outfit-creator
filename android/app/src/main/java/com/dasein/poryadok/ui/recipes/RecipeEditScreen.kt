@@ -2,6 +2,12 @@
 
 package com.dasein.poryadok.ui.recipes
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
 import com.dasein.poryadok.ui.common.HowTo
 import com.dasein.poryadok.ui.common.btnLabel
 import android.net.Uri
@@ -199,16 +205,18 @@ fun RecipeEditScreen(nav: NavHostController, id: Long, draft: String? = null) {
                 )
             }
             if (myDraft?.ai == 4) Text("ИИ не смог заполнить: ${myDraft?.aiError}", color = extra.danger, fontSize = 12.sp)
+            // Этапы карточки — степпер в одну строку: пройденные с галочкой, текущий выделен, нажатие — перейти.
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("${d.step + 1}/5 · ${STEP_TITLES[d.step]}", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                Text("${macros.kcal.roundToInt()} ккал/порц.", color = extra.dim, fontSize = 13.sp)
+                Text(
+                    btnLabel("Шаг ${d.step + 1} из ${STEP_TITLES.size}").uppercase(), fontSize = 11.sp, letterSpacing = 1.2.sp,
+                    fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f),
+                )
+                Text(
+                    "${macros.kcal.roundToInt()} ккал/порц.", fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                    modifier = Modifier.clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = .07f)).padding(horizontal = 10.dp, vertical = 4.dp),
+                )
             }
-            Gap(6.dp)
-            LinearProgressIndicator(progress = { (d.step + 1) / 5f }, modifier = Modifier.fillMaxWidth())
-            Gap(6.dp)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                STEP_TITLES.forEachIndexed { i, t -> Pill(t, i == d.step) { d.step = i } }
-            }
+            StepperBar(d.step, STEP_TITLES) { d.step = it }
             error?.let { Text(it, color = extra.danger, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp)) }
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                 Gap(8.dp)
@@ -231,6 +239,48 @@ fun RecipeEditScreen(nav: NavHostController, id: Long, draft: String? = null) {
     }
     if (confirmExit) ConfirmDialog("Выйти без сохранения?", "Изменения в рецепте будут потеряны.", confirm = "Выйти", onDismiss = { confirmExit = false }) {
         nav.popBackStack()
+    }
+}
+
+/** Степпер этапов: кружки с номерами, соединённые линией; пройденные — с галочкой, текущий — крупнее и подписан жирным. */
+@Composable
+private fun StepperBar(step: Int, titles: List<String>, onPick: (Int) -> Unit) {
+    val accent = MaterialTheme.colorScheme.primary
+    val extra = LocalExtra.current
+    Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 4.dp)) {
+        titles.forEachIndexed { i, t ->
+            val done = i < step
+            val current = i == step
+            Column(
+                Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable { onPick(i) }.padding(vertical = 2.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(Modifier.fillMaxWidth().height(30.dp), contentAlignment = Alignment.Center) {
+                    // Линия к соседям: до текущего этапа — в цвет акцента.
+                    Row(Modifier.fillMaxWidth().height(2.dp)) {
+                        Box(Modifier.weight(1f).fillMaxSize().background(if (i == 0) androidx.compose.ui.graphics.Color.Transparent else if (i <= step) accent else extra.line))
+                        Box(Modifier.weight(1f).fillMaxSize().background(if (i == titles.lastIndex) androidx.compose.ui.graphics.Color.Transparent else if (i < step) accent else extra.line))
+                    }
+                    Box(
+                        Modifier.size(if (current) 30.dp else 24.dp).clip(CircleShape)
+                            .background(if (done || current) accent else MaterialTheme.colorScheme.background)
+                            .border(1.5.dp, if (done || current) accent else extra.line, CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            if (done) "✓" else "${i + 1}", fontSize = if (current) 14.sp else 12.sp, fontWeight = FontWeight.Bold,
+                            color = if (done || current) MaterialTheme.colorScheme.onPrimary else extra.dim,
+                        )
+                    }
+                }
+                Text(
+                    t, fontSize = 11.sp, lineHeight = 13.sp, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    fontWeight = if (current) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (current) MaterialTheme.colorScheme.onSurface else extra.dim,
+                    modifier = Modifier.padding(top = 4.dp, start = 2.dp, end = 2.dp),
+                )
+            }
+        }
     }
 }
 
