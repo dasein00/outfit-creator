@@ -24,4 +24,13 @@ class RecipeStyleTest {
         assertEquals("• Сулугуни можно заменить моцареллой.\n• Храните в холодильнике.", RecipeStyle.bullets("- сулугуни можно заменить моцареллой\n• храните в холодильнике"))
         assertEquals("итальянская кухня", RecipeStyle.tag("#Итальянская кухня"))
     }
+
+    @Test fun foreignAndJunk() {
+        org.junit.Assert.assertTrue(RecipeStyle.isForeign("Ingredients: 2 cups flour, 1 tsp salt, bake at 350F for 20 minutes"))
+        org.junit.Assert.assertFalse(RecipeStyle.isForeign("Творог 360 г, желток 4 шт, мука 50 г, сулугуни 130 г"))
+        org.junit.Assert.assertTrue(RecipeStyle.isJunkTitle("🥒 итак, ингредиенты:"))
+        org.junit.Assert.assertTrue(RecipeStyle.isJunkTitle("Рецепт дня"))
+        org.junit.Assert.assertTrue(RecipeStyle.isJunkTitle("Creamy pasta"))
+        org.junit.Assert.assertFalse(RecipeStyle.isJunkTitle("Хачапури по-аджарски из творога"))
+    }
 }

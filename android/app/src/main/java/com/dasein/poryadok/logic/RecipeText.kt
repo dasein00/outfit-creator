@@ -23,6 +23,8 @@ object RecipeText {
         val prepMinutes: Int? = null,
         val tips: String? = null,
         val swaps: String? = null,
+        /** 1–2 предложения о блюде (от ИИ) — вступление в описании карточки. */
+        val about: String? = null,
     )
 
     /** Заголовок списка продуктов: «Ингредиенты (на 4 порции):», «Нам понадобится 👇». */

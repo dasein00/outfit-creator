@@ -182,11 +182,8 @@ object RecipeAiQueue {
                 applyParsed(d, p, source, viaAi)
                 if (RecipeVideos.source(d.recipe) == null && data.aiPostUrl.startsWith("http")) d.recipe = RecipeVideos.withSource(d.recipe, data.aiPostUrl)
             }
-            if (viaAi) {
-                stage("Оформляю описание…")
-                runCatching { com.dasein.poryadok.system.RecipeLink.prettyDescription(ctx, source, d.recipe.name) }
-                    .onSuccess { if (it.length > 40) withContext(Dispatchers.Main) { d.recipe = d.recipe.copy(notes = it) } }
-            }
+            // С ИИ — описание карточки в едином оформлении.
+            if (viaAi) withContext(Dispatchers.Main) { d.recipe = d.recipe.copy(notes = recipeDescription(d, p.about)) }
             val done = withContext(Dispatchers.Main) { RecipeDrafts.from(d, data.id) }.copy(ai = 3, aiError = "", aiStage = "", aiPost = post, aiSpeech = speech, aiSource = source)
             RecipeDrafts.put(done)
             notify(

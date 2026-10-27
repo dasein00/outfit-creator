@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.dasein.poryadok.Graph
 import com.dasein.poryadok.data.FoodProduct
 import com.dasein.poryadok.data.RecipeIngredient
+import com.dasein.poryadok.data.toIngr
 import com.dasein.poryadok.logic.Cooking
 import com.dasein.poryadok.logic.RecipeText
 import com.dasein.poryadok.ui.common.TextInput
@@ -119,7 +120,9 @@ private const val AI_RECIPE_PROMPT = """Ты помощник кулинарно
 «РЕЧЬ ИЗ ВИДЕО» — расшифровка того, что говорит автор (обычно как готовить, нюансы, огонь и время; бывают разговорные слова, повторы и ошибки распознавания — пойми смысл).
 Источники ДОПОЛНЯЮТ друг друга: собери один полный рецепт из обоих. Продукты — все из обоих источников без повторов; количества бери из поста, если там есть, иначе из речи, иначе оцени. Этапы — объедини: порядок и детали из речи, точные цифры (граммы, градусы, минуты) из поста. Советы и замены — из обоих.
 Верни ТОЛЬКО JSON без пояснений:
-{"title": "название блюда", "servings": число порций или null,
+{"title": "название блюда, придуманное по самому рецепту: главный продукт или блюдо + способ приготовления или подача (например «Хачапури по-аджарски из творога»). НЕ копируй первую строку поста, если это не название («итак, ингредиенты», «рецепт дня», «сохраняй»)",
+ "about": "1–2 предложения для описания карточки: что за блюдо, вкус и текстура, чем хорошо (без воды и превосходных степеней)",
+ "servings": число порций или null,
  "category": "одна из: Завтраки|Обеды|Ужины|Перекусы|Кухни мира|Супы|Салаты|Гарниры|Десерты|Напитки|Выпечка|Заготовки",
  "meals": ["подходящие приёмы пищи из: Завтрак|Второй завтрак|Обед|Полдник|Ужин|Перекус"],
  "difficulty": 1 (легко) | 2 (средне) | 3 (сложно),
@@ -133,6 +136,8 @@ private const val AI_RECIPE_PROMPT = """Ты помощник кулинарно
 Если количество сказано на глаз («горсть», «пара ложек», «кусочек») — переведи в граммы или ложки примерно. Если не сказано совсем — оцени разумное количество на указанные порции.
 Этапы пиши подробно и понятно новичку: что сделать, какой огонь или температура духовки, сколько минут, как понять, что готово. Не выдумывай продукты, которых нет в источниках.
 Даты, хештеги, рекламу, приветствия, просьбы подписаться и «ещё/меньше» игнорируй.
+Если источники на английском или другом языке — пиши ВСЁ по-русски (переведи названия продуктов, этапы, советы) и переведи меры:
+1 cup ≈ 240 мл (мука ≈ 130 г, сахар ≈ 200 г, рис ≈ 190 г), tbsp = ст.л., tsp = ч.л., oz = 28 г, lb = 450 г, stick масла = 113 г, °F → °C.
 """ + RECIPE_STYLE
 
 /** Текст для разбора из двух источников с подписями — ИИ сводит их, встроенный разбор берёт продукты из поста, этапы из речи. */
@@ -142,10 +147,60 @@ internal fun recipeSource(post: String, speech: String): String = when {
     else -> "ТЕКСТ ПОСТА:\n" + post.trim() + "\n\nРЕЧЬ ИЗ ВИДЕО:\n" + speech.trim()
 }
 
-/** Разбор рецепта ИИ (бесплатные модели OpenRouter). Ошибка — тогда работает встроенный разбор. */
+/** Текст на английском (или другом языке) — перевод на русский с метрическими мерами; без ИИ или при ошибке — как есть. */
+internal suspend fun translateIfForeign(ctx: Context, text: String): String {
+    if (!com.dasein.poryadok.logic.RecipeStyle.isForeign(text) || !com.dasein.poryadok.system.Ai.enabled(ctx)) return text
+    return runCatching {
+        com.dasein.poryadok.system.Ai.ask(
+            ctx,
+            "Переведи текст рецепта на русский язык — точно и естественно, как в русской кулинарной книге. Сохрани строки и порядок, " +
+                "подписи «ТЕКСТ ПОСТА:» и «РЕЧЬ ИЗ ВИДЕО:» оставь как есть. Меры переведи в метрические: 1 cup ≈ 240 мл (мука ≈ 130 г, сахар ≈ 200 г), " +
+                "tbsp = ст.л., tsp = ч.л., oz = 28 г, lb = 450 г, °F → °C. Хештеги и рекламу убери. Верни только перевод.",
+            text.take(9000),
+        ).trim().takeIf { it.length > text.length / 4 }
+    }.getOrNull() ?: text
+}
+
+/**
+ * Разбор рецепта ИИ. Английский текст сначала переводится. Если ответ слабый (нет продуктов или этапов, название —
+ * фраза из подписи), ИИ получает замечания и переделывает один раз. Ошибка — тогда работает встроенный разбор.
+ */
 internal suspend fun aiParse(ctx: Context, text: String): RecipeText.Parsed {
+    val src = translateIfForeign(ctx, text)
+    val first = aiParseOnce(ctx, src, null)
+    val problems = buildList {
+        if (first.ingredients.isEmpty()) add("нет списка продуктов")
+        if (first.steps.size < 2) add("этапов меньше двух — распиши приготовление по шагам")
+        if (com.dasein.poryadok.logic.RecipeStyle.isJunkTitle(first.title)) add("название «${first.title.orEmpty()}» не подходит — придумай название блюда по рецепту")
+        if (first.steps.any { com.dasein.poryadok.logic.RecipeStyle.isForeign(it.text) }) add("этапы должны быть по-русски")
+    }
+    if (problems.isEmpty()) return first
+    val second = runCatching { aiParseOnce(ctx, src, problems.joinToString("; ")) }.getOrNull() ?: return first
+    fun score(p: RecipeText.Parsed) = p.ingredients.size.coerceAtMost(8) + p.steps.size.coerceAtMost(8) * 2 +
+        (if (com.dasein.poryadok.logic.RecipeStyle.isJunkTitle(p.title)) 0 else 6)
+    val best = if (score(second) >= score(first)) second else first
+    // Название всё ещё не годится — отдельный короткий запрос только про название.
+    if (!com.dasein.poryadok.logic.RecipeStyle.isJunkTitle(best.title)) return best
+    val t = runCatching { aiTitle(ctx, best) }.getOrNull()
+    return best.copy(title = t?.takeUnless { com.dasein.poryadok.logic.RecipeStyle.isJunkTitle(it) })
+}
+
+/** Название блюда по продуктам и этапам: 2–6 слов, главный продукт и способ приготовления. */
+internal suspend fun aiTitle(ctx: Context, p: RecipeText.Parsed): String? {
+    val text = "Продукты: " + p.ingredients.joinToString { it.name } + "\nЭтапы: " + p.steps.joinToString(" ") { it.text }.take(1500)
+    return com.dasein.poryadok.system.Ai.ask(
+        ctx,
+        "Ты редактор кулинарного приложения. Придумай точное название блюда по его рецепту: 2–6 слов, по-русски, с заглавной буквы, " +
+            "главное блюдо или продукт и способ приготовления или подача (например «Курица в сливочном соусе», «Сырники из творога с изюмом»). " +
+            "Без эмодзи, кавычек и точки. Ответь только названием.",
+        text,
+    ).lines().firstOrNull { it.isNotBlank() }?.let { com.dasein.poryadok.logic.RecipeStyle.title(it) }
+}
+
+private suspend fun aiParseOnce(ctx: Context, text: String, fix: String?): RecipeText.Parsed {
     with(com.dasein.poryadok.system.Ai) {
-        val answer = ask(ctx, AI_RECIPE_PROMPT, text.take(9000))
+        val user = text.take(9000) + if (fix != null) "\n\nПРЕДЫДУЩИЙ ОТВЕТ НЕ ПОДОШЁЛ: $fix. Исправь и верни полный JSON целиком." else ""
+        val answer = ask(ctx, AI_RECIPE_PROMPT, user)
         val o = extractJson(answer) ?: throw com.dasein.poryadok.system.Ai.AiError("ИИ ответил не в том формате")
         val ings = o.arr("ingredients").orEmpty().mapNotNull { it as? kotlinx.serialization.json.JsonObject }.mapNotNull { i ->
             val name = i.str("name")?.trim()?.replaceFirstChar { it.uppercase() } ?: return@mapNotNull null
@@ -170,9 +225,36 @@ internal suspend fun aiParse(ctx: Context, text: String): RecipeText.Parsed {
             prepMinutes = prep,
             tips = strings("tips").take(6).joinToString("\n") { "• $it" }.ifBlank { null },
             swaps = strings("swaps").take(6).joinToString("\n") { "• $it" }.ifBlank { null },
+            about = o.str("about")?.trim()?.takeIf { it.length > 10 },
         )
     }
 }
+
+/**
+ * Описание карточки — одно и то же оформление у всех рецептов: заголовок, пара строк о блюде, ингредиенты,
+ * приготовление по шагам, советы и замены. Собирается из уже выровненных полей карточки, а не пишется ИИ заново.
+ */
+internal fun recipeDescription(d: RecipeDraft, about: String?): String = buildString {
+    val r = d.recipe
+    append("# ").append(r.name.ifBlank { "Рецепт" }).append("\n\n")
+    about?.let { append(com.dasein.poryadok.logic.RecipeStyle.step(it)).append("\n\n") }
+    if (d.ingredients.isNotEmpty()) {
+        append("## Ингредиенты\n")
+        d.ingredients.forEach { i ->
+            val q = com.dasein.poryadok.logic.Cooking.label(i.toIngr())
+            append("- ").append(i.name).append(if (q.isNotBlank()) " — $q" else "").append('\n')
+        }
+        append('\n')
+    }
+    val steps = d.steps.filter { it.isNotBlank() }
+    if (steps.isNotEmpty()) {
+        append("## Приготовление\n")
+        steps.forEachIndexed { n, s -> append(n + 1).append(". ").append(s).append('\n') }
+        append('\n')
+    }
+    if (r.tips.isNotBlank()) append("## Советы\n").append(r.tips.trim()).append("\n\n")
+    if (r.swaps.isNotBlank()) append("## Замены\n").append(r.swaps.trim()).append('\n')
+}.trim()
 
 /**
  * Теги карточки от ИИ по названию, продуктам и этапам: кухня, «быстро», «высокобелковые», «постное» и т. п.
@@ -328,11 +410,8 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
             applyParsed(d, p, source(), viaAi)
             keepSource(postUrl)
             // С ИИ — ещё и красивое описание для карточки блюда (его потом можно править вручную).
-            if (viaAi) {
-                status = "Оформляю описание…"
-                runCatching { com.dasein.poryadok.system.RecipeLink.prettyDescription(ctx, source(), d.recipe.name) }
-                    .onSuccess { if (it.length > 40) d.recipe = d.recipe.copy(notes = it) }
-            }
+            // С ИИ — описание карточки в едином оформлении (заголовок, о блюде, ингредиенты, шаги, советы).
+            if (viaAi) d.recipe = d.recipe.copy(notes = recipeDescription(d, p.about))
             aiBusy = false; onDismiss()
         }
     }
@@ -540,8 +619,11 @@ internal suspend fun applyParsed(d: RecipeDraft, p: RecipeText.Parsed, text: Str
     val ings = ingredientsFrom(p, if (viaAi) "" else text).map { it.copy(name = com.dasein.poryadok.logic.RecipeStyle.ingredient(it.name)) }
     val g = com.dasein.poryadok.logic.RecipeClassify.guess(p, text)
     var r = d.recipe.copy(notes = text.trim())
-    val title = p.title ?: g.title
-    if (r.name.isBlank() && title != null) r = r.copy(name = com.dasein.poryadok.logic.RecipeStyle.title(title))
+    // Название — по самому рецепту: фразы из подписи («итак, ингредиенты») не берём; без ИИ — главный продукт.
+    val st = com.dasein.poryadok.logic.RecipeStyle
+    val title = p.title?.takeUnless { st.isJunkTitle(it) } ?: g.title?.takeUnless { st.isJunkTitle(it) }
+        ?: ings.firstOrNull { it.unit != "по вкусу" }?.let { "Блюдо: " + it.name.lowercase() }
+    if ((r.name.isBlank() || st.isJunkTitle(r.name)) && title != null) r = r.copy(name = st.title(title))
     val total = ings.sumOf { it.grams }
     val servings = p.servings ?: RecipeText.guessServings(total)
     // Порции из текста задают вес порции: блюдо делится на столько тарелок.

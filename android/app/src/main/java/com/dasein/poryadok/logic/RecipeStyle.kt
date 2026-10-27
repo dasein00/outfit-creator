@@ -59,4 +59,27 @@ object RecipeStyle {
     fun bullets(s: String): String = s.lines().map { sentence(it) }.filter { it.length > 1 }.joinToString("\n") { "• $it" }
 
     fun tag(s: String): String = base(s).removePrefix("#").trim().lowercase()
+
+    /** Текст в основном не на русском (английский пост или речь) — его нужно перевести. */
+    fun isForeign(text: String): Boolean {
+        val lat = text.count { it in 'a'..'z' || it in 'A'..'Z' }
+        val cyr = text.count { it in 'а'..'я' || it in 'А'..'Я' || it == 'ё' || it == 'Ё' }
+        return lat >= 40 && lat > cyr * 1.5
+    }
+
+    private val JUNK_TITLE = Regex(
+        "ингредиент|рецепт|итак|готовим|приготовлени|понадоб|нам нужно|состав|шаг(?![а-яё])|этап|подпис|сохрани|ingredient|recipe|how to|step",
+        RegexOption.IGNORE_CASE,
+    )
+
+    /**
+     * Название — не название блюда: фраза из подписи («итак, ингредиенты», «рецепт дня»), пустое, слишком короткое
+     * или длинное, обрывок с двоеточием, текст не по-русски. Такое название придумываем заново по самому рецепту.
+     */
+    fun isJunkTitle(t: String?): Boolean {
+        val s = title(t.orEmpty())
+        if (s.length < 3 || s.split(' ').size > 8 || s.endsWith(':') || t.orEmpty().trim().endsWith(':')) return true
+        if (s.none { it in 'а'..'я' || it in 'А'..'Я' || it == 'ё' }) return true
+        return JUNK_TITLE.containsMatchIn(s)
+    }
 }
