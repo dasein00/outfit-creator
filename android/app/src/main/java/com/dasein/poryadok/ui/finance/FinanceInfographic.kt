@@ -68,22 +68,7 @@ internal fun merchantOf(note: String): String =
     note.removePrefix("Сбер:").substringBefore(" · ").substringBefore(':').replace(Regex("[0-9*•#№]+"), " ")
         .replace(Regex("\\s+"), " ").trim().lowercase().take(32)
 
-/**
- * Инфографика финансов: капитал, поток денег, структура трат и доходов, места, подписки, календарь, проценты по вкладам.
- * Всё считается на телефоне и обновляется сразу, как только появляется новая операция (выписка, SMS, пуш, вручную).
- */
-private fun monthShort(ym: YearMonth) = MONTHS[ym.monthValue - 1]
-
-/** Доходы и расходы по последним [n] месяцам. */
-private fun flowByMonth(txns: List<Txn>, n: Int): List<Triple<YearMonth, Double, Double>> {
-    val now = YearMonth.now()
-    return (n - 1 downTo 0).map { k ->
-        val ym = now.minusMonths(k.toLong())
-        val r = ym.atDay(1).toEpochDay()..ym.atEndOfMonth().toEpochDay()
-        val l = txns.filter { it.day in r }
-        Triple(ym, l.filter { it.type == TxnType.INCOME }.sumOf { it.amount }, l.filter { it.type == TxnType.EXPENSE }.sumOf { it.amount })
-    }
-}
+/** Помощники обзора финансов: места трат, регулярные списания, капитал по месяцам. */
 
 /** Капитал на конец каждого из последних [n] месяцев (переводы между своими счетами его не меняют). */
 internal fun capitalByMonth(accounts: List<Account>, txns: List<Txn>, n: Int): List<Pair<YearMonth, Double>> {
