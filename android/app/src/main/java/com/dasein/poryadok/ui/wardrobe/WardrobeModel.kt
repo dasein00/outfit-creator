@@ -124,6 +124,7 @@ object Bitmaps {
             if (src.startsWith("asset:")) ctx.assets.open(src.removePrefix("asset:")).use { BitmapFactory.decodeStream(it) }
             else BitmapFactory.decodeFile(src)
         }.getOrNull() ?: return null
+        // Clean catalog garment photos before caching them as transparent cut-outs.
         val bmp = if (src.startsWith("asset:wardrobe/") && src != "asset:wardrobe/model.webp") {
             stripBackground(decoded)
         } else decoded
