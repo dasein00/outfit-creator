@@ -72,7 +72,23 @@ fun defaultQuad(item: WardrobeItem, bmp: Bitmap?): List<Float> {
     val p = parsePct(item.pct).let { if (it.size < 3) listOf(80f, 50f, 40f) else it }
     val w = p[0] * MW / 100
     val h = if (p.size > 3) p[3] * 10 else w * ((bmp?.height ?: 12).toFloat() / (bmp?.width ?: 10))
-    return rectQ(MX0 + p[1] * MW / 100 - w / 2, p[2] * 10, w, h)
+    val left = MX0 + p[1] * MW / 100 - w / 2
+    val top = p[2] * 10
+
+    // A small perspective taper makes flat cut-outs follow the body's natural outline.
+    // Keep the manifest width at the shoulder/hip and narrow only the far edge.
+    val lowerWidth = when (item.category) {
+        "верх" -> w * .84f
+        "низ" -> w * .76f
+        else -> w
+    }
+    val inset = (w - lowerWidth) / 2
+    return listOf(
+        left, top,
+        left + w, top,
+        left + w - inset, top + h,
+        left + inset, top + h,
+    )
 }
 
 object WardrobeSeed {
