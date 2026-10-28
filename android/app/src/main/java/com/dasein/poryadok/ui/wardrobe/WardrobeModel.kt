@@ -75,8 +75,8 @@ fun defaultQuad(item: WardrobeItem, bmp: Bitmap?): List<Float> {
     val left = MX0 + p[1] * MW / 100 - w / 2
     val top = p[2] * 10
 
-    // A small perspective taper makes flat cut-outs follow the body's natural outline.
-    // Keep the manifest width at the shoulder/hip and narrow only the far edge.
+    // Taper the flat cut-out to follow the body's natural outline.
+    // Manifest width stays at the shoulder/hip; only the far edge narrows.
     val lowerWidth = when (item.category) {
         "верх" -> w * .84f
         "низ" -> w * .76f
