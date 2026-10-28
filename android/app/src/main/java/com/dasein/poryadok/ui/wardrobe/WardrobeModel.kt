@@ -70,16 +70,20 @@ fun parsePct(s: String): List<Float> = s.split(",").mapNotNull { it.trim().toFlo
 
 fun defaultQuad(item: WardrobeItem, bmp: Bitmap?): List<Float> {
     val p = parsePct(item.pct).let { if (it.size < 3) listOf(80f, 50f, 40f) else it }
-    val w = p[0] * MW / 100
+    val widthFactor = when (item.category) {
+        "верх" -> .72f
+        "низ" -> .78f
+        else -> 1f
+    }
+    val w = p[0] * MW / 100 * widthFactor
     val h = if (p.size > 3) p[3] * 10 else w * ((bmp?.height ?: 12).toFloat() / (bmp?.width ?: 10))
     val left = MX0 + p[1] * MW / 100 - w / 2
     val top = p[2] * 10
 
-    // Taper the flat cut-out to follow the body's natural outline.
-    // Manifest width stays at the shoulder/hip; only the far edge narrows.
+    // Match the garment's far edge to the narrower waist or ankle line.
     val lowerWidth = when (item.category) {
-        "верх" -> w * .84f
-        "низ" -> w * .76f
+        "верх" -> w * .88f
+        "низ" -> w * .72f
         else -> w
     }
     val inset = (w - lowerWidth) / 2
@@ -116,10 +120,13 @@ object Bitmaps {
 
     fun load(ctx: Context, src: String): Bitmap? {
         originals.get(src)?.let { return it }
-        val bmp = runCatching {
+        val decoded = runCatching {
             if (src.startsWith("asset:")) ctx.assets.open(src.removePrefix("asset:")).use { BitmapFactory.decodeStream(it) }
             else BitmapFactory.decodeFile(src)
         }.getOrNull() ?: return null
+        val bmp = if (src.startsWith("asset:wardrobe/") && src != "asset:wardrobe/model.webp") {
+            stripBackground(decoded)
+        } else decoded
         originals.put(src, bmp)
         return bmp
     }
