@@ -192,7 +192,7 @@ object Alarms {
                 notify(
                     ctx, nid, CH_REMIND, "Платёж: ${r.title}",
                     "${Money.format(r.amount, cur)} — сегодня" + if (r.autoAdd) ". Операция будет добавлена автоматически." else "",
-                    Routes.finance(6),
+                    Routes.finance(7),
                 )
             }
             "summary" -> {

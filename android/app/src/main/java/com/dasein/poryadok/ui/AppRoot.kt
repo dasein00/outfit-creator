@@ -458,7 +458,8 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             }
             composable(com.dasein.poryadok.ui.more.APPEARANCE_ROUTE) { com.dasein.poryadok.ui.more.AppearanceScreen(nav, settings) }
             composable(com.dasein.poryadok.ui.more.UI_TEXTS_ROUTE) { com.dasein.poryadok.ui.more.UiTextsScreen(nav) }
-            composable(com.dasein.poryadok.ui.finance.FIN_INFO_ROUTE) { com.dasein.poryadok.ui.finance.FinanceInfographicScreen(nav, settings) }
+            // Инфографика вошла в «Обзор» финансов.
+            composable(com.dasein.poryadok.ui.finance.FIN_INFO_ROUTE) { com.dasein.poryadok.ui.finance.FinanceScreen(nav, settings, 2) { nav.popBackStack() } }
         }
         if (showBar) {
             var editTab by remember { mutableStateOf<Pair<Int, Tab>?>(null) }

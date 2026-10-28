@@ -142,7 +142,7 @@ fun HomeMoneyCard(nav: NavHostController, cur: String) {
         Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Pill("− Расход", false) { nav.navigate(Routes.txn(0)) }
             Pill("+ Доход", false) { nav.navigate(Routes.txn(0, income = true)) }
-            Pill("Аналитика", false) { nav.navigate(Routes.finance(1)) }
+            Pill("Обзор", false) { nav.navigate(Routes.finance(2)) }
         }
     }
 }

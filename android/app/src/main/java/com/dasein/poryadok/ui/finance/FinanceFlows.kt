@@ -75,7 +75,7 @@ private val QUICK = listOf(1, 7, 30, 90, 180, 360)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PeriodPicker(period: FinPeriod, onPick: (FinPeriod) -> Unit) {
+private fun PeriodPicker(period: FinPeriod, first: Long, onPick: (FinPeriod) -> Unit) {
     val today = Dates.today()
     var custom by remember { mutableStateOf(false) }
     var months by remember { mutableStateOf(false) }
@@ -92,6 +92,7 @@ private fun PeriodPicker(period: FinPeriod, onPick: (FinPeriod) -> Unit) {
             Text(
                 when {
                     period.label == "свой" -> "свой"
+                    period.label == "all" -> "всё время"
                     period.label.startsWith("м:") -> "месяц"
                     period.label == "сегодня" -> "1 день"
                     else -> period.label.replace("дн.", "дней")
@@ -109,6 +110,7 @@ private fun PeriodPicker(period: FinPeriod, onPick: (FinPeriod) -> Unit) {
                 open = false; months = true
                 if (!period.label.startsWith("м:")) { val r = Dates.monthRange(YearMonth.now()); onPick(FinPeriod(r.first, r.last, "м:${YearMonth.now()}")) }
             })
+            androidx.compose.material3.DropdownMenuItem({ Text(btnLabel("Всё время")) }, { open = false; months = false; onPick(FinPeriod(minOf(first, today), today, "all")) })
             androidx.compose.material3.DropdownMenuItem({ Text(btnLabel("Свой период…")) }, { open = false; months = false; custom = true })
         }
     }
@@ -158,6 +160,7 @@ fun CategoryDropdown(cats: List<Category>, counts: Map<Long, Int>, selected: Lon
 }
 
 private fun periodTitle(p: FinPeriod): String = when {
+    p.label == "all" -> "За всё время · с ${Dates.full(p.from)}"
     p.label.startsWith("м:") -> Dates.monthTitle(YearMonth.parse(p.label.removePrefix("м:")))
     p.days == 1L -> Dates.full(p.from)
     else -> "${Dates.short(p.from)} — ${Dates.short(p.to)} · ${p.days} дн."
@@ -168,6 +171,11 @@ private fun buckets(list: List<Txn>, p: FinPeriod): Pair<List<Float>, List<Strin
     val byDay = list.groupBy { it.day }.mapValues { (_, l) -> l.sumOf { it.amount } }
     return when {
         p.days <= 31 -> (p.from..p.to).map { (byDay[it] ?: 0.0).toFloat() } to (p.from..p.to).map { Dates.day(it).dayOfMonth.toString() }
+        // Всё время и периоды длиннее двух лет — по годам.
+        p.label == "all" && p.days > 730 || p.days > 800 -> {
+            val years = (Dates.day(p.from).year..Dates.day(p.to).year).toList()
+            years.map { y -> list.filter { Dates.day(it.day).year == y }.sumOf { it.amount }.toFloat() } to years.map { "$it" }
+        }
         p.days <= 120 -> {
             val starts = generateSequence(p.from) { it + 7 }.takeWhile { it <= p.to }.toList()
             starts.map { s -> (s..minOf(s + 6, p.to)).sumOf { byDay[it] ?: 0.0 }.toFloat() } to starts.map { Dates.short(it) }
@@ -207,14 +215,16 @@ fun FlowTab(nav: NavHostController, all: List<Txn>, cats: List<Category>, accoun
     val shown = if (catFilter == null) list else list.filter { (it.categoryId ?: -1L) == catFilter }
 
     Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-        PeriodPicker(period) { p -> from = p.from; to = p.to; label = p.label; catFilter = null }
+        PeriodPicker(period, remember(all) { all.minOfOrNull { it.day } ?: today }) { p -> from = p.from; to = p.to; label = p.label; catFilter = null }
         CategoryDropdown(cats, list.groupingBy { it.categoryId ?: -1L }.eachCount(), catFilter, Modifier.fillMaxWidth().padding(top = 8.dp)) { catFilter = it }
         Gap(8.dp)
-        Tile {
+        Tile(color = accent.copy(alpha = .08f)) {
             Text(periodTitle(period), fontSize = 12.sp, color = extra.dim)
             Text((if (income) "+" else "−") + Money.format(total, cur), fontSize = 26.sp, fontWeight = FontWeight.SemiBold, color = accent)
             Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                Mini(Money.format(total / period.days, cur), "в среднем в день", Modifier.weight(1f))
+                // Длинный период — средняя сумма в месяц, короткий — в день.
+                if (period.days >= 60) Mini(Money.format(total / (period.days / 30.4), cur), "в среднем в месяц", Modifier.weight(1f))
+                else Mini(Money.format(total / period.days, cur), "в среднем в день", Modifier.weight(1f))
                 Mini("${list.size}", "операций", Modifier.weight(1f))
                 Mini(if (list.isEmpty()) "—" else Money.format(total / list.size, cur), "средний чек", Modifier.weight(1f))
             }
@@ -228,7 +238,7 @@ fun FlowTab(nav: NavHostController, all: List<Txn>, cats: List<Category>, accoun
             }
         }
         if (list.isNotEmpty() && period.days > 1) {
-            SectionTitle(if (period.days <= 31) "По дням" else if (period.days <= 120) "По неделям" else "По месяцам")
+            SectionTitle(if (period.days <= 31) "По дням" else if (period.days <= 120) "По неделям" else if (period.label == "all" && period.days > 730 || period.days > 800) "По годам" else "По месяцам")
             Tile(padding = 8.dp) {
                 val (values, labels) = buckets(list, period)
                 BarChart(values, labels, accent, height = 130.dp, highlight = values.indexOf(values.maxOrNull() ?: 0f), format = { Money.format(it.toDouble(), cur) })

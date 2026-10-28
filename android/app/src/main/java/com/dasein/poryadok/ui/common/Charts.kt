@@ -153,6 +153,92 @@ fun BarChart(
     }
 }
 
+/**
+ * Парные столбики (например, доходы и расходы) по периодам: в каждом слоте два столбика рядом.
+ * Касание слота показывает оба значения, двумя пальцами — масштаб, двойное касание — весь период.
+ */
+@Composable
+fun DualBarChart(
+    a: List<Float>,
+    b: List<Float>,
+    labels: List<String>,
+    colorA: Color,
+    colorB: Color,
+    modifier: Modifier = Modifier,
+    height: Dp = 150.dp,
+    format: (Float) -> String = { chartNumber(it) },
+    bubble: ((Int) -> String)? = null,
+) {
+    val extra = LocalExtra.current
+    val dim = extra.dim
+    val line = extra.line
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    val surface = MaterialTheme.colorScheme.surface
+    val measurer = rememberTextMeasurer()
+    val labelStyle = TextStyle(fontSize = 10.sp, color = dim)
+    val bubbleStyle = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+    val n = maxOf(a.size, b.size).coerceAtLeast(1)
+    val sums = (0 until n).map { maxOf(a.getOrElse(it) { 0f }, b.getOrElse(it) { 0f }) }
+    val z = rememberChartZoom(n)
+    val ticks = axisTicks(sums.maxOrNull() ?: 0f)
+    val maxV = ticks.last().coerceAtLeast(1f)
+    val tickLabels = ticks.map { axisNumber(it) }
+    val axisStyle = TextStyle(fontSize = 9.sp, color = dim)
+    val ax = (tickLabels.maxOfOrNull { measurer.measure(it, axisStyle).size.width } ?: 0) + with(LocalDensity.current) { 6.dp.toPx() }
+    val labelH = with(LocalDensity.current) { 18.dp.toPx() }
+    val topPad = with(LocalDensity.current) { 38.dp.toPx() }
+    Canvas(
+        modifier.fillMaxWidth().height(height + 18.dp + 38.dp)
+            .chartGestures(z, sums, ax, (n / 4f).coerceAtLeast(1f)) { o ->
+                val slot = z.width * z.scale / n
+                ((o.x - ax + z.shift) / slot).toInt().takeIf { it in 0 until n } ?: -1
+            },
+    ) {
+        val pw = size.width - ax
+        z.width = pw
+        val h = size.height - labelH - topPad
+        val slot = pw * z.scale / n
+        val bw = slot * .34f
+        val gap = slot * .04f
+        val sel = z.selected
+        ticks.forEachIndexed { i, t ->
+            val y = topPad + h * (1 - t / maxV)
+            if (i > 0) drawLine(line.copy(alpha = .6f), Offset(ax, y), Offset(size.width, y), 1f)
+            val tl = measurer.measure(tickLabels[i], axisStyle)
+            drawText(tl, topLeft = Offset(ax - tl.size.width - 4f, (y - tl.size.height / 2).coerceAtLeast(0f)))
+        }
+        clipRect(ax, 0f, size.width, size.height) {
+            (0 until n).forEach { i ->
+                val x0 = ax + i * slot - z.shift
+                if (x0 + slot < ax || x0 > size.width) return@forEach
+                val dimmed = sel >= 0 && i != sel
+                val cx = x0 + slot / 2
+                val ha = h * (a.getOrElse(i) { 0f } / maxV)
+                val hb = h * (b.getOrElse(i) { 0f } / maxV)
+                if (ha > 0f) drawRoundRect(if (dimmed) colorA.copy(alpha = .35f) else colorA, Offset(cx - gap - bw, topPad + h - ha), Size(bw, ha.coerceAtLeast(2f)), CornerRadius(5f, 5f))
+                if (hb > 0f) drawRoundRect(if (dimmed) colorB.copy(alpha = .35f) else colorB, Offset(cx + gap, topPad + h - hb), Size(bw, hb.coerceAtLeast(2f)), CornerRadius(5f, 5f))
+            }
+            val maxLabelW = labels.maxOfOrNull { measurer.measure(it, labelStyle).size.width } ?: 0
+            val every = if (slot <= 0f) 1 else kotlin.math.ceil((maxLabelW + 6f) / slot).toInt().coerceAtLeast(1)
+            labels.forEachIndexed { i, l ->
+                if (i % every != 0 && i != sel) return@forEachIndexed
+                val cx = ax + i * slot - z.shift + slot / 2
+                if (cx < ax - slot || cx > size.width + slot) return@forEachIndexed
+                val t = measurer.measure(l, if (i == sel) labelStyle.copy(color = onSurface, fontWeight = FontWeight.Bold) else labelStyle)
+                drawText(t, topLeft = Offset((cx - t.size.width / 2).coerceIn(ax, (size.width - t.size.width).coerceAtLeast(ax)), topPad + h + 4f))
+            }
+        }
+        drawLine(line, Offset(ax, topPad + h), Offset(size.width, topPad + h), 2f)
+        drawLine(line, Offset(ax, topPad), Offset(ax, topPad + h), 2f)
+        if (sel in 0 until n) {
+            val cx = ax + sel * slot - z.shift + slot / 2
+            val top = topPad + h - h * (sums[sel] / maxV)
+            val label = labels.getOrNull(sel)?.let { "$it · " } ?: ""
+            chartBubble(measurer, bubble?.invoke(sel) ?: (label + format(a.getOrElse(sel) { 0f }) + " / " + format(b.getOrElse(sel) { 0f })), Offset(cx, top), onSurface, surface, bubbleStyle)
+        }
+    }
+}
+
 /** Деления оси: 0 и 3–5 «круглых» значений (1, 2, 2,5, 5 × 10ⁿ), последнее — не меньше максимума. */
 fun axisTicks(maxValue: Float, parts: Int = 4): List<Float> {
     if (maxValue <= 0f) return listOf(0f, 1f)

@@ -114,7 +114,7 @@ fun balanceOf(a: Account, txns: List<Txn>): Double {
 }
 
 /** Подразделы финансов по порядку (номер — в Routes.finance). */
-val FIN_TABS = listOf("Операции", "Обзор", "Расходы", "Доходы", "Календарь", "Бюджеты", "Регулярные", "Счета", "Калькуляторы", "Итоги")
+val FIN_TABS = listOf("Операции", "Счета", "Обзор", "Расходы", "Доходы", "Календарь", "Бюджеты", "Регулярные", "Категории", "Калькуляторы")
 
 @Composable
 fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, onBack: (() -> Unit)? = null) {
@@ -146,10 +146,11 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
             FloatingActionButton(
                 onClick = {
                     when (tab) {
-                        5 -> editBudget = Budget(categoryId = -1, monthly = 0.0)
-                        6 -> editRecurring = Recurring(title = "", amount = 0.0, accountId = accounts.firstOrNull()?.id ?: 0, nextDay = Dates.today())
-                        7 -> editAccount = Account(name = "")
-                        3 -> nav.navigate(Routes.txn(0, income = true))
+                        6 -> editBudget = Budget(categoryId = -1, monthly = 0.0)
+                        7 -> editRecurring = Recurring(title = "", amount = 0.0, accountId = accounts.firstOrNull()?.id ?: 0, nextDay = Dates.today())
+                        1 -> editAccount = Account(name = "")
+                        8 -> editCategory = Category(name = "", emoji = "ui:grid")
+                        4 -> nav.navigate(Routes.txn(0, income = true))
                         else -> nav.navigate(Routes.txn(0))
                     }
                 },
@@ -163,8 +164,8 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
                     Tab(tab == i, onClick = { tab = i }, text = { Text(t) })
                 }
             }
-            // Месяц — для операций, обзора и бюджетов; у расходов, доходов и календаря свой выбор периода.
-            if (tab <= 1 || tab == 5) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            // Месяц — для операций и бюджетов; у обзора, расходов, доходов и календаря свой выбор периода.
+            if (tab == 0 || tab == 6) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { ymText = ym.minusMonths(1).toString() }) { Icon(Icons.Default.ChevronLeft, "Раньше") }
                 Text(Dates.monthTitle(ym), Modifier.weight(1f), textAlign = TextAlign.Center, style = MaterialTheme.typography.titleMedium)
                 IconButton(onClick = { ymText = ym.plusMonths(1).toString() }) { Icon(Icons.Default.ChevronRight, "Позже") }
@@ -172,7 +173,7 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
             val range = Dates.monthRange(ym)
             val month = txns.filter { it.day in range }
             val monthNotes = nbNotes.filter { it.year == ym.year && it.month == ym.monthValue }
-            if (tab <= 1 && monthNotes.isNotEmpty()) {
+            if (tab == 0 && monthNotes.isNotEmpty()) {
                 val undated = monthNotes.filter { it.kind == NoteKind.UNDATED_EXPENSE }
                 val written = monthNotes.filter { it.kind == NoteKind.WRITTEN_TOTAL }
                 Tile(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), onClick = { nav.navigate(Routes.FIN_NOTEBOOK) }, padding = 10.dp) {
@@ -187,23 +188,16 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
             Column(Modifier.tabSlide(tab)) {
                 when (tab) {
                     0 -> Operations(nav, month, cats, accounts, cur)
-                    // «Обзор» и «Аналитика» — на одной прокрутке.
-                    1 -> Column(Modifier.verticalScroll(rememberScrollState())) {
-                        Overview(txns, month, cats, ym, cur, embedded = true) { editCategory = it }
-                        com.dasein.poryadok.ui.common.OutlinedButton(onClick = { nav.navigate(FIN_INFO_ROUTE) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
-                            Text(btnLabel("Вся инфографика: капитал, места, подписки, календарь"))
-                        }
-                        FinanceAnalytics(txns, cats, accounts, budgets, ym, cur, embedded = true)
-                        Gap(96.dp)
-                    }
-                    2 -> FlowTab(nav, txns, cats, accounts, income = false, cur = cur)
-                    3 -> FlowTab(nav, txns, cats, accounts, income = true, cur = cur)
-                    4 -> SpendCalendar(nav, txns, cats, accounts, cur)
-                    5 -> Budgets(month, cats, budgets, ym, cur) { editBudget = it }
-                    6 -> RecurringList(recurring, cats, accounts, cur) { editRecurring = it }
-                    7 -> Accounts(accounts, txns, cur, onAlign = { align = true }, onStatement = { nav.navigate(STATEMENT_ROUTE) }) { editAccount = it }
-                    8 -> FinanceCalculators(cur)
-                    9 -> TotalsTab(txns, cats, cur)
+                    1 -> AccountsTab(nav, accounts, txns, cats, cur, onAlign = { align = true }, onStatement = { nav.navigate(STATEMENT_ROUTE) }) { editAccount = it }
+                    // «Обзор»: итоги периода, затем метрики обзора, аналитики и инфографики — без повторов.
+                    2 -> OverviewTab(nav, txns, cats, accounts, budgets, cur) { editCategory = it }
+                    3 -> FlowTab(nav, txns, cats, accounts, income = false, cur = cur)
+                    4 -> FlowTab(nav, txns, cats, accounts, income = true, cur = cur)
+                    5 -> SpendCalendar(nav, txns, cats, accounts, cur)
+                    6 -> Budgets(month, cats, budgets, ym, cur) { editBudget = it }
+                    7 -> RecurringList(recurring, cats, accounts, cur) { editRecurring = it }
+                    8 -> CategoriesTab(txns, cats, budgets, cur, onEdit = { editCategory = it }) { editBudget = it }
+                    9 -> FinanceCalculators(cur)
                 }
             }
         }
@@ -244,7 +238,6 @@ private fun Operations(nav: NavHostController, monthAll: List<Txn>, cats: List<C
             }
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Pill("Выписка", false, glyph = "ui:document") { nav.navigate(STATEMENT_ROUTE) }
-                Pill("Инфографика", false, glyph = "ui:pie") { nav.navigate(FIN_INFO_ROUTE) }
                 Pill("ИИ", false, glyph = "ui:stats") { nav.navigate(FIN_AI_ROUTE) }
             }
         }
@@ -297,79 +290,6 @@ fun TxnRow(t: Txn, cats: List<Category>, accounts: List<Account>, cur: String, o
             color = when (t.type) { TxnType.INCOME -> extra.ok; TxnType.EXPENSE -> MaterialTheme.colorScheme.onSurface; else -> extra.dim },
             fontWeight = FontWeight.SemiBold,
         )
-    }
-}
-
-@Composable
-private fun Overview(all: List<Txn>, month: List<Txn>, cats: List<Category>, ym: YearMonth, cur: String, embedded: Boolean = false, onCategory: (Category) -> Unit) {
-    val extra = LocalExtra.current
-    val exp = month.filter { it.type == TxnType.EXPENSE }
-    val total = exp.sumOf { it.amount }
-    val byCat = exp.groupBy { it.categoryId }.map { (id, l) -> cats.firstOrNull { it.id == id } to l.sumOf { it.amount } }.sortedByDescending { it.second }
-    val months = (5 downTo 0).map { ym.minusMonths(it.toLong()) }
-    Column((if (embedded) Modifier else Modifier.verticalScroll(rememberScrollState())).padding(horizontal = 16.dp)) {
-        Tile {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Donut(byCat.mapIndexed { i, (c, v) -> v.toFloat() to Palette.item(c?.color ?: i) }, size = 150.dp) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(Money.format(total, cur), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                        Text(btnLabel("расходы"), fontSize = 11.sp, color = extra.dim)
-                    }
-                }
-                Column(Modifier.padding(start = 12.dp)) {
-                    byCat.take(6).forEachIndexed { i, (c, v) ->
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
-                            Dot(Palette.item(c?.color ?: i), 9.dp)
-                            Text(" ${c?.name ?: "Без категории"}", fontSize = 12.sp, maxLines = 1, modifier = Modifier.weight(1f))
-                            Text(" ${if (total > 0) (v * 100 / total).toInt() else 0}%", fontSize = 12.sp, color = extra.dim)
-                        }
-                    }
-                }
-            }
-        }
-        SectionTitle("Расходы по категориям")
-        Tile {
-            if (byCat.isEmpty()) Text(btnLabel("Нет расходов за этот месяц"), color = extra.dim)
-            byCat.forEachIndexed { i, (c, v) ->
-                Column(Modifier.padding(vertical = 6.dp).clickable(enabled = c != null) { c?.let(onCategory) }) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Glyph(c?.emoji ?: "ui:wallet", 18.dp)
-                        Text("  ${c?.name ?: "Без категории"}", Modifier.weight(1f))
-                        Text(Money.format(v, cur), fontWeight = FontWeight.Medium)
-                    }
-                    Bar((v / (byCat.first().second)).toFloat(), Palette.item(c?.color ?: i), Modifier.padding(top = 4.dp), height = 6.dp)
-                }
-            }
-        }
-        SectionTitle("Полгода: расходы")
-        Tile {
-            val monthly = months.map { m -> all.filter { it.type == TxnType.EXPENSE && it.day in Dates.monthRange(m) }.sumOf { it.amount }.toFloat() }
-            BarChart(monthly, months.map { Dates.monthTitle(it).take(3) }, extra.danger, highlight = 5, format = { Money.format(it.toDouble(), cur) })
-            val avg = monthly.dropLast(1).filter { it > 0 }.let { if (it.isEmpty()) 0f else it.average().toFloat() }
-            if (avg > 0) Text("В среднем ${Money.format(avg.toDouble(), cur)} в месяц", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 6.dp))
-        }
-        SectionTitle("Полгода: доходы")
-        Tile {
-            BarChart(
-                months.map { m -> all.filter { it.type == TxnType.INCOME && it.day in Dates.monthRange(m) }.sumOf { it.amount }.toFloat() },
-                months.map { Dates.monthTitle(it).take(3) }, extra.ok, highlight = 5, format = { Money.format(it.toDouble(), cur) },
-            )
-        }
-        val days = (Dates.monthRange(ym).last - Dates.monthRange(ym).first + 1).toInt()
-        val passed = if (ym == YearMonth.now()) Dates.day(Dates.today()).dayOfMonth else days
-        SectionTitle("Итоги месяца")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Stat(Money.format(if (passed > 0) total / passed else 0.0, cur), "в день", Modifier.weight(1f))
-            Stat("${exp.size}", "покупок", Modifier.weight(1f))
-            Stat(Money.format(exp.maxOfOrNull { it.amount } ?: 0.0, cur), "самая крупная", Modifier.weight(1f))
-        }
-        SectionTitle("Категории")
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            cats.forEach { c -> Pill(c.name, false, glyph = c.emoji) { onCategory(c) } }
-            Pill("+ Категория", false) { onCategory(Category(name = "", emoji = "ui:grid")) }
-        }
-        Gap(96.dp)
-        HowTo("finance")
     }
 }
 
@@ -442,60 +362,6 @@ private fun RecurringList(list: List<Recurring>, cats: List<Category>, accounts:
                     )
                 }
                 Text((if (r.income) "+" else "−") + Money.format(r.amount, cur), color = if (r.income) extra.ok else MaterialTheme.colorScheme.onSurface)
-            }
-        }
-        item { HowTo("finance") }
-    }
-}
-
-@Composable
-private fun Accounts(accounts: List<Account>, txns: List<Txn>, cur: String, onAlign: () -> Unit, onStatement: () -> Unit, onEdit: (Account) -> Unit) {
-    val extra = LocalExtra.current
-    val ctx = androidx.compose.ui.platform.LocalContext.current
-    AccountMeta.version.value
-    val total = accounts.sumOf { balanceOf(it, txns) }
-    val saving = accounts.filter { AccountMeta.savings(ctx, it.id) }
-    val savingSum = saving.sumOf { balanceOf(it, txns) }
-    val interest = saving.sumOf { AccountMeta.monthly(balanceOf(it, txns), AccountMeta.rate(ctx, it.id)) }
-    LazyColumn(modifier = Modifier.cardViewport(), contentPadding = PaddingValues(bottom = 96.dp)) {
-        item {
-            Tile {
-                Text(btnLabel("Всего на счетах"), color = extra.dim, fontSize = 13.sp)
-                FitText(Money.format(total, cur), style = MaterialTheme.typography.headlineMedium)
-                if (saving.isNotEmpty()) {
-                    Text("на обычных ${Money.format(total - savingSum, cur)} · в сбережениях ${Money.format(savingSum, cur)}", fontSize = 13.sp, color = extra.dim)
-                    if (interest > 0) Text("проценты ≈ +${Money.format(interest, cur)} в месяц", fontSize = 13.sp, color = extra.ok)
-                }
-            }
-            Text(btnLabel("Выровнять остатки на карте и накопительном:"), fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 10.dp))
-            Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                com.dasein.poryadok.ui.common.Button(onClick = onAlign, modifier = Modifier.weight(1f)) { Text(btnLabel("Вписать вручную")) }
-                com.dasein.poryadok.ui.common.OutlinedButton(onClick = onStatement, modifier = Modifier.weight(1f)) { Text(btnLabel("По выписке")) }
-            }
-            Text(
-                "«Вписать вручную» — укажите, сколько сейчас на каждом счёте (как в СберБанк Онлайн). «По выписке» — загрузите PDF-выписку: остаток выровняется по её итогу. История операций не меняется.",
-                fontSize = 11.sp, color = extra.dim, lineHeight = 15.sp, modifier = Modifier.padding(top = 4.dp),
-            )
-            if (accounts.size > 2) ConsolidateAccountsButton(cur)
-            Gap()
-        }
-        items(accounts, key = { it.id }) { a ->
-            Tile(Modifier.padding(bottom = 8.dp), onClick = { onEdit(a) }) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Glyph(a.emoji, 26.dp)
-                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                        Text(a.name)
-                        if (AccountMeta.savings(ctx, a.id)) {
-                            val r = AccountMeta.rate(ctx, a.id)
-                            Text(
-                                "сберегательный" + if (r > 0) " · ${r.plain()}% · ≈ +${Money.format(AccountMeta.monthly(balanceOf(a, txns), r), cur)}/мес" else "",
-                                fontSize = 12.sp, color = extra.dim,
-                            )
-                        }
-                    }
-                    val b = balanceOf(a, txns)
-                    Text(Money.format(b, cur), fontWeight = FontWeight.SemiBold, color = if (b < 0) extra.danger else MaterialTheme.colorScheme.onSurface)
-                }
             }
         }
         item { HowTo("finance") }
