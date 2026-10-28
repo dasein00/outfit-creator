@@ -114,7 +114,7 @@ fun balanceOf(a: Account, txns: List<Txn>): Double {
 }
 
 /** Подразделы финансов по порядку (номер — в Routes.finance). */
-val FIN_TABS = listOf("Операции", "Обзор", "Расходы", "Доходы", "Календарь", "Бюджеты", "Регулярные", "Счета", "Калькуляторы")
+val FIN_TABS = listOf("Операции", "Обзор", "Расходы", "Доходы", "Календарь", "Бюджеты", "Регулярные", "Счета", "Калькуляторы", "Итоги")
 
 @Composable
 fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, onBack: (() -> Unit)? = null) {
@@ -203,6 +203,7 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
                     6 -> RecurringList(recurring, cats, accounts, cur) { editRecurring = it }
                     7 -> Accounts(accounts, txns, cur, onAlign = { align = true }, onStatement = { nav.navigate(STATEMENT_ROUTE) }) { editAccount = it }
                     8 -> FinanceCalculators(cur)
+                    9 -> TotalsTab(txns, cats, cur)
                 }
             }
         }

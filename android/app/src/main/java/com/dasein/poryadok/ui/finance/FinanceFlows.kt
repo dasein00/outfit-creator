@@ -189,9 +189,11 @@ fun FlowTab(nav: NavHostController, all: List<Txn>, cats: List<Category>, accoun
     val extra = LocalExtra.current
     val today = Dates.today()
     val type = if (income) TxnType.INCOME else TxnType.EXPENSE
-    var from by rememberSaveable(income) { mutableStateOf(today - 29) }
-    var to by rememberSaveable(income) { mutableStateOf(today) }
-    var label by rememberSaveable(income) { mutableStateOf("30 дн.") }
+    // По умолчанию — текущий месяц.
+    val thisMonth = remember { YearMonth.now() }
+    var from by rememberSaveable(income) { mutableStateOf(Dates.monthRange(thisMonth).first) }
+    var to by rememberSaveable(income) { mutableStateOf(Dates.monthRange(thisMonth).last) }
+    var label by rememberSaveable(income) { mutableStateOf("м:$thisMonth") }
     val period = FinPeriod(from, to, label)
     var catFilter by rememberSaveable(income) { mutableStateOf<Long?>(null) }
     var showAll by remember { mutableStateOf(false) }
