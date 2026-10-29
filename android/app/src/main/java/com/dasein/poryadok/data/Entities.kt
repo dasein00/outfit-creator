@@ -374,6 +374,21 @@ data class WardrobeItem(
     val builtin: Boolean = false,
     val sketch: Boolean = false,
     val hidden: Boolean = false,
+    /* v3 — карточка вещи как в приложениях-гардеробах. */
+    val brand: String = "",
+    /** Через запятую. */
+    val tags: String = "",
+    /** Цвета вещи #RRGGBB через запятую (первые находятся по фото сами). */
+    val colors: String = "",
+    val materials: String = "",
+    val link: String = "",
+    val price: Double = 0.0,
+    /** День покупки (epochDay), 0 — не указан. */
+    val bought: Long = 0,
+    val note: String = "",
+    val favorite: Boolean = false,
+    val archived: Boolean = false,
+    val addedAt: Long = 0,
 )
 
 /** Сохранённая подгонка вещи: четырёхугольник в мировых координатах и мазки ластика. id "__model__" — манекен. */
@@ -394,5 +409,21 @@ data class Outfit(
     val createdAt: Long,
     val preview: String = "",
     val layers: String,
+    /** Дни (epochDay), когда образ надет или запланирован в «Планировщике». */
     val wornDays: String = "",
+    /** Цвет фона коллажа ARGB, 0 — фон по умолчанию. */
+    val bg: Int = 0,
+)
+
+/** Подборка: список желаний, упаковка в поездку или своя — вещи и наряды. */
+@Serializable
+@Entity(tableName = "wardrobe_sets")
+data class WardrobeSet(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    /** "wish" — список желаний, "pack" — упаковка, "own" — своя. */
+    val kind: String,
+    val itemIds: String = "",
+    val outfitIds: String = "",
+    val createdAt: Long = 0,
 )

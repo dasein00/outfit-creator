@@ -91,6 +91,67 @@ fun slotQuad(cat: String, accIndex: Int, w: Int, h: Int): List<Float> {
     return rectQ(r.left * BOARD_W + (bw - dw) / 2, r.top * BOARD_H + (bh - dh) / 2, dw, dh)
 }
 
+/** Коллаж как в Fits: вещи столбиком по центру — верх, низ, обувь; аксессуары справа. */
+fun collageLayout(ctx: Context, ids: List<String>, items: Map<String, WardrobeItem>): List<LayerData> {
+    val list = ids.mapNotNull { items[it] }
+    fun row(c: String) = when (c) { "верх", "верхняя одежда" -> 0; "низ" -> 1; "обувь" -> 2; else -> -1 }
+    val weights = floatArrayOf(.38f, .44f, .2f)
+    val rows = (0..2).filter { r -> list.any { row(it.category) == r } }
+    val acc = list.filter { row(it.category) < 0 }
+    val left = .08f
+    val right = if (acc.isEmpty()) .92f else .74f
+    val gap = .015f
+    val usable = .92f - gap * (rows.size - 1).coerceAtLeast(0)
+    val total = rows.sumOf { weights[it].toDouble() }.toFloat().coerceAtLeast(.01f)
+    val out = mutableListOf<LayerData>()
+    fun place(item: WardrobeItem, r: RectF) {
+        val b = Bitmaps.load(ctx, item.src)
+        val w = b?.width ?: 10
+        val h = b?.height ?: 10
+        val bw = r.width() * BOARD_W
+        val bh = r.height() * BOARD_H
+        val sc = min(bw / w, bh / h)
+        out += LayerData(item.id, rectQ(r.left * BOARD_W + (bw - w * sc) / 2, r.top * BOARD_H + (bh - h * sc) / 2, w * sc, h * sc))
+    }
+    var y = .04f
+    rows.forEach { r ->
+        val h = usable * weights[r] / total
+        val inRow = list.filter { row(it.category) == r }.sortedBy { Z_ORDER[it.category] ?: 6 }
+        if (inRow.size == 1) place(inRow[0], RectF(left, y, right, y + h))
+        else {
+            // Две вещи сверху (например, рубашка и плащ) — внахлёст, верхняя одежда поверх.
+            val w = (right - left) * .62f
+            inRow.forEachIndexed { i, it0 ->
+                val x = left + (right - left - w) * i / (inRow.size - 1).coerceAtLeast(1)
+                place(it0, RectF(x, y, x + w, y + h))
+            }
+        }
+        y += h + gap
+    }
+    acc.forEachIndexed { i, it0 -> val t = .06f + (i % 5) * .18f; place(it0, RectF(.76f, t, .97f, t + .16f)) }
+    return out.sortedBy { l -> Z_ORDER[items[l.id]?.category] ?: 6 }
+}
+
+/** Главные цвета вещи по фото (до трёх), #RRGGBB через запятую. */
+fun dominantColors(b: Bitmap): String {
+    val s = Bitmap.createScaledBitmap(b, 48, max(1, 48 * b.height / max(1, b.width)), true)
+    val counts = HashMap<Int, Int>()
+    val sums = HashMap<Int, LongArray>()
+    for (y in 0 until s.height) for (x in 0 until s.width) {
+        val p = s.getPixel(x, y)
+        if ((p ushr 24) < 200) continue
+        val r = (p shr 16) and 0xFF; val g = (p shr 8) and 0xFF; val bl = p and 0xFF
+        val key = (r / 48) * 100 + (g / 48) * 10 + bl / 48
+        counts[key] = (counts[key] ?: 0) + 1
+        sums.getOrPut(key) { LongArray(3) }.let { it[0] += r.toLong(); it[1] += g.toLong(); it[2] += bl.toLong() }
+    }
+    val total = counts.values.sum().coerceAtLeast(1)
+    return counts.entries.sortedByDescending { it.value }.filter { it.value * 100 / total >= 8 }.take(3).joinToString(",") { e ->
+        val sm = sums.getValue(e.key)
+        "#%02X%02X%02X".format(sm[0] / e.value, sm[1] / e.value, sm[2] / e.value)
+    }
+}
+
 /** Разложить вещи по местам категорий (порядок слоёв — по категориям). */
 fun autoLayout(ctx: Context, ids: List<String>, items: Map<String, WardrobeItem>): List<LayerData> {
     var acc = 0
@@ -123,7 +184,7 @@ object WardrobeSeed {
             wjson.decodeFromString(ListSerializer(ManifestItem.serializer()), text)
         }
         dao.insertWardrobeItems(items.map {
-            WardrobeItem(id = it.id, name = it.name, category = it.category, season = it.season, src = "asset:wardrobe/${it.file}", pct = "", builtin = true)
+            WardrobeItem(id = it.id, name = it.name, category = it.category, season = it.season, src = "asset:wardrobe/${it.file}", pct = "", builtin = true, addedAt = System.currentTimeMillis())
         })
         Graph.prefs.update { it.copy(wardrobeSeed = VERSION) }
     }
@@ -212,12 +273,12 @@ fun drawBoard(ctx: Context, canvas: Canvas, scale: Float, ox: Float, oy: Float, 
     }
 }
 
-fun renderPreview(ctx: Context, layers: List<LayerData>, items: Map<String, WardrobeItem>): String? {
+fun renderPreview(ctx: Context, layers: List<LayerData>, items: Map<String, WardrobeItem>, bg: Int = 0): String? {
     val w = 600
     val h = 800
     val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
     val c = Canvas(bmp)
-    c.drawColor(BOARD_RGB)
+    c.drawColor(if (bg != 0) bg else BOARD_RGB)
     drawBoard(ctx, c, w / BOARD_W, 0f, 0f, layers, items)
     return runCatching {
         val dir = File(ctx.filesDir, "outfits").apply { mkdirs() }

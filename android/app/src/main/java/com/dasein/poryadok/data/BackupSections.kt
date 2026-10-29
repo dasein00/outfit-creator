@@ -76,7 +76,7 @@ enum class BackupSection(
                 extra = dx.copy(media = sx.media, mediaLists = sx.mediaLists, mediaListItems = sx.mediaListItems),
             )
             NOTES -> dst.copy(notes = src.notes, extra = dx.copy(pages = sx.pages, pageBlocks = sx.pageBlocks))
-            WARDROBE -> dst.copy(wardrobeItems = src.wardrobeItems, itemFits = src.itemFits, outfits = src.outfits)
+            WARDROBE -> dst.copy(wardrobeItems = src.wardrobeItems, itemFits = src.itemFits, outfits = src.outfits, wardrobeSets = src.wardrobeSets)
             TUTOR, PRESSURE, CRAFTS, READER, LIKES, SETTINGS -> dst
         }
     }
@@ -95,7 +95,7 @@ enum class BackupSection(
             RECIPES -> x.recipes.size + x.plan.size + x.presets.size + x.shopping.size + x.history.size
             MEDIA -> x.media.size + x.mediaLists.size + b.topLists.size + b.topItems.size
             NOTES -> b.notes.size + x.pages.size + x.pageBlocks.size
-            WARDROBE -> b.wardrobeItems.size + b.outfits.size
+            WARDROBE -> b.wardrobeItems.size + b.outfits.size + b.wardrobeSets.size
             TUTOR, PRESSURE, CRAFTS, READER, LIKES, SETTINGS -> 0
         }
     }

@@ -66,7 +66,7 @@ fun OutfitsScreen(nav: NavHostController) {
     val shown = outfits.filter { season == "все" || it.season == season }
     val forgotten = outfits.filter { o -> o.worn().lastOrNull()?.let { today - it > 30 } ?: (today - Dates.dayOf(o.createdAt) > 14) }.take(6)
 
-    Screen(title = "Мои луки", onBack = { nav.popBackStack() }) { pad ->
+    Screen(title = "Наряды", onBack = { nav.popBackStack() }) { pad ->
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 40.dp),
@@ -93,7 +93,7 @@ fun OutfitsScreen(nav: NavHostController) {
                 }
             }
             if (shown.isEmpty()) item(span = { GridItemSpan(2) }) {
-                Empty(Ic.hanger, "Здесь пока пусто", "Разложите вещи во вкладке «Образ» и нажмите «Сохранить лук».")
+                Empty(Ic.hanger, "Здесь пока пусто", "Создайте наряд в «Гардеробе» — кнопка «+» во вкладке «Наряды».")
             }
             items(shown, key = { it.id }) { o ->
                 val img by rememberImage(o.preview.ifBlank { null }, 500)
@@ -119,49 +119,53 @@ fun OutfitsScreen(nav: NavHostController) {
         }
     }
 
-    open?.let { o ->
-        var confirm by remember { mutableStateOf(false) }
-        val big by rememberImage(o.preview.ifBlank { null }, 900)
-        val worn = o.worn()
-        AlertDialog(
-            onDismissRequest = { open = null },
-            title = { Text(o.name) },
-            text = {
-                Column {
-                    Box(Modifier.fillMaxWidth().aspectRatio(.75f).clip(RoundedCornerShape(12.dp)).background(BoardColor)) {
-                        big?.let { Image(it, null, Modifier.fillMaxWidth(), contentScale = ContentScale.Fit) }
-                    }
-                    Text(
-                        if (worn.isEmpty()) "Ещё не надевали" else "Надевали ${worn.size} ${plural(worn.size, "раз", "раза", "раз")}, последний — ${Dates.label(worn.last())}",
-                        fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp),
-                    )
-                    Row(Modifier.padding(top = 6.dp)) {
-                        TextButton(onClick = {
-                            val days = if (today in worn) worn - today else worn + today
-                            val upd = o.copy(wornDays = days.joinToString(","))
-                            io { Graph.dao.upsertOutfit(upd) }
-                            open = upd
-                        }) { Text(if (today in worn) "Не ношу сегодня" else "Ношу сегодня", fontWeight = FontWeight.SemiBold) }
-                    }
+    open?.let { o -> OutfitDialog(o, nav) { open = null } }
+}
+
+/** Карточка наряда: превью, сколько раз надевали, «Ношу сегодня», редактор и удаление. */
+@Composable
+fun OutfitDialog(o0: Outfit, nav: NavHostController, onDismiss: () -> Unit) {
+    val extra = LocalExtra.current
+    val today = Dates.today()
+    var o by remember(o0.id) { mutableStateOf(o0) }
+    var confirm by remember { mutableStateOf(false) }
+    val big by rememberImage(o.preview.ifBlank { null }, 900)
+    val worn = o.worn().filter { it <= today }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(o.name) },
+        text = {
+            Column {
+                Box(Modifier.fillMaxWidth().aspectRatio(.75f).clip(RoundedCornerShape(12.dp)).background(if (o.bg != 0) androidx.compose.ui.graphics.Color(o.bg) else BoardColor)) {
+                    big?.let { Image(it, null, Modifier.fillMaxWidth(), contentScale = ContentScale.Fit) }
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    WardrobeBus.pendingOutfit = o.id
-                    open = null
-                    nav.popBackStack()
-                }) { Text(btnLabel("Открыть в редакторе")) }
-            },
-            dismissButton = {
-                com.dasein.poryadok.ui.common.ButtonsRow {
-                    TextButton(onClick = { confirm = true }) { Text(btnLabel("Удалить"), color = extra.danger) }
-                    TextButton(onClick = { open = null }) { Text(btnLabel("Закрыть")) }
+                Text(
+                    if (worn.isEmpty()) "Ещё не надевали" else "Надевали ${worn.size} ${plural(worn.size, "раз", "раза", "раз")}, последний — ${Dates.label(worn.last())}",
+                    fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp),
+                )
+                Row(Modifier.padding(top = 6.dp)) {
+                    TextButton(onClick = {
+                        val all = o.worn()
+                        val days = if (today in all) all - today else all + today
+                        val upd = o.copy(wornDays = days.sorted().joinToString(","))
+                        io { Graph.dao.upsertOutfit(upd) }
+                        o = upd
+                    }) { Text(if (today in o.worn()) "Не ношу сегодня" else "Ношу сегодня", fontWeight = FontWeight.SemiBold) }
                 }
-            },
-        )
-        if (confirm) ConfirmDialog("Удалить лук «${o.name}»?", "", onDismiss = { confirm = false }) {
-            io { if (o.preview.isNotBlank()) java.io.File(o.preview).delete(); Graph.dao.deleteOutfit(o) }
-            open = null
-        }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onDismiss(); openEditor(nav, outfit = o.id) }) { Text(btnLabel("Изменить")) }
+        },
+        dismissButton = {
+            com.dasein.poryadok.ui.common.ButtonsRow {
+                TextButton(onClick = { confirm = true }) { Text(btnLabel("Удалить"), color = extra.danger) }
+                TextButton(onClick = onDismiss) { Text(btnLabel("Закрыть")) }
+            }
+        },
+    )
+    if (confirm) ConfirmDialog("Удалить наряд «${o.name}»?", "", onDismiss = { confirm = false }) {
+        io { if (o.preview.isNotBlank()) java.io.File(o.preview).delete(); Graph.dao.deleteOutfit(o) }
+        onDismiss()
     }
 }

@@ -244,6 +244,11 @@ interface LifeDao {
     @Query("DELETE FROM item_fits")
     suspend fun deleteAllFits()
 
+    @Query("SELECT * FROM wardrobe_sets ORDER BY createdAt DESC")
+    fun wardrobeSets(): Flow<List<WardrobeSet>>
+    @Upsert suspend fun upsertWardrobeSet(s: WardrobeSet): Long
+    @Delete suspend fun deleteWardrobeSet(s: WardrobeSet)
+
     @Query("SELECT * FROM outfits ORDER BY createdAt DESC")
     fun outfits(): Flow<List<Outfit>>
     @Upsert suspend fun upsertOutfit(o: Outfit): Long

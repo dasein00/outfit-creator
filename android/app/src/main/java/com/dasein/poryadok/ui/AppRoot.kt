@@ -373,6 +373,12 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             }
             composable(Routes.WARDROBE) { WardrobeScreen(nav) }
             composable(Routes.OUTFITS) { OutfitsScreen(nav) }
+            composable(com.dasein.poryadok.ui.wardrobe.WARDROBE_EDITOR) { com.dasein.poryadok.ui.wardrobe.OutfitEditorScreen(nav) }
+            composable(com.dasein.poryadok.ui.wardrobe.WARDROBE_PLANNER) { com.dasein.poryadok.ui.wardrobe.WardrobePlannerScreen(nav) }
+            composable("wardrobeItem/{id}") { com.dasein.poryadok.ui.wardrobe.WardrobeItemScreen(nav, it.arguments?.getString("id") ?: "") }
+            composable("wardrobeSet/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
+                com.dasein.poryadok.ui.wardrobe.WardrobeSetScreen(nav, it.long("id"))
+            }
             composable(Routes.WHEEL) { WheelScreen(nav) }
             composable(Routes.REVIEW) { ReviewScreen(nav, settings) }
             composable(Routes.SETTINGS) { SettingsScreen(nav, settings) }

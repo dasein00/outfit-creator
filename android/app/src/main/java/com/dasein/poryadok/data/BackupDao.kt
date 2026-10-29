@@ -95,6 +95,9 @@ interface BackupDao {
     @Query("SELECT * FROM wardrobe_items") suspend fun allWardrobeItem(): List<WardrobeItem>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putWardrobeItem(items: List<WardrobeItem>)
     @Query("DELETE FROM wardrobe_items") suspend fun wipeWardrobeItem()
+    @Query("SELECT * FROM wardrobe_sets") suspend fun allWardrobeSet(): List<WardrobeSet>
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putWardrobeSet(items: List<WardrobeSet>)
+    @Query("DELETE FROM wardrobe_sets") suspend fun wipeWardrobeSet()
     @Query("SELECT * FROM item_fits") suspend fun allItemFit(): List<ItemFit>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putItemFit(items: List<ItemFit>)
     @Query("DELETE FROM item_fits") suspend fun wipeItemFit()

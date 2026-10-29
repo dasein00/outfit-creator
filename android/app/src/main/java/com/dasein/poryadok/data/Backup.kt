@@ -38,6 +38,7 @@ data class BackupData(
     val wardrobeItems: List<WardrobeItem> = emptyList(),
     val itemFits: List<ItemFit> = emptyList(),
     val outfits: List<Outfit> = emptyList(),
+    val wardrobeSets: List<WardrobeSet> = emptyList(),
     /** Рецепты, меню, покупки, тетрадь финансов (с версии DASEIN). */
     val extra: ExtraBackup? = null,
 )
@@ -77,6 +78,7 @@ suspend fun AppDb.exportData(now: Long): BackupData {
         wardrobeItems = d.allWardrobeItem(),
         itemFits = d.allItemFit(),
         outfits = d.allOutfit(),
+        wardrobeSets = d.allWardrobeSet(),
     )
 }
 
@@ -114,5 +116,6 @@ suspend fun AppDb.importData(b: BackupData) {
         d.wipeWardrobeItem(); d.putWardrobeItem(b.wardrobeItems)
         d.wipeItemFit(); d.putItemFit(b.itemFits)
         d.wipeOutfit(); d.putOutfit(b.outfits)
+        d.wipeWardrobeSet(); d.putWardrobeSet(b.wardrobeSets)
     }
 }
