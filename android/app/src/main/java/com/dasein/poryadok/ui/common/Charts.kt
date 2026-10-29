@@ -168,6 +168,8 @@ fun DualBarChart(
     height: Dp = 150.dp,
     format: (Float) -> String = { chartNumber(it) },
     bubble: ((Int) -> String)? = null,
+    showA: Boolean = true,
+    showB: Boolean = true,
 ) {
     val extra = LocalExtra.current
     val dim = extra.dim
@@ -178,7 +180,8 @@ fun DualBarChart(
     val labelStyle = TextStyle(fontSize = 10.sp, color = dim)
     val bubbleStyle = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
     val n = maxOf(a.size, b.size).coerceAtLeast(1)
-    val sums = (0 until n).map { maxOf(a.getOrElse(it) { 0f }, b.getOrElse(it) { 0f }) }
+    // Масштаб — только по видимым рядам: скрыли один — шкала подстраивается под другой.
+    val sums = (0 until n).map { maxOf(if (showA) a.getOrElse(it) { 0f } else 0f, if (showB) b.getOrElse(it) { 0f } else 0f) }
     val z = rememberChartZoom(n)
     val ticks = axisTicks(sums.maxOrNull() ?: 0f)
     val maxV = ticks.last().coerceAtLeast(1f)
@@ -213,10 +216,15 @@ fun DualBarChart(
                 if (x0 + slot < ax || x0 > size.width) return@forEach
                 val dimmed = sel >= 0 && i != sel
                 val cx = x0 + slot / 2
-                val ha = h * (a.getOrElse(i) { 0f } / maxV)
-                val hb = h * (b.getOrElse(i) { 0f } / maxV)
-                if (ha > 0f) drawRoundRect(if (dimmed) colorA.copy(alpha = .35f) else colorA, Offset(cx - gap - bw, topPad + h - ha), Size(bw, ha.coerceAtLeast(2f)), CornerRadius(5f, 5f))
-                if (hb > 0f) drawRoundRect(if (dimmed) colorB.copy(alpha = .35f) else colorB, Offset(cx + gap, topPad + h - hb), Size(bw, hb.coerceAtLeast(2f)), CornerRadius(5f, 5f))
+                val ha = if (showA) h * (a.getOrElse(i) { 0f } / maxV) else 0f
+                val hb = if (showB) h * (b.getOrElse(i) { 0f } / maxV) else 0f
+                val both = showA && showB
+                // Один ряд — столбик по центру и шире.
+                val w1 = if (both) bw else slot * .5f
+                val xa = if (both) cx - gap - bw else cx - w1 / 2
+                val xb = if (both) cx + gap else cx - w1 / 2
+                if (ha > 0f) drawRoundRect(if (dimmed) colorA.copy(alpha = .35f) else colorA, Offset(xa, topPad + h - ha), Size(w1, ha.coerceAtLeast(2f)), CornerRadius(5f, 5f))
+                if (hb > 0f) drawRoundRect(if (dimmed) colorB.copy(alpha = .35f) else colorB, Offset(xb, topPad + h - hb), Size(w1, hb.coerceAtLeast(2f)), CornerRadius(5f, 5f))
             }
             val maxLabelW = labels.maxOfOrNull { measurer.measure(it, labelStyle).size.width } ?: 0
             val every = if (slot <= 0f) 1 else kotlin.math.ceil((maxLabelW + 6f) / slot).toInt().coerceAtLeast(1)
@@ -234,7 +242,7 @@ fun DualBarChart(
             val cx = ax + sel * slot - z.shift + slot / 2
             val top = topPad + h - h * (sums[sel] / maxV)
             val label = labels.getOrNull(sel)?.let { "$it · " } ?: ""
-            chartBubble(measurer, bubble?.invoke(sel) ?: (label + format(a.getOrElse(sel) { 0f }) + " / " + format(b.getOrElse(sel) { 0f })), Offset(cx, top), onSurface, surface, bubbleStyle)
+            chartBubble(measurer, bubble?.invoke(sel) ?: (label + listOfNotNull(format(a.getOrElse(sel) { 0f }).takeIf { showA }, format(b.getOrElse(sel) { 0f }).takeIf { showB }).joinToString(" / ")), Offset(cx, top), onSurface, surface, bubbleStyle)
         }
     }
 }

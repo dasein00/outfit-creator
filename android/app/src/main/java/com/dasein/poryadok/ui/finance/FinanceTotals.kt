@@ -252,14 +252,24 @@ fun OverviewTab(
                     else -> "По месяцам"
                 },
             )
+            // Ряды включаются/выключаются нажатием на легенду; хотя бы один остаётся видимым.
+            var showIn by rememberSaveable { mutableStateOf(true) }
+            var showOut by rememberSaveable { mutableStateOf(true) }
             Tile(padding = 10.dp) {
                 DualBarChart(
                     rows.map { it.second.toFloat() }, rows.map { it.third.toFloat() }, rows.map { it.first.label }, extra.ok, extra.danger,
                     format = { Money.format(it.toDouble(), cur) },
-                    bubble = { i -> "${rows[i].first.row}: +${Money.format(rows[i].second, cur)} / −${Money.format(rows[i].third, cur)}" },
+                    bubble = { i ->
+                        rows[i].first.row + ": " + listOfNotNull(
+                            "+${Money.format(rows[i].second, cur)}".takeIf { showIn },
+                            "−${Money.format(rows[i].third, cur)}".takeIf { showOut },
+                        ).joinToString(" / ")
+                    },
+                    showA = showIn, showB = showOut,
                 )
-                Row(Modifier.padding(top = 4.dp, start = 4.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    LegendDot(extra.ok, "доходы"); LegendDot(extra.danger, "расходы")
+                Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    LegendToggle(extra.ok, "доходы", showIn) { if (showIn && !showOut) showOut = true; showIn = !showIn }
+                    LegendToggle(extra.danger, "расходы", showOut) { if (showOut && !showIn) showIn = true; showOut = !showOut }
                 }
                 // Таблица — для длинных периодов (по дням строк слишком много).
                 if (!buckets.first().range.let { it.first == it.last }) {
@@ -580,6 +590,24 @@ private fun Small(value: String, label: String, modifier: Modifier) {
     Column(modifier) {
         Text(value, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(label, fontSize = 11.sp, color = LocalExtra.current.dim, maxLines = 1)
+    }
+}
+
+/** Пункт легенды-переключатель: выключенный — бледный и зачёркнутый. */
+@Composable
+private fun LegendToggle(c: Color, text: String, on: Boolean, onClick: () -> Unit) {
+    val extra = LocalExtra.current
+    Row(
+        Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+            .background(if (on) c.copy(alpha = .14f) else Color.Transparent)
+            .clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Dot(if (on) c else c.copy(alpha = .3f), 8.dp)
+        Text(
+            " $text", fontSize = 12.sp, color = if (on) MaterialTheme.colorScheme.onSurface else extra.dim,
+            textDecoration = if (on) null else androidx.compose.ui.text.style.TextDecoration.LineThrough,
+        )
     }
 }
 
