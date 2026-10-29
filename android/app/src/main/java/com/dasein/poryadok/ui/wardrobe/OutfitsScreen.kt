@@ -85,7 +85,7 @@ fun OutfitsScreen(nav: NavHostController) {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         rowItems(forgotten, key = { "f" + it.id }) { o ->
                             val img by rememberImage(o.preview.ifBlank { null }, 300)
-                            Box(Modifier.height(120.dp).aspectRatio(.5f).clip(RoundedCornerShape(12.dp)).background(Palette.Stage).clickable { open = o }) {
+                            Box(Modifier.height(120.dp).aspectRatio(.75f).clip(RoundedCornerShape(12.dp)).background(BoardColor).clickable { open = o }) {
                                 img?.let { Image(it, o.name, Modifier.fillMaxWidth(), contentScale = ContentScale.Crop) }
                             }
                         }
@@ -93,14 +93,14 @@ fun OutfitsScreen(nav: NavHostController) {
                 }
             }
             if (shown.isEmpty()) item(span = { GridItemSpan(2) }) {
-                Empty(Ic.hanger, "Здесь пока пусто", "Соберите образ в гардеробе и нажмите «Сохранить лук».")
+                Empty(Ic.hanger, "Здесь пока пусто", "Разложите вещи во вкладке «Образ» и нажмите «Сохранить лук».")
             }
             items(shown, key = { it.id }) { o ->
                 val img by rememberImage(o.preview.ifBlank { null }, 500)
                 val worn = o.worn()
                 Column(Modifier.clip(RoundedCornerShape(16.dp)).background(extra.card).clickable { open = o }) {
-                    Box(Modifier.fillMaxWidth().aspectRatio(.62f).background(Palette.Stage)) {
-                        img?.let { Image(it, o.name, Modifier.fillMaxWidth().aspectRatio(.62f), contentScale = ContentScale.Crop) }
+                    Box(Modifier.fillMaxWidth().aspectRatio(.75f).background(BoardColor)) {
+                        img?.let { Image(it, o.name, Modifier.fillMaxWidth().aspectRatio(.75f), contentScale = ContentScale.Crop) }
                         if (today in worn) Text(
                             "сегодня", fontSize = 10.sp, color = androidx.compose.ui.graphics.Color(0xFF241C0D),
                             modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).clip(RoundedCornerShape(6.dp)).background(Palette.Brass).padding(horizontal = 5.dp),
@@ -128,7 +128,7 @@ fun OutfitsScreen(nav: NavHostController) {
             title = { Text(o.name) },
             text = {
                 Column {
-                    Box(Modifier.fillMaxWidth().aspectRatio(.62f).clip(RoundedCornerShape(12.dp)).background(Palette.Stage)) {
+                    Box(Modifier.fillMaxWidth().aspectRatio(.75f).clip(RoundedCornerShape(12.dp)).background(BoardColor)) {
                         big?.let { Image(it, null, Modifier.fillMaxWidth(), contentScale = ContentScale.Fit) }
                     }
                     Text(

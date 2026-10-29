@@ -3,19 +3,18 @@ package com.dasein.poryadok.ui.wardrobe
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffXfermode
+import android.graphics.RectF
 import android.util.LruCache
 import com.dasein.poryadok.Graph
-import com.dasein.poryadok.data.ItemFit
 import com.dasein.poryadok.data.WardrobeItem
 import com.dasein.poryadok.ui.common.Images
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
@@ -27,15 +26,19 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-/* Мир 500×1000, манекен шириной 311.4 по центру — как в веб-версии. */
-const val WORLD_W = 500f
-const val WORLD_H = 1000f
-const val MW = 311.4f
-const val MX0 = (WORLD_W - MW) / 2
-const val MODEL_ID = "__model__"
+/* Флэт-лэй: вещи разложены на доске 900×1200 (3:4), как в каталоге — без манекена. */
+const val BOARD_W = 900f
+const val BOARD_H = 1200f
 
-val CATEGORIES = listOf("верх", "низ", "обувь", "аксессуары")
-val Z_ORDER = mapOf("обувь" to 1, "низ" to 2, "верх" to 3, "аксессуары" to 4)
+/** Цвет «студийной» поверхности, на которой лежат вещи. */
+const val BOARD_RGB = 0xFFF3F0EA.toInt()
+
+val CATEGORIES = listOf("верх", "верхняя одежда", "низ", "обувь", "аксессуары")
+val CATEGORY_LABELS = mapOf("верх" to "Верх", "верхняя одежда" to "Верхняя", "низ" to "Низ", "обувь" to "Обувь", "аксессуары" to "Аксессуары")
+
+/** Категории, где в образе может быть только одна вещь (аксессуаров — сколько угодно). */
+val SINGLE = setOf("верх", "верхняя одежда", "низ", "обувь")
+val Z_ORDER = mapOf("обувь" to 1, "низ" to 2, "верх" to 3, "верхняя одежда" to 4, "аксессуары" to 5)
 val SEASONS = listOf("все" to "Все", "зима" to "Зима", "осень" to "Осень", "весна" to "Весна", "лето" to "Лето")
 
 /** Иконки сезонов для фильтров гардероба. */
@@ -44,79 +47,94 @@ val SEASON_GLYPHS = mapOf("все" to "ui:hanger", "зима" to "fest/08", "о�
 @Serializable
 data class Stroke(val r: Float, val pts: List<Float>)
 
-/** Слой: вещь и её четырёхугольник TL, TR, BR, BL (8 чисел) в мировых координатах плюс мазки ластика в долях 0..1. */
+/** Слой: вещь и её четырёхугольник TL, TR, BR, BL (8 чисел) в координатах доски. */
 @Serializable
 data class LayerData(val id: String, val q: List<Float>, val strokes: List<Stroke> = emptyList())
 
 @Serializable
-private data class ManifestItem(
-    val id: String,
-    val name: String,
-    val category: String,
-    val season: String,
-    val pct: List<Double>,
-    val file: String,
-    val sketch: Boolean = false,
-)
+private data class ManifestItem(val id: String, val name: String, val category: String, val season: String, val file: String)
 
 val wjson = Json { ignoreUnknownKeys = true }
 val layersSer = ListSerializer(LayerData.serializer())
-val strokesSer = ListSerializer(Stroke.serializer())
+
+/** Образы флэт-лэя сохраняются с префиксом: старые (на манекене) раскладываются заново. */
+private const val V2 = "v2:"
+fun encodeLayers(ls: List<LayerData>) = V2 + wjson.encodeToString(layersSer, ls)
+fun decodeLayers(s: String): Pair<List<LayerData>, Boolean> {
+    val v2 = s.startsWith(V2)
+    val ls = runCatching { wjson.decodeFromString(layersSer, s.removePrefix(V2)) }.getOrDefault(emptyList())
+    return ls to v2
+}
 
 fun rectQ(x: Float, y: Float, w: Float, h: Float) = listOf(x, y, x + w, y, x + w, y + h, x, y + h)
-fun modelQuad() = rectQ(MX0, 0f, MW, WORLD_H)
 
-fun parsePct(s: String): List<Float> = s.split(",").mapNotNull { it.trim().toFloatOrNull() }
-
-fun defaultQuad(item: WardrobeItem, bmp: Bitmap?): List<Float> {
-    val p = parsePct(item.pct).let { if (it.size < 3) listOf(80f, 50f, 40f) else it }
-    val widthFactor = when (item.category) {
-        "верх" -> .72f
-        "низ" -> .78f
-        else -> 1f
+/** Место категории на доске (доли ширины/высоты): композиция как у каталожного флэт-лэя. */
+private fun slot(cat: String, accIndex: Int): RectF = when (cat) {
+    "верхняя одежда" -> RectF(.02f, .03f, .38f, .54f)
+    "верх" -> RectF(.32f, .03f, .74f, .41f)
+    "низ" -> RectF(.38f, .38f, .70f, .97f)
+    "обувь" -> RectF(.04f, .57f, .36f, .97f)
+    else -> {
+        val top = .06f + (accIndex % 4) * .23f
+        RectF(.75f, top, .98f, top + .2f)
     }
-    val w = p[0] * MW / 100 * widthFactor
-    val h = if (p.size > 3) p[3] * 10 else w * ((bmp?.height ?: 12).toFloat() / (bmp?.width ?: 10))
-    val left = MX0 + p[1] * MW / 100 - w / 2
-    val top = p[2] * 10
+}
 
-    // Match the garment's far edge to the narrower waist or ankle line.
-    val lowerWidth = when (item.category) {
-        "верх" -> w * .88f
-        "низ" -> w * .72f
-        else -> w
+/** Вписать картинку w×h в место категории с сохранением пропорций. */
+fun slotQuad(cat: String, accIndex: Int, w: Int, h: Int): List<Float> {
+    val r = slot(cat, accIndex)
+    val bw = r.width() * BOARD_W
+    val bh = r.height() * BOARD_H
+    val s = min(bw / max(1, w), bh / max(1, h))
+    val dw = w * s
+    val dh = h * s
+    return rectQ(r.left * BOARD_W + (bw - dw) / 2, r.top * BOARD_H + (bh - dh) / 2, dw, dh)
+}
+
+/** Разложить вещи по местам категорий (порядок слоёв — по категориям). */
+fun autoLayout(ctx: Context, ids: List<String>, items: Map<String, WardrobeItem>): List<LayerData> {
+    var acc = 0
+    return ids.mapNotNull { items[it] }.sortedBy { Z_ORDER[it.category] ?: 6 }.map { item ->
+        val b = Bitmaps.load(ctx, item.src)
+        val i = if (item.category in SINGLE) 0 else acc++
+        LayerData(item.id, slotQuad(item.category, i, b?.width ?: 10, b?.height ?: 10))
     }
-    val inset = (w - lowerWidth) / 2
-    return listOf(
-        left, top,
-        left + w, top,
-        left + w - inset, top + h,
-        left + inset, top + h,
-    )
 }
 
 object WardrobeSeed {
+    private const val VERSION = 2
+
     suspend fun run() {
         val s = Graph.prefs.now()
-        if (s.wardrobeSeed >= 1) return
+        if (s.wardrobeSeed >= VERSION) return
+        val dao = Graph.dao
+        // Переход на флэт-лэй: старые встроенные вещи, их подгонка и луки с ними удаляются.
+        val old = dao.builtinWardrobeIds().toSet()
+        if (old.isNotEmpty()) {
+            dao.outfits().first().filter { o -> decodeLayers(o.layers).first.any { it.id in old } }.forEach { o ->
+                if (o.preview.isNotBlank()) File(o.preview).delete()
+                dao.deleteOutfit(o)
+            }
+            dao.deleteAllFits()
+            dao.deleteBuiltinWardrobe()
+        }
         val items = withContext(Dispatchers.IO) {
             val text = Graph.app.assets.open("wardrobe/items.json").bufferedReader().use { it.readText() }
             wjson.decodeFromString(ListSerializer(ManifestItem.serializer()), text)
         }
-        Graph.dao.insertWardrobeItems(items.map {
-            WardrobeItem(
-                id = it.id, name = it.name, category = it.category, season = it.season,
-                src = "asset:wardrobe/${it.file}", pct = it.pct.joinToString(","), builtin = true, sketch = it.sketch,
-            )
+        dao.insertWardrobeItems(items.map {
+            WardrobeItem(id = it.id, name = it.name, category = it.category, season = it.season, src = "asset:wardrobe/${it.file}", pct = "", builtin = true)
         })
-        Graph.prefs.update { it.copy(wardrobeSeed = 1) }
+        Graph.prefs.update { it.copy(wardrobeSeed = VERSION) }
     }
 }
 
-/** Кэш исходных картинок и картинок с применённым ластиком. */
+/** Кэш картинок вещей и их мягких теней. */
 object Bitmaps {
     private val originals = LruCache<String, Bitmap>(80)
-    private val erased = LruCache<String, Bitmap>(30)
+    private val shadows = LruCache<String, Bitmap>(80)
+    private const val SHADOW_K = 4
+    private const val SHADOW_PAD = 10
 
     fun load(ctx: Context, src: String): Bitmap? {
         originals.get(src)?.let { return it }
@@ -124,56 +142,47 @@ object Bitmaps {
             if (src.startsWith("asset:")) ctx.assets.open(src.removePrefix("asset:")).use { BitmapFactory.decodeStream(it) }
             else BitmapFactory.decodeFile(src)
         }.getOrNull() ?: return null
-        // Clean catalog garment photos before caching them as transparent cut-outs.
-        val bmp = if (src.startsWith("asset:wardrobe/") && src != "asset:wardrobe/model.webp") {
-            stripBackground(decoded)
-        } else decoded
+        val bmp = stripBackground(decoded)
         originals.put(src, bmp)
         return bmp
     }
 
-    fun withStrokes(key: String, bmp: Bitmap, strokes: List<Stroke>): Bitmap {
-        if (strokes.isEmpty()) return bmp
-        val k = key + "#" + strokes.hashCode()
-        erased.get(k)?.let { return it }
-        val out = bmp.copy(Bitmap.Config.ARGB_8888, true)
-        val c = Canvas(out)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
-            style = Paint.Style.STROKE
-            strokeCap = Paint.Cap.ROUND
-            strokeJoin = Paint.Join.ROUND
+    /** Размытый силуэт вещи в 1/4 размера с полями [SHADOW_PAD] — тень рисует приложение, а не генерация. */
+    fun shadow(src: String, bmp: Bitmap): Bitmap {
+        shadows.get(src)?.let { return it }
+        val sw = max(1, bmp.width / SHADOW_K)
+        val sh = max(1, bmp.height / SHADOW_K)
+        val alpha = Bitmap.createScaledBitmap(bmp, sw, sh, true).extractAlpha()
+        val out = Bitmap.createBitmap(sw + 2 * SHADOW_PAD, sh + 2 * SHADOW_PAD, Bitmap.Config.ARGB_8888)
+        val p = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(110, 60, 45, 30)
+            maskFilter = BlurMaskFilter(SHADOW_PAD * .7f, BlurMaskFilter.Blur.NORMAL)
         }
-        val dot = Paint(paint).apply { style = Paint.Style.FILL }
-        strokes.forEach { s ->
-            val r = s.r * out.width
-            paint.strokeWidth = r * 2
-            val pts = s.pts
-            if (pts.size < 2) return@forEach
-            if (pts.size == 2) {
-                c.drawCircle(pts[0] * out.width, pts[1] * out.height, r, dot)
-            } else {
-                val path = Path()
-                path.moveTo(pts[0] * out.width, pts[1] * out.height)
-                var i = 2
-                while (i + 1 < pts.size) { path.lineTo(pts[i] * out.width, pts[i + 1] * out.height); i += 2 }
-                c.drawPath(path, paint)
-            }
-        }
-        erased.put(k, out)
+        Canvas(out).drawBitmap(alpha, SHADOW_PAD.toFloat(), SHADOW_PAD.toFloat(), p)
+        shadows.put(src, out)
         return out
     }
 
-    fun invalidate(src: String) { originals.remove(src) }
+    /** Матрица тени к матрице вещи [m]: пиксели тени → пиксели вещи (учёт масштаба и полей). */
+    fun shadowMatrix(m: Matrix, bmp: Bitmap, sh: Bitmap): Matrix {
+        val sw = (sh.width - 2 * SHADOW_PAD).toFloat()
+        val shh = (sh.height - 2 * SHADOW_PAD).toFloat()
+        return Matrix(m).apply {
+            preScale(bmp.width / sw, bmp.height / shh)
+            preTranslate(-SHADOW_PAD.toFloat(), -SHADOW_PAD.toFloat())
+        }
+    }
+
+    fun invalidate(src: String) { originals.remove(src); shadows.remove(src) }
 }
 
-/** Матрица, переводящая прямоугольник картинки w×h в четырёхугольник q (перспектива через setPolyToPoly). */
+/** Матрица, переводящая прямоугольник картинки w×h в четырёхугольник q. */
 fun quadMatrix(w: Float, h: Float, q: List<Float>, scale: Float = 1f, ox: Float = 0f, oy: Float = 0f): Matrix {
     val dst = FloatArray(8) { i -> if (i % 2 == 0) ox + q[i] * scale else oy + q[i] * scale }
     return Matrix().apply { setPolyToPoly(floatArrayOf(0f, 0f, w, 0f, w, h, 0f, h), 0, dst, 0, 4) }
 }
 
-/** Мировая точка → локальные доли (u, v) внутри четырёхугольника. */
+/** Точка доски → локальные доли (u, v) внутри четырёхугольника. */
 fun toLocal(q: List<Float>, x: Float, y: Float): Pair<Float, Float>? {
     val m = quadMatrix(1f, 1f, q)
     val inv = Matrix()
@@ -185,54 +194,37 @@ fun toLocal(q: List<Float>, x: Float, y: Float): Pair<Float, Float>? {
 
 fun quadWidth(q: List<Float>) = hypot(q[2] - q[0], q[3] - q[1])
 
-/** Рисует всю сцену обычным android-холстом — и на экране, и для превью образа. */
-fun drawScene(
-    ctx: Context,
-    canvas: Canvas,
-    scale: Float,
-    ox: Float,
-    oy: Float,
-    layers: List<LayerData>,
-    items: Map<String, WardrobeItem>,
-    modelStrokes: List<Stroke>,
-) {
+/** Вещь с мягкой тенью (тень чуть ниже и правее — свет сверху-слева). */
+fun drawItem(canvas: Canvas, src: String, bmp: Bitmap, m: Matrix, shadowShift: Float, paint: Paint) {
+    val sh = Bitmaps.shadow(src, bmp)
+    val sm = Bitmaps.shadowMatrix(m, bmp, sh).apply { postTranslate(shadowShift * .5f, shadowShift) }
+    canvas.drawBitmap(sh, sm, paint)
+    canvas.drawBitmap(bmp, m, paint)
+}
+
+/** Рисует доску обычным android-холстом — и на экране, и для превью образа. Порядок слоёв = порядок списка. */
+fun drawBoard(ctx: Context, canvas: Canvas, scale: Float, ox: Float, oy: Float, layers: List<LayerData>, items: Map<String, WardrobeItem>) {
     val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-    Bitmaps.load(ctx, "asset:wardrobe/model.webp")?.let { m ->
-        val b = Bitmaps.withStrokes(MODEL_ID, m, modelStrokes)
-        canvas.drawBitmap(b, quadMatrix(b.width.toFloat(), b.height.toFloat(), modelQuad(), scale, ox, oy), paint)
-    }
-    layers.sortedBy { Z_ORDER[items[it.id]?.category] ?: 5 }.forEach { l ->
+    layers.forEach { l ->
         val item = items[l.id] ?: return@forEach
         val bmp = Bitmaps.load(ctx, item.src) ?: return@forEach
-        val b = Bitmaps.withStrokes(l.id, bmp, l.strokes)
-        canvas.drawBitmap(b, quadMatrix(b.width.toFloat(), b.height.toFloat(), l.q, scale, ox, oy), paint)
+        drawItem(canvas, item.src, bmp, quadMatrix(bmp.width.toFloat(), bmp.height.toFloat(), l.q, scale, ox, oy), 9f * scale, paint)
     }
 }
 
-fun renderPreview(ctx: Context, layers: List<LayerData>, items: Map<String, WardrobeItem>, modelStrokes: List<Stroke>): String? {
-    val w = 300
-    val h = 600
+fun renderPreview(ctx: Context, layers: List<LayerData>, items: Map<String, WardrobeItem>): String? {
+    val w = 600
+    val h = 800
     val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
     val c = Canvas(bmp)
-    c.drawColor(Color.rgb(0xE6, 0xE1, 0xD5))
-    drawScene(ctx, c, w / WORLD_W, 0f, 0f, layers, items, modelStrokes)
+    c.drawColor(BOARD_RGB)
+    drawBoard(ctx, c, w / BOARD_W, 0f, 0f, layers, items)
     return runCatching {
         val dir = File(ctx.filesDir, "outfits").apply { mkdirs() }
         val f = File(dir, "look_${System.currentTimeMillis()}.jpg")
-        f.outputStream().use { bmp.compress(Bitmap.CompressFormat.JPEG, 82, it) }
+        f.outputStream().use { bmp.compress(Bitmap.CompressFormat.JPEG, 85, it) }
         f.absolutePath
     }.getOrNull()
-}
-
-suspend fun saveFit(l: LayerData) {
-    Graph.dao.upsertFit(ItemFit(l.id, l.q.joinToString(",") { "%.2f".format(java.util.Locale.US, it) }, wjson.encodeToString(strokesSer, l.strokes)))
-}
-
-fun fitToLayer(f: ItemFit): LayerData? {
-    val q = f.quad.split(",").mapNotNull { it.toFloatOrNull() }
-    if (q.size != 8) return null
-    val s = runCatching { wjson.decodeFromString(strokesSer, f.strokes) }.getOrDefault(emptyList())
-    return LayerData(f.itemId, q, s)
 }
 
 /* ---------- свои вещи: обработка фото ---------- */
@@ -248,8 +240,8 @@ fun stripBackground(bmp: Bitmap): Bitmap {
     var tot = 0
     for (x in 0 until w) { tot += 2; if (alpha(x) < 16) clear++; if (alpha((h - 1) * w + x) < 16) clear++ }
     for (y in 0 until h) { tot += 2; if (alpha(y * w) < 16) clear++; if (alpha(y * w + w - 1) < 16) clear++ }
+    if (tot > 0 && clear.toFloat() / tot > .5f) return bmp
     val out = bmp.copy(Bitmap.Config.ARGB_8888, true)
-    if (tot > 0 && clear.toFloat() / tot > .5f) return out
     val corners = listOf(0, w - 1, (h - 1) * w, (h - 1) * w + w - 1).map { px[it] }
     fun ch(c: Int, j: Int) = (c shr (16 - 8 * j)) and 0xFF
     val bg = IntArray(3) { j -> corners.sumOf { ch(it, j) } / 4 }
@@ -304,41 +296,22 @@ private fun alphaBox(b: Bitmap): IntArray? {
     return if (x1 < 0) null else intArrayOf(x0, y0, x1 + 1, y1 + 1)
 }
 
-/** Подгонка по умолчанию для своей вещи: как autoPct в веб-версии. */
-fun autoPct(b: Bitmap, cat: String): List<Float> {
-    when (cat) {
-        "верх" -> return listOf(106f, 50f, 12.8f)
-        "обувь" -> return listOf(88f, 50f, 90f)
-        "аксессуары" -> return listOf(40f, 48f, 2f)
-    }
-    val w = b.width
-    val h = b.height
-    val y = (h * .05f).roundToInt().coerceIn(0, h - 1)
-    var mn = -1
-    var mx = -1
-    for (i in 0 until w) if ((b.getPixel(i, y) ushr 24) > 60) { if (mn < 0) mn = i; mx = i }
-    val waist = if (mx < 0) .7f else (mx - mn + 1f) / w
-    val wp = (57.5f / waist).coerceIn(55f, 105f)
-    return if (h.toFloat() / w > 1.6f) listOf(wp, 50f, 42f, 54f) else listOf(wp, 50f, 42f)
-}
-
-data class Prepared(val path: String, val pct: List<Float>)
-
-suspend fun prepareUserItem(ctx: Context, uri: android.net.Uri, cat: String): Prepared? = withContext(Dispatchers.Default) {
+/** Своё фото вещи: фон убирается, края обрезаются, картинка сохраняется PNG с прозрачностью. */
+suspend fun prepareUserItem(ctx: Context, uri: android.net.Uri): String? = withContext(Dispatchers.Default) {
     runCatching {
         val tmp = Images.importUri(ctx, uri, "tmp") ?: return@runCatching null
-        val decoded = Images.decode(tmp, 1100) ?: return@runCatching null
+        val decoded = Images.decode(tmp, 1400) ?: return@runCatching null
         File(tmp).delete()
         val cleaned = stripBackground(decoded)
         val bb = alphaBox(cleaned) ?: return@runCatching null
         val cw = bb[2] - bb[0]
         val chh = bb[3] - bb[1]
-        val s = min(1f, 460f / cw)
+        val s = min(1f, 900f / max(cw, chh))
         val cropped = Bitmap.createBitmap(cleaned, bb[0], bb[1], cw, chh)
         val scaled = Bitmap.createScaledBitmap(cropped, max(1, (cw * s).roundToInt()), max(1, (chh * s).roundToInt()), true)
         val dir = File(ctx.filesDir, "wardrobe").apply { mkdirs() }
         val f = File(dir, "user_${System.currentTimeMillis()}.png")
         f.outputStream().use { scaled.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        Prepared(f.absolutePath, autoPct(scaled, cat))
+        f.absolutePath
     }.getOrNull()
 }

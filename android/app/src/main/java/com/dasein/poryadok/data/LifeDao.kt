@@ -229,6 +229,10 @@ interface LifeDao {
     @Upsert suspend fun upsertWardrobeItem(i: WardrobeItem)
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertWardrobeItems(i: List<WardrobeItem>)
     @Delete suspend fun deleteWardrobeItem(i: WardrobeItem)
+    @Query("SELECT id FROM wardrobe_items WHERE builtin = 1")
+    suspend fun builtinWardrobeIds(): List<String>
+    @Query("DELETE FROM wardrobe_items WHERE builtin = 1")
+    suspend fun deleteBuiltinWardrobe()
 
     @Query("SELECT * FROM item_fits")
     fun fits(): Flow<List<ItemFit>>
