@@ -190,25 +190,27 @@ private fun DayView(
         val w = forecast[day]
         if (w != null) {
             val hint = WardrobeWeather.hint(w)
+            // Компактная плашка: всё в две строки, кнопка подбора справа — карточкам нарядов остаётся больше места.
             Column(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp).clip(RoundedCornerShape(16.dp)).background(extra.card).padding(12.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 8.dp).clip(tileShape()).background(extra.card)
+                    .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    WeatherIcon(w.code, true, 40.dp)
-                    Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                        Text("${w.tMax.roundToInt()}° / ${w.tMin.roundToInt()}° · ${WeatherLogic.describe(w.code)}", fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    WeatherIcon(w.code, true, 30.dp)
+                    Column(Modifier.weight(1f).padding(start = 8.dp)) {
+                        Text("${w.tMax.roundToInt()}° / ${w.tMin.roundToInt()}° · ${WeatherLogic.describe(w.code)}", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
                             listOfNotNull(
                                 if (w.pop > 0) "осадки ${w.pop}%" else "без осадков",
                                 "ветер ${w.windMs.roundToInt()} м/с",
                                 if (w.uv >= 3) "УФ ${w.uv.roundToInt()}" else null,
                             ).joinToString(" · "),
-                            fontSize = 12.sp, color = extra.dim,
+                            fontSize = 11.sp, color = extra.dim, maxLines = 1,
                         )
                     }
+                    TextButton(onClick = { onDress(day, hint) }) { Text(btnLabel("Подобрать"), fontWeight = FontWeight.SemiBold, fontSize = 13.sp) }
                 }
-                Text(hint.text, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
-                TextButton(onClick = { onDress(day, hint) }) { Text(btnLabel("Подобрать наряд по погоде"), fontWeight = FontWeight.SemiBold) }
+                Text(hint.text, fontSize = 12.sp, lineHeight = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = extra.dim, modifier = Modifier.padding(top = 2.dp, end = 8.dp))
             }
         } else if (day >= today) Text(
             when {
