@@ -189,9 +189,10 @@ fun ReorderGrid(items: List<WardrobeItem>, onCancel: () -> Unit, onDone: (List<S
             fun slot(i: Int) = androidx.compose.ui.geometry.Offset((i % cols) * cw, (i / cols) * ch)
             Box(Modifier.fillMaxWidth().verticalScroll(scroll, enabled = dragging == null)) {
                 Box(Modifier.fillMaxWidth().height(with(density) { (rows * ch + ch * .5f).toDp() })) {
+                    // Без return внутри key {}: такой выход ломает сборку R8 (неверный байт-код Compose).
                     order.forEachIndexed { i, id ->
-                        androidx.compose.runtime.key(id) {
-                            val it0 = byId[id] ?: return@key
+                        val it0 = byId[id]
+                        if (it0 != null) androidx.compose.runtime.key(id) {
                             val isDrag = dragging == id
                             val target = slot(i)
                             val anim by androidx.compose.animation.core.animateOffsetAsState(target, label = "slot")
