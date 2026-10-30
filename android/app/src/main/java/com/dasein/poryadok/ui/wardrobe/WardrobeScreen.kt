@@ -323,7 +323,7 @@ private fun OutfitsTab(nav: NavHostController, outfits: List<Outfit>, today: Lon
             val next = days.firstOrNull { it > today }
             Column(Modifier.clip(RoundedCornerShape(16.dp)).background(extra.card).clickable { onOpen(o) }) {
                 Box(Modifier.fillMaxWidth().aspectRatio(.75f).background(if (o.bg != 0) Color(o.bg) else BoardColor)) {
-                    img?.let { Image(it, o.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+                    img?.let { Image(it, o.name, Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
                     if (today in days) Text(
                         "сегодня", fontSize = 10.sp, color = Color(0xFF241C0D),
                         modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).clip(RoundedCornerShape(6.dp)).background(com.dasein.poryadok.ui.theme.Palette.Brass).padding(horizontal = 5.dp),

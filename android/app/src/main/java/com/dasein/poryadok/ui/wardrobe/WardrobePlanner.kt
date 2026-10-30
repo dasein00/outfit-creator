@@ -273,7 +273,7 @@ private fun PickOutfitDialog(outfits: List<Outfit>, day: Long, onDismiss: () -> 
                         val img by rememberImage(o.preview.ifBlank { null }, 300)
                         Column(Modifier.clickable { onPick(o) }) {
                             Box(Modifier.fillMaxWidth().aspectRatio(.75f).clip(RoundedCornerShape(10.dp)).background(if (o.bg != 0) Color(o.bg) else BoardColor)) {
-                                img?.let { Image(it, o.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+                                img?.let { Image(it, o.name, Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
                             }
                             Text(o.name, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }

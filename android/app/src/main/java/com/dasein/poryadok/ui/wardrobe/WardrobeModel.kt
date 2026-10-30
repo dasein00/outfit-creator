@@ -81,14 +81,14 @@ private fun slot(cat: String, accIndex: Int): RectF = when (cat) {
 }
 
 /** Вписать картинку w×h в место категории с сохранением пропорций. */
-fun slotQuad(cat: String, accIndex: Int, w: Int, h: Int): List<Float> {
+fun slotQuad(cat: String, accIndex: Int, w: Int, h: Int, boardH: Float = BOARD_H): List<Float> {
     val r = slot(cat, accIndex)
     val bw = r.width() * BOARD_W
-    val bh = r.height() * BOARD_H
+    val bh = r.height() * boardH
     val s = min(bw / max(1, w), bh / max(1, h))
     val dw = w * s
     val dh = h * s
-    return rectQ(r.left * BOARD_W + (bw - dw) / 2, r.top * BOARD_H + (bh - dh) / 2, dw, dh)
+    return rectQ(r.left * BOARD_W + (bw - dw) / 2, r.top * boardH + (bh - dh) / 2, dw, dh)
 }
 
 /* ---------- реальные размеры ---------- */
@@ -141,7 +141,7 @@ fun WardrobeItem.realCm(): Float = KIND_CM[kind()] ?: 60f
  * Коллаж как в Fits — вещи «надеты»: верх от плеч, низ от талии (≈45 см ниже плеч, верх навыпуск закрывает пояс),
  * обувь у низа брюк; все в одном масштабе по реальной длине, так что пальто длиннее рубашки. Аксессуары справа.
  */
-fun collageLayout(ctx: Context, ids: List<String>, items: Map<String, WardrobeItem>): List<LayerData> {
+fun collageLayout(ctx: Context, ids: List<String>, items: Map<String, WardrobeItem>, boardH: Float = BOARD_H): List<LayerData> {
     val list = ids.mapNotNull { items[it] }
     if (list.isEmpty()) return emptyList()
     fun row(c: String) = when (c) { "верх", "верхняя одежда" -> 0; "низ" -> 1; "обувь" -> 2; else -> -1 }
@@ -161,15 +161,15 @@ fun collageLayout(ctx: Context, ids: List<String>, items: Map<String, WardrobeIt
     val maxW = placed.maxOfOrNull { it.w } ?: 1f
     val left = .06f * BOARD_W
     val right = (if (acc.isEmpty()) .94f else .76f) * BOARD_W
-    val topPad = .04f * BOARD_H
-    val k = min((BOARD_H * .92f) / totalH, (right - left) / maxW)
+    val topPad = .04f * boardH
+    val k = min((boardH * .92f) / totalH, (right - left) / maxW)
     val cx = (left + right) / 2
-    val oy = topPad + (BOARD_H * .92f - totalH * k) / 2
+    val oy = topPad + (boardH * .92f - totalH * k) / 2
     val out = placed.map { p -> LayerData(p.item.id, rectQ(cx - p.w * k / 2, oy + p.top * k, p.w * k, p.h * k)) }.toMutableList()
     acc.forEachIndexed { i, it0 ->
-        val h = (it0.realCm() * k).coerceAtMost(BOARD_H * .17f)
+        val h = (it0.realCm() * k).coerceAtMost(boardH * .17f)
         val w = h * aspect(it0)
-        out += LayerData(it0.id, rectQ(.87f * BOARD_W - w / 2, .06f * BOARD_H + (i % 5) * .19f * BOARD_H, w, h))
+        out += LayerData(it0.id, rectQ(.87f * BOARD_W - w / 2, .06f * boardH + (i % 5) * .19f * boardH, w, h))
     }
     return out.sortedBy { l -> Z_ORDER[items[l.id]?.category] ?: 6 }
 }
@@ -209,7 +209,7 @@ fun dominantColors(b: Bitmap): String {
 }
 
 /** Флэт-лэй: вещи по местам категорий, размеры — по реальной длине в одном масштабе. */
-fun autoLayout(ctx: Context, ids: List<String>, items: Map<String, WardrobeItem>): List<LayerData> {
+fun autoLayout(ctx: Context, ids: List<String>, items: Map<String, WardrobeItem>, boardH: Float = BOARD_H): List<LayerData> {
     var acc = 0
     val k = 6.4f // точек доски на сантиметр
     return ids.mapNotNull { items[it] }.sortedBy { Z_ORDER[it.category] ?: 6 }.map { item ->
@@ -217,7 +217,7 @@ fun autoLayout(ctx: Context, ids: List<String>, items: Map<String, WardrobeItem>
         val w = b?.width ?: 10
         val h = b?.height ?: 10
         val i = if (item.category in SINGLE) 0 else acc++
-        val slotQ = slotQuad(item.category, i, w, h)
+        val slotQ = slotQuad(item.category, i, w, h, boardH)
         // Высота по реальному размеру, но не больше места категории с небольшим запасом.
         val slotH = slotQ[7] - slotQ[1]
         val realH = item.realCm() * k
@@ -347,9 +347,9 @@ fun drawBoard(ctx: Context, canvas: Canvas, scale: Float, ox: Float, oy: Float, 
     }
 }
 
-fun renderPreview(ctx: Context, layers: List<LayerData>, items: Map<String, WardrobeItem>, bg: Int = 0): String? {
+fun renderPreview(ctx: Context, layers: List<LayerData>, items: Map<String, WardrobeItem>, bg: Int = 0, boardH: Float = BOARD_H): String? {
     val w = 600
-    val h = 800
+    val h = (w * boardH / BOARD_W).toInt()
     val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
     val c = Canvas(bmp)
     c.drawColor(if (bg != 0) bg else BOARD_RGB)

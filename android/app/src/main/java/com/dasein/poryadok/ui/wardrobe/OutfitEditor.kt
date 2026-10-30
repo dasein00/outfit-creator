@@ -141,6 +141,8 @@ class Board {
     var mode by mutableIntStateOf(0)
     /** Закреплённые вещи не двигаются и не меняются при «Перемешать». */
     var locked by mutableStateOf<Set<String>>(emptySet())
+    /** Высота холста в точках доски (ширина всегда BOARD_W): холст занимает всё свободное место экрана. */
+    var h by mutableFloatStateOf(BOARD_H)
     /** Панели под холстом видны (касание пустого места их прячет). */
     var chrome by mutableStateOf(true)
     var dirty = false
@@ -181,7 +183,7 @@ class Board {
 }
 
 private fun layout(ctx: android.content.Context, ed: Board, ids: List<String>, items: Map<String, WardrobeItem>) =
-    if (ed.mode == 0) collageLayout(ctx, ids, items) else autoLayout(ctx, ids, items)
+    if (ed.mode == 0) collageLayout(ctx, ids, items, ed.h) else autoLayout(ctx, ids, items, ed.h)
 
 /** Редактор наряда как в Fits: холст, «Добавить», «Фон», «Режим», «Далее» — сохранить. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -252,10 +254,14 @@ fun OutfitEditorScreen(nav: NavHostController) {
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             Column(Modifier.fillMaxSize()) {
-                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), contentAlignment = Alignment.Center) {
-                    val bw = min(maxWidth.value, maxHeight.value * BOARD_W / BOARD_H)
+                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), contentAlignment = Alignment.Center) {
+                    // Холст на всё свободное место: ширина — 900 точек доски, высота — сколько помещается.
+                    if (maxWidth.value > 0f && maxHeight.value > 0f) {
+                        val h = (BOARD_W * maxHeight.value / maxWidth.value).coerceIn(BOARD_W, BOARD_W * 2.4f)
+                        if (ed.h != h) ed.h = h
+                    }
                     Box(
-                        Modifier.width(bw.dp).aspectRatio(BOARD_W / BOARD_H).clip(RoundedCornerShape(18.dp))
+                        Modifier.fillMaxSize().clip(RoundedCornerShape(18.dp))
                             .background(if (ed.bg != 0) Color(ed.bg) else BoardColor),
                     ) {
                         // Касание пустого места сворачивает и разворачивает панели — как в Fits.
@@ -413,7 +419,7 @@ private fun SaveOutfitDialog(vm: BoardVm, items: Map<String, WardrobeItem>, onDi
                 val bg = ed.bg
                 val d = day
                 io {
-                    val preview = withContext(Dispatchers.Default) { renderPreview(ctx, ls, items, bg) } ?: ""
+                    val preview = withContext(Dispatchers.Default) { renderPreview(ctx, ls, items, bg, ed.h) } ?: ""
                     val days = (old?.days().orEmpty() + listOfNotNull(d)).distinct().sorted().joinToString(",")
                     if (old != null && old.preview.isNotBlank() && old.preview != preview) java.io.File(old.preview).delete()
                     Graph.dao.upsertOutfit(

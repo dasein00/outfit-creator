@@ -100,7 +100,7 @@ fun OutfitsScreen(nav: NavHostController) {
                 val worn = o.worn()
                 Column(Modifier.clip(RoundedCornerShape(16.dp)).background(extra.card).clickable { open = o }) {
                     Box(Modifier.fillMaxWidth().aspectRatio(.75f).background(BoardColor)) {
-                        img?.let { Image(it, o.name, Modifier.fillMaxWidth().aspectRatio(.75f), contentScale = ContentScale.Crop) }
+                        img?.let { Image(it, o.name, Modifier.fillMaxWidth().aspectRatio(.75f), contentScale = ContentScale.Fit) }
                         if (today in worn) Text(
                             "сегодня", fontSize = 10.sp, color = androidx.compose.ui.graphics.Color(0xFF241C0D),
                             modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).clip(RoundedCornerShape(6.dp)).background(Palette.Brass).padding(horizontal = 5.dp),
