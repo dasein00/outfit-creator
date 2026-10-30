@@ -166,14 +166,22 @@ object WardrobeOrder {
     }
 }
 
-/** «Переместить вещи»: удерживайте вещь и ведите — она едет за пальцем, пока его не отпустить; у края экрана список сам прокручивается. */
+/**
+ * «Переместить вещи»: вещи сгруппированы по категориям, как на экране. Удерживайте вещь и ведите — она едет за пальцем,
+ * пока его не отпустить; у края экрана список сам прокручивается. Перенесли вещь в другую группу — её категория
+ * меняется на эту ([onDone] получает новый порядок и смену категорий: id → категория).
+ */
 @Composable
-fun ReorderGrid(items: List<WardrobeItem>, onCancel: () -> Unit, onDone: (List<String>) -> Unit) {
+fun ReorderGrid(items: List<WardrobeItem>, onCancel: () -> Unit, onDone: (List<String>, Map<String, String>) -> Unit) {
     val extra = com.dasein.poryadok.ui.theme.LocalExtra.current
     val order = remember { androidx.compose.runtime.mutableStateListOf(*items.map { it.id }.toTypedArray()) }
+    val original = remember { items.associate { it.id to it.kind() } }
+    val kindOf = remember { androidx.compose.runtime.mutableStateMapOf<String, String>().apply { putAll(original) } }
+    val sections = remember {
+        items.map { it.kind() }.distinct().sortedBy { k -> Kinds.all().indexOf(k).let { if (it < 0) 999 else it } }
+    }
     val byId = remember(items) { items.associateBy { it.id } }
     var dragging by remember { mutableStateOf<String?>(null) }
-    // Палец и захват — в координатах содержимого списка (с учётом прокрутки).
     var finger by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     var grab by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     val scroll = androidx.compose.foundation.rememberScrollState()
@@ -183,30 +191,59 @@ fun ReorderGrid(items: List<WardrobeItem>, onCancel: () -> Unit, onDone: (List<S
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
         ) {
-            Text("Удерживайте вещь и ведите, не отпуская", fontSize = 12.sp, color = extra.dim, modifier = Modifier.weight(1f))
+            Text("Удерживайте и ведите. В другую группу — сменится категория", fontSize = 12.sp, color = extra.dim, modifier = Modifier.weight(1f))
             TextButton(onClick = onCancel) { Text(btnLabel("Отмена")) }
-            TextButton(onClick = { onDone(order.toList()) }) { Text(btnLabel("Готово"), fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold) }
+            TextButton(onClick = {
+                onDone(order.toList(), kindOf.filter { (id, k) -> original[id] != k })
+            }) { Text(btnLabel("Готово"), fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold) }
         }
         androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().weight(1f).cardViewport()) {
             val density = androidx.compose.ui.platform.LocalDensity.current
             val cols = 3
             val cw = with(density) { maxWidth.toPx() } / cols
             val ch = cw * 1.15f
+            val headerH = with(density) { 40.dp.toPx() }
+            val gap = with(density) { 8.dp.toPx() }
             val viewport = with(density) { maxHeight.toPx() }
-            val rows = (order.size + cols - 1) / cols
-            fun slot(i: Int) = androidx.compose.ui.geometry.Offset((i % cols) * cw, (i / cols) * ch)
-            fun indexAt(p: androidx.compose.ui.geometry.Offset): Int {
-                val c = (p.x / cw).toInt().coerceIn(0, cols - 1)
-                val r = (p.y / ch).toInt().coerceAtLeast(0)
-                return (r * cols + c).coerceIn(0, (order.size - 1).coerceAtLeast(0))
+
+            /** Группа: категория, верх, вещи по порядку, низ (пустая группа — место под одну строку, чтобы туда можно было перенести). */
+            class Sec(val k: String, val top: Float, val ids: List<String>, val bottom: Float)
+            fun layout(): List<Sec> {
+                var y = 0f
+                return sections.map { k ->
+                    val ids = order.filter { kindOf[it] == k }
+                    val rows = maxOf(1, (ids.size + cols - 1) / cols)
+                    Sec(k, y, ids, y + headerH + rows * ch).also { y = it.bottom + gap }
+                }
             }
-            /** Переставить перетаскиваемую вещь туда, где сейчас её центр. */
+            val secs = layout()
+            fun posOf(id: String): androidx.compose.ui.geometry.Offset {
+                val sec = secs.firstOrNull { id in it.ids } ?: return androidx.compose.ui.geometry.Offset.Zero
+                val i = sec.ids.indexOf(id)
+                return androidx.compose.ui.geometry.Offset((i % cols) * cw, sec.top + headerH + (i / cols) * ch)
+            }
+            fun idAt(p: androidx.compose.ui.geometry.Offset): String? = order.firstOrNull { id ->
+                val o = posOf(id)
+                p.x >= o.x && p.x < o.x + cw && p.y >= o.y && p.y < o.y + ch
+            }
+            /** Поставить перетаскиваемую вещь туда, где её центр: в нужную группу и на нужное место в ней. */
             fun retarget() {
                 val id = dragging ?: return
+                val all = layout()
                 val center = finger - grab + androidx.compose.ui.geometry.Offset(cw / 2, ch / 2)
-                val to = indexAt(center)
-                val from = order.indexOf(id)
-                if (from >= 0 && to != from) { order.removeAt(from); order.add(to, id) }
+                val sec = all.firstOrNull { center.y < it.bottom + gap / 2 } ?: all.lastOrNull() ?: return
+                val local = sec.ids - id
+                val row = ((center.y - sec.top - headerH) / ch).toInt().coerceAtLeast(0)
+                val col = (center.x / cw).toInt().coerceIn(0, cols - 1)
+                val idx = (row * cols + col).coerceIn(0, local.size)
+                if (kindOf[id] == sec.k && sec.ids.indexOf(id) == idx) return
+                kindOf[id] = sec.k
+                order.remove(id)
+                when {
+                    local.isEmpty() -> order.add(id)
+                    idx < local.size -> order.add(order.indexOf(local[idx]), id)
+                    else -> order.add(order.indexOf(local.last()) + 1, id)
+                }
             }
             // Автопрокрутка, пока палец держат у верхнего или нижнего края, — даже без движения.
             androidx.compose.runtime.LaunchedEffect(dragging) {
@@ -225,15 +262,16 @@ fun ReorderGrid(items: List<WardrobeItem>, onCancel: () -> Unit, onDone: (List<S
                     kotlinx.coroutines.delay(16)
                 }
             }
+            val total = (secs.lastOrNull()?.bottom ?: 0f) + ch * .5f
             Box(Modifier.fillMaxWidth().verticalScroll(scroll, enabled = dragging == null)) {
                 Box(
-                    Modifier.fillMaxWidth().height(with(density) { (rows * ch + ch * .5f).toDp() })
+                    Modifier.fillMaxWidth().height(with(density) { total.toDp() })
                         // Один обработчик на всю сетку: перестановки не прерывают перетаскивание.
                         .pointerInput(cw, ch) {
                             detectDragGesturesAfterLongPress(
                                 onDragStart = { off ->
-                                    val i = indexAt(off)
-                                    if (i in order.indices) { dragging = order[i]; finger = off; grab = off - slot(i) }
+                                    val id = idAt(off)
+                                    if (id != null) { dragging = id; finger = off; grab = off - posOf(id) }
                                 },
                                 onDragEnd = { dragging = null },
                                 onDragCancel = { dragging = null },
@@ -241,12 +279,20 @@ fun ReorderGrid(items: List<WardrobeItem>, onCancel: () -> Unit, onDone: (List<S
                             )
                         },
                 ) {
+                    secs.forEach { sec ->
+                        androidx.compose.runtime.key("h_" + sec.k) {
+                            Text(
+                                "${Kinds.plural(sec.k)} · ${sec.ids.size}", fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, fontSize = 15.sp,
+                                modifier = Modifier.offset { androidx.compose.ui.unit.IntOffset(0, (sec.top + headerH * .25f).toInt()) },
+                            )
+                        }
+                    }
                     order.forEach { id ->
                         androidx.compose.runtime.key(id) {
                             val it0 = byId[id]
                             if (it0 != null) {
                                 val isDrag = dragging == id
-                                val anim by androidx.compose.animation.core.animateOffsetAsState(slot(order.indexOf(id)), label = "slot")
+                                val anim by androidx.compose.animation.core.animateOffsetAsState(posOf(id), label = "slot")
                                 val pos = if (isDrag) finger - grab else anim
                                 Box(
                                     Modifier

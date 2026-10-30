@@ -210,9 +210,12 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
     val kindCounts = remember(pool) { pool.groupingBy { it.kind() }.eachCount() }
     if (reorder) {
         // Перемещаем ровно то, что видно на экране (с фильтрами), в том же порядке; остальное остаётся на своих местах.
-        ReorderGrid(WardrobeOrder.sort(shown, order), onCancel = { reorder = false }) { ids ->
+        ReorderGrid(WardrobeOrder.sort(shown, order), onCancel = { reorder = false }) { ids, moved ->
             val merged = WardrobeOrder.merge(WardrobeOrder.sort(all, order).map { it.id }, ids)
             WardrobeOrder.set(ctx, merged); order = merged; sort = 0; reorder = false
+            // Вещь перенесли в другую группу — меняем её категорию (и раздел, если категория из другого раздела).
+            val byId = all.associateBy { it.id }
+            io { moved.forEach { (id, k) -> byId[id]?.let { Graph.dao.upsertWardrobeItem(it.copy(category = Kinds.parentOf(k), pct = k)) } } }
         }
         return
     }
@@ -283,8 +286,8 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
                     }
                 }
             }
-            // «Сначала новые» без фильтра — группами по категориям, как в Fits; «Свой порядок» — ровно как в «Переместить вещи».
-            val groups = if (types.isEmpty() && sort == 1) shown.groupBy { it.kind() }.toList().sortedBy { Kinds.all().indexOf(it.first).let { i -> if (i < 0) 99 else i } }
+            // «Свой порядок» и «Сначала новые» — группами по категориям, как в Fits и как в «Переместить вещи».
+            val groups = if (sort <= 1) shown.groupBy { it.kind() }.toList().sortedBy { Kinds.all().indexOf(it.first).let { i -> if (i < 0) 99 else i } }
             else listOf("" to shown)
             groups.forEach { (k, list) ->
             if (k.isNotEmpty()) item(span = { GridItemSpan(3) }, key = "h_$k") {
