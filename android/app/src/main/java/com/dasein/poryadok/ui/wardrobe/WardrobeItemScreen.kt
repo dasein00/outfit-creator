@@ -128,7 +128,7 @@ fun WardrobeItemScreen(nav: NavHostController, startId: String) {
             }
         }
         Column(Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            Box(Modifier.fillMaxWidth().height(340.dp).clip(RoundedCornerShape(20.dp)).background(BoardColor)) {
+            Box(Modifier.fillMaxWidth().height(340.dp).clip(tileShape()).background(tileBg())) {
                 ItemThumb(item, Modifier.fillMaxSize().padding(24.dp))
                 val i = order.indexOfFirst { it.id == item.id }
                 if (i > 0) ArrowButton(Icons.AutoMirrored.Filled.KeyboardArrowLeft, Modifier.align(Alignment.CenterStart)) { id = order[i - 1].id }

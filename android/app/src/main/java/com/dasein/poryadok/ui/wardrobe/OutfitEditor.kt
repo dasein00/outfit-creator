@@ -462,7 +462,7 @@ fun AddItemsSheet(all: List<WardrobeItem>, initial: Set<String>, onDismiss: () -
                 items(shown, key = { it.id }) { it0 ->
                     val on = it0.id in picked
                     Box(
-                        Modifier.aspectRatio(.85f).clip(RoundedCornerShape(12.dp)).background(BoardColor)
+                        Modifier.aspectRatio(.85f).clip(tileShape()).background(tileBg())
                             .clickable { picked = if (on) picked - it0.id else picked + it0.id },
                     ) {
                         ItemThumb(it0, Modifier.fillMaxSize().padding(8.dp), shadow = false)
@@ -478,7 +478,7 @@ fun AddItemsSheet(all: List<WardrobeItem>, initial: Set<String>, onDismiss: () -
             if (picked.isNotEmpty()) LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 items(picked, key = { "p$it" }) { id ->
                     val it0 = all.firstOrNull { it.id == id } ?: return@items
-                    Box(Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).background(BoardColor).clickable { picked = picked - id }) {
+                    Box(Modifier.size(48.dp).clip(tileShape()).background(tileBg()).clickable { picked = picked - id }) {
                         ItemThumb(it0, Modifier.fillMaxSize().padding(4.dp), shadow = false)
                         Icon(Icons.Default.Close, "убрать", Modifier.align(Alignment.TopEnd).size(14.dp).clip(CircleShape).background(Color(0xCC211D18)), tint = Color.White)
                     }
@@ -585,7 +585,7 @@ private fun SwapPanel(pool: List<WardrobeItem>, current: String, expanded: Boole
         fun cell(it0: WardrobeItem, m: Modifier) {
             val on = it0.id == current
             Box(
-                m.clip(RoundedCornerShape(12.dp)).background(BoardColor)
+                m.clip(tileShape()).background(tileBg())
                     .border(if (on) 2.dp else 0.dp, if (on) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(12.dp))
                     .clickable { if (!on) onPick(it0) },
             ) { ItemThumb(it0, Modifier.fillMaxSize().padding(6.dp), shadow = false) }
@@ -665,7 +665,7 @@ private fun LayersPanel(ed: Board, items: Map<String, WardrobeItem>, modifier: M
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(Icons.Default.DragIndicator, null, Modifier.size(18.dp), tint = extra.dim)
-                    Box(Modifier.padding(start = 4.dp).size(44.dp).clip(RoundedCornerShape(8.dp)).background(BoardColor)) {
+                    Box(Modifier.padding(start = 4.dp).size(44.dp).clip(tileShape()).background(tileBg())) {
                         ItemThumb(it0, Modifier.fillMaxSize().padding(4.dp), shadow = false)
                     }
                     Text(KIND_LABELS[it0.kind()] ?: it0.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 10.dp))

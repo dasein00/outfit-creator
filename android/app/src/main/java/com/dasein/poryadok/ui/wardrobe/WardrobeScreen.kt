@@ -82,6 +82,7 @@ import com.dasein.poryadok.ui.common.Text
 import com.dasein.poryadok.ui.common.TextButton
 import com.dasein.poryadok.ui.common.TextInput
 import com.dasein.poryadok.ui.common.btnLabel
+import com.dasein.poryadok.ui.common.cardViewport
 import com.dasein.poryadok.ui.common.io
 import com.dasein.poryadok.ui.common.observe
 import com.dasein.poryadok.ui.common.rememberImage
@@ -177,6 +178,7 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
     fun setTypes(t: Set<String>) { typesCsv = t.joinToString(",") }
     var order by remember { mutableStateOf(WardrobeOrder.get(ctx)) }
     var reorder by remember { mutableStateOf(false) }
+    var bgDialog by remember { mutableStateOf(false) }
     var typeQuery by remember { mutableStateOf("") }
     var season by rememberSaveable { mutableStateOf("все") }
     var color by rememberSaveable { mutableStateOf("") }
@@ -225,20 +227,22 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
                 DropdownMenu(sortMenu, { sortMenu = false }) {
                     SORTS.forEachIndexed { i, s -> DropdownMenuItem({ Text(btnLabel(s), fontWeight = if (i == sort) FontWeight.SemiBold else FontWeight.Normal) }, { sort = i; sortMenu = false }) }
                     DropdownMenuItem({ Text(btnLabel("Переместить вещи…")) }, { sortMenu = false; reorder = true })
+                    DropdownMenuItem({ Text(btnLabel("Фон плашек…")) }, { sortMenu = false; bgDialog = true })
                 }
             }
         }
         if (archive) Text("Архив: вещи, которые вы убрали", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(horizontal = 16.dp))
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.weight(1f),
+            // Как в других разделах: список в скруглённом окне — плашки у краёв скругляются при прокрутке.
+            modifier = Modifier.weight(1f).cardViewport(),
         ) {
             item {
                 Box(
-                    Modifier.aspectRatio(.82f).clip(RoundedCornerShape(14.dp)).border(1.dp, extra.line, RoundedCornerShape(14.dp)).clickable(onClick = onAdd),
+                    Modifier.aspectRatio(.82f).clip(tileShape()).border(1.dp, extra.line, tileShape()).clickable(onClick = onAdd),
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -255,7 +259,7 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
                 Text("${KIND_PLURAL[k] ?: k} · ${list.size}", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp))
             }
             items(list, key = { it.id }) { it0 ->
-                Box(Modifier.aspectRatio(.82f).clip(RoundedCornerShape(14.dp)).background(BoardColor).clickable { nav.navigate(wardrobeItemRoute(it0.id)) }) {
+                Box(Modifier.aspectRatio(.82f).clip(tileShape()).background(tileBg()).clickable { nav.navigate(wardrobeItemRoute(it0.id)) }) {
                     ItemThumb(it0, Modifier.fillMaxSize().padding(10.dp))
                     if (it0.favorite) Icon(Icons.Default.Favorite, "избранное", Modifier.align(Alignment.TopEnd).padding(6.dp).size(14.dp), tint = Color(0xFFD9575B))
                 }
@@ -270,6 +274,7 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
             item(span = { GridItemSpan(3) }) { HowTo("wardrobe") }
         }
     }
+    if (bgDialog) TileBgDialog { bgDialog = false }
     if (filters) {
         val state = rememberModalBottomSheetState()
         val palette = remember(all) { all.flatMap { it.colors.split(",") }.map { it.trim() }.filter { it.isNotBlank() }.distinct().take(24) }
@@ -348,9 +353,10 @@ private fun OutfitsTab(nav: NavHostController, outfits: List<Outfit>, today: Lon
     }
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.cardViewport(),
     ) {
         item(span = { GridItemSpan(2) }) {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -396,9 +402,10 @@ private fun SetsTab(nav: NavHostController, sets: List<WardrobeSet>, all: List<W
     val shown = sets.filter { kind.isBlank() || it.kind == kind }
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.cardViewport(),
     ) {
         item(span = { GridItemSpan(2) }) {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -419,7 +426,7 @@ private fun SetsTab(nav: NavHostController, sets: List<WardrobeSet>, all: List<W
             val ids = s.itemIds.split(",").filter { it.isNotBlank() }
             val four = ids.mapNotNull { byId[it] }.take(4)
             Column(Modifier.clickable { nav.navigate(wardrobeSetRoute(s.id)) }) {
-                Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(16.dp)).background(BoardColor)) {
+                Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(tileShape()).background(tileBg())) {
                     if (four.isEmpty()) Icon(Icons.Default.Add, null, Modifier.align(Alignment.Center).size(28.dp), tint = Color(0xFF9A9286))
                     else Column(Modifier.fillMaxSize().padding(6.dp)) {
                         four.chunked(2).forEach { row ->
@@ -474,7 +481,7 @@ private fun NewItemDialog(path: String, onDismiss: () -> Unit, onAdd: (WardrobeI
         title = { Text(btnLabel("Новая вещь")) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                Box(Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(14.dp)).background(BoardColor)) {
+                Box(Modifier.fillMaxWidth().height(200.dp).clip(tileShape()).background(tileBg())) {
                     ItemThumb(preview, Modifier.fillMaxSize().padding(12.dp))
                 }
                 Gap(8.dp)
@@ -552,7 +559,7 @@ private fun StatsSheet(all: List<WardrobeItem>, outfits: List<Outfit>, wears: Ma
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(top, key = { it.id }) { it0 ->
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Box(Modifier.size(72.dp).clip(RoundedCornerShape(12.dp)).background(BoardColor)) { ItemThumb(it0, Modifier.fillMaxSize().padding(6.dp), shadow = false) }
+                            Box(Modifier.size(72.dp).clip(tileShape()).background(tileBg())) { ItemThumb(it0, Modifier.fillMaxSize().padding(6.dp), shadow = false) }
                             Text("${wears[it0.id]?.size ?: 0} раз", fontSize = 11.sp, color = extra.dim)
                         }
                     }
@@ -564,7 +571,7 @@ private fun StatsSheet(all: List<WardrobeItem>, outfits: List<Outfit>, wears: Ma
                 Gap(6.dp)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(never.take(12), key = { "n" + it.id }) { it0 ->
-                        Box(Modifier.size(64.dp).clip(RoundedCornerShape(12.dp)).background(BoardColor)) { ItemThumb(it0, Modifier.fillMaxSize().padding(6.dp), shadow = false) }
+                        Box(Modifier.size(64.dp).clip(tileShape()).background(tileBg())) { ItemThumb(it0, Modifier.fillMaxSize().padding(6.dp), shadow = false) }
                     }
                 }
             }

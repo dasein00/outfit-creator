@@ -71,6 +71,7 @@ import com.dasein.poryadok.ui.common.Screen
 import com.dasein.poryadok.ui.common.Text
 import com.dasein.poryadok.ui.common.TextButton
 import com.dasein.poryadok.ui.common.btnLabel
+import com.dasein.poryadok.ui.common.cardViewport
 import com.dasein.poryadok.ui.common.io
 import com.dasein.poryadok.ui.common.observe
 import com.dasein.poryadok.ui.common.rememberImage
@@ -367,8 +368,8 @@ fun WardrobeSetScreen(nav: NavHostController, id: Long) {
     ) { pad ->
         if (set == null) return@Screen
         LazyVerticalGrid(
-            GridCells.Fixed(3), Modifier.padding(pad).fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 48.dp),
+            GridCells.Fixed(3), Modifier.padding(pad).fillMaxSize().cardViewport(),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 48.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(3) }) {
@@ -382,7 +383,7 @@ fun WardrobeSetScreen(nav: NavHostController, id: Long) {
                 }
             }
             items(inSet, key = { it.id }) { it0 ->
-                Box(Modifier.aspectRatio(.82f).clip(RoundedCornerShape(14.dp)).background(BoardColor).clickable { nav.navigate(wardrobeItemRoute(it0.id)) }) {
+                Box(Modifier.aspectRatio(.82f).clip(tileShape()).background(tileBg()).clickable { nav.navigate(wardrobeItemRoute(it0.id)) }) {
                     ItemThumb(it0, Modifier.fillMaxSize().padding(10.dp))
                 }
             }
