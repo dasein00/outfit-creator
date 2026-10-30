@@ -5,6 +5,23 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.provider.MediaStore
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
@@ -128,3 +145,98 @@ suspend fun saveToGallery(ctx: Context, item: WardrobeItem): Boolean = withConte
 
 val SET_KINDS = listOf("wish" to "Списки желаний", "pack" to "Упаковка", "own" to "Свои")
 fun setKindLabel(k: String) = when (k) { "wish" -> "Список желаний"; "pack" -> "Упаковка"; else -> "Своя подборка" }
+
+/** Свой порядок вещей в «Одежде» («Переместить вещи»): список id в настройках телефона. */
+object WardrobeOrder {
+    private fun sp(ctx: Context) = ctx.getSharedPreferences("wardrobe", Context.MODE_PRIVATE)
+    fun get(ctx: Context): List<String> = sp(ctx).getString("order", "").orEmpty().split(",").filter { it.isNotBlank() }
+    fun set(ctx: Context, ids: List<String>) { sp(ctx).edit().putString("order", ids.joinToString(",")).apply() }
+
+    /** Вещи из списка — по нему; новые (которых в списке нет) — в начале, свежие первыми. */
+    fun sort(items: List<WardrobeItem>, order: List<String>): List<WardrobeItem> {
+        val pos = order.withIndex().associate { it.value to it.index }
+        val (known, fresh) = items.partition { it.id in pos }
+        return fresh.sortedByDescending { it.addedAt } + known.sortedBy { pos.getValue(it.id) }
+    }
+}
+
+/** «Переместить вещи»: сетка, где вещь удерживают и перетаскивают на новое место; у края экрана список сам прокручивается. */
+@Composable
+fun ReorderGrid(items: List<WardrobeItem>, onCancel: () -> Unit, onDone: (List<String>) -> Unit) {
+    val extra = com.dasein.poryadok.ui.theme.LocalExtra.current
+    val order = remember { androidx.compose.runtime.mutableStateListOf(*items.map { it.id }.toTypedArray()) }
+    val byId = remember(items) { items.associateBy { it.id } }
+    var dragging by remember { mutableStateOf<String?>(null) }
+    var dragPos by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    val scroll = androidx.compose.foundation.rememberScrollState()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    Column(Modifier.fillMaxSize()) {
+        androidx.compose.foundation.layout.Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
+            Text("Удерживайте вещь и тяните на новое место", fontSize = 12.sp, color = extra.dim, modifier = Modifier.weight(1f))
+            TextButton(onClick = onCancel) { Text(btnLabel("Отмена")) }
+            TextButton(onClick = { onDone(order.toList()) }) { Text(btnLabel("Готово"), fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold) }
+        }
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().weight(1f).padding(horizontal = 12.dp)) {
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            val cols = 3
+            val cw = with(density) { maxWidth.toPx() } / cols
+            val ch = cw * 1.15f
+            val viewport = with(density) { maxHeight.toPx() }
+            val rows = (order.size + cols - 1) / cols
+            fun slot(i: Int) = androidx.compose.ui.geometry.Offset((i % cols) * cw, (i / cols) * ch)
+            Box(Modifier.fillMaxWidth().verticalScroll(scroll, enabled = dragging == null)) {
+                Box(Modifier.fillMaxWidth().height(with(density) { (rows * ch + ch * .5f).toDp() })) {
+                    order.forEachIndexed { i, id ->
+                        androidx.compose.runtime.key(id) {
+                            val it0 = byId[id] ?: return@key
+                            val isDrag = dragging == id
+                            val target = slot(i)
+                            val anim by androidx.compose.animation.core.animateOffsetAsState(target, label = "slot")
+                            val pos = if (isDrag) dragPos else anim
+                            Box(
+                                Modifier
+                                    .offset { androidx.compose.ui.unit.IntOffset(pos.x.toInt(), pos.y.toInt()) }
+                                    .size(with(density) { cw.toDp() }, with(density) { ch.toDp() })
+                                    .zIndex(if (isDrag) 1f else 0f)
+                                    .graphicsLayer { scaleX = if (isDrag) 1.08f else 1f; scaleY = scaleX; shadowElevation = if (isDrag) 16f else 0f }
+                                    .padding(4.dp)
+                                    .pointerInput(id) {
+                                        detectDragGesturesAfterLongPress(
+                                            onDragStart = { dragging = id; dragPos = slot(order.indexOf(id)) },
+                                            onDragEnd = { dragging = null },
+                                            onDragCancel = { dragging = null },
+                                            onDrag = { ch0, amount ->
+                                                ch0.consume()
+                                                dragPos += amount
+                                                // Автопрокрутка у верхнего и нижнего края.
+                                                val vy = dragPos.y - scroll.value
+                                                val step = when {
+                                                    vy > viewport - ch * .9f -> 24f
+                                                    vy < ch * .2f && scroll.value > 0 -> -24f
+                                                    else -> 0f
+                                                }
+                                                if (step != 0f) {
+                                                    scope.launch { scroll.scrollBy(step) }
+                                                    dragPos += androidx.compose.ui.geometry.Offset(0f, step)
+                                                }
+                                                val cx = (dragPos.x + cw / 2).coerceIn(0f, cw * cols - 1)
+                                                val cy = (dragPos.y + ch / 2).coerceAtLeast(0f)
+                                                val to = ((cy / ch).toInt() * cols + (cx / cw).toInt()).coerceIn(0, order.size - 1)
+                                                val from = order.indexOf(id)
+                                                if (to != from && from >= 0) { order.removeAt(from); order.add(to, id) }
+                                            },
+                                        )
+                                    }
+                                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                                    .background(BoardColor),
+                            ) { ItemThumb(it0, Modifier.fillMaxSize().padding(8.dp), shadow = false) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -21,11 +21,11 @@ object WardrobeWeather {
         val t = feel(d)
         val wet = d.pop >= 50 || d.precipMm >= 1.0
         val base = when {
-            t < -5 -> DressHint("Мороз: парка или тёплое пальто, свитер или худи, плотные брюки и шапка", listOf("parka", "coat"), listOf("sweater", "hoodie", "sweatshirt"), listOf("trousers", "joggers"), true)
-            t < 5 -> DressHint("Холодно: пальто, парка или куртка, свитер или свитшот, брюки; шапка не помешает", listOf("coat", "parka", "jacket"), listOf("sweater", "sweatshirt", "hoodie"), listOf("trousers", "joggers"), true)
-            t < 12 -> DressHint("Прохладно: куртка или пиджак поверх свитшота, худи или рубашки, брюки", listOf("jacket", "blazer", "coat"), listOf("sweatshirt", "hoodie", "longsleeve", "shirt", "sweater"), listOf("trousers", "joggers"), false)
-            t < 18 -> DressHint("Свежо: рубашка, рубашка-куртка или свитшот, лёгкая куртка с собой, брюки", listOf("jacket", "blazer"), listOf("shirt", "overshirt", "sweatshirt", "longsleeve"), listOf("trousers", "joggers"), false)
-            t < 24 -> DressHint("Тепло: рубашка, поло или футболка, лёгкие брюки или джоггеры", emptyList(), listOf("shirt", "polo", "tee"), listOf("trousers", "joggers"), false)
+            t < -5 -> DressHint("Мороз: парка или тёплое пальто, свитер или худи, плотные брюки и шапка", listOf("parka", "coat"), listOf("sweater", "hoodie", "sweatshirt"), listOf("jeans", "trousers", "joggers"), true)
+            t < 5 -> DressHint("Холодно: пальто, парка или куртка, свитер или свитшот, брюки; шапка не помешает", listOf("coat", "parka", "jacket", "trench"), listOf("sweater", "sweatshirt", "hoodie"), listOf("jeans", "trousers", "joggers"), true)
+            t < 12 -> DressHint("Прохладно: куртка или пиджак поверх свитшота, худи или рубашки, брюки", listOf("jacket", "trench", "blazer", "coat"), listOf("sweatshirt", "hoodie", "longsleeve", "shirt", "sweater"), listOf("jeans", "trousers", "joggers"), false)
+            t < 18 -> DressHint("Свежо: рубашка, рубашка-куртка или свитшот, лёгкая куртка с собой, брюки", listOf("jacket", "blazer"), listOf("shirt", "overshirt", "sweatshirt", "longsleeve"), listOf("jeans", "trousers", "joggers"), false)
+            t < 24 -> DressHint("Тепло: рубашка, поло или футболка, лёгкие брюки или джоггеры", emptyList(), listOf("shirt", "polo", "tee"), listOf("jeans", "trousers", "joggers"), false)
             else -> DressHint("Жарко: футболка или поло, шорты, светлые ткани", emptyList(), listOf("tee", "polo"), listOf("shorts"), false)
         }
         val extra = buildList {
@@ -47,7 +47,9 @@ object WardrobeWeather {
             if (h.outer.isNotEmpty()) of("верхняя одежда", h.outer) else null,
             of("верх", h.top) ?: pool.filter { it.category == "верх" }.randomOrNull(),
             of("низ", h.bottom) ?: pool.filter { it.category == "низ" }.randomOrNull(),
-            pool.filter { it.category == "обувь" }.randomOrNull(),
+            // В холод и дождь — ботинки, в тепло — кроссовки.
+            (if (h.hat || h.text.contains("зонт")) pool.filter { it.category == "обувь" && it.kind() == "boots" }.randomOrNull() else pool.filter { it.category == "обувь" && it.kind() == "sneakers" }.randomOrNull())
+                ?: pool.filter { it.category == "обувь" }.randomOrNull(),
             if (h.hat) pool.filter { it.category == "аксессуары" && it.kind() == "hat" }.randomOrNull() else null,
         ).map { it.id }
     }

@@ -96,32 +96,49 @@ fun slotQuad(cat: String, accIndex: Int, w: Int, h: Int, boardH: Float = BOARD_H
 /** Тип вещи → её высота в разложенном виде, см (по ней вещи соотносятся: пальто длиннее рубашки, рубашка — футболки). */
 val KIND_CM = linkedMapOf(
     "tee" to 70f, "longsleeve" to 71f, "polo" to 70f, "shirt" to 77f, "overshirt" to 76f, "sweatshirt" to 68f, "hoodie" to 70f, "sweater" to 66f,
-    "jacket" to 66f, "blazer" to 77f, "parka" to 90f, "coat" to 108f,
-    "trousers" to 104f, "joggers" to 98f, "shorts" to 50f,
-    "shoes" to 32f, "bag" to 30f, "hat" to 20f, "acc" to 24f,
+    "jacket" to 66f, "blazer" to 77f, "parka" to 90f, "trench" to 106f, "coat" to 108f,
+    "jeans" to 104f, "trousers" to 104f, "joggers" to 98f, "shorts" to 50f,
+    "sneakers" to 30f, "boots" to 34f, "shoes" to 30f, "bag" to 30f, "hat" to 20f, "acc" to 24f,
 )
 
 val KIND_LABELS = mapOf(
     "tee" to "Футболка", "longsleeve" to "Лонгслив", "polo" to "Поло", "shirt" to "Рубашка", "overshirt" to "Рубашка-куртка",
     "sweatshirt" to "Свитшот", "hoodie" to "Худи", "sweater" to "Свитер", "jacket" to "Куртка", "blazer" to "Пиджак", "parka" to "Парка",
-    "coat" to "Пальто, плащ", "trousers" to "Брюки, джинсы", "joggers" to "Джоггеры", "shorts" to "Шорты", "shoes" to "Обувь",
+    "trench" to "Плащ, тренч", "coat" to "Пальто", "jeans" to "Джинсы", "trousers" to "Брюки", "joggers" to "Джоггеры", "shorts" to "Шорты",
+    "sneakers" to "Кроссовки", "boots" to "Ботинки", "shoes" to "Туфли, лоферы",
     "bag" to "Сумка", "hat" to "Головной убор", "acc" to "Аксессуар",
+)
+
+/** Типы во множественном числе — для фильтра. */
+val KIND_PLURAL = mapOf(
+    "shirt" to "Рубашки", "jacket" to "Куртки", "trench" to "Плащи и тренчи", "coat" to "Пальто", "tee" to "Футболки", "jeans" to "Джинсы",
+    "trousers" to "Брюки", "sneakers" to "Кроссовки", "boots" to "Ботинки", "polo" to "Поло", "overshirt" to "Рубашки-куртки",
+    "sweatshirt" to "Свитшоты", "hoodie" to "Худи", "sweater" to "Свитеры", "longsleeve" to "Лонгсливы", "blazer" to "Пиджаки",
+    "parka" to "Парки", "joggers" to "Джоггеры", "shorts" to "Шорты", "shoes" to "Туфли и лоферы", "hat" to "Шапки и кепки",
+    "bag" to "Сумки", "acc" to "Аксессуары",
+)
+
+/** Порядок типов в фильтре: сначала основные. */
+val KIND_ORDER = listOf(
+    "shirt", "jacket", "trench", "coat", "tee", "jeans", "trousers", "sneakers", "boots",
+    "polo", "overshirt", "sweatshirt", "hoodie", "sweater", "longsleeve", "blazer", "parka", "joggers", "shorts", "shoes", "hat", "bag", "acc",
 )
 
 /** Типы, подходящие категории. */
 fun kindsOf(category: String): List<String> = when (category) {
     "верх" -> listOf("tee", "longsleeve", "polo", "shirt", "overshirt", "sweatshirt", "hoodie", "sweater")
-    "верхняя одежда" -> listOf("jacket", "blazer", "parka", "coat")
-    "низ" -> listOf("trousers", "joggers", "shorts")
-    "обувь" -> listOf("shoes")
+    "верхняя одежда" -> listOf("jacket", "blazer", "parka", "trench", "coat")
+    "низ" -> listOf("jeans", "trousers", "joggers", "shorts")
+    "обувь" -> listOf("sneakers", "boots", "shoes")
     else -> listOf("bag", "hat", "acc")
 }
 
 private val KIND_RULES = listOf(
     "рубашка-куртк|куртка-рубашк" to "overshirt", "футболк" to "tee", "лонгслив" to "longsleeve", "поло(?![а-яё])" to "polo", "рубашк|сорочк" to "shirt",
     "свитшот" to "sweatshirt", "худи" to "hoodie", "свитер|джемпер|кардиган" to "sweater", "пиджак|блейзер" to "blazer", "парк[аи]" to "parka",
-    "пальто|плащ|тренч" to "coat", "бомбер|куртк|ветровк" to "jacket", "шорт" to "shorts", "джоггер|спортивн|штаны" to "joggers",
-    "джинс|брюк|чинос" to "trousers", "кроссов|кед|ботин|туфл|лофер|сапог|сандал" to "shoes", "сумк|рюкзак" to "bag", "кепк|шапк|панам" to "hat",
+    "плащ|тренч" to "trench", "пальто" to "coat", "бомбер|куртк|ветровк" to "jacket", "шорт" to "shorts", "джоггер|спортивн|штаны" to "joggers",
+    "джинс" to "jeans", "брюк|чинос" to "trousers", "кроссов|кед" to "sneakers", "ботин|сапог|челси" to "boots", "туфл|лофер|сандал|мокас" to "shoes",
+    "сумк|рюкзак" to "bag", "кепк|шапк|панам" to "hat",
 )
 
 /** Тип по названию, а если не узнали — по категории. */
@@ -129,12 +146,20 @@ fun guessKind(name: String, category: String): String {
     val l = name.lowercase()
     val byName = KIND_RULES.firstOrNull { Regex(it.first).containsMatchIn(l) }?.second
     return byName?.takeIf { it in kindsOf(category) } ?: kindsOf(category).let {
-        when (category) { "верх" -> "shirt"; "верхняя одежда" -> "jacket"; "низ" -> "trousers"; else -> it.first() }
+        when (category) { "верх" -> "shirt"; "верхняя одежда" -> "jacket"; "низ" -> "trousers"; "обувь" -> "sneakers"; else -> it.first() }
     }
 }
 
-/** Тип вещи: сохранённый (в поле pct) или угаданный. */
-fun WardrobeItem.kind(): String = pct.takeIf { it in KIND_CM && it in kindsOf(category) } ?: guessKind(name, category)
+/** Тип вещи: сохранённый (в поле pct) или угаданный; старые общие типы уточняются по названию (брюки → джинсы, обувь → кроссовки). */
+fun WardrobeItem.kind(): String {
+    val saved = pct.takeIf { it in KIND_CM && it in kindsOf(category) }
+    val guess = guessKind(name, category)
+    return when {
+        saved == null -> guess
+        saved in setOf("trousers", "shoes", "coat") && guess != saved && KIND_RULES.any { Regex(it.first).containsMatchIn(name.lowercase()) } -> guess
+        else -> saved
+    }
+}
 fun WardrobeItem.realCm(): Float = KIND_CM[kind()] ?: 60f
 
 /**
@@ -230,7 +255,7 @@ fun autoLayout(ctx: Context, ids: List<String>, items: Map<String, WardrobeItem>
 }
 
 object WardrobeSeed {
-    private const val VERSION = 4
+    private const val VERSION = 5
 
     suspend fun run() {
         val s = Graph.prefs.now()
@@ -259,7 +284,7 @@ object WardrobeSeed {
             WardrobeItem(id = it.id, name = it.name, category = it.category, season = it.season, src = "asset:wardrobe/${it.file}", pct = it.kind, builtin = true, addedAt = now - i)
         })
         val kinds = items.associate { it.id to it.kind }
-        dao.wardrobeAll().filter { it.builtin && it.pct.isBlank() && kinds[it.id] != null }.forEach { dao.upsertWardrobeItem(it.copy(pct = kinds.getValue(it.id))) }
+        dao.wardrobeAll().filter { it.builtin && kinds[it.id] != null && it.pct != kinds[it.id] }.forEach { dao.upsertWardrobeItem(it.copy(pct = kinds.getValue(it.id))) }
         Graph.prefs.update { it.copy(wardrobeSeed = VERSION) }
     }
 }

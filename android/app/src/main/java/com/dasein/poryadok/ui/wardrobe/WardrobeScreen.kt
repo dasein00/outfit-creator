@@ -91,7 +91,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private val SORTS = listOf("Сначала новые", "А–Я", "Чаще носят", "Реже носят")
+private val SORTS = listOf("Свой порядок", "Сначала новые", "А–Я", "Чаще носят", "Реже носят")
 
 /** Гардероб в духе Fits: «Одежда», «Наряды», «Подборки»; сверху — планировщик и статистика. */
 @Composable
@@ -166,11 +166,18 @@ fun WardrobeScreen(nav: NavHostController) {
 
 /* ---------------- Одежда ---------------- */
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: Map<String, List<Long>>, busy: Boolean, onAdd: () -> Unit) {
     val extra = LocalExtra.current
-    var cat by rememberSaveable { mutableStateOf("все") }
+    val ctx = LocalContext.current
+    // Фильтр по типам вещей (рубашки, куртки, джинсы…), несколько сразу; пусто — все.
+    var typesCsv by rememberSaveable { mutableStateOf("") }
+    val types = typesCsv.split(",").filter { it.isNotBlank() }.toSet()
+    fun setTypes(t: Set<String>) { typesCsv = t.joinToString(",") }
+    var order by remember { mutableStateOf(WardrobeOrder.get(ctx)) }
+    var reorder by remember { mutableStateOf(false) }
+    var typeQuery by remember { mutableStateOf("") }
     var season by rememberSaveable { mutableStateOf("все") }
     var color by rememberSaveable { mutableStateOf("") }
     var favOnly by rememberSaveable { mutableStateOf(false) }
@@ -180,22 +187,32 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
     var sortMenu by remember { mutableStateOf(false) }
     val pool = all.filter { it.archived == archive }
     val shown = pool.filter {
-        (cat == "все" || it.category == cat) && (season == "все" || it.season == season || it.season == "любой") &&
+        (types.isEmpty() || it.kind() in types) && (season == "все" || it.season == season || it.season == "любой") &&
             (!favOnly || it.favorite) && (color.isBlank() || color in it.colors)
     }.let { l ->
         when (sort) {
-            1 -> l.sortedBy { it.name.lowercase() }
-            2 -> l.sortedByDescending { wears[it.id]?.size ?: 0 }
-            3 -> l.sortedBy { wears[it.id]?.size ?: 0 }
+            0 -> WardrobeOrder.sort(l, order)
+            2 -> l.sortedBy { it.name.lowercase() }
+            3 -> l.sortedByDescending { wears[it.id]?.size ?: 0 }
+            4 -> l.sortedBy { wears[it.id]?.size ?: 0 }
             else -> l.sortedByDescending { it.addedAt }
         }
     }
-    val active = listOf(season != "все", color.isNotBlank(), favOnly, archive).count { it }
+    // Есть ли каждый тип в шкафу — фильтр показывает только существующие, основные сначала.
+    val kindCounts = remember(pool) { pool.groupingBy { it.kind() }.eachCount() }
+    val presentKinds = KIND_ORDER.filter { (kindCounts[it] ?: 0) > 0 }
+    if (reorder) {
+        ReorderGrid(WardrobeOrder.sort(pool, order), onCancel = { reorder = false }) { ids ->
+            WardrobeOrder.set(ctx, ids); order = ids; sort = 0; reorder = false
+        }
+        return
+    }
+    val active = listOf(season != "все", color.isNotBlank(), favOnly, archive, types.size > 1).count { it }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             LazyRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                item { Pill("Все", cat == "все") { cat = "все" } }
-                items(CATEGORIES) { c -> Pill(CATEGORY_LABELS[c] ?: c, cat == c) { cat = c } }
+                item { Pill("Все", types.isEmpty()) { setTypes(emptySet()) } }
+                items(presentKinds) { k -> Pill("${KIND_PLURAL[k] ?: k} · ${kindCounts[k]}", k in types) { setTypes(if (types == setOf(k)) emptySet() else setOf(k)) } }
             }
             IconButton(onClick = { filters = true }) {
                 Box {
@@ -207,6 +224,7 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
                 IconButton(onClick = { sortMenu = true }) { Icon(Icons.Default.Sort, "Сортировка") }
                 DropdownMenu(sortMenu, { sortMenu = false }) {
                     SORTS.forEachIndexed { i, s -> DropdownMenuItem({ Text(btnLabel(s), fontWeight = if (i == sort) FontWeight.SemiBold else FontWeight.Normal) }, { sort = i; sortMenu = false }) }
+                    DropdownMenuItem({ Text(btnLabel("Переместить вещи…")) }, { sortMenu = false; reorder = true })
                 }
             }
         }
@@ -229,11 +247,19 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
                     }
                 }
             }
-            items(shown, key = { it.id }) { it0 ->
+            // «Все» в своём порядке или по новизне — группами по типам, как в Fits: «Рубашки», «Футболки»…
+            val groups = if (types.isEmpty() && sort <= 1) shown.groupBy { it.kind() }.toList().sortedBy { KIND_ORDER.indexOf(it.first).let { i -> if (i < 0) 99 else i } }
+            else listOf("" to shown)
+            groups.forEach { (k, list) ->
+            if (k.isNotEmpty()) item(span = { GridItemSpan(3) }, key = "h_$k") {
+                Text("${KIND_PLURAL[k] ?: k} · ${list.size}", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp))
+            }
+            items(list, key = { it.id }) { it0 ->
                 Box(Modifier.aspectRatio(.82f).clip(RoundedCornerShape(14.dp)).background(BoardColor).clickable { nav.navigate(wardrobeItemRoute(it0.id)) }) {
                     ItemThumb(it0, Modifier.fillMaxSize().padding(10.dp))
                     if (it0.favorite) Icon(Icons.Default.Favorite, "избранное", Modifier.align(Alignment.TopEnd).padding(6.dp).size(14.dp), tint = Color(0xFFD9575B))
                 }
+            }
             }
             if (shown.isEmpty()) item(span = { GridItemSpan(3) }) {
                 Text(
@@ -251,8 +277,23 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
             Column(Modifier.padding(horizontal = 20.dp).verticalScroll(rememberScrollState()).safeBottom()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(btnLabel("Фильтры"), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { season = "все"; color = ""; favOnly = false; archive = false }) { Text(btnLabel("Сбросить")) }
+                    TextButton(onClick = { season = "все"; color = ""; favOnly = false; archive = false; setTypes(emptySet()) }) { Text(btnLabel("Сбросить")) }
                 }
+                // Категории: поиск и выбор нескольких типов, по группам.
+                Text(btnLabel("Категории"), fontSize = 12.sp, color = extra.dim)
+                Gap(4.dp)
+                TextInput(typeQuery, { typeQuery = it }, "Поиск категории")
+                CATEGORIES.forEach { c ->
+                    val ks = kindsOf(c).filter { k -> (kindCounts[k] ?: 0) > 0 && (typeQuery.isBlank() || (KIND_PLURAL[k] ?: k).contains(typeQuery.trim(), true)) }
+                        .sortedBy { KIND_ORDER.indexOf(it) }
+                    if (ks.isNotEmpty()) {
+                        Text(CATEGORY_LABELS[c] ?: c, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+                        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            ks.forEach { k -> Pill("${KIND_PLURAL[k] ?: k} · ${kindCounts[k]}", k in types) { setTypes(if (k in types) types - k else types + k) } }
+                        }
+                    }
+                }
+                Gap(12.dp)
                 Text(btnLabel("Сезон"), fontSize = 12.sp, color = extra.dim)
                 Gap(4.dp)
                 ChipRow(SEASONS, season) { season = it }
