@@ -52,7 +52,7 @@ data class Stroke(val r: Float, val pts: List<Float>)
 data class LayerData(val id: String, val q: List<Float>, val strokes: List<Stroke> = emptyList())
 
 @Serializable
-private data class ManifestItem(val id: String, val name: String, val category: String, val season: String, val file: String)
+private data class ManifestItem(val id: String, val name: String, val category: String, val season: String, val file: String, val kind: String = "")
 
 val wjson = Json { ignoreUnknownKeys = true }
 val layersSer = ListSerializer(LayerData.serializer())
@@ -91,45 +91,101 @@ fun slotQuad(cat: String, accIndex: Int, w: Int, h: Int): List<Float> {
     return rectQ(r.left * BOARD_W + (bw - dw) / 2, r.top * BOARD_H + (bh - dh) / 2, dw, dh)
 }
 
-/** Коллаж как в Fits: вещи столбиком по центру — верх, низ, обувь; аксессуары справа. */
+/* ---------- реальные размеры ---------- */
+
+/** Тип вещи → её высота в разложенном виде, см (по ней вещи соотносятся: пальто длиннее рубашки, рубашка — футболки). */
+val KIND_CM = linkedMapOf(
+    "tee" to 70f, "longsleeve" to 71f, "polo" to 70f, "shirt" to 77f, "overshirt" to 76f, "sweatshirt" to 68f, "hoodie" to 70f, "sweater" to 66f,
+    "jacket" to 66f, "blazer" to 77f, "parka" to 90f, "coat" to 108f,
+    "trousers" to 104f, "joggers" to 98f, "shorts" to 50f,
+    "shoes" to 32f, "bag" to 30f, "hat" to 20f, "acc" to 24f,
+)
+
+val KIND_LABELS = mapOf(
+    "tee" to "Футболка", "longsleeve" to "Лонгслив", "polo" to "Поло", "shirt" to "Рубашка", "overshirt" to "Рубашка-куртка",
+    "sweatshirt" to "Свитшот", "hoodie" to "Худи", "sweater" to "Свитер", "jacket" to "Куртка", "blazer" to "Пиджак", "parka" to "Парка",
+    "coat" to "Пальто, плащ", "trousers" to "Брюки, джинсы", "joggers" to "Джоггеры", "shorts" to "Шорты", "shoes" to "Обувь",
+    "bag" to "Сумка", "hat" to "Головной убор", "acc" to "Аксессуар",
+)
+
+/** Типы, подходящие категории. */
+fun kindsOf(category: String): List<String> = when (category) {
+    "верх" -> listOf("tee", "longsleeve", "polo", "shirt", "overshirt", "sweatshirt", "hoodie", "sweater")
+    "верхняя одежда" -> listOf("jacket", "blazer", "parka", "coat")
+    "низ" -> listOf("trousers", "joggers", "shorts")
+    "обувь" -> listOf("shoes")
+    else -> listOf("bag", "hat", "acc")
+}
+
+private val KIND_RULES = listOf(
+    "рубашка-куртк|куртка-рубашк" to "overshirt", "футболк" to "tee", "лонгслив" to "longsleeve", "поло(?![а-яё])" to "polo", "рубашк|сорочк" to "shirt",
+    "свитшот" to "sweatshirt", "худи" to "hoodie", "свитер|джемпер" to "sweater", "пиджак|блейзер" to "blazer", "парк[аи]" to "parka",
+    "пальто|плащ|тренч" to "coat", "бомбер|куртк|ветровк" to "jacket", "шорт" to "shorts", "джоггер|спортивн|штаны" to "joggers",
+    "джинс|брюк|чинос" to "trousers", "кроссов|кед|ботин|туфл|лофер|сапог|сандал" to "shoes", "сумк|рюкзак" to "bag", "кепк|шапк|панам" to "hat",
+)
+
+/** Тип по названию, а если не узнали — по категории. */
+fun guessKind(name: String, category: String): String {
+    val l = name.lowercase()
+    val byName = KIND_RULES.firstOrNull { Regex(it.first).containsMatchIn(l) }?.second
+    return byName?.takeIf { it in kindsOf(category) } ?: kindsOf(category).let {
+        when (category) { "верх" -> "shirt"; "верхняя одежда" -> "jacket"; "низ" -> "trousers"; else -> it.first() }
+    }
+}
+
+/** Тип вещи: сохранённый (в поле pct) или угаданный. */
+fun WardrobeItem.kind(): String = pct.takeIf { it in KIND_CM && it in kindsOf(category) } ?: guessKind(name, category)
+fun WardrobeItem.realCm(): Float = KIND_CM[kind()] ?: 60f
+
+/**
+ * Коллаж как в Fits — вещи «надеты»: верх от плеч, низ от талии (≈45 см ниже плеч, верх навыпуск закрывает пояс),
+ * обувь у низа брюк; все в одном масштабе по реальной длине, так что пальто длиннее рубашки. Аксессуары справа.
+ */
 fun collageLayout(ctx: Context, ids: List<String>, items: Map<String, WardrobeItem>): List<LayerData> {
     val list = ids.mapNotNull { items[it] }
+    if (list.isEmpty()) return emptyList()
     fun row(c: String) = when (c) { "верх", "верхняя одежда" -> 0; "низ" -> 1; "обувь" -> 2; else -> -1 }
-    val weights = floatArrayOf(.38f, .44f, .2f)
-    val rows = (0..2).filter { r -> list.any { row(it.category) == r } }
+    data class P(val item: WardrobeItem, val top: Float, val h: Float, val w: Float)
+    fun aspect(it: WardrobeItem) = Bitmaps.load(ctx, it.src)?.let { b -> b.width.toFloat() / b.height } ?: .8f
+    val upper = list.filter { row(it.category) == 0 }
+    val lower = list.filter { row(it.category) == 1 }
+    val shoes = list.filter { row(it.category) == 2 }
     val acc = list.filter { row(it.category) < 0 }
-    val left = .08f
-    val right = if (acc.isEmpty()) .92f else .74f
-    val gap = .015f
-    val usable = .92f - gap * (rows.size - 1).coerceAtLeast(0)
-    val total = rows.sumOf { weights[it].toDouble() }.toFloat().coerceAtLeast(.01f)
-    val out = mutableListOf<LayerData>()
-    fun place(item: WardrobeItem, r: RectF) {
-        val b = Bitmaps.load(ctx, item.src)
-        val w = b?.width ?: 10
-        val h = b?.height ?: 10
-        val bw = r.width() * BOARD_W
-        val bh = r.height() * BOARD_H
-        val sc = min(bw / w, bh / h)
-        out += LayerData(item.id, rectQ(r.left * BOARD_W + (bw - w * sc) / 2, r.top * BOARD_H + (bh - h * sc) / 2, w * sc, h * sc))
+    val placed = mutableListOf<P>()
+    upper.forEach { placed += P(it, 0f, it.realCm(), it.realCm() * aspect(it)) }
+    val waist = if (upper.isEmpty()) 0f else 45f
+    lower.forEach { placed += P(it, waist, it.realCm(), it.realCm() * aspect(it)) }
+    val lowerEnd = lower.maxOfOrNull { waist + it.realCm() } ?: (if (upper.isEmpty()) 0f else 148f)
+    shoes.forEach { val h = it.realCm(); placed += P(it, (lowerEnd - h * .45f).coerceAtLeast(0f), h, h * aspect(it)) }
+    val totalH = placed.maxOfOrNull { it.top + it.h } ?: 1f
+    val maxW = placed.maxOfOrNull { it.w } ?: 1f
+    val left = .06f * BOARD_W
+    val right = (if (acc.isEmpty()) .94f else .76f) * BOARD_W
+    val topPad = .04f * BOARD_H
+    val k = min((BOARD_H * .92f) / totalH, (right - left) / maxW)
+    val cx = (left + right) / 2
+    val oy = topPad + (BOARD_H * .92f - totalH * k) / 2
+    val out = placed.map { p -> LayerData(p.item.id, rectQ(cx - p.w * k / 2, oy + p.top * k, p.w * k, p.h * k)) }.toMutableList()
+    acc.forEachIndexed { i, it0 ->
+        val h = (it0.realCm() * k).coerceAtMost(BOARD_H * .17f)
+        val w = h * aspect(it0)
+        out += LayerData(it0.id, rectQ(.87f * BOARD_W - w / 2, .06f * BOARD_H + (i % 5) * .19f * BOARD_H, w, h))
     }
-    var y = .04f
-    rows.forEach { r ->
-        val h = usable * weights[r] / total
-        val inRow = list.filter { row(it.category) == r }.sortedBy { Z_ORDER[it.category] ?: 6 }
-        if (inRow.size == 1) place(inRow[0], RectF(left, y, right, y + h))
-        else {
-            // Две вещи сверху (например, рубашка и плащ) — внахлёст, верхняя одежда поверх.
-            val w = (right - left) * .62f
-            inRow.forEachIndexed { i, it0 ->
-                val x = left + (right - left - w) * i / (inRow.size - 1).coerceAtLeast(1)
-                place(it0, RectF(x, y, x + w, y + h))
-            }
-        }
-        y += h + gap
-    }
-    acc.forEachIndexed { i, it0 -> val t = .06f + (i % 5) * .18f; place(it0, RectF(.76f, t, .97f, t + .16f)) }
     return out.sortedBy { l -> Z_ORDER[items[l.id]?.category] ?: 6 }
+}
+
+/** Заменить вещь на другую, сохранив место, поворот и масштаб «см → точки». */
+fun swapLayer(ctx: Context, old: LayerData, oldItem: WardrobeItem, item: WardrobeItem): LayerData {
+    val b = Bitmaps.load(ctx, item.src)
+    val aspect = b?.let { it.width.toFloat() / it.height } ?: .8f
+    val q = old.q
+    val cx = (q[0] + q[2] + q[4] + q[6]) / 4
+    val oldH = hypot(q[6] - q[0], q[7] - q[1])
+    val h = oldH * item.realCm() / oldItem.realCm()
+    val w = h * aspect
+    // Для одежды верх держим на том же уровне (плечи/пояс), для прочего — центр.
+    val top = if (oldItem.category in SINGLE && item.category in SINGLE) min(q[1], q[3]) else (q[1] + q[3] + q[5] + q[7]) / 4 - h / 2
+    return LayerData(item.id, rectQ(cx - w / 2, top, w, h))
 }
 
 /** Главные цвета вещи по фото (до трёх), #RRGGBB через запятую. */
@@ -152,40 +208,58 @@ fun dominantColors(b: Bitmap): String {
     }
 }
 
-/** Разложить вещи по местам категорий (порядок слоёв — по категориям). */
+/** Флэт-лэй: вещи по местам категорий, размеры — по реальной длине в одном масштабе. */
 fun autoLayout(ctx: Context, ids: List<String>, items: Map<String, WardrobeItem>): List<LayerData> {
     var acc = 0
+    val k = 6.4f // точек доски на сантиметр
     return ids.mapNotNull { items[it] }.sortedBy { Z_ORDER[it.category] ?: 6 }.map { item ->
         val b = Bitmaps.load(ctx, item.src)
+        val w = b?.width ?: 10
+        val h = b?.height ?: 10
         val i = if (item.category in SINGLE) 0 else acc++
-        LayerData(item.id, slotQuad(item.category, i, b?.width ?: 10, b?.height ?: 10))
+        val slotQ = slotQuad(item.category, i, w, h)
+        // Высота по реальному размеру, но не больше места категории с небольшим запасом.
+        val slotH = slotQ[7] - slotQ[1]
+        val realH = item.realCm() * k
+        val dh = min(realH, slotH * 1.12f)
+        val dw = dh * w / h
+        val cx = (slotQ[0] + slotQ[2]) / 2
+        val cy = (slotQ[1] + slotQ[7]) / 2
+        LayerData(item.id, rectQ(cx - dw / 2, cy - dh / 2, dw, dh))
     }
 }
 
 object WardrobeSeed {
-    private const val VERSION = 2
+    private const val VERSION = 3
 
     suspend fun run() {
         val s = Graph.prefs.now()
         if (s.wardrobeSeed >= VERSION) return
         val dao = Graph.dao
-        // Переход на флэт-лэй: старые встроенные вещи, их подгонка и луки с ними удаляются.
-        val old = dao.builtinWardrobeIds().toSet()
-        if (old.isNotEmpty()) {
-            dao.outfits().first().filter { o -> decodeLayers(o.layers).first.any { it.id in old } }.forEach { o ->
-                if (o.preview.isNotBlank()) File(o.preview).delete()
-                dao.deleteOutfit(o)
+        if (s.wardrobeSeed < 2) {
+            // Переход на флэт-лэй: старые встроенные вещи, их подгонка и луки с ними удаляются.
+            val old = dao.builtinWardrobeIds().toSet()
+            if (old.isNotEmpty()) {
+                dao.outfits().first().filter { o -> decodeLayers(o.layers).first.any { it.id in old } }.forEach { o ->
+                    if (o.preview.isNotBlank()) File(o.preview).delete()
+                    dao.deleteOutfit(o)
+                }
+                dao.deleteAllFits()
+                dao.deleteBuiltinWardrobe()
             }
-            dao.deleteAllFits()
-            dao.deleteBuiltinWardrobe()
         }
         val items = withContext(Dispatchers.IO) {
             val text = Graph.app.assets.open("wardrobe/items.json").bufferedReader().use { it.readText() }
             wjson.decodeFromString(ListSerializer(ManifestItem.serializer()), text)
         }
-        dao.insertWardrobeItems(items.map {
-            WardrobeItem(id = it.id, name = it.name, category = it.category, season = it.season, src = "asset:wardrobe/${it.file}", pct = "", builtin = true, addedAt = System.currentTimeMillis())
+        // v3: коллекция из архивов; встроенные вещи, которых нет в каталоге (дубли), убираются, остальным проставляется тип.
+        dao.deleteBuiltinExcept(items.map { it.id })
+        val now = System.currentTimeMillis()
+        dao.insertWardrobeItems(items.mapIndexed { i, it ->
+            WardrobeItem(id = it.id, name = it.name, category = it.category, season = it.season, src = "asset:wardrobe/${it.file}", pct = it.kind, builtin = true, addedAt = now - i)
         })
+        val kinds = items.associate { it.id to it.kind }
+        dao.wardrobeAll().filter { it.builtin && it.pct.isBlank() && kinds[it.id] != null }.forEach { dao.upsertWardrobeItem(it.copy(pct = kinds.getValue(it.id))) }
         Graph.prefs.update { it.copy(wardrobeSeed = VERSION) }
     }
 }
@@ -357,13 +431,42 @@ private fun alphaBox(b: Bitmap): IntArray? {
     return if (x1 < 0) null else intArrayOf(x0, y0, x1 + 1, y1 + 1)
 }
 
-/** Своё фото вещи: фон убирается, края обрезаются, картинка сохраняется PNG с прозрачностью. */
+/** Есть ли у картинки свой прозрачный фон (больше половины краёв прозрачные). */
+private fun hasAlphaBackground(b: Bitmap): Boolean {
+    val w = b.width; val h = b.height
+    var clear = 0; var tot = 0
+    for (x in 0 until w step 4) { tot += 2; if ((b.getPixel(x, 0) ushr 24) < 16) clear++; if ((b.getPixel(x, h - 1) ushr 24) < 16) clear++ }
+    for (y in 0 until h step 4) { tot += 2; if ((b.getPixel(0, y) ushr 24) < 16) clear++; if ((b.getPixel(w - 1, y) ushr 24) < 16) clear++ }
+    return tot > 0 && clear * 2 > tot
+}
+
+/** Вырезать вещь нейросетью ML Kit (на телефоне); null — если модель недоступна или ничего не нашла. */
+private suspend fun segmentSubject(b: Bitmap): Bitmap? = runCatching {
+    kotlinx.coroutines.withTimeout(20_000) {
+        kotlinx.coroutines.suspendCancellableCoroutine<Bitmap?> { cont ->
+            val opts = com.google.mlkit.vision.segmentation.subject.SubjectSegmenterOptions.Builder().enableForegroundBitmap().build()
+            val client = com.google.mlkit.vision.segmentation.subject.SubjectSegmentation.getClient(opts)
+            client.process(com.google.mlkit.vision.common.InputImage.fromBitmap(b, 0))
+                .addOnSuccessListener { r -> client.close(); if (cont.isActive) cont.resumeWith(Result.success(r.foregroundBitmap)) }
+                .addOnFailureListener { client.close(); if (cont.isActive) cont.resumeWith(Result.success(null)) }
+        }
+    }
+}.getOrNull()
+
+/**
+ * Своё фото вещи: если фон уже прозрачный — оставляем как есть; иначе вырезаем вещь нейросетью,
+ * а если она недоступна — заливкой однородного фона от краёв. Края обрезаются, сохраняется PNG с прозрачностью.
+ */
 suspend fun prepareUserItem(ctx: Context, uri: android.net.Uri): String? = withContext(Dispatchers.Default) {
     runCatching {
         val tmp = Images.importUri(ctx, uri, "tmp") ?: return@runCatching null
         val decoded = Images.decode(tmp, 1400) ?: return@runCatching null
         File(tmp).delete()
-        val cleaned = stripBackground(decoded)
+        val argb = if (decoded.config == Bitmap.Config.ARGB_8888) decoded else decoded.copy(Bitmap.Config.ARGB_8888, false)
+        val cleaned = when {
+            hasAlphaBackground(argb) -> argb
+            else -> segmentSubject(argb)?.takeIf { alphaBox(it) != null } ?: stripBackground(argb)
+        }
         val bb = alphaBox(cleaned) ?: return@runCatching null
         val cw = bb[2] - bb[0]
         val chh = bb[3] - bb[1]

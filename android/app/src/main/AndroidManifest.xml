@@ -40,6 +40,8 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.Poryadok">
+        <!-- Модель вырезания фона для своих вещей гардероба скачивается вместе с приложением. -->
+        <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="subject_segment" />
 
         <activity
             android:name=".MainActivity"

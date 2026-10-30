@@ -424,6 +424,9 @@ private fun NewItemDialog(path: String, onDismiss: () -> Unit, onAdd: (WardrobeI
     var name by remember { mutableStateOf("") }
     var cat by remember { mutableStateOf("верх") }
     var season by remember { mutableStateOf("любой") }
+    // Тип задаёт реальный размер вещи (пальто длиннее рубашки); пока не выбран вручную — угадывается по названию.
+    var kind by remember { mutableStateOf<String?>(null) }
+    val kindNow = kind?.takeIf { it in kindsOf(cat) } ?: guessKind(name, cat)
     val preview = remember(path) { WardrobeItem(id = "new", name = "", category = cat, season = "", src = path, pct = "") }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -438,7 +441,13 @@ private fun NewItemDialog(path: String, onDismiss: () -> Unit, onAdd: (WardrobeI
                 Gap(10.dp)
                 Text(btnLabel("Категория"), fontSize = 12.sp, color = extra.dim)
                 Gap(4.dp)
-                ChipRow(CATEGORIES.map { it to (CATEGORY_LABELS[it] ?: it) }, cat) { cat = it }
+                ChipRow(CATEGORIES.map { it to (CATEGORY_LABELS[it] ?: it) }, cat) { cat = it; kind = null }
+                if (kindsOf(cat).size > 1) {
+                    Gap(10.dp)
+                    Text(btnLabel("Тип — от него зависит размер"), fontSize = 12.sp, color = extra.dim)
+                    Gap(4.dp)
+                    ChipRow(kindsOf(cat).map { it to (KIND_LABELS[it] ?: it) }, kindNow) { kind = it }
+                }
                 Gap(10.dp)
                 Text(btnLabel("Сезон"), fontSize = 12.sp, color = extra.dim)
                 Gap(4.dp)
@@ -450,7 +459,7 @@ private fun NewItemDialog(path: String, onDismiss: () -> Unit, onAdd: (WardrobeI
                 onAdd(
                     WardrobeItem(
                         id = "user_" + System.currentTimeMillis().toString(36), name = name.trim().ifBlank { "Своя вещь" }, category = cat, season = season,
-                        src = path, pct = "", addedAt = System.currentTimeMillis(),
+                        src = path, pct = kindNow, addedAt = System.currentTimeMillis(),
                     )
                 )
             }) { Text(btnLabel("Добавить")) }

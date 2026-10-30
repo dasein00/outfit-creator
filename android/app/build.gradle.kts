@@ -98,6 +98,8 @@ dependencies {
     implementation("com.google.mlkit:translate:17.0.3")
     // Распознавание цифр со скриншотов приложений весов (Fitdays и др.) — на телефоне, без интернета.
     implementation("com.google.mlkit:text-recognition:16.0.1")
+    // Вырезание вещи с фото с любым фоном (модель Google Play services, на телефоне).
+    implementation("com.google.android.gms:play-services-mlkit-subject-segmentation:16.0.0-beta1")
 
     // Встроенный браузер без заголовка X-Requested-With (Instagram отказывает страницам с ним).
     implementation("androidx.webkit:webkit:1.11.0")

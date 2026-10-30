@@ -233,6 +233,10 @@ interface LifeDao {
     suspend fun builtinWardrobeIds(): List<String>
     @Query("DELETE FROM wardrobe_items WHERE builtin = 1")
     suspend fun deleteBuiltinWardrobe()
+    @Query("DELETE FROM wardrobe_items WHERE builtin = 1 AND id NOT IN (:keep)")
+    suspend fun deleteBuiltinExcept(keep: List<String>)
+    @Query("SELECT * FROM wardrobe_items")
+    suspend fun wardrobeAll(): List<WardrobeItem>
 
     @Query("SELECT * FROM item_fits")
     fun fits(): Flow<List<ItemFit>>

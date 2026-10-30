@@ -369,7 +369,7 @@ data class WardrobeItem(
     val season: String,
     /** "asset:wardrobe/x.webp" для встроенных или абсолютный путь к файлу. */
     val src: String,
-    /** [ширина % от манекена, центр X %, верх Y %, (высота % роста)] */
+    /** Тип вещи для реального размера: tee, shirt, coat, trousers… (раньше — подгонка к манекену). */
     val pct: String,
     val builtin: Boolean = false,
     val sketch: Boolean = false,

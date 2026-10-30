@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,6 +28,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -36,6 +39,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Checkroom
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DragIndicator
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.FlipToBack
 import androidx.compose.material.icons.filled.FlipToFront
 import androidx.compose.material.icons.filled.FormatColorFill
@@ -51,12 +61,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -124,6 +139,10 @@ class Board {
     var sel by mutableStateOf<String?>(null)
     /** 0 — коллаж (столбиком), 1 — флэт-лэй (по местам). */
     var mode by mutableIntStateOf(0)
+    /** Закреплённые вещи не двигаются и не меняются при «Перемешать». */
+    var locked by mutableStateOf<Set<String>>(emptySet())
+    /** Панели под холстом видны (касание пустого места их прячет). */
+    var chrome by mutableStateOf(true)
     var dirty = false
     private val hist = mutableListOf<List<LayerData>>(emptyList())
     private var pos = 0
@@ -145,6 +164,20 @@ class Board {
     fun selected(): LayerData? = layers.firstOrNull { it.id == sel }
     fun replace(l: LayerData) { layers = layers.map { if (it.id == l.id) l else it } }
     fun has(id: String) = layers.any { it.id == id }
+    /** «Заправить» верх под брюки ([tuck] = true) или выпустить поверх. */
+    fun tuck(id: String, tuck: Boolean, items: Map<String, WardrobeItem>) {
+        val l = layers.firstOrNull { it.id == id } ?: return
+        val rest = layers.filter { it.id != id }.toMutableList()
+        val b = rest.indexOfFirst { items[it.id]?.category == "низ" }
+        if (b < 0) return
+        rest.add(if (tuck) b else b + 1, l)
+        layers = rest
+    }
+    /** Заменить слой [id] новым (другая вещь на том же месте в порядке слоёв). */
+    fun replaceWith(id: String, l: LayerData) {
+        layers = layers.map { if (it.id == id) l else it }
+        if (l.id != id) { if (id in locked) locked = locked - id + l.id; if (sel == id) sel = l.id }
+    }
 }
 
 private fun layout(ctx: android.content.Context, ed: Board, ids: List<String>, items: Map<String, WardrobeItem>) =
@@ -189,6 +222,25 @@ fun OutfitEditorScreen(nav: NavHostController) {
         if (ed.layers.isEmpty()) addSheet = true
     }
 
+    var layersOpen by remember { mutableStateOf(false) }
+    var swapOpen by remember { mutableStateOf(false) }
+
+    /** Заменить слой на случайную другую вещь той же категории (кроме закреплённых). */
+    fun shuffleOne(l: LayerData): LayerData {
+        val it0 = items[l.id] ?: return l
+        val pool = allItems.filter { !it.archived && it.category == it0.category && it.id != l.id && !ed.has(it.id) }
+        return pool.randomOrNull()?.let { swapLayer(ctx, l, it0, it) } ?: l
+    }
+    fun shuffleAll() {
+        if (ed.layers.isEmpty()) {
+            // Пустой наряд — случайные верх, низ и обувь.
+            val pick = listOf("верх", "низ", "обувь").mapNotNull { c -> allItems.filter { !it.archived && it.category == c }.randomOrNull()?.id }
+            ed.layers = layout(ctx, ed, pick, items)
+        } else ed.layers = ed.layers.map { if (it.id in ed.locked) it else shuffleOne(it) }
+        ed.sel = null
+        ed.commit()
+    }
+
     Screen(
         title = if (vm.editing != null) "Наряд" else "Новый наряд",
         onBack = { nav.popBackStack() },
@@ -198,33 +250,53 @@ fun OutfitEditorScreen(nav: NavHostController) {
             TextButton(onClick = { saveDialog = true }, enabled = ed.layers.isNotEmpty()) { Text(btnLabel("Далее →"), fontWeight = FontWeight.SemiBold) }
         },
     ) { pad ->
-        Column(Modifier.padding(pad).fillMaxSize()) {
-            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), contentAlignment = Alignment.Center) {
-                val bw = min(maxWidth.value, maxHeight.value * BOARD_W / BOARD_H)
-                Box(
-                    Modifier.width(bw.dp).aspectRatio(BOARD_W / BOARD_H).clip(RoundedCornerShape(18.dp))
-                        .background(if (ed.bg != 0) Color(ed.bg) else BoardColor),
-                ) {
-                    BoardCanvas(ed, items)
-                    if (ed.layers.isEmpty()) Column(Modifier.align(Alignment.Center).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Пустой наряд", color = BoardInk, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                        Text("Нажмите «Добавить» и выберите вещи. Тяните пальцем, щипком меняйте размер и поворот.", color = Color(0xFF8A8174), fontSize = 12.sp, textAlign = TextAlign.Center)
+        Box(Modifier.padding(pad).fillMaxSize()) {
+            Column(Modifier.fillMaxSize()) {
+                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), contentAlignment = Alignment.Center) {
+                    val bw = min(maxWidth.value, maxHeight.value * BOARD_W / BOARD_H)
+                    Box(
+                        Modifier.width(bw.dp).aspectRatio(BOARD_W / BOARD_H).clip(RoundedCornerShape(18.dp))
+                            .background(if (ed.bg != 0) Color(ed.bg) else BoardColor),
+                    ) {
+                        // Касание пустого места сворачивает и разворачивает панели — как в Fits.
+                        BoardCanvas(ed, items) { ed.chrome = !ed.chrome }
+                        if (ed.layers.isEmpty()) Column(Modifier.align(Alignment.Center).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Пустой наряд", color = BoardInk, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                            Text("Нажмите «Одежда» → «+» и выберите вещи. Тяните пальцем, щипком меняйте размер и поворот.", color = Color(0xFF8A8174), fontSize = 12.sp, textAlign = TextAlign.Center)
+                        }
+                    }
+                    // Выбранная вещь: кнопки справа, как в Fits.
+                    ed.selected()?.let { s ->
+                        val locked = s.id in ed.locked
+                        Column(Modifier.align(Alignment.CenterEnd).padding(end = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SideButton(Icons.Default.Check, "Готово", filled = true) { ed.sel = null; swapOpen = false }
+                            SideButton(if (locked) Icons.Default.Lock else Icons.Default.LockOpen, if (locked) "Открепить" else "Закрепить") {
+                                ed.locked = if (locked) ed.locked - s.id else ed.locked + s.id
+                            }
+                            SideButton(Icons.Default.Shuffle, "Другая вещь") { ed.replaceWith(s.id, shuffleOne(s)); ed.commit() }
+                            SideButton(Icons.Default.FlipToFront, "Вперёд") { ed.layers = ed.layers.filter { it.id != s.id } + s; ed.commit() }
+                            SideButton(Icons.Default.Delete, "Убрать") { ed.layers = ed.layers.filter { it.id != s.id }; ed.sel = null; ed.commit() }
+                        }
+                    }
+                }
+                val sel = ed.selected()
+                if (sel != null) {
+                    val it0 = items[sel.id]
+                    if (it0 != null) SwapPanel(allItems.filter { !it.archived && it.category == it0.category }, sel.id, swapOpen, { swapOpen = !swapOpen }) { new ->
+                        ed.replaceWith(sel.id, swapLayer(ctx, sel, it0, new)); ed.commit()
+                    }
+                } else if (ed.chrome) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ToolButton(Icons.Default.Checkroom, "Одежда", Modifier.weight(1f)) { layersOpen = true }
+                        ToolButton(Icons.Default.FormatColorFill, "Фон", Modifier.weight(1f)) { bgSheet = true }
+                        ToolButton(Icons.Default.Shuffle, "Перемешать", Modifier.weight(1f)) { shuffleAll() }
+                        ToolButton(Icons.Default.SwapHoriz, "Режим", Modifier.weight(1f)) { modeSheet = true }
                     }
                 }
             }
-            // Выбранная вещь: порядок слоёв и «убрать».
-            ed.selected()?.let { s ->
-                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(items[s.id]?.name ?: "", fontSize = 12.sp, color = extra.dim, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                    IconButton(onClick = { ed.layers = ed.layers.filter { it.id != s.id } + s; ed.commit() }) { Icon(Icons.Default.FlipToFront, "На передний план") }
-                    IconButton(onClick = { ed.layers = listOf(s) + ed.layers.filter { it.id != s.id }; ed.commit() }) { Icon(Icons.Default.FlipToBack, "На задний план") }
-                    IconButton(onClick = { ed.layers = ed.layers.filter { it.id != s.id }; ed.sel = null; ed.commit() }) { Icon(Icons.Default.Close, "Убрать", tint = extra.danger) }
-                }
-            }
-            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ToolButton(Icons.Default.Checkroom, "Добавить", Modifier.weight(1f)) { addSheet = true }
-                ToolButton(Icons.Default.FormatColorFill, "Фон", Modifier.weight(1f)) { bgSheet = true }
-                ToolButton(Icons.Default.SwapHoriz, "Режим", Modifier.weight(1f)) { modeSheet = true }
+            if (layersOpen) {
+                Box(Modifier.fillMaxSize().background(Color(0x55000000)).clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { layersOpen = false })
+                LayersPanel(ed, items, Modifier.align(Alignment.BottomCenter), onClose = { layersOpen = false }, onAdd = { addSheet = true }, onPick = { id -> ed.sel = id; layersOpen = false })
             }
         }
     }
@@ -415,7 +487,7 @@ fun AddItemsSheet(all: List<WardrobeItem>, initial: Set<String>, onDismiss: () -
 }
 
 @Composable
-private fun BoardCanvas(ed: Board, items: Map<String, WardrobeItem>) {
+private fun BoardCanvas(ed: Board, items: Map<String, WardrobeItem>, onEmptyTap: () -> Unit) {
     val ctx = LocalContext.current
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val scale = constraints.maxWidth / BOARD_W
@@ -445,6 +517,7 @@ private fun BoardCanvas(ed: Board, items: Map<String, WardrobeItem>) {
                 .pointerInput(scale) {
                     detectTransformGestures { centroid, pan, zoom, rotation ->
                         val l = ed.selected() ?: return@detectTransformGestures
+                        if (l.id in ed.locked) return@detectTransformGestures
                         val c = board(centroid)
                         val rad = rotation * PI.toFloat() / 180f
                         val cs = cos(rad)
@@ -460,7 +533,13 @@ private fun BoardCanvas(ed: Board, items: Map<String, WardrobeItem>) {
                         ed.dirty = true
                     }
                 }
-                .pointerInput(scale, items) { detectTapGestures { ed.sel = hit(it) } },
+                .pointerInput(scale, items) {
+                    detectTapGestures { o ->
+                        val h = hit(o)
+                        if (h == null && ed.sel == null) onEmptyTap()
+                        ed.sel = h
+                    }
+                },
         ) {
             drawIntoCanvas { c -> drawBoard(ctx, c.nativeCanvas, scale, 0f, 0f, ed.layers, items) }
             ed.selected()?.let { l ->
@@ -476,4 +555,135 @@ private fun BoardCanvas(ed: Board, items: Map<String, WardrobeItem>) {
             }
         }
     }
+}
+
+@Composable
+private fun SideButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, filled: Boolean = false, onClick: () -> Unit) {
+    Box(
+        Modifier.size(40.dp).clip(CircleShape).background(if (filled) Color(0xFF111111) else Color.White.copy(alpha = .92f))
+            .border(1.dp, Color(0x22000000), CircleShape).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { Icon(icon, label, Modifier.size(20.dp), tint = if (filled) Color.White else Color(0xFF2A241C)) }
+}
+
+/** Каталог для замены выбранной вещи: свёрнут — одна лента, развёрнут — сетка. */
+@Composable
+private fun SwapPanel(pool: List<WardrobeItem>, current: String, expanded: Boolean, onToggle: () -> Unit, onPick: (WardrobeItem) -> Unit) {
+    val extra = LocalExtra.current
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)).background(extra.card)) {
+        Row(Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(btnLabel("Заменить на другую"), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Icon(if (expanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess, if (expanded) "Свернуть" else "Развернуть")
+        }
+        @Composable
+        fun cell(it0: WardrobeItem, m: Modifier) {
+            val on = it0.id == current
+            Box(
+                m.clip(RoundedCornerShape(12.dp)).background(BoardColor)
+                    .border(if (on) 2.dp else 0.dp, if (on) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(12.dp))
+                    .clickable { if (!on) onPick(it0) },
+            ) { ItemThumb(it0, Modifier.fillMaxSize().padding(6.dp), shadow = false) }
+        }
+        if (expanded) LazyVerticalGrid(
+            GridCells.Fixed(4), Modifier.heightIn(max = 300.dp),
+            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) { items(pool, key = { it.id }) { cell(it, Modifier.aspectRatio(.85f)) } }
+        else LazyRow(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(pool, key = { it.id }) { cell(it, Modifier.size(64.dp, 76.dp)) }
+        }
+    }
+}
+
+/**
+ * «Одежда»: слои наряда списком (сверху — передний), как в Fits. Удержание и перетаскивание меняет порядок,
+ * у верха — «навыпуск / заправить» (поверх брюк или под ними), корзина убирает вещь, «+» — добавить вещи.
+ */
+@Composable
+private fun LayersPanel(ed: Board, items: Map<String, WardrobeItem>, modifier: Modifier, onClose: () -> Unit, onAdd: () -> Unit, onPick: (String) -> Unit) {
+    val extra = LocalExtra.current
+    val density = LocalDensity.current
+    val step = with(density) { 62.dp.toPx() }
+    val shown by rememberUpdatedState(ed.layers.asReversed())
+    var dragging by remember { mutableStateOf<String?>(null) }
+    var dy by remember { mutableFloatStateOf(0f) }
+    fun setShown(list: List<LayerData>) { ed.layers = list.asReversed() }
+    Column(
+        modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)).background(MaterialTheme.colorScheme.surface)
+            .pointerInput(Unit) { detectTapGestures { } }.padding(bottom = 12.dp),
+    ) {
+        Box(Modifier.fillMaxWidth().clickable(onClick = onClose).padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(36.dp, 4.dp).clip(RoundedCornerShape(2.dp)).background(extra.line))
+        }
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(btnLabel("Одежда"), fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
+                Text("Нажмите, чтобы выбрать, удерживайте и тяните — порядок слоёв", fontSize = 12.sp, color = extra.dim)
+            }
+            Box(Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface).clickable(onClick = onAdd), contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.Add, "Добавить вещи", tint = MaterialTheme.colorScheme.surface)
+            }
+        }
+        Gap(8.dp)
+        if (shown.isEmpty()) Text("Вещей пока нет — нажмите «+».", color = extra.dim, fontSize = 13.sp, modifier = Modifier.padding(16.dp))
+        Column(Modifier.heightIn(max = 380.dp).verticalScroll(rememberScrollState(), enabled = dragging == null).padding(horizontal = 12.dp)) {
+            shown.forEach { l ->
+                val it0 = items[l.id] ?: return@forEach
+                val isDrag = dragging == l.id
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 3.dp).height(56.dp).zIndex(if (isDrag) 1f else 0f)
+                        .graphicsLayer { translationY = if (isDrag) dy else 0f; shadowElevation = if (isDrag) 12f else 0f }
+                        .clip(RoundedCornerShape(12.dp)).background(if (isDrag) extra.cardHigh else extra.card)
+                        .pointerInput(l.id) {
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = { dragging = l.id; dy = 0f },
+                                onDragEnd = { dragging = null; dy = 0f; ed.commit() },
+                                onDragCancel = { dragging = null; dy = 0f },
+                                onDrag = { ch, amount ->
+                                    ch.consume()
+                                    dy += amount.y
+                                    val list = shown
+                                    val from = list.indexOfFirst { it.id == l.id }
+                                    val shift = (dy / step).toInt()
+                                    if (from >= 0 && shift != 0) {
+                                        val to = (from + shift).coerceIn(0, list.size - 1)
+                                        if (to != from) {
+                                            setShown(list.toMutableList().apply { add(to, removeAt(from)) })
+                                            dy -= (to - from) * step
+                                        }
+                                    }
+                                },
+                            )
+                        }
+                        .clickable { onPick(l.id) }
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.DragIndicator, null, Modifier.size(18.dp), tint = extra.dim)
+                    Box(Modifier.padding(start = 4.dp).size(44.dp).clip(RoundedCornerShape(8.dp)).background(BoardColor)) {
+                        ItemThumb(it0, Modifier.fillMaxSize().padding(4.dp), shadow = false)
+                    }
+                    Text(KIND_LABELS[it0.kind()] ?: it0.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 10.dp))
+                    if (it0.category == "верх" && ed.layers.any { items[it.id]?.category == "низ" }) {
+                        val bottomIdx = ed.layers.indexOfFirst { items[it.id]?.category == "низ" }
+                        val tucked = ed.layers.indexOfFirst { it.id == l.id } < bottomIdx
+                        TuckChip("навыпуск", !tucked) { if (tucked) { ed.tuck(l.id, false, items); ed.commit() } }
+                        TuckChip("заправить", tucked) { if (!tucked) { ed.tuck(l.id, true, items); ed.commit() } }
+                    }
+                    IconButton(onClick = { ed.layers = ed.layers.filter { it.id != l.id }; if (ed.sel == l.id) ed.sel = null; ed.commit() }) {
+                        Icon(Icons.Default.Delete, "Убрать", tint = extra.dim)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TuckChip(label: String, on: Boolean, onClick: () -> Unit) {
+    Text(
+        btnLabel(label), fontSize = 10.sp, color = if (on) MaterialTheme.colorScheme.surface else LocalExtra.current.dim,
+        modifier = Modifier.padding(start = 4.dp).clip(RoundedCornerShape(8.dp))
+            .background(if (on) MaterialTheme.colorScheme.onSurface else Color.Transparent)
+            .border(1.dp, LocalExtra.current.line, RoundedCornerShape(8.dp)).clickable(onClick = onClick).padding(horizontal = 6.dp, vertical = 3.dp),
+    )
 }
