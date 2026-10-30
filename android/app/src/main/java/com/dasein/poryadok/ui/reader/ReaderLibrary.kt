@@ -151,7 +151,7 @@ fun ReaderLibraryScreen(nav: NavHostController) {
             IconAction("d18/00", "Заметки и цитаты") { nav.navigate(READER_NOTES_ROUTE) }
             IconAction(if (s.grid) "d18/02" else "d01/04", "Вид") { io { ReaderStore.saveSettings(ctx, s.copy(grid = !s.grid)) } }
         },
-        fab = { ExtendedFloatingActionButton(onClick = { picker.launch(arrayOf("*/*")) }) { Text(btnLabel("+ Книги")) } },
+        fab = { ExtendedFloatingActionButton(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary, onClick = { picker.launch(arrayOf("*/*")) }) { Text(btnLabel("+ Книги")) } },
     ) { pad ->
         val cols = if (s.grid) 3 else 1
         LazyVerticalGrid(

@@ -201,7 +201,7 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
         "Тренировки", onBack = { nav.popBackStack(); Unit },
         fab = {
             when (tab) {
-                0 -> ExtendedFloatingActionButton(
+                0 -> ExtendedFloatingActionButton(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary, 
                     onClick = {
                         io {
                             val id = t.upsertPlan(WorkoutPlan(name = "Новая программа", sort = plans.size, createdAt = System.currentTimeMillis()))
@@ -210,7 +210,7 @@ fun TrainingScreen(nav: NavHostController, initialTab: Int = 0) {
                     },
                     icon = { Icon(Icons.Default.Add, null) }, text = { Text(btnLabel("Программа")) },
                 )
-                1 -> ExtendedFloatingActionButton(onClick = { nav.navigate(Routes.exercise(0)) }, icon = { Icon(Icons.Default.Add, null) }, text = { Text(btnLabel("Упражнение")) })
+                1 -> ExtendedFloatingActionButton(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary, onClick = { nav.navigate(Routes.exercise(0)) }, icon = { Icon(Icons.Default.Add, null) }, text = { Text(btnLabel("Упражнение")) })
                 else -> {}
             }
         },

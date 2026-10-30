@@ -126,7 +126,7 @@ fun WardrobeScreen(nav: NavHostController) {
             IconButton(onClick = { stats = true }) { Icon(Icons.Default.PieChart, "Статистика") }
         },
         fab = {
-            FloatingActionButton(onClick = {
+            FloatingActionButton(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary, onClick = {
                 when (tab) {
                     0 -> picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     1 -> openEditor(nav)
