@@ -119,7 +119,7 @@ fun kindsOf(category: String): List<String> = when (category) {
 
 private val KIND_RULES = listOf(
     "рубашка-куртк|куртка-рубашк" to "overshirt", "футболк" to "tee", "лонгслив" to "longsleeve", "поло(?![а-яё])" to "polo", "рубашк|сорочк" to "shirt",
-    "свитшот" to "sweatshirt", "худи" to "hoodie", "свитер|джемпер" to "sweater", "пиджак|блейзер" to "blazer", "парк[аи]" to "parka",
+    "свитшот" to "sweatshirt", "худи" to "hoodie", "свитер|джемпер|кардиган" to "sweater", "пиджак|блейзер" to "blazer", "парк[аи]" to "parka",
     "пальто|плащ|тренч" to "coat", "бомбер|куртк|ветровк" to "jacket", "шорт" to "shorts", "джоггер|спортивн|штаны" to "joggers",
     "джинс|брюк|чинос" to "trousers", "кроссов|кед|ботин|туфл|лофер|сапог|сандал" to "shoes", "сумк|рюкзак" to "bag", "кепк|шапк|панам" to "hat",
 )
@@ -230,7 +230,7 @@ fun autoLayout(ctx: Context, ids: List<String>, items: Map<String, WardrobeItem>
 }
 
 object WardrobeSeed {
-    private const val VERSION = 3
+    private const val VERSION = 4
 
     suspend fun run() {
         val s = Graph.prefs.now()
@@ -252,7 +252,7 @@ object WardrobeSeed {
             val text = Graph.app.assets.open("wardrobe/items.json").bufferedReader().use { it.readText() }
             wjson.decodeFromString(ListSerializer(ManifestItem.serializer()), text)
         }
-        // v3: коллекция из архивов; встроенные вещи, которых нет в каталоге (дубли), убираются, остальным проставляется тип.
+        // v3–v4: коллекция из архивов; встроенные вещи, которых нет в каталоге (дубли), убираются, остальным проставляется тип.
         dao.deleteBuiltinExcept(items.map { it.id })
         val now = System.currentTimeMillis()
         dao.insertWardrobeItems(items.mapIndexed { i, it ->

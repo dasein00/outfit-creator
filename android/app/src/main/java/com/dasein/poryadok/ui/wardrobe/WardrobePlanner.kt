@@ -75,6 +75,11 @@ import com.dasein.poryadok.ui.common.io
 import com.dasein.poryadok.ui.common.observe
 import com.dasein.poryadok.ui.common.rememberImage
 import com.dasein.poryadok.ui.theme.LocalExtra
+import com.dasein.poryadok.logic.WeatherDay
+import com.dasein.poryadok.logic.WeatherLogic
+import com.dasein.poryadok.ui.weather.WeatherIcon
+import androidx.compose.runtime.collectAsState
+import kotlin.math.roundToInt
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -93,6 +98,19 @@ fun WardrobePlannerScreen(nav: NavHostController) {
     var day by rememberSaveable { mutableStateOf(today) }
     var pickFor by remember { mutableStateOf<Long?>(null) }
     var open by remember { mutableStateOf<Outfit?>(null) }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val allItems by observe(emptyList()) { Graph.dao.wardrobe() }
+    // Прогноз погоды на 14 дней (тот же, что на экране «Погода»): по нему подсказка, что надеть.
+    val live by com.dasein.poryadok.system.Weather.data.collectAsState()
+    var weatherError by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        val c = com.dasein.poryadok.system.Weather.cached(ctx)
+        if (com.dasein.poryadok.system.Weather.isStale(c, 180)) weatherError = com.dasein.poryadok.system.Weather.refresh(ctx)
+    }
+    val weather = live ?: com.dasein.poryadok.system.Weather.cached(ctx)
+    val forecast = remember(weather) {
+        weather?.days.orEmpty().mapNotNull { d -> runCatching { LocalDate.parse(d.date).toEpochDay() to d }.getOrNull() }.toMap()
+    }
     val byDay = remember(outfits) {
         val m = HashMap<Long, MutableList<Outfit>>()
         outfits.forEach { o -> o.days().forEach { d -> m.getOrPut(d) { mutableListOf() }.add(o) } }
@@ -108,7 +126,11 @@ fun WardrobePlannerScreen(nav: NavHostController) {
             TabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.background) {
                 listOf("День", "Месяц").forEachIndexed { i, t -> Tab(tab == i, onClick = { tab = i }, text = { Text(btnLabel(t)) }) }
             }
-            if (tab == 0) DayView(day, today, byDay, onDay = { day = it }, onAdd = { pickFor = it }, onOpen = { open = it }, onUnplan = { o, d -> unplan(o, d) })
+            if (tab == 0) DayView(
+                day, today, byDay, forecast, weather == null, weatherError,
+                onDay = { day = it }, onAdd = { pickFor = it }, onOpen = { open = it }, onUnplan = { o, d -> unplan(o, d) },
+                onDress = { d, hint -> openEditor(nav, items = WardrobeWeather.pick(hint, allItems), planDay = d) },
+            )
             else MonthView(today, day, byDay) { d -> day = d; tab = 0 }
         }
     }
@@ -126,8 +148,9 @@ private fun unplan(o: Outfit, d: Long) = io { Graph.dao.upsertOutfit(o.copy(worn
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DayView(
-    day: Long, today: Long, byDay: Map<Long, List<Outfit>>,
+    day: Long, today: Long, byDay: Map<Long, List<Outfit>>, forecast: Map<Long, WeatherDay>, loading: Boolean, weatherError: String?,
     onDay: (Long) -> Unit, onAdd: (Long) -> Unit, onOpen: (Outfit) -> Unit, onUnplan: (Outfit, Long) -> Unit,
+    onDress: (Long, DressHint) -> Unit,
 ) {
     val extra = LocalExtra.current
     val date = LocalDate.ofEpochDay(day)
@@ -152,6 +175,7 @@ private fun DayView(
                         )
                     }
                     Box(Modifier.padding(top = 2.dp).size(5.dp).clip(CircleShape).background(if (byDay[d].isNullOrEmpty()) Color.Transparent else MaterialTheme.colorScheme.primary))
+                    forecast[d]?.let { w -> Text("${w.tMax.roundToInt()}°", fontSize = 10.sp, color = extra.dim) }
                 }
             }
             IconButton(onClick = { onDay(day + 7) }) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Следующая неделя") }
@@ -159,6 +183,38 @@ private fun DayView(
         Text(
             date.format(DateTimeFormatter.ofPattern("EEEE, d MMM", RU)), fontWeight = FontWeight.SemiBold,
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), textAlign = TextAlign.Center,
+        )
+        // Погода дня и что надеть.
+        val w = forecast[day]
+        if (w != null) {
+            val hint = WardrobeWeather.hint(w)
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp).clip(RoundedCornerShape(16.dp)).background(extra.card).padding(12.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    WeatherIcon(w.code, true, 40.dp)
+                    Column(Modifier.weight(1f).padding(start = 10.dp)) {
+                        Text("${w.tMax.roundToInt()}° / ${w.tMin.roundToInt()}° · ${WeatherLogic.describe(w.code)}", fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            listOfNotNull(
+                                if (w.pop > 0) "осадки ${w.pop}%" else "без осадков",
+                                "ветер ${w.windMs.roundToInt()} м/с",
+                                if (w.uv >= 3) "УФ ${w.uv.roundToInt()}" else null,
+                            ).joinToString(" · "),
+                            fontSize = 12.sp, color = extra.dim,
+                        )
+                    }
+                }
+                Text(hint.text, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+                TextButton(onClick = { onDress(day, hint) }) { Text(btnLabel("Подобрать наряд по погоде"), fontWeight = FontWeight.SemiBold) }
+            }
+        } else if (day >= today) Text(
+            when {
+                loading && weatherError == null -> "Загружаем прогноз погоды…"
+                weatherError != null && forecast.isEmpty() -> weatherError
+                else -> "Прогноз погоды есть на 14 дней вперёд"
+            },
+            fontSize = 12.sp, color = extra.dim, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
         )
         val list = byDay[day].orEmpty()
         val state = rememberLazyListState()
