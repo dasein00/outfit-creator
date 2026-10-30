@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -220,32 +221,31 @@ private fun DayView(
         val list = byDay[day].orEmpty()
         val state = rememberLazyListState()
         LaunchedEffect(day) { state.scrollToItem(0) }
-        LazyRow(
-            Modifier.weight(1f).fillMaxWidth(), state = state,
-            contentPadding = PaddingValues(start = 32.dp, end = 32.dp, bottom = 24.dp), horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            items(list, key = { "o" + it.id }) { o ->
-                val img by rememberImage(o.preview.ifBlank { null }, 700)
-                Column(Modifier.fillMaxHeight().width(260.dp)) {
-                    Box(
-                        Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (o.bg != 0) Color(o.bg) else BoardColor)
-                            .combinedClickable(onClick = { onOpen(o) }, onLongClick = { confirm = o }),
-                    ) {
-                        img?.let { Image(it, o.name, Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(o.name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(top = 6.dp))
-                        IconButton(onClick = { confirm = o }) { Icon(Icons.Default.Delete, "Убрать из дня", tint = extra.dim) }
+        // Карточки дня — по центру экрана: ширина = экран минус равные поля слева и справа, прокрутка с доводкой до карточки.
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+            val side = 24.dp
+            val cardW = maxWidth - side * 2
+            LazyRow(
+                Modifier.fillMaxSize(), state = state,
+                contentPadding = PaddingValues(start = side, end = side, bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
+                flingBehavior = androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior(state),
+            ) {
+                items(list, key = { "o" + it.id }) { o ->
+                    val img by rememberImage(o.preview.ifBlank { null }, 700)
+                    DayCard(cardW, o.name, onDelete = { confirm = o }) {
+                        Box(
+                            Modifier.fillMaxSize().clip(tileShape()).background(if (o.bg != 0) Color(o.bg) else BoardColor)
+                                .combinedClickable(onClick = { onOpen(o) }, onLongClick = { confirm = o }),
+                        ) { img?.let { Image(it, o.name, Modifier.fillMaxSize(), contentScale = ContentScale.Fit) } }
                     }
                 }
-            }
-            item(key = "add") {
-                Box(
-                    Modifier.fillMaxHeight().width(260.dp).padding(bottom = 48.dp).clip(RoundedCornerShape(20.dp)).background(extra.card)
-                        .border(1.dp, extra.line, RoundedCornerShape(20.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Button(onClick = { onAdd(day) }) { Icon(Icons.Default.Add, null); Text(btnLabel(" Добавить наряд")) }
+                item(key = "add") {
+                    DayCard(cardW, null, onDelete = null) {
+                        Box(
+                            Modifier.fillMaxSize().clip(tileShape()).background(extra.card).border(1.dp, extra.line, tileShape()),
+                            contentAlignment = Alignment.Center,
+                        ) { Button(onClick = { onAdd(day) }) { Icon(Icons.Default.Add, null); Text(btnLabel(" Добавить наряд")) } }
+                    }
                 }
             }
         }
@@ -253,6 +253,19 @@ private fun DayView(
     confirm?.let { o ->
         ConfirmDialog("Убрать «${o.name}» из этого дня?", "Сам наряд останется в «Нарядах».", confirm = "Убрать", onDismiss = { confirm = null }) {
             onUnplan(o, day); confirm = null
+        }
+    }
+}
+
+/** Карточка дня одной ширины и высоты — и у наряда, и у «Добавить наряд», чтобы всё стояло ровно по центру. */
+@Composable
+private fun DayCard(width: androidx.compose.ui.unit.Dp, title: String?, onDelete: (() -> Unit)?, body: @Composable () -> Unit) {
+    val extra = LocalExtra.current
+    Column(Modifier.fillMaxHeight().width(width)) {
+        Box(Modifier.weight(1f).fillMaxWidth()) { body() }
+        Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (title != null) Text(title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 4.dp))
+            if (onDelete != null) IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, "Убрать из дня", tint = extra.dim) }
         }
     }
 }
