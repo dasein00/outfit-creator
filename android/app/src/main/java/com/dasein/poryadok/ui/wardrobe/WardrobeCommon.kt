@@ -6,6 +6,9 @@ import android.graphics.Bitmap
 import android.provider.MediaStore
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import com.dasein.poryadok.ui.common.cardViewport
@@ -321,4 +324,43 @@ fun TileBgDialog(onDismiss: () -> Unit) {
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Готово")) } },
     )
+}
+
+
+/** Окно списка — для скругления плашек, частично ушедших за край при прокрутке. */
+class ViewportRef { var coords: androidx.compose.ui.layout.LayoutCoordinates? = null }
+
+/**
+ * Плашка в сетке скругляется и у края окна: видимая часть обрезается скруглённым прямоугольником,
+ * поэтому при прокрутке углы остаются круглыми, а не срезаются прямой линией.
+ */
+@Composable
+fun Modifier.roundInViewport(ref: ViewportRef, state: androidx.compose.foundation.lazy.grid.LazyGridState): Modifier {
+    val holder = remember { arrayOfNulls<androidx.compose.ui.layout.LayoutCoordinates>(1) }
+    val r = with(androidx.compose.ui.platform.LocalDensity.current) { com.dasein.poryadok.ui.theme.LocalLook.current.cardRound.dp.toPx() }
+    return this
+        .onPlaced { holder[0] = it }
+        .drawWithContent {
+            // Чтение прокрутки — чтобы обрезка пересчитывалась на каждом кадре прокрутки.
+            state.firstVisibleItemIndex; state.firstVisibleItemScrollOffset
+            val c = holder[0]
+            val vp = ref.coords
+            if (c == null || vp == null || !c.isAttached || !vp.isAttached) { drawContent(); return@drawWithContent }
+            val y = vp.localPositionOf(c, androidx.compose.ui.geometry.Offset.Zero).y
+            val top = (-y).coerceIn(0f, size.height)
+            val bottom = (vp.size.height - y).coerceIn(0f, size.height)
+            if (top <= 0f && bottom >= size.height) { drawContent(); return@drawWithContent }
+            val path = androidx.compose.ui.graphics.Path().apply {
+                addRoundRect(androidx.compose.ui.geometry.RoundRect(0f, top, size.width, bottom, androidx.compose.ui.geometry.CornerRadius(r, r)))
+            }
+            clipPath(path) { this@drawWithContent.drawContent() }
+        }
+}
+
+
+/** Перенести вещи [moved] на места, где они стоят в общем порядке [all], в новом порядке; остальное не трогается. */
+fun WardrobeOrder.merge(all: List<String>, moved: List<String>): List<String> {
+    val set = moved.toSet()
+    val next = moved.iterator()
+    return all.map { id -> if (id in set && next.hasNext()) next.next() else id }
 }

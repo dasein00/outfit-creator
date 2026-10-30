@@ -668,7 +668,7 @@ private fun LayersPanel(ed: Board, items: Map<String, WardrobeItem>, modifier: M
                     Box(Modifier.padding(start = 4.dp).size(44.dp).clip(tileShape()).background(tileBg())) {
                         ItemThumb(it0, Modifier.fillMaxSize().padding(4.dp), shadow = false)
                     }
-                    Text(KIND_LABELS[it0.kind()] ?: it0.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 10.dp))
+                    Text(Kinds.label(it0.kind()), fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 10.dp))
                     if (it0.category == "верх" && ed.layers.any { items[it.id]?.category == "низ" }) {
                         val bottomIdx = ed.layers.indexOfFirst { items[it.id]?.category == "низ" }
                         val tucked = ed.layers.indexOfFirst { it.id == l.id } < bottomIdx

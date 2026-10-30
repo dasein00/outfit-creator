@@ -154,8 +154,8 @@ fun WardrobeItemScreen(nav: NavHostController, startId: String) {
             )
             Gap(12.dp)
             Group {
-                Line(Icons.Default.Category, CATEGORY_LABELS[item.category] ?: item.category) { edit = "category" }
-                if (kindsOf(item.category).size > 1) Line(Icons.Default.Straighten, "Тип: " + (KIND_LABELS[item.kind()] ?: item.kind()) + " · ≈${item.realCm().toInt()} см") { edit = "kind" }
+                Line(Icons.Default.Category, "Раздел: " + (CATEGORY_LABELS[item.category] ?: item.category)) { edit = "category" }
+                Line(Icons.Default.Straighten, "Категория: " + Kinds.label(item.kind()) + " · ≈${item.realCm().toInt()} см") { edit = "kind" }
                 Line(Icons.Default.Info, item.brand.ifBlank { "Добавить бренд" }, dim = item.brand.isBlank()) { edit = "brand" }
                 Line(Icons.Default.LocalOffer, item.tags.ifBlank { "Добавить теги" }, dim = item.tags.isBlank()) { edit = "tags" }
                 Line(Icons.Default.Palette, if (item.colors.isBlank()) "Добавить цвета" else "", dim = item.colors.isBlank(), trailing = {
@@ -213,7 +213,8 @@ fun WardrobeItemScreen(nav: NavHostController, startId: String) {
         "note" -> EditTextDialog("Заметка", it0.note, multiline = true, onDismiss = { edit = null }) { save(it0.copy(note = it)) }
         "bought" -> DatePickDialog(it0.bought.takeIf { it > 0 }, onDismiss = { edit = null }, onPick = { save(it0.copy(bought = it ?: 0)) })
         "category" -> ChoiceDialog("Категория", CATEGORIES.map { it to (CATEGORY_LABELS[it] ?: it) }, it0.category, { edit = null }) { save(it0.copy(category = it, pct = guessKind(it0.name, it))) }
-        "kind" -> ChoiceDialog("Тип вещи — от него зависит размер в наряде", kindsOf(it0.category).map { it to (KIND_LABELS[it] ?: it) }, it0.kind(), { edit = null }) { save(it0.copy(pct = it)) }
+        // Любая категория из любого раздела: выбор рубашки у «куртки» сам переносит вещь в «Верх».
+        "kind" -> KindPickerDialog(it0.kind(), onDismiss = { edit = null }) { k -> save(it0.copy(category = Kinds.parentOf(k), pct = k)) }
         "season" -> ChoiceDialog("Сезон", listOf("любой" to "Любой", "зима" to "Зима", "осень" to "Осень", "весна" to "Весна", "лето" to "Лето"), it0.season, { edit = null }) { save(it0.copy(season = it)) }
         "colors" -> ColorsDialog(it0, { edit = null }) { save(it0.copy(colors = it)) }
     }

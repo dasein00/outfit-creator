@@ -124,8 +124,8 @@ val KIND_ORDER = listOf(
     "polo", "overshirt", "sweatshirt", "hoodie", "sweater", "longsleeve", "blazer", "parka", "joggers", "shorts", "shoes", "hat", "bag", "acc",
 )
 
-/** Типы, подходящие категории. */
-fun kindsOf(category: String): List<String> = when (category) {
+/** Встроенные типы раздела. */
+fun builtinKindsOf(category: String): List<String> = when (category) {
     "верх" -> listOf("tee", "longsleeve", "polo", "shirt", "overshirt", "sweatshirt", "hoodie", "sweater")
     "верхняя одежда" -> listOf("jacket", "blazer", "parka", "trench", "coat")
     "низ" -> listOf("jeans", "trousers", "joggers", "shorts")
@@ -141,18 +141,21 @@ private val KIND_RULES = listOf(
     "сумк|рюкзак" to "bag", "кепк|шапк|панам" to "hat",
 )
 
+/** Типы раздела вместе со своими (и без скрытых). */
+fun kindsOf(category: String): List<String> = Kinds.of(category)
+
 /** Тип по названию, а если не узнали — по категории. */
 fun guessKind(name: String, category: String): String {
     val l = name.lowercase()
     val byName = KIND_RULES.firstOrNull { Regex(it.first).containsMatchIn(l) }?.second
-    return byName?.takeIf { it in kindsOf(category) } ?: kindsOf(category).let {
-        when (category) { "верх" -> "shirt"; "верхняя одежда" -> "jacket"; "низ" -> "trousers"; "обувь" -> "sneakers"; else -> it.first() }
-    }
+    val ks = kindsOf(category)
+    val def = when (category) { "верх" -> "shirt"; "верхняя одежда" -> "jacket"; "низ" -> "trousers"; "обувь" -> "sneakers"; else -> "acc" }
+    return byName?.takeIf { it in ks } ?: def.takeIf { it in ks } ?: ks.firstOrNull() ?: def
 }
 
 /** Тип вещи: сохранённый (в поле pct) или угаданный; старые общие типы уточняются по названию (брюки → джинсы, обувь → кроссовки). */
 fun WardrobeItem.kind(): String {
-    val saved = pct.takeIf { it in KIND_CM && it in kindsOf(category) }
+    val saved = pct.takeIf { Kinds.isKind(it) && it in kindsOf(category) }
     val guess = guessKind(name, category)
     return when {
         saved == null -> guess
@@ -160,7 +163,7 @@ fun WardrobeItem.kind(): String {
         else -> saved
     }
 }
-fun WardrobeItem.realCm(): Float = KIND_CM[kind()] ?: 60f
+fun WardrobeItem.realCm(): Float = Kinds.cm(kind())
 
 /**
  * Коллаж как в Fits — вещи «надеты»: верх от плеч, низ от талии (≈45 см ниже плеч, верх навыпуск закрывает пояс),

@@ -60,6 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -180,6 +181,11 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
     var reorder by remember { mutableStateOf(false) }
     var bgDialog by remember { mutableStateOf(false) }
     var typeQuery by remember { mutableStateOf("") }
+    var manageKinds by remember { mutableStateOf(false) }
+    // Раздел (верх, низ…) из выпадающего фильтра; пусто — все разделы.
+    var parent by rememberSaveable { mutableStateOf("") }
+    val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+    val viewport = remember { ViewportRef() }
     var season by rememberSaveable { mutableStateOf("все") }
     var color by rememberSaveable { mutableStateOf("") }
     var favOnly by rememberSaveable { mutableStateOf(false) }
@@ -189,7 +195,7 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
     var sortMenu by remember { mutableStateOf(false) }
     val pool = all.filter { it.archived == archive }
     val shown = pool.filter {
-        (types.isEmpty() || it.kind() in types) && (season == "все" || it.season == season || it.season == "любой") &&
+        (types.isEmpty() || it.kind() in types) && (parent.isBlank() || it.category == parent) && (season == "все" || it.season == season || it.season == "любой") &&
             (!favOnly || it.favorite) && (color.isBlank() || color in it.colors)
     }.let { l ->
         when (sort) {
@@ -202,10 +208,11 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
     }
     // Есть ли каждый тип в шкафу — фильтр показывает только существующие, основные сначала.
     val kindCounts = remember(pool) { pool.groupingBy { it.kind() }.eachCount() }
-    val presentKinds = KIND_ORDER.filter { (kindCounts[it] ?: 0) > 0 }
     if (reorder) {
-        ReorderGrid(WardrobeOrder.sort(pool, order), onCancel = { reorder = false }) { ids ->
-            WardrobeOrder.set(ctx, ids); order = ids; sort = 0; reorder = false
+        // Перемещаем ровно то, что видно на экране (с фильтрами), в том же порядке; остальное остаётся на своих местах.
+        ReorderGrid(WardrobeOrder.sort(shown, order), onCancel = { reorder = false }) { ids ->
+            val merged = WardrobeOrder.merge(WardrobeOrder.sort(all, order).map { it.id }, ids)
+            WardrobeOrder.set(ctx, merged); order = merged; sort = 0; reorder = false
         }
         return
     }
@@ -213,8 +220,31 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             LazyRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                item { Pill("Все", types.isEmpty()) { setTypes(emptySet()) } }
-                items(presentKinds) { k -> Pill("${KIND_PLURAL[k] ?: k} · ${kindCounts[k]}", k in types) { setTypes(if (types == setOf(k)) emptySet() else setOf(k)) } }
+                item { Pill("Все", types.isEmpty() && parent.isBlank()) { setTypes(emptySet()); parent = "" } }
+                // Выпадающие списки по разделам: «Верх ▾» → рубашки, футболки…
+                items(CATEGORIES.filter { c -> pool.any { it.category == c } }) { c ->
+                    Box {
+                        var open by remember { mutableStateOf(false) }
+                        val sel = types.singleOrNull()?.takeIf { Kinds.parentOf(it) == c }
+                        val label = when {
+                            sel != null -> Kinds.plural(sel)
+                            parent == c -> CATEGORY_LABELS[c] ?: c
+                            else -> CATEGORY_LABELS[c] ?: c
+                        }
+                        Pill("$label ▾", sel != null || parent == c) { open = true }
+                        DropdownMenu(open, { open = false }) {
+                            DropdownMenuItem({ Text("Весь раздел · ${pool.count { it.category == c }}", fontWeight = if (parent == c && types.isEmpty()) FontWeight.SemiBold else FontWeight.Normal) }, {
+                                parent = c; setTypes(emptySet()); open = false
+                            })
+                            kindsOf(c).filter { (kindCounts[it] ?: 0) > 0 }.forEach { k ->
+                                DropdownMenuItem({ Text("${Kinds.plural(k)} · ${kindCounts[k]}", fontWeight = if (k in types) FontWeight.SemiBold else FontWeight.Normal) }, {
+                                    parent = ""; setTypes(setOf(k)); open = false
+                                })
+                            }
+                            DropdownMenuItem({ Text(btnLabel("Изменить категории…"), color = MaterialTheme.colorScheme.primary) }, { open = false; manageKinds = true })
+                        }
+                    }
+                }
             }
             IconButton(onClick = { filters = true }) {
                 Box {
@@ -228,6 +258,7 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
                     SORTS.forEachIndexed { i, s -> DropdownMenuItem({ Text(btnLabel(s), fontWeight = if (i == sort) FontWeight.SemiBold else FontWeight.Normal) }, { sort = i; sortMenu = false }) }
                     DropdownMenuItem({ Text(btnLabel("Переместить вещи…")) }, { sortMenu = false; reorder = true })
                     DropdownMenuItem({ Text(btnLabel("Фон плашек…")) }, { sortMenu = false; bgDialog = true })
+                    DropdownMenuItem({ Text(btnLabel("Категории…")) }, { sortMenu = false; manageKinds = true })
                 }
             }
         }
@@ -238,7 +269,8 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             // Как в других разделах: список в скруглённом окне — плашки у краёв скругляются при прокрутке.
-            modifier = Modifier.weight(1f).cardViewport(),
+            state = gridState,
+            modifier = Modifier.weight(1f).cardViewport().onGloballyPositioned { viewport.coords = it },
         ) {
             item {
                 Box(
@@ -251,15 +283,15 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
                     }
                 }
             }
-            // «Все» в своём порядке или по новизне — группами по типам, как в Fits: «Рубашки», «Футболки»…
-            val groups = if (types.isEmpty() && sort <= 1) shown.groupBy { it.kind() }.toList().sortedBy { KIND_ORDER.indexOf(it.first).let { i -> if (i < 0) 99 else i } }
+            // «Сначала новые» без фильтра — группами по категориям, как в Fits; «Свой порядок» — ровно как в «Переместить вещи».
+            val groups = if (types.isEmpty() && sort == 1) shown.groupBy { it.kind() }.toList().sortedBy { Kinds.all().indexOf(it.first).let { i -> if (i < 0) 99 else i } }
             else listOf("" to shown)
             groups.forEach { (k, list) ->
             if (k.isNotEmpty()) item(span = { GridItemSpan(3) }, key = "h_$k") {
-                Text("${KIND_PLURAL[k] ?: k} · ${list.size}", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp))
+                Text("${Kinds.plural(k)} · ${list.size}", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp))
             }
             items(list, key = { it.id }) { it0 ->
-                Box(Modifier.aspectRatio(.82f).clip(tileShape()).background(tileBg()).clickable { nav.navigate(wardrobeItemRoute(it0.id)) }) {
+                Box(Modifier.aspectRatio(.82f).roundInViewport(viewport, gridState).clip(tileShape()).background(tileBg()).clickable { nav.navigate(wardrobeItemRoute(it0.id)) }) {
                     ItemThumb(it0, Modifier.fillMaxSize().padding(10.dp))
                     if (it0.favorite) Icon(Icons.Default.Favorite, "избранное", Modifier.align(Alignment.TopEnd).padding(6.dp).size(14.dp), tint = Color(0xFFD9575B))
                 }
@@ -275,6 +307,7 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
         }
     }
     if (bgDialog) TileBgDialog { bgDialog = false }
+    if (manageKinds) KindsManagerSheet { manageKinds = false }
     if (filters) {
         val state = rememberModalBottomSheetState()
         val palette = remember(all) { all.flatMap { it.colors.split(",") }.map { it.trim() }.filter { it.isNotBlank() }.distinct().take(24) }
@@ -289,12 +322,12 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
                 Gap(4.dp)
                 TextInput(typeQuery, { typeQuery = it }, "Поиск категории")
                 CATEGORIES.forEach { c ->
-                    val ks = kindsOf(c).filter { k -> (kindCounts[k] ?: 0) > 0 && (typeQuery.isBlank() || (KIND_PLURAL[k] ?: k).contains(typeQuery.trim(), true)) }
-                        .sortedBy { KIND_ORDER.indexOf(it) }
+                    val ks = kindsOf(c).filter { k -> (kindCounts[k] ?: 0) > 0 && (typeQuery.isBlank() || (Kinds.plural(k)).contains(typeQuery.trim(), true)) }
+                        .sortedBy { Kinds.all().indexOf(it) }
                     if (ks.isNotEmpty()) {
                         Text(CATEGORY_LABELS[c] ?: c, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
                         androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            ks.forEach { k -> Pill("${KIND_PLURAL[k] ?: k} · ${kindCounts[k]}", k in types) { setTypes(if (k in types) types - k else types + k) } }
+                            ks.forEach { k -> Pill("${Kinds.plural(k)} · ${kindCounts[k]}", k in types) { setTypes(if (k in types) types - k else types + k) } }
                         }
                     }
                 }
@@ -494,7 +527,7 @@ private fun NewItemDialog(path: String, onDismiss: () -> Unit, onAdd: (WardrobeI
                     Gap(10.dp)
                     Text(btnLabel("Тип — от него зависит размер"), fontSize = 12.sp, color = extra.dim)
                     Gap(4.dp)
-                    ChipRow(kindsOf(cat).map { it to (KIND_LABELS[it] ?: it) }, kindNow) { kind = it }
+                    ChipRow(kindsOf(cat).map { it to (Kinds.label(it)) }, kindNow) { kind = it }
                 }
                 Gap(10.dp)
                 Text(btnLabel("Сезон"), fontSize = 12.sp, color = extra.dim)
