@@ -110,5 +110,11 @@
 {"id": "fl_x39", "name": "Пастельная футболка с тропическим пейзажем", "category": "верх", "season": "лето", "kind": "tee", "file": "x39.webp"},
 {"id": "fl_x40", "name": "Футболка «Пирамида черепов» Сезанна", "category": "верх", "season": "лето", "kind": "tee", "file": "x40.webp"},
 {"id": "fl_x41", "name": "Футболка с принтом «Микеланджело»", "category": "верх", "season": "лето", "kind": "tee", "file": "x41.webp"},
-{"id": "fl_x42", "name": "Чёрная футболка с черепом и фигурой", "category": "верх", "season": "лето", "kind": "tee", "file": "x42.webp"}
+{"id": "fl_x42", "name": "Чёрная футболка с черепом и фигурой", "category": "верх", "season": "лето", "kind": "tee", "file": "x42.webp"},
+{"id": "fl_y00", "name": "Бежевая зимняя парка с меховым капюшоном", "category": "верхняя одежда", "season": "зима", "kind": "parka", "file": "y00.webp"},
+{"id": "fl_y01", "name": "Кремовый бомбер", "category": "верхняя одежда", "season": "осень", "kind": "jacket", "file": "y01.webp"},
+{"id": "fl_y03", "name": "Оливковый бомбер с меховой подкладкой", "category": "верхняя одежда", "season": "зима", "kind": "jacket", "file": "y03.webp"},
+{"id": "fl_y04", "name": "Оливковая парка с капюшоном", "category": "верхняя одежда", "season": "зима", "kind": "parka", "file": "y04.webp"},
+{"id": "fl_y05", "name": "Коричневые дерби", "category": "обувь", "season": "любой", "kind": "shoes", "file": "y05.webp"},
+{"id": "fl_y06", "name": "Светлые беговые кроссовки", "category": "обувь", "season": "любой", "kind": "sneakers", "file": "y06.webp"}
 ]
