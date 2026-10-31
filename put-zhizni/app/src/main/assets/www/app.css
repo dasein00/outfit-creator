@@ -507,3 +507,49 @@ details.lgrp summary { padding: 11px 0; font-weight: 600; cursor: pointer; }
 .lite .hero { background: var(--accent2) !important; }
 .sp-card.leno img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .sp-card.leno { background: #fff; border: none; }
+
+/* ---------- Рукоделие: схемы ---------- */
+.cf-svg { width: 100%; height: auto; display: block; margin: 6px auto; background: var(--bg2); border-radius: 12px; }
+.cf-needle { stroke: #C9A46A; stroke-width: 5; stroke-linecap: round; }
+.cf-loop { fill: none; stroke: var(--ink2); stroke-width: 2.4; }
+.cf-loop.on { stroke: var(--accent); stroke-width: 3; }
+.cf-loop.old { stroke-dasharray: 3 3; opacity: .6; }
+.cf-yarn { fill: none; stroke: var(--ink2); stroke-width: 2.4; stroke-linecap: round; }
+.cf-yarn.work, .cf-yarn.on { stroke: var(--accent); stroke-width: 3; }
+.cf-yarn.faint { stroke: var(--line); stroke-width: 2; }
+.cf-arrow { fill: none; stroke: #E08F68; stroke-width: 2; stroke-dasharray: 4 3; }
+.cf-arhead { fill: #E08F68; }
+.cf-hook { stroke: #8EA3B8; stroke-width: 5; stroke-linecap: round; }
+.cf-hookend { fill: none; stroke: #8EA3B8; stroke-width: 3; stroke-linecap: round; }
+.cf-bead { stroke: rgba(0,0,0,.15); stroke-width: 1; }
+.cf-wire { fill: none; stroke: #C9A46A; stroke-width: 2; stroke-linecap: round; }
+.cf-wire.cable { stroke: #9AA3AD; stroke-width: 1.6; }
+.cf-ring { fill: none; stroke: #C9A46A; stroke-width: 2.4; }
+.cf-ring.thin { stroke-width: 1.6; }
+.cf-ring.hoop { stroke-width: 2.2; }
+.cf-cap { fill: #C9A46A; }
+.cf-thread { stroke-width: 1.6; }
+.cf-tooljaw { fill: none; stroke: #8E95A0; stroke-width: 4; stroke-linecap: round; }
+.cf-tooljaw.round { stroke-width: 3.4; }
+.cf-toolh { fill: none; stroke: #D27A8E; stroke-width: 6; stroke-linecap: round; }
+.cf-hand { fill: none; stroke: var(--ink2); stroke-width: 1.6; }
+.cf-txt { font: 9px var(--sans); fill: var(--ink2); }
+.cf-numc { fill: var(--accent); } .cf-numt { font: bold 9px var(--sans); fill: #fff; }
+.cf-fab, .cf-chart { width: 100%; max-width: 360px; height: auto; display: block; margin: 0 auto; }
+.cf-fab { background: #F3E3EC; border-radius: 10px; padding: 4px; }
+:root[data-theme="dark"] .cf-fab { background: #3A2F40; }
+.cf-st { fill: none; stroke: #B56A8C; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.cf-st.purl { stroke: #9A5577; stroke-width: 2.6; }
+.cf-st.dec { stroke: #7E4766; stroke-width: 2.6; }
+.cf-hole { fill: var(--bg); stroke: #B56A8C; stroke-width: 1; }
+.cf-cable { fill: none; stroke-linecap: round; }
+.cf-cable.front { stroke: #B56A8C; stroke-width: 7; }
+.cf-cable.back { stroke: #8D4F6E; stroke-width: 5; opacity: .75; }
+.cf-cell { fill: var(--card); stroke: var(--line); stroke-width: 1; }
+.cf-sym { fill: none; stroke: var(--ink); stroke-width: 1.6; }
+.cf-rn { font: 8px var(--sans); fill: var(--ink2); }
+.cf-fabwrap { overflow-x: auto; }
+.cf-step { display: flex; gap: 10px; margin: 12px 0; }
+.cf-step > div:last-child { flex: 1; min-width: 0; }
+.cf-step p { margin: 6px 0 0; }
+.cf-sn { flex: 0 0 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
