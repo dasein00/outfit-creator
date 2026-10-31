@@ -553,3 +553,8 @@ details.lgrp summary { padding: 11px 0; font-weight: 600; cursor: pointer; }
 .cf-step > div:last-child { flex: 1; min-width: 0; }
 .cf-step p { margin: 6px 0 0; }
 .cf-sn { flex: 0 0 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+.cf-svg { background: none; box-shadow: 0 1px 3px rgba(46,42,54,.08); }
+.cf-bg1 { stop-color: #FCF8F3; } .cf-bg2 { stop-color: #EFE5DA; }
+:root[data-theme="dark"] .cf-bg1 { stop-color: #34303C; } :root[data-theme="dark"] .cf-bg2 { stop-color: #26232D; }
+.cf-arrow { stroke-width: 2.2; }
+.cf-fab { background: none; padding: 0; border-radius: 10px; }
