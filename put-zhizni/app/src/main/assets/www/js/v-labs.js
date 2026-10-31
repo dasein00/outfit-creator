@@ -124,9 +124,10 @@
   };
 
   /* ---------- редактор результатов ---------- */
-  A.edit.labSession = (s, pre) => {
+  A.edit.labSession = (s, pre, meta) => {
     const isNew = !s;
-    s = s || { date: today(), lab: (sessions()[0] || {}).lab || "", vals: Object.assign({}, pre || {}) };
+    meta = meta || {};
+    s = s || { date: meta.date || today(), lab: meta.lab || (sessions()[0] || {}).lab || "", vals: Object.assign({}, pre || {}), extras: meta.extras || [], doc: meta.doc || "" };
     const has = (g) => A.LABS.some((it) => it.g === g && s.vals[it.k] != null);
     let h = '<div class="form"><div class="fld"><label>Дата сдачи</label><input type="date" name="date" value="' + esc(s.date) + '"></div><div class="fld"><label>Лаборатория</label><input name="lab" value="' + esc(s.lab || "") + '" placeholder="Invitro, Гемотест…"></div></div>';
     h += '<p class="small muted">Заполните только то, что сдавали. Единицы — как в бланке; если лаборатория даёт другие единицы, выберите их рядом с полем.</p>';
@@ -141,6 +142,8 @@
       });
       h += "</div></details>";
     });
+    const ex = meta.extras || s.extras || [];
+    if (ex.length) h += '<details class="lgrp" open><summary>{{i:file-text}} Ещё в документе (' + ex.length + ')</summary><p class="small muted">Этих показателей нет в справочнике приложения — они сохранятся как есть и войдут в описание ИИ.</p>' + ex.map((x) => '<p class="small"><b>' + esc(x.name) + ":</b> " + esc(String(x.value)) + " " + esc(x.unit || "") + (x.ref ? ' <span class="muted">(норма ' + esc(x.ref) + ")</span>" : "") + "</p>").join("") + "</details>";
     h += '<div class="form"><div class="fld full"><label>Заметка</label><textarea name="note" rows="2">' + esc(s.note || "") + "</textarea></div></div>";
     const buttons = [];
     if (!isNew) buttons.push({ label: "Удалить", cls: "danger ghost", onClick: () => { A.confirm("Удалить результаты от " + fmtDate(s.date) + "?", () => { A.remove("labs", s.id); A.closeSheet(); A.refresh(); }, "Удалить", true); return false; } });
@@ -153,11 +156,13 @@
         if (u && +u.value !== 1) v = v / +u.value;
         vals[i.dataset.k] = Math.round(v * 1000) / 1000;
       });
-      if (!Object.keys(vals).length) { A.toast("Введите хотя бы один показатель"); return false; }
+      if (!Object.keys(vals).length && !(meta.extras && meta.extras.length)) { A.toast("Введите хотя бы один показатель"); return false; }
       s.date = w.querySelector('[name="date"]').value || today();
       s.lab = w.querySelector('[name="lab"]').value.trim();
       s.note = w.querySelector('[name="note"]').value.trim();
       s.vals = vals;
+      if (meta.extras) s.extras = meta.extras;
+      if (meta.doc) s.doc = meta.doc;
       A.upsert("labs", s);
       const bad = Object.entries(vals).filter(([k, v]) => ITEM[k] && A.labStatus(ITEM[k], v).lvl !== "ok").length;
       A.toast("Сохранено. " + (bad ? "Вне нормы: " + bad : "Все показатели в норме"));
@@ -187,6 +192,106 @@
     }, { pre: '<p class="small muted">Впишите интервал из вашего бланка — расшифровка будет опираться на него. Оставьте пустым, чтобы вернуть стандартный (' + esc(refText(Object.assign({}, it))) + ").</p>" });
   };
 
+
+  /* ---------- загрузка документа: фото бланка, PDF или текст ---------- */
+  const readAs = (f, how) => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(new Error("Не удалось прочитать файл")); if (how === "text") r.readAsText(f); else r.readAsArrayBuffer(f); });
+  let pdfjs = null;
+  const getPdf = async () => { if (!pdfjs) { pdfjs = await import(new URL("lib/pdf.min.mjs", location.href).href); pdfjs.GlobalWorkerOptions.workerSrc = new URL("lib/pdf.worker.min.mjs", location.href).href; } return pdfjs; };
+  // текст PDF; если это скан без текста — картинки первых страниц
+  const pdfContent = async (buf) => {
+    const lib = await getPdf(), doc = await lib.getDocument({ data: new Uint8Array(buf) }).promise, n = Math.min(doc.numPages, 6);
+    let text = "";
+    for (let i = 1; i <= n; i++) { const pg = await doc.getPage(i), tc = await pg.getTextContent(); let lastY = null; tc.items.forEach((it) => { const y = it.transform ? Math.round(it.transform[5]) : 0; text += (lastY !== null && Math.abs(y - lastY) > 3 ? "\n" : " ") + it.str; lastY = y; }); text += "\n"; }
+    if (text.replace(/\s/g, "").length > 80) return { text };
+    const images = [];
+    for (let i = 1; i <= Math.min(n, 2); i++) { const pg = await doc.getPage(i), vp = pg.getViewport({ scale: 2 }), c = document.createElement("canvas"); c.width = vp.width; c.height = vp.height; await pg.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise; images.push(c.toDataURL("image/jpeg", 0.85)); }
+    return { images };
+  };
+  const EXTRACT = 'Это бланк результатов лабораторных анализов. Извлеки ВСЕ показатели. Ответь ТОЛЬКО JSON без пояснений: {"date":"ГГГГ-ММ-ДД или null","lab":"название лаборатории или пусто","items":[{"name":"название показателя как в бланке","value":число,"unit":"единицы","ref":"референс как в бланке"}]}. Числа — с точкой. Качественные результаты («отрицательно») пропусти.';
+  const parseJson = (t) => { const m = String(t || "").match(/\{[\s\S]*\}/); if (!m) throw new Error("ИИ не вернул список показателей — попробуйте фото чётче или другой файл."); try { return JSON.parse(m[0]); } catch (e) { throw new Error("Не удалось разобрать ответ ИИ — попробуйте ещё раз."); } };
+  // показатель из документа → код справочника (с переводом единиц, если они другие)
+  const mapItems = (items) => {
+    const vals = {}, extras = [];
+    (items || []).forEach((x) => {
+      const v = typeof x.value === "number" ? x.value : A.num(String(x.value).replace(",", "."), null);
+      if (v == null || !isFinite(v)) return;
+      const f = A.parseLabText(String(x.name) + " " + v), k = Object.keys(f)[0], it = k && ITEM[k];
+      if (!it || vals[k] != null) { extras.push({ name: String(x.name), value: v, unit: x.unit || "", ref: x.ref || "" }); return; }
+      const u = String(x.unit || "").toLowerCase().replace(/\s/g, ""), cv = (it.conv || []).find((c) => String(c[0]).toLowerCase().replace(/\s/g, "") === u);
+      vals[k] = Math.round((cv ? v / cv[1] : v) * 1000) / 1000;
+    });
+    return { vals, extras };
+  };
+  A.labDoc = () => {
+    const i = document.createElement("input"); i.type = "file"; i.accept = "image/*,application/pdf,.pdf,text/plain,.txt";
+    i.onchange = async () => {
+      const f = i.files[0]; if (!f) return;
+      A.sheet("Читаю документ", '<p class="muted" id="ldocS">Открываю «' + esc(f.name) + "»…</p>");
+      const say = (t) => { const e = document.getElementById("ldocS"); if (e) e.textContent = t; };
+      try {
+        let res = null;
+        const isPdf = /pdf/i.test(f.type) || /\.pdf$/i.test(f.name), isImg = /^image\//.test(f.type);
+        if (isImg) {
+          if (!A.ai.ready()) throw new Error("Чтобы распознать фото бланка, нужен бесплатный ключ ИИ: Настройки → «ИИ-помощник».");
+          say("Распознаю бланк на фото… до минуты.");
+          res = parseJson(await A.ai.askImage(EXTRACT, await A.ai.shrink(f, 1800), { temperature: 0, max: 3000, cont: false }));
+        } else {
+          let text = "", images = null;
+          if (isPdf) { say("Читаю PDF…"); const c = await pdfContent(await readAs(f, "buf")); text = c.text || ""; images = c.images; }
+          else text = String(await readAs(f, "text"));
+          if (images) {
+            if (!A.ai.ready()) throw new Error("Это скан без текста — его распознаёт ИИ. Подключите бесплатный ключ: Настройки → «ИИ-помощник».");
+            say("Это скан — распознаю страницы…");
+            const all = [];
+            for (const im of images) { const r = parseJson(await A.ai.askImage(EXTRACT, im, { temperature: 0, max: 3000, cont: false })); all.push(r); }
+            res = { date: all.map((r) => r.date).find(Boolean), lab: all.map((r) => r.lab).find(Boolean), items: all.flatMap((r) => r.items || []) };
+          } else if (A.ai.ready()) {
+            say("Нахожу показатели…");
+            try { res = parseJson(await A.ai.ask(EXTRACT + "\n\nТЕКСТ БЛАНКА:\n" + text.slice(0, 18000), { temperature: 0, max: 3000, cont: false })); }
+            catch (e) { res = null; }
+          }
+          if (!res) { const off = A.parseLabText(text); res = { items: Object.keys(off).map((k) => ({ name: ITEM[k].n, value: off[k], unit: ITEM[k].u })) }; }
+        }
+        const m = mapItems(res.items);
+        const n = Object.keys(m.vals).length + m.extras.length;
+        if (!n) throw new Error("Показатели в документе не найдены. Попробуйте фото ровнее и ближе или вставьте текст через «Вставить из бланка».");
+        A.closeSheet();
+        setTimeout(() => {
+          A.toast("Найдено показателей: " + n + ". Проверьте и сохраните.");
+          A.edit.labSession(null, m.vals, { date: /^\d{4}-\d{2}-\d{2}$/.test(res.date || "") ? res.date : today(), lab: res.lab || "", extras: m.extras, doc: f.name });
+        }, 260);
+      } catch (e) { const el = document.getElementById("ldocS"); if (el) { el.className = "warn"; el.textContent = e.message; } else A.toast(e.message); }
+    };
+    i.click();
+  };
+
+  /* ---------- описание и рекомендации ИИ по расшифровке приложения ---------- */
+  const aiLabs = async (s) => {
+    const L = latest(), b = body();
+    const lines = Object.keys(L).filter((k) => ITEM[k]).map((k) => {
+      const it = ITEM[k], st = A.labStatus(it, L[k].v), pv = prevOf(k), adv = st.side === "lo" ? it.lo : st.side === "hi" ? it.hi : null;
+      return "— " + it.n + ": " + fv(it, L[k].v) + " " + it.u + " (норма " + refText(it) + "; " + st.word + (st.zone ? ", " + st.zone : "") + "; сдано " + L[k].d + ")" + (pv ? " — раньше " + fv(it, pv.v) + " (" + pv.d + ")" : "") +
+        (adv ? "\n   Возможные причины по справочнику: " + adv.c + "\n   Что советует справочник: " + adv.d : "");
+    });
+    const iv = indexValues().map((r) => "— " + r.ix.n + ": " + fmtN(r.x, 2) + " (" + r.ix.zone(r.x)[1] + ")");
+    const ex = (s.extras || []).map((x) => "— " + x.name + ": " + x.value + " " + (x.unit || "") + (x.ref ? " (норма в бланке " + x.ref + ")" : ""));
+    const prompt = "Человек: " + (b.sex === "m" ? "мужчина" : "женщина") + (b.age ? ", " + b.age + " лет" : "") + (b.weight ? ", вес " + b.weight + " кг" : "") + ".\nПоследняя сдача: " + s.date + (s.lab ? ", " + s.lab : "") + (s.note ? ". Заметка: " + s.note : "") +
+      "\n\nРАСШИФРОВКА ПРИЛОЖЕНИЯ (значения, нормы по полу и возрасту, статус, причины и советы из медицинского справочника — это основа):\n" + lines.join("\n") +
+      (iv.length ? "\n\nРасчётные индексы:\n" + iv.join("\n") : "") + (ex.length ? "\n\nДругие показатели из бланка:\n" + ex.join("\n") : "") +
+      "\n\nЗАДАЧА: опираясь на расшифровку, опиши предположительную картину и дай рекомендации. Пиши понятным языком, без запугивания. Это не диагноз: говори «может указывать», «стоит проверить»." +
+      "\n## Общая картина\n3–5 предложений: что в целом показывают анализы." +
+      "\n## Что в порядке\nКоротко." +
+      "\n## Отклонения и возможные причины\nПо каждому отклонению: что значит, самые частые причины, с учётом сочетаний показателей и динамики." +
+      "\n## Как показатели связаны\nКакие отклонения говорят об одном (например, низкий гемоглобин + ферритин → дефицит железа)." +
+      "\n## Рекомендации\nПитание и образ жизни, какие анализы досдать, к какому врачу обратиться и с какими вопросами." +
+      "\n## Насколько срочно\nПлановый визит, в ближайшие дни или срочно — по самому серьёзному отклонению.";
+    return A.ai.ask(prompt, { system: "Ты — внимательный врач-терапевт, который объясняет результаты анализов пациенту. Ты не ставишь диагнозов, а описываешь вероятные причины и следующие шаги, опираясь на данные справочника.", max: 3500, expect: ["Общая картина", "Отклонения", "Рекомендации", "Насколько срочно"] });
+  };
+  const aiCard = (s) => '<div class="card"><h3>{{i:sparkles}} Описание и рекомендации</h3>' +
+    (s.ai ? '<div class="ai-out">' + A.ai.fmt(s.ai) + "</div>" : '<p class="small">ИИ прочитает расшифровку приложения (нормы, отклонения, причины и динамику) и опишет предположительную картину и что делать дальше.</p>') +
+    '<button class="btn ' + (s.ai ? "" : "primary ") + 'block" data-a="aiLab" data-id="' + s.id + '" style="margin-top:8px">' + (s.ai ? "Описать заново" : "Получить описание") + '</button><div id="aiLabOut" class="ai-out"></div>' +
+    '<p class="small muted" style="margin-top:8px">Это не диагноз и не замена врачу. Обсудите результаты со своим доктором, особенно отклонения и критические значения.</p></div>';
+
   /* ---------- экраны ---------- */
   const TABS = [["sum", "Сводка"], ["trend", "Динамика"], ["idx", "Индексы"], ["check", "Чек-ап"], ["ref", "Справочник"]];
   const line = (it, L, opts = {}) => {
@@ -197,7 +302,7 @@
 
   function renderSum() {
     const L = latest(), keys = Object.keys(L).filter((k) => ITEM[k]);
-    let h = '<div class="btns" style="margin-bottom:12px"><button class="btn primary" data-a="add">+ Результаты</button><button class="btn" data-a="paste">Вставить из бланка</button><button class="btn" data-a="report">Отчёт для врача</button></div>';
+    let h = '<div class="btns" style="margin-bottom:12px"><button class="btn primary" data-a="add">+ Результаты</button><button class="btn" data-a="doc">{{i:file-text}} Загрузить документ</button><button class="btn" data-a="paste">Вставить из бланка</button><button class="btn" data-a="report">Отчёт для врача</button></div>';
     if (!keys.length) {
       return h + '<div class="card tint"><h3>{{i:droplet}} Анализы крови</h3><p>Записывайте результаты анализов — приложение сравнит их с нормами по полу и возрасту, покажет, что вне нормы и почему, посчитает индексы (СКФ, HOMA-IR, FIB-4, насыщение трансферрина и другие) и построит динамику.</p><p class="small muted">Пол и возраст берутся из «Здоровье → Тело». Расшифровка — справочная и не заменяет врача.</p></div>' + prepCard();
     }
@@ -205,6 +310,7 @@
     const nOk = st.filter((x) => x[1].lvl === "ok").length, nW = st.filter((x) => x[1].lvl === "warn").length, nB = st.filter((x) => x[1].lvl === "bad").length;
     const last = sessions()[0];
     h += '<div class="card"><h3>{{i:clipboard-list}} Последние результаты</h3><div class="row" style="gap:14px">' + A.charts.donut([{ name: "в норме", v: nOk, color: "#5DAE7B" }, { name: "внимание", v: nW, color: "#F0A45B" }, { name: "отклонение", v: nB, color: "#D2555E" }], keys.length, "показателей") + '</div><p class="small muted">Последняя сдача: ' + fmtDate(last.date, { year: true }) + (last.lab ? " · " + esc(last.lab) : "") + " · всего визитов: " + sessions().length + "</p></div>";
+    h += aiCard(last);
     const crit = st.filter((x) => x[1].crit);
     if (crit.length) h += '<div class="card" style="border:2px solid var(--bad)"><h3 style="color:var(--bad)">{{i:triangle-alert}} Критические значения</h3><p>' + crit.map((x) => "<b>" + esc(ITEM[x[0]].n) + "</b>: " + fv(ITEM[x[0]], L[x[0]].v) + " " + esc(ITEM[x[0]].u)).join("<br>") + '</p><p class="small">Такие значения требуют обращения к врачу в ближайшее время; при плохом самочувствии — вызовите скорую (103 / 112).</p></div>';
     const att = st.filter((x) => x[1].lvl !== "ok").sort((a, b) => (a[1].lvl === "bad" ? -1 : 1) - (b[1].lvl === "bad" ? -1 : 1));
@@ -315,7 +421,14 @@
     bind(el, r) {
       A.bind(el, {
         tab(b) { A.go("labs/" + b.dataset.v, true); },
-        add() { A.edit.labSession(); }, paste() { A.edit.labPaste(); }, report() { A.go("labs/report"); },
+        add() { A.edit.labSession(); }, paste() { A.edit.labPaste(); }, report() { A.go("labs/report"); }, doc() { A.labDoc(); },
+        async aiLab(b) {
+          const s = A.byId("labs", b.dataset.id), out = el.querySelector("#aiLabOut"); if (!s) return;
+          if (!A.ai.ready()) { out.innerHTML = A.ai.need(); return; }
+          b.disabled = true; out.innerHTML = '<p class="muted">Анализирую расшифровку… 20–60 секунд.</p>';
+          try { s.ai = await aiLabs(s); A.upsert("labs", s); A.refresh(); }
+          catch (e) { out.innerHTML = A.ai.errHtml(e); b.disabled = false; }
+        },
         ana(b) { A.go("labs/a/" + b.dataset.k); },
         sess(b) { const s = A.byId("labs", b.dataset.id); if (s) A.edit.labSession(s); },
         ref(b) { editRef(ITEM[b.dataset.k]); },

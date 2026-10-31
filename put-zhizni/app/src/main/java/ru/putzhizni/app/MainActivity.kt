@@ -145,9 +145,17 @@ class MainActivity : Activity() {
                 return try {
                     val i = Intent(Intent.ACTION_OPEN_DOCUMENT)
                     i.addCategory(Intent.CATEGORY_OPENABLE)
-                    // для фото (расклады, обрезка) сразу показываем изображения
-                    val img = params.acceptTypes.any { it.startsWith("image") }
-                    i.type = if (img) "image/*" else "*/*"
+                    // только фото (расклады, обрезка) — сразу галерея; смешанный список (фото + PDF + текст) —
+                    // любые файлы, но с подсказкой нужных типов
+                    val acc = params.acceptTypes.flatMap { it.split(",") }.map { it.trim() }.filter { it.isNotEmpty() }
+                    val mimes = acc.mapNotNull { t -> when {
+                        t.contains("/") -> t
+                        t.equals(".pdf", true) -> "application/pdf"
+                        t.equals(".txt", true) -> "text/plain"
+                        t.equals(".json", true) -> "application/json"
+                        else -> null } }.distinct()
+                    if (mimes.isNotEmpty() && mimes.all { it.startsWith("image") }) i.type = "image/*"
+                    else { i.type = "*/*"; if (mimes.size > 1) i.putExtra(Intent.EXTRA_MIME_TYPES, mimes.toTypedArray()) }
                     startActivityForResult(i, REQ_CHOOSER)
                     true
                 } catch (e: Exception) {
