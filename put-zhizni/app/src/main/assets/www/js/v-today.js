@@ -207,11 +207,32 @@
     A._rotAch = a;
     return '<div class="card tint"><h3>{{i:trophy}} Мои достижения</h3><div class="fact" id="achF">' + esc(a[0]) + '</div>' + (a.length > 1 ? '<div class="dots-nav" id="achFd">' + a.map((_, k) => '<i class="' + (k ? "" : "on") + '"></i>').join("") + "</div>" : "") + "</div>";
   };
-  A.factIcon = (c) => ({ "Приметы": "{{i:clover}}", "Эзотерика": "{{i:sparkles}}", "Веды": "{{i:scroll-text}}", "Алхимия": "{{i:flask-conical}}" }[c] || "{{i:sparkle}}");
+  A.factIcon = (c) => ({ "Приметы": "{{i:clover}}", "Эзотерика": "{{i:sparkles}}", "Веды": "{{i:scroll-text}}", "Алхимия": "{{i:flask-conical}}", "Таро": "{{i:wand-sparkles}}", "Луна": "{{i:moon}}", "Сны": "{{i:cloud-moon}}", "Камни": "{{i:gem}}", "Травы": "{{i:leaf}}" }[c] || "{{i:sparkle}}");
+  /* Факты без повторов: весь список перемешан один раз (порядок постоянный), каждый день и каждое «ещё» —
+     следующий по порядку. Повтор начнётся только после того, как пройдены все. */
+  A.allFacts = () => (A._af = A._af || (window.FACTS || []).concat(window.FACTS2 || []));
+  const factOrder = () => {
+    if (A._fo && A._fo.length === A.allFacts().length) return A._fo;
+    const n = A.allFacts().length, o = Array.from({ length: n }, (_, i) => i); let seed = 20261031;
+    const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+    for (let i = n - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; }
+    return (A._fo = o);
+  };
+  const factState = () => { try { return JSON.parse(localStorage.getItem("pz-fact") || "{}"); } catch (e) { return {}; } };
+  const factSave = (st) => { try { localStorage.setItem("pz-fact", JSON.stringify(st)); } catch (e) {} };
+  A.factOfDay = () => {
+    const n = A.allFacts().length, d = today(); let st = factState();
+    if (st.d !== d) { st = { d, pos: ((st.pos == null ? -1 : st.pos) + 1) % n }; factSave(st); }
+    return st.pos % n;
+  };
+  A.factNext = () => { const n = A.allFacts().length, st = factState(); st.d = today(); st.pos = ((st.pos || 0) + 1) % n; factSave(st); return st.pos; };
+  A.factAt = (pos) => A.allFacts()[factOrder()[pos % A.allFacts().length]];
+  A.storyOfDay = (d) => { const S = window.STORIES || []; return S.length ? S[((A.diffDays("2026-01-01", d || today()) % S.length) + S.length) % S.length] : null; };
+  const factHtml = (f) => '<span style="font-size:26px;color:var(--accent)">' + A.factIcon(f[0]) + '</span><div><div class="small muted">' + esc(f[0]) + "</div>" + esc(f[2]) + "</div>";
   C.esoteric = (d) => {
-    const F = window.FACTS, start = (A.diffDays("2026-01-01", d) * 3 + F.length * 10) % F.length;
-    const f = F[start];
-    return '<div class="card peach"><h3>{{i:sparkles}} Интересно знать<span class="sp"></span><button class="link" data-a="factNext" data-i="' + start + '">ещё →</button></h3><div class="fact" id="esoF"><span style="font-size:26px;color:var(--accent)">' + A.factIcon(f[0]) + '</span><div><div class="small muted">' + esc(f[0]) + "</div>" + esc(f[2]) + "</div></div></div>";
+    const f = A.factAt(A.factOfDay()), st = A.storyOfDay(d);
+    return '<div class="card peach"><h3>{{i:sparkles}} Интересно знать<span class="sp"></span><button class="link" data-a="factNext">ещё →</button></h3><div class="fact" id="esoF">' + factHtml(f) + "</div>" +
+      (st ? '<button class="link" data-a="storyDay" style="margin-top:6px">{{i:book-open}} История дня: ' + esc(st[0]) + " →</button>" : "") + "</div>";
   };
 
   A.todayCards = C;
@@ -306,7 +327,8 @@
       A.bind(el, Object.assign(A.dayHandlers(getD), {
         go(b) { A.go(b.dataset.v); },
         weightAdd() { A.edit.weight(getD()); },
-        factNext(b) { const F = window.FACTS, i = (+b.dataset.i + 1) % F.length; b.dataset.i = i; const f = F[i]; el.querySelector("#esoF").innerHTML = '<span style="font-size:26px;color:var(--accent)">' + A.factIcon(f[0]) + '</span><div><div class="small muted">' + esc(f[0]) + "</div>" + esc(f[2]) + "</div>"; },
+        factNext() { const f = A.factAt(A.factNext()); el.querySelector("#esoF").innerHTML = factHtml(f); },
+        storyDay() { const st = A.storyOfDay(getD()); if (st) A.sheet(st[0], '<p>' + esc(st[1]) + '</p><a class="btn block" href="#/grimoire/facts">Все факты и истории</a>'); },
         dnav(b) { const d = getD(); if (b.dataset.v === "pick") return A.pickDate(d, (v) => A.go("today?d=" + v)); const nd = addDays(d, +b.dataset.v); A.go(nd === today() ? "today" : "today?d=" + nd, true); }
       }));
       A._clearRot();

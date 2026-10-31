@@ -48,7 +48,7 @@
   };
 
   /* ---------- экран ---------- */
-  const TABS = [["today", "Сегодня"], ["moon", "Луна"], ["wheel", "Колесо года"], ["corr", "Соответствия"], ["runes", "Руны"], ["rituals", "Ритуалы"], ["cleanse", "Чистки"], ["dreams", "Сонник"], ["book", "Книга теней"]];
+  const TABS = [["today", "Сегодня"], ["moon", "Луна"], ["wheel", "Колесо года"], ["corr", "Соответствия"], ["runes", "Руны"], ["rituals", "Ритуалы"], ["cleanse", "Чистки"], ["dreams", "Сонник"], ["facts", "Факты и истории"], ["book", "Книга теней"]];
   const G2 = () => window.GRIMOIRE2;
   const dreamSymbols = (text) => { const t = String(text || "").toLowerCase().replace(/ё/g, "е"); return G2().DREAMS.symbols.filter((s) => s.k.some((k) => t.includes(k.replace(/ё/g, "е")))); };
   const moonLine = (d) => { const m = A.moon(d), dd = G().DAYS[dow(d)]; return m.ph.name + ", " + m.day + "-й лунный день, Луна в " + m.sign + "; " + dd[0] + " (" + dd[1] + ")"; };
@@ -110,6 +110,12 @@
         h += '<div class="card"><h3>Как читать сны</h3><p class="small">' + esc(D2.intro) + '</p><ul class="small">' + D2.tips.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ul></div>";
         const S = D2.symbols.filter((x) => !q || (x.t + " " + x.k.join(" ")).toLowerCase().includes(q));
         h += '<div class="card"><h3>Словарь символов</h3><input data-c="drQ" placeholder="Поиск: вода, зубы, змея…" value="' + esc(r.params.q || "") + '" style="margin-bottom:8px">' + S.map((x) => '<p class="small"><b>' + esc(x.t) + ".</b> " + esc(x.m) + '. <span class="muted">Психологически: ' + esc(x.p) + ".</span></p>").join("") + "</div>";
+      } else if (sec === "facts") {
+        const F = A.allFacts(), cats = [...new Set(F.map((f) => f[0]))], c = r.params.c || "", S = window.STORIES || [];
+        h += '<div class="card peach"><h3>{{i:book-open}} Истории</h3><div class="list">' + S.map((st, i) => '<div class="item" data-a="story" data-i="' + i + '"><div class="tx"><b>' + esc(st[0]) + "</b><small>" + esc(st[1].slice(0, 80)) + '…</small></div><span class="muted">›</span></div>').join("") + "</div></div>";
+        h += '<div class="chips" style="margin:6px 0 10px"><button class="chip' + (!c ? " on" : "") + '" data-a="fCat" data-v="">Все · ' + F.length + "</button>" + cats.map((x) => '<button class="chip' + (c === x ? " on" : "") + '" data-a="fCat" data-v="' + esc(x) + '">' + esc(x) + " · " + F.filter((f) => f[0] === x).length + "</button>").join("") + "</div>";
+        h += '<div class="card">' + F.filter((f) => !c || f[0] === c).map((f) => '<div class="fact" style="margin:10px 0"><span style="font-size:22px;color:var(--accent)">' + A.factIcon(f[0]) + '</span><div><div class="small muted">' + esc(f[0]) + "</div>" + esc(f[2]) + "</div></div>").join("") + "</div>";
+        h += '<p class="small muted" style="padding:0 6px">Это культурно-исторические сведения о поверьях и традициях, а не утверждения о законах природы.</p>';
       } else if (sec === "book") {
         const B = A.col("bos").slice().sort((a, b) => (b.date > a.date ? 1 : -1));
         h += '<button class="btn primary block" data-a="bNew" style="margin-bottom:12px">{{i:plus}} Новая запись</button>' + (B.length ? '<div class="card"><div class="list">' + B.map((x) => '<div class="item" data-a="bOpen" data-id="' + x.id + '"><div class="tx"><b>' + esc(x.title || "Запись") + "</b><small>" + A.fmtShort(x.date) + " · " + esc(x.moon || "") + (x.kind ? " · " + esc(x.kind) : "") + "</small></div><span class=\"muted\">›</span></div>").join("") + "</div></div>" : A.empty("Книга теней пуста. Записывайте намерения, ритуалы, сны и знаки — через пару месяцев увидите свои закономерности."));
@@ -123,6 +129,8 @@
         rit(b) { const x = G().RITUALS.find((r) => r.t === b.dataset.t); if (x) A.sheet(x.t, '<p class="small"><b>Нужно:</b> ' + x.items.map(esc).join(", ") + "</p><ol>" + x.steps.map((s) => "<li>" + esc(s) + "</li>").join("") + "</ol>"); },
         runeDraw() { const R = G().RUNES, x = R[Math.floor(Math.random() * R.length)], rev = !x[4].startsWith("—") && Math.random() < 0.35; el.querySelector("#runeOut").innerHTML = '<div class="row" style="gap:12px;margin-top:10px"><div class="gr-rune' + (rev ? " rev" : "") + '">' + x[1] + '</div><div class="small"><b>' + x[0] + (rev ? " (перевёрнутая)" : "") + "</b><br>" + esc(rev ? x[4] : x[3]) + "</div></div>"; },
         bNew() { edit(null); },
+        fCat(b) { A.go("grimoire/facts" + (b.dataset.v ? "?c=" + encodeURIComponent(b.dataset.v) : ""), true); },
+        story(b) { const st = (window.STORIES || [])[+b.dataset.i]; if (st) A.sheet(st[0], "<p>" + esc(st[1]) + "</p>"); },
         clM(b) { const x = G2().CLEANSE.methods.find((m) => m.t === b.dataset.t); if (x) A.sheet(x.t, '<p class="small"><b>Время:</b> ' + x.time + " мин · <b>Нужно:</b> " + x.need.map(esc).join(", ") + "</p><ol>" + x.steps.map((s) => "<li>" + esc(s) + "</li>").join("") + '</ol><p class="small muted">' + esc(x.note) + "</p>"); },
         async clAi(b) {
           const out = el.querySelector("#clOut"), q = el.querySelector("#clQ").value.trim();

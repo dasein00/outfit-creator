@@ -11,8 +11,8 @@ android {
         applicationId = "ru.putzhizni.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 14
-        versionName = "2.13"
+        versionCode = 15
+        versionName = "2.14"
     }
 
     // Постоянный ключ подписи: обновления ставятся поверх без потери данных.
