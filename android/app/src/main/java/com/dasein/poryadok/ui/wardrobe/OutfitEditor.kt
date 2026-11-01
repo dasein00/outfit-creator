@@ -323,7 +323,18 @@ fun OutfitEditorScreen(nav: NavHostController) {
                             }
                             SideButton(Icons.Default.Shuffle, "Другая вещь") { ed.replaceWith(s.id, shuffleOne(s)); ed.commit() }
                             SideButton(Icons.Default.Flip, "Отразить") { ed.replace(s.mirrored()); ed.commit() }
-                            SideButton(if (s.fold == 0) Icons.Default.UnfoldLess else Icons.Default.UnfoldMore, if (s.fold == 0) "Сложить" else "Развернуть") { ed.replace(s.nextFold()); ed.commit() }
+                            Box {
+                                var foldMenu by remember { mutableStateOf(false) }
+                                SideButton(if (s.fold == 0) Icons.Default.UnfoldLess else Icons.Default.UnfoldMore, "Сложить") { foldMenu = true }
+                                androidx.compose.material3.DropdownMenu(foldMenu, { foldMenu = false }) {
+                                    listOf(1 to "Низ вверх", 3 to "Верх вниз", 2 to "Правую на левую", 4 to "Левую на правую", 0 to "Развернуть").forEach { (f, label) ->
+                                        if (f != s.fold) androidx.compose.material3.DropdownMenuItem(
+                                            text = { Text(label) },
+                                            onClick = { foldMenu = false; ed.replace(s.foldTo(f)); ed.commit() },
+                                        )
+                                    }
+                                }
+                            }
                             SideButton(Icons.Default.FlipToFront, "Вперёд") { ed.layers = ed.layers.filter { it.id != s.id } + s; ed.commit() }
                             SideButton(Icons.Default.Delete, "Убрать") { ed.layers = ed.layers.filter { it.id != s.id }; ed.sel = null; ed.commit() }
                         }

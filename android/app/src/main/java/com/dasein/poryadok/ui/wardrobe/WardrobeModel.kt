@@ -104,7 +104,7 @@ val KIND_CM = linkedMapOf(
     "tee" to 70f, "longsleeve" to 71f, "polo" to 70f, "shirt" to 77f, "overshirt" to 76f, "sweatshirt" to 68f, "hoodie" to 70f, "sweater" to 66f,
     "jacket" to 66f, "blazer" to 77f, "parka" to 90f, "trench" to 106f, "coat" to 108f,
     "jeans" to 104f, "trousers" to 104f, "joggers" to 98f, "shorts" to 50f,
-    "sneakers" to 30f, "boots" to 34f, "shoes" to 30f, "bag" to 30f, "hat" to 20f, "acc" to 24f,
+    "sneakers" to 30f, "boots" to 34f, "shoes" to 30f, "bag" to 30f, "hat" to 20f, "socks" to 26f, "acc" to 24f,
 )
 
 val KIND_LABELS = mapOf(
@@ -112,7 +112,7 @@ val KIND_LABELS = mapOf(
     "sweatshirt" to "Свитшот", "hoodie" to "Худи", "sweater" to "Свитер", "jacket" to "Куртка", "blazer" to "Пиджак", "parka" to "Парка",
     "trench" to "Плащ, тренч", "coat" to "Пальто", "jeans" to "Джинсы", "trousers" to "Брюки", "joggers" to "Джоггеры", "shorts" to "Шорты",
     "sneakers" to "Кроссовки", "boots" to "Ботинки", "shoes" to "Туфли, лоферы",
-    "bag" to "Сумка", "hat" to "Головной убор", "acc" to "Аксессуар",
+    "bag" to "Сумка", "hat" to "Головной убор", "socks" to "Носки", "acc" to "Аксессуар",
 )
 
 /** Типы во множественном числе — для фильтра. */
@@ -121,13 +121,13 @@ val KIND_PLURAL = mapOf(
     "trousers" to "Брюки", "sneakers" to "Кроссовки", "boots" to "Ботинки", "polo" to "Поло", "overshirt" to "Рубашки-куртки",
     "sweatshirt" to "Свитшоты", "hoodie" to "Худи", "sweater" to "Свитеры", "longsleeve" to "Лонгсливы", "blazer" to "Пиджаки",
     "parka" to "Парки", "joggers" to "Джоггеры", "shorts" to "Шорты", "shoes" to "Туфли и лоферы", "hat" to "Шапки и кепки",
-    "bag" to "Сумки", "acc" to "Аксессуары",
+    "socks" to "Носки", "bag" to "Сумки", "acc" to "Аксессуары",
 )
 
 /** Порядок типов в фильтре: сначала основные. */
 val KIND_ORDER = listOf(
     "shirt", "jacket", "trench", "coat", "tee", "jeans", "trousers", "sneakers", "boots",
-    "polo", "overshirt", "sweatshirt", "hoodie", "sweater", "longsleeve", "blazer", "parka", "joggers", "shorts", "shoes", "hat", "bag", "acc",
+    "polo", "overshirt", "sweatshirt", "hoodie", "sweater", "longsleeve", "blazer", "parka", "joggers", "shorts", "shoes", "hat", "socks", "bag", "acc",
 )
 
 /** Встроенные типы раздела. */
@@ -136,7 +136,7 @@ fun builtinKindsOf(category: String): List<String> = when (category) {
     "верхняя одежда" -> listOf("jacket", "blazer", "parka", "trench", "coat")
     "низ" -> listOf("jeans", "trousers", "joggers", "shorts")
     "обувь" -> listOf("sneakers", "boots", "shoes")
-    else -> listOf("bag", "hat", "acc")
+    else -> listOf("bag", "hat", "socks", "acc")
 }
 
 private val KIND_RULES = listOf(
@@ -144,7 +144,7 @@ private val KIND_RULES = listOf(
     "свитшот" to "sweatshirt", "худи" to "hoodie", "свитер|джемпер|кардиган" to "sweater", "пиджак|блейзер" to "blazer", "парк[аи]" to "parka",
     "плащ|тренч" to "trench", "пальто" to "coat", "бомбер|куртк|ветровк" to "jacket", "шорт" to "shorts", "джоггер|спортивн|штаны" to "joggers",
     "джинс" to "jeans", "брюк|чинос" to "trousers", "кроссов|кед" to "sneakers", "ботин|сапог|челси" to "boots", "туфл|лофер|сандал|мокас" to "shoes",
-    "сумк|рюкзак" to "bag", "кепк|шапк|панам" to "hat",
+    "сумк|рюкзак" to "bag", "кепк|шапк|панам" to "hat", "носк" to "socks",
 )
 
 /** Типы раздела вместе со своими (и без скрытых). */
@@ -264,7 +264,7 @@ fun autoLayout(ctx: Context, ids: List<String>, items: Map<String, WardrobeItem>
 }
 
 object WardrobeSeed {
-    private const val VERSION = 7
+    private const val VERSION = 8
 
     suspend fun run() {
         val s = Graph.prefs.now()
@@ -352,34 +352,38 @@ object Bitmaps {
         folds.get(key)?.let { return it }
         val w = b.width
         val h = b.height
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
         val out: Bitmap
-        val shade = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
-            // Подогнутая часть чуть темнее — видно, что это сгиб.
-            colorFilter = android.graphics.LightingColorFilter(0xFFE6E6E6.toInt(), 0)
-        }
-        if (fold == 1) {
+        if (fold == 1 || fold == 3) {
+            // 1 — низ подогнут вверх (остаётся верх), 3 — верх подогнут вниз (остаётся низ).
             val hh = max(1, h / 2)
             out = Bitmap.createBitmap(w, hh, Bitmap.Config.ARGB_8888)
             val c = Canvas(out)
-            c.drawBitmap(b, android.graphics.Rect(0, 0, w, hh), android.graphics.Rect(0, 0, w, hh), null)
-            // Нижняя половина, перевёрнутая вверх, — поверх.
+            val keep = if (fold == 1) android.graphics.Rect(0, 0, w, hh) else android.graphics.Rect(0, h - hh, w, h)
+            val flap = if (fold == 1) android.graphics.Rect(0, h - hh, w, h) else android.graphics.Rect(0, 0, w, hh)
+            val dst = android.graphics.Rect(0, 0, w, hh)
+            c.drawBitmap(b, keep, dst, paint)
             c.save(); c.scale(1f, -1f, 0f, hh / 2f)
-            c.drawBitmap(b, android.graphics.Rect(0, h - hh, w, h), android.graphics.Rect(0, 0, w, hh), shade)
+            c.drawBitmap(b, flap, dst, paint)
             c.restore()
         } else {
+            // 2 — правая половина на левую (остаётся левая), 4 — левая на правую (остаётся правая).
             val hw = max(1, w / 2)
             out = Bitmap.createBitmap(hw, h, Bitmap.Config.ARGB_8888)
             val c = Canvas(out)
-            c.drawBitmap(b, android.graphics.Rect(0, 0, hw, h), android.graphics.Rect(0, 0, hw, h), null)
+            val keep = if (fold == 2) android.graphics.Rect(0, 0, hw, h) else android.graphics.Rect(w - hw, 0, w, h)
+            val flap = if (fold == 2) android.graphics.Rect(w - hw, 0, w, h) else android.graphics.Rect(0, 0, hw, h)
+            val dst = android.graphics.Rect(0, 0, hw, h)
+            c.drawBitmap(b, keep, dst, paint)
             c.save(); c.scale(-1f, 1f, hw / 2f, 0f)
-            c.drawBitmap(b, android.graphics.Rect(w - hw, 0, w, h), android.graphics.Rect(0, 0, hw, h), shade)
+            c.drawBitmap(b, flap, dst, paint)
             c.restore()
         }
         folds.put(key, out)
         return out
     }
 
-    fun invalidate(src: String) { originals.remove(src); shadows.remove(src); (1..2).forEach { folds.remove("$src#$it"); shadows.remove("$src#$it") } }
+    fun invalidate(src: String) { originals.remove(src); shadows.remove(src); (1..4).forEach { folds.remove("$src#$it"); shadows.remove("$src#$it") } }
 }
 
 /** Матрица, переводящая прямоугольник картинки w×h в четырёхугольник q. */
@@ -556,21 +560,32 @@ suspend fun prepareUserItem(ctx: Context, uri: android.net.Uri): String? = withC
 /** Отразить вещь зеркально (левое ↔ правое). */
 fun LayerData.mirrored(): LayerData = copy(q = listOf(q[2], q[3], q[0], q[1], q[6], q[7], q[4], q[5]))
 
-/**
- * Сложить вещь пополам или развернуть: 0 → 1 (низ подогнут — высота вдвое меньше) → 2 (сложена вдоль — ширина вдвое меньше) → 0.
- * Четырёхугольник меняется так, чтобы верх (или левый край) остался на месте.
- */
-fun LayerData.nextFold(): LayerData {
-    // Развернуть текущий сгиб: дальний край — вдвое дальше от ближнего.
+/** Развернуть сгиб: дальний край — вдвое дальше от оставшегося. Точки: TL(0,1) TR(2,3) BR(4,5) BL(6,7). */
+fun LayerData.unfolded(): LayerData {
     val open = when (fold) {
         1 -> listOf(q[0], q[1], q[2], q[3], 2 * q[4] - q[2], 2 * q[5] - q[3], 2 * q[6] - q[0], 2 * q[7] - q[1])
         2 -> listOf(q[0], q[1], 2 * q[2] - q[0], 2 * q[3] - q[1], 2 * q[4] - q[6], 2 * q[5] - q[7], q[6], q[7])
+        3 -> listOf(2 * q[0] - q[6], 2 * q[1] - q[7], 2 * q[2] - q[4], 2 * q[3] - q[5], q[4], q[5], q[6], q[7])
+        4 -> listOf(2 * q[0] - q[2], 2 * q[1] - q[3], q[2], q[3], q[4], q[5], 2 * q[6] - q[4], 2 * q[7] - q[5])
         else -> q
     }
-    val o = copy(q = open, fold = 0)
-    return when (fold) {
-        0 -> o.copy(q = listOf(open[0], open[1], open[2], open[3]) + o.run { listOf((q[2] + q[4]) / 2, (q[3] + q[5]) / 2, (q[0] + q[6]) / 2, (q[1] + q[7]) / 2) }, fold = 1)
-        1 -> o.copy(q = listOf(open[0], open[1]) + o.run { listOf((q[0] + q[2]) / 2, (q[1] + q[3]) / 2, (q[6] + q[4]) / 2, (q[7] + q[5]) / 2) } + listOf(open[6], open[7]), fold = 2)
-        else -> o
+    return copy(q = open, fold = 0)
+}
+
+/**
+ * Сложить вещь пополам в выбранную сторону (0 — развернуть):
+ * 1 — низ вверх, 2 — правую на левую, 3 — верх вниз, 4 — левую на правую. Оставшаяся половина не сдвигается.
+ */
+fun LayerData.foldTo(f: Int): LayerData {
+    val o = unfolded()
+    val p = o.q
+    fun m(i: Int, j: Int) = listOf((p[i] + p[j]) / 2, (p[i + 1] + p[j + 1]) / 2)
+    val nq = when (f) {
+        1 -> p.subList(0, 4) + m(2, 4) + m(0, 6)
+        2 -> p.subList(0, 2) + m(0, 2) + m(6, 4) + p.subList(6, 8)
+        3 -> m(0, 6) + m(2, 4) + p.subList(4, 8)
+        4 -> m(0, 2) + p.subList(2, 6) + m(6, 4)
+        else -> return o
     }
+    return o.copy(q = nq, fold = f)
 }
