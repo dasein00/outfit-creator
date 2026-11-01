@@ -324,8 +324,15 @@
   };
 
   /* ---------- экран библиотеки ---------- */
+  /* карточка на главной: книга, которую читаете сейчас */
+  A.CARD_NAMES.reading = "Читаю сейчас";
+  A.todayCards.reading = () => {
+    const L = books(), b = L.find((x) => x.opened) || L[0];
+    if (!b) return '<div class="card"><h3>{{i:book-open}} Книги</h3><p class="small">Добавьте книгу с телефона — EPUB, FB2, PDF, MOBI, DjVu, DOCX, TXT — и читайте прямо в приложении.</p><a class="btn sm primary" href="#/reader">Открыть «Книги»</a></div>';
+    return '<div class="card"><h3>{{i:book-open}} Читаю сейчас<span class="sp"></span><a class="link" href="#/reader">все книги →</a></h3><a class="rbook" href="#/reader?open=' + b.id + '" style="text-decoration:none;color:inherit">' + coverHtml(b) + '<div class="tx"><b>' + esc(b.title) + "</b><small>" + esc(b.author || "") + "</small>" + A.bar((b.pct || 0) / 100) + '<small class="muted">' + (b.pct || 0) + "% · продолжить →</small></div></a></div>";
+  };
   A.view("reader", {
-    title: "Читалка", tab: "more",
+    title: "Книги", tab: "reader",
     render() {
       const L = books();
       let h = '<div class="btns" style="margin-bottom:12px"><button class="btn primary" data-a="add">+ Добавить книгу</button></div>';
@@ -336,7 +343,9 @@
       return h;
     },
     actions(box) { box.innerHTML = '<button class="icon-btn" data-add aria-label="Добавить книгу">＋</button>'; box.querySelector("[data-add]").onclick = pickBooks; },
-    bind(el) {
+    bind(el, r) {
+      // переход с главной «Продолжить чтение» — сразу открываем книгу
+      if (r && r.params && r.params.open && A.byId("rbooks", r.params.open)) { const id = r.params.open; history.replaceState(null, "", "#/reader"); setTimeout(() => open(id), 50); }
       A.bind(el, {
         add: pickBooks,
         open(b) { open(b.dataset.id); },

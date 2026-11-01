@@ -149,6 +149,7 @@
     if (!db.profile.cards.includes("dash")) db.profile.cards.unshift("dash");
     if (db.profile.cards.includes("tasks") && !db.profile.hidden.includes("tasks") && !db.profile.__t5) { db.profile.hidden.push("tasks"); db.profile.__t5 = 1; }
     ["weight", "tasks5", "facts", "esoteric"].forEach((c) => { if (!db.profile.cards.includes(c)) db.profile.cards.splice(2, 0, c); });
+    ["reading", "suntzu"].forEach((c) => { if (!db.profile.cards.includes(c)) { const i = db.profile.cards.indexOf("tasks5"); db.profile.cards.splice(i >= 0 ? i + 1 : 2, 0, c); } });
     if (!db.profile.cards.includes("culture")) { const i = db.profile.cards.indexOf("tasks5"); db.profile.cards.splice(i >= 0 ? i + 1 : 2, 0, "culture"); }
     if (!db.profile.cards.includes("grimoire")) { const i = db.profile.cards.indexOf("culture"); db.profile.cards.splice(i >= 0 ? i : 2, 0, "grimoire"); }
     if (!db.profile.cards.includes("pianotutor")) { const i = db.profile.cards.indexOf("word"); db.profile.cards.splice(i >= 0 ? i + 1 : 2, 0, "pianotutor"); }
