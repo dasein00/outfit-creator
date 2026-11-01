@@ -141,7 +141,7 @@ fun builtinKindsOf(category: String): List<String> = when (category) {
 
 private val KIND_RULES = listOf(
     "рубашка-куртк|куртка-рубашк" to "overshirt", "футболк" to "tee", "лонгслив" to "longsleeve", "поло(?![а-яё])" to "polo", "рубашк|сорочк" to "shirt",
-    "свитшот" to "sweatshirt", "худи" to "hoodie", "свитер|джемпер|кардиган" to "sweater", "пиджак|блейзер" to "blazer", "парк[аи]" to "parka",
+    "свитшот" to "sweatshirt", "худи" to "hoodie", "свитер|джемпер|кардиган|пуловер" to "sweater", "водолазк" to "longsleeve", "пиджак|блейзер" to "blazer", "парк[аи]" to "parka",
     "плащ|тренч" to "trench", "пальто" to "coat", "бомбер|куртк|ветровк" to "jacket", "шорт" to "shorts", "джоггер|спортивн|штаны" to "joggers",
     "джинс" to "jeans", "брюк|чинос" to "trousers", "кроссов|кед" to "sneakers", "ботин|сапог|челси" to "boots", "туфл|лофер|сандал|мокас" to "shoes",
     "сумк|рюкзак" to "bag", "кепк|шапк|панам" to "hat", "носк" to "socks",
@@ -264,7 +264,7 @@ fun autoLayout(ctx: Context, ids: List<String>, items: Map<String, WardrobeItem>
 }
 
 object WardrobeSeed {
-    private const val VERSION = 8
+    private const val VERSION = 9
 
     suspend fun run() {
         val s = Graph.prefs.now()
