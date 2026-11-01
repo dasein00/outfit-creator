@@ -197,6 +197,7 @@ private fun Catalog(nav: NavHostController, book: RecipeBook, only: String = ALL
     var base by rememberSaveable { mutableStateOf("") }
     var protein by rememberSaveable { mutableStateOf("") }
     var diff by rememberSaveable { mutableStateOf("") }
+    var prep by rememberSaveable { mutableStateOf("") }
     var sort by rememberSaveable { mutableStateOf(RecipeSort.NAME) }
     var sheet by remember { mutableStateOf<CatalogSheet?>(null) }
     var page by rememberSaveable { mutableIntStateOf(0) }
@@ -238,8 +239,8 @@ private fun Catalog(nav: NavHostController, book: RecipeBook, only: String = ALL
         searched.count { r -> pass(r, group) && inCat(r, cat) && (cuisine.isEmpty() || cuisineOf(r.tags) == cuisine) && test(r) }
     val sorts = RecipeSort.entries.filter { (it != RecipeSort.RELEVANCE || !query.isEmpty) && (it != RecipeSort.FRIDGE || fridgeOn) }
     val sortNow = if (sort in sorts) sort else RecipeSort.NAME
-    val list = remember(matched, cat, cuisine, sortNow, fits) {
-        val base = matched.filter { r -> inCat(r, cat) && (cuisine.isEmpty() || cuisineOf(r.tags) == cuisine) }
+    val list = remember(matched, cat, cuisine, sortNow, fits, prep) {
+        val base = matched.filter { r -> inCat(r, cat) && (cuisine.isEmpty() || cuisineOf(r.tags) == cuisine) && (cat != PREP_CATEGORY || prepKindMatches(prep, r)) }
         when (sortNow) {
             RecipeSort.NAME -> base.sortedWith(compareByDescending<Recipe> { it.favorite }.thenBy { it.name })
             RecipeSort.FRIDGE -> base.sortedWith(compareBy<Recipe> { fits[it.id]?.let(Fridge::rank) ?: 0 }.thenBy { it.name })
@@ -251,7 +252,7 @@ private fun Catalog(nav: NavHostController, book: RecipeBook, only: String = ALL
             RecipeSort.RELEVANCE -> base.sortedByDescending { TextQuery.score(it.name, it.tags + " " + book.ingredients[it.id].orEmpty().joinToString(" ") { i -> i.name }, query) }
         }
     }
-    LaunchedEffect(q, cat, cuisine, filters, sort, time, kcal, fridge, meal, base, protein, diff) { page = 0 }
+    LaunchedEffect(q, cat, cuisine, filters, sort, time, kcal, fridge, meal, base, protein, diff, prep) { page = 0 }
     val p = Paging.clamp(page, list.size, size)
     val pages = Paging.pages(list.size, size)
     val go: (Int) -> Unit = { page = it; scope.launch { listState.animateScrollToItem(1) } }
@@ -373,6 +374,14 @@ private fun Catalog(nav: NavHostController, book: RecipeBook, only: String = ALL
                 FilterButton("Сложность", diffLabel) { sheet = CatalogSheet.DIFFICULTY }
                 FilterButton("Кухня", cuisine.ifEmpty { null }) { sheet = CatalogSheet.CUISINE }
                 FilterButton("Особенности", featuresLabel(filters)) { sheet = CatalogSheet.FEATURES }
+            }
+            // В «Заготовках» — способ: заморозка полуфабрикатов, засолка, копчение, вяление.
+            if (cat == PREP_CATEGORY) {
+                Gap(8.dp)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Pill("Все", prep.isEmpty()) { prep = "" }
+                    PREP_KINDS.forEach { (k, label, _) -> Pill(label, prep == k) { prep = if (prep == k) "" else k } }
+                }
             }
             PageInfo(list.size, p, size, { size = it; page = 0 }, "рецептов")
             PageBar(p, pages, go)
@@ -584,4 +593,21 @@ private fun RecipeQuickMenu(nav: NavHostController, r: Recipe, onDismiss: () -> 
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Закрыть")) } },
     )
+}
+
+private const val PREP_CATEGORY = "Заготовки"
+
+/** Способы заготовки: ключ-тег, подпись и слова в названии или тегах, по которым узнаём и старые рецепты. */
+private val PREP_KINDS = listOf(
+    Triple("заморозка", "Заморозка", listOf("заморозк", "полуфабрикат")),
+    Triple("засолка", "Засолка", listOf("засол", "посол", "солён", "солен", "малосол", "квашен", "маринов")),
+    Triple("копчение", "Копчение", listOf("копч", "копти")),
+    Triple("вяление", "Вяление", listOf("вялен", "джерки", "сушён")),
+)
+
+private fun prepKindMatches(kind: String, r: Recipe): Boolean {
+    if (kind.isEmpty()) return true
+    val words = PREP_KINDS.firstOrNull { it.first == kind }?.third ?: return true
+    val text = (r.name + " " + r.tags).lowercase()
+    return words.any { it in text } || r.tags.split(',').any { it.trim().equals(kind, ignoreCase = true) }
 }

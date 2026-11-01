@@ -149,5 +149,12 @@
 {"id": "fl_v02", "name": "Синяя футболка с принтом Scoofy Doo", "category": "верх", "season": "лето", "kind": "tee", "file": "v02.webp"},
 {"id": "fl_v03", "name": "Белая футболка с чёрно-белым фотопринтом", "category": "верх", "season": "лето", "kind": "tee", "file": "v03.webp"},
 {"id": "fl_v04", "name": "Бежевая водолазка", "category": "верх", "season": "осень", "kind": "longsleeve", "file": "v04.webp"},
-{"id": "fl_v05", "name": "Светло-голубой пуловер с воротником и молнией", "category": "верх", "season": "осень", "kind": "sweatshirt", "file": "v05.webp"}
+{"id": "fl_v05", "name": "Светло-голубой пуловер с воротником и молнией", "category": "верх", "season": "осень", "kind": "sweatshirt", "file": "v05.webp"},
+{"id": "fl_v06", "name": "Чёрная футболка с принтом Spider-Man", "category": "верх", "season": "лето", "kind": "tee", "file": "v06.webp"},
+{"id": "fl_v07", "name": "Бежевый свитшот с воротником-стойкой", "category": "верх", "season": "осень", "kind": "sweatshirt", "file": "v07.webp"},
+{"id": "fl_v08", "name": "Кремовый флисовый свитшот на молнии", "category": "верх", "season": "осень", "kind": "sweatshirt", "file": "v08.webp"},
+{"id": "fl_v09", "name": "Розовый свитшот с принтом «Вселенная»", "category": "верх", "season": "осень", "kind": "sweatshirt", "file": "v09.webp"},
+{"id": "fl_v10", "name": "Серая футболка с металлическим узором", "category": "верх", "season": "лето", "kind": "tee", "file": "v10.webp"},
+{"id": "fl_v11", "name": "Серое худи с принтом мятой банки", "category": "верх", "season": "осень", "kind": "hoodie", "file": "v11.webp"},
+{"id": "fl_v12", "name": "Оливковая футболка с гравюрой ангела", "category": "верх", "season": "лето", "kind": "tee", "file": "v12.webp"}
 ]

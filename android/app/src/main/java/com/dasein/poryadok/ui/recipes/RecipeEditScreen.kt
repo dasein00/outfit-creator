@@ -359,7 +359,7 @@ private fun StepBasics(d: RecipeDraft) {
         }
     }) { Text(if (tagsBusy) "Подбираю теги…" else "✨ Подобрать теги автоматически") }
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
-        listOf("быстро", "высокобелковые", "низкоуглеводные", "вегетарианские", "заготовка", "без сахара", "постное").forEach { t ->
+        listOf("быстро", "высокобелковые", "низкоуглеводные", "вегетарианские", "заготовка", "заморозка", "засолка", "копчение", "без сахара", "постное").forEach { t ->
             val on = t in r.tagList()
             Pill(t, on) {
                 val list = r.tagList().toMutableList()
