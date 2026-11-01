@@ -94,6 +94,14 @@ private val WEEK = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"
 /** Планировщик нарядов как в Fits: «День» — неделя и карточки дня, «Месяц» — сетка с нарядами по дням. */
 @Composable
 fun WardrobePlannerScreen(nav: NavHostController) {
+    Screen(title = "Планировщик", onBack = { nav.popBackStack() }) { pad ->
+        Box(Modifier.padding(pad).fillMaxSize()) { WardrobePlannerContent(nav) }
+    }
+}
+
+/** Календарь образов: «День» и «Месяц» с кнопкой «Сегодня». Вкладка «Календарь» в «Гардеробе». */
+@Composable
+fun WardrobePlannerContent(nav: NavHostController, modifier: Modifier = Modifier) {
     val outfits by observe(emptyList()) { Graph.dao.outfits() }
     val today = Dates.today()
     var tab by rememberSaveable { mutableStateOf(0) }
@@ -119,22 +127,19 @@ fun WardrobePlannerScreen(nav: NavHostController) {
         m
     }
 
-    Screen(
-        title = "Планировщик",
-        onBack = { nav.popBackStack() },
-        actions = { TextButton(onClick = { day = today }) { Text(btnLabel("Сегодня")) } },
-    ) { pad ->
-        Column(Modifier.padding(pad).fillMaxSize()) {
-            TabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.background) {
+    Column(modifier.fillMaxSize()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.background, modifier = Modifier.weight(1f)) {
                 listOf("День", "Месяц").forEachIndexed { i, t -> Tab(tab == i, onClick = { tab = i }, text = { Text(btnLabel(t)) }) }
             }
-            if (tab == 0) DayView(
-                day, today, byDay, forecast, weather == null, weatherError,
-                onDay = { day = it }, onAdd = { pickFor = it }, onOpen = { openEditor(nav, outfit = it.id, view = true) }, onUnplan = { o, d -> unplan(o, d) },
-                onDress = { d, hint -> openEditor(nav, items = WardrobeWeather.pick(hint, allItems), planDay = d) },
-            )
-            else MonthView(today, day, byDay) { d -> day = d; tab = 0 }
+            TextButton(onClick = { day = today; tab = 0 }) { Text(btnLabel("Сегодня")) }
         }
+        if (tab == 0) DayView(
+            day, today, byDay, forecast, weather == null, weatherError,
+            onDay = { day = it }, onAdd = { pickFor = it }, onOpen = { openEditor(nav, outfit = it.id, view = true) }, onUnplan = { o, d -> unplan(o, d) },
+            onDress = { d, hint -> openEditor(nav, items = WardrobeWeather.pick(hint, allItems), planDay = d) },
+        )
+        else MonthView(today, day, byDay) { d -> day = d; tab = 0 }
     }
     pickFor?.let { d ->
         PickOutfitDialog(outfits, d, onDismiss = { pickFor = null }, onNew = { pickFor = null; openEditor(nav, planDay = d) }) { o ->

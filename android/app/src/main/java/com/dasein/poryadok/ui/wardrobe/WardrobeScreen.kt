@@ -1,5 +1,7 @@
 package com.dasein.poryadok.ui.wardrobe
 
+import com.dasein.poryadok.ui.common.swipeTabs
+import com.dasein.poryadok.ui.common.tabSlide
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -30,7 +32,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.PieChart
@@ -96,7 +97,7 @@ import kotlinx.coroutines.withContext
 
 private val SORTS = listOf("Свой порядок", "Сначала новые", "А–Я", "Чаще носят", "Реже носят")
 
-/** Гардероб в духе Fits: «Одежда», «Наряды», «Подборки»; сверху — планировщик и статистика. */
+/** Гардероб в духе Fits: «Одежда», «Наряды», «Календарь»; сверху — статистика. */
 @Composable
 fun WardrobeScreen(nav: NavHostController) {
     val ctx = LocalContext.current
@@ -125,30 +126,31 @@ fun WardrobeScreen(nav: NavHostController) {
         title = "Гардероб",
         onBack = { nav.popBackStack() },
         actions = {
-            IconButton(onClick = { nav.navigate(WARDROBE_PLANNER) }) { Icon(Icons.Default.CalendarMonth, "Планировщик") }
             IconButton(onClick = { stats = true }) { Icon(Icons.Default.PieChart, "Статистика") }
         },
         fab = {
-            FloatingActionButton(elevation = com.dasein.poryadok.ui.common.fabElevation(), containerColor = com.dasein.poryadok.ui.common.fabColor(), contentColor = MaterialTheme.colorScheme.onPrimary, onClick = {
+            // В календаре свой «+» у каждого дня — общий не нужен.
+            if (tab != 2) FloatingActionButton(elevation = com.dasein.poryadok.ui.common.fabElevation(), containerColor = com.dasein.poryadok.ui.common.fabColor(), contentColor = MaterialTheme.colorScheme.onPrimary, onClick = {
                 when (tab) {
                     0 -> picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     1 -> openEditor(nav)
-                    else -> newSet = true
+                    else -> {}
                 }
             }) { Icon(Icons.Default.Add, "Добавить") }
         },
     ) { pad ->
-        Column(Modifier.padding(pad).fillMaxSize()) {
+        // Свайп влево/вправо листает «Одежда → Наряды → Календарь».
+        Column(Modifier.padding(pad).fillMaxSize().swipeTabs(tab, 3) { tab = it }) {
             TabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.background) {
-                listOf("Одежда", "Наряды", "Подборки").forEachIndexed { i, t ->
+                listOf("Одежда", "Наряды", "Календарь").forEachIndexed { i, t ->
                     Tab(tab == i, onClick = { tab = i }, text = { Text(btnLabel(t), fontWeight = if (tab == i) FontWeight.SemiBold else FontWeight.Normal) })
                 }
             }
-            when (tab) {
+            Box(Modifier.weight(1f).tabSlide(tab)) { when (tab) {
                 0 -> ClothesTab(nav, allItems, wears, busy) { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
                 1 -> OutfitsTab(nav, outfits, today) { openEditor(nav, outfit = it.id, view = true) }
-                else -> SetsTab(nav, sets, allItems) { newSet = true }
-            }
+                else -> WardrobePlannerContent(nav)
+            } }
         }
     }
 
