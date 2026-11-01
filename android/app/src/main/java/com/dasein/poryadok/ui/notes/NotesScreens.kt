@@ -131,7 +131,7 @@ fun NotesScreen(nav: NavHostController) {
         onBack = { nav.popBackStack() },
         actions = { IconAction(Ic.search, "Поиск") { searching = !searching; if (!searching) query = "" } },
         fab = {
-            FloatingActionButton(onClick = { nav.navigate(Routes.note(0)) }, containerColor = MaterialTheme.colorScheme.primary) {
+            FloatingActionButton(elevation = com.dasein.poryadok.ui.common.fabElevation(), onClick = { nav.navigate(Routes.note(0)) }, containerColor = com.dasein.poryadok.ui.common.fabColor()) {
                 Icon(Icons.Default.Add, "Новая заметка")
             }
         },
@@ -317,7 +317,7 @@ fun TopsScreen(nav: NavHostController, embedded: Boolean = false) {
     Screen(
         title = "Мои топы",
         onBack = if (embedded) null else ({ nav.popBackStack() }),
-        fab = { FloatingActionButton(onClick = { create = true }, containerColor = MaterialTheme.colorScheme.primary) { Icon(Icons.Default.Add, "Новый топ") } },
+        fab = { FloatingActionButton(elevation = com.dasein.poryadok.ui.common.fabElevation(), onClick = { create = true }, containerColor = com.dasein.poryadok.ui.common.fabColor()) { Icon(Icons.Default.Add, "Новый топ") } },
     ) { pad ->
         LazyColumn(Modifier.padding(pad).cardViewport(), contentPadding = PaddingValues(bottom = 96.dp)) {
             if (lists.isEmpty()) item {

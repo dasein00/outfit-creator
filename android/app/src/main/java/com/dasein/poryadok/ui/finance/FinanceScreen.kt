@@ -143,7 +143,7 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
             IconAction(Ic.document, "Тетрадь финансов") { nav.navigate(Routes.FIN_NOTEBOOK) }
         },
         fab = {
-            FloatingActionButton(
+            FloatingActionButton(elevation = com.dasein.poryadok.ui.common.fabElevation(), 
                 onClick = {
                     when (tab) {
                         6 -> editBudget = Budget(categoryId = -1, monthly = 0.0)
@@ -154,7 +154,7 @@ fun FinanceScreen(nav: NavHostController, settings: Settings, initialTab: Int, o
                         else -> nav.navigate(Routes.txn(0))
                     }
                 },
-                containerColor = MaterialTheme.colorScheme.primary,
+                containerColor = com.dasein.poryadok.ui.common.fabColor(),
             ) { Icon(Icons.Default.Add, "Добавить") }
         },
     ) { pad ->

@@ -116,7 +116,7 @@ fun CalendarScreen(nav: NavHostController, initialTab: Int, onBack: (() -> Unit)
         },
         fab = {
             Box {
-                FloatingActionButton(onClick = { addMenu = true }, containerColor = MaterialTheme.colorScheme.primary) {
+                FloatingActionButton(elevation = com.dasein.poryadok.ui.common.fabElevation(), onClick = { addMenu = true }, containerColor = com.dasein.poryadok.ui.common.fabColor()) {
                     Icon(Icons.Default.Add, "Добавить")
                 }
                 DropdownMenu(expanded = addMenu, onDismissRequest = { addMenu = false }) {

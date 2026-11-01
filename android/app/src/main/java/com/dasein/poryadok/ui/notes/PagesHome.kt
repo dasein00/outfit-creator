@@ -161,7 +161,7 @@ fun PagesHome(nav: NavHostController, embedded: Boolean = false) {
                 }
             }
         },
-        fab = { ExtendedFloatingActionButton(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary, onClick = { create(folder) }, icon = { Icon(Icons.Default.Add, null) }, text = { Text(btnLabel("Страница")) }) },
+        fab = { ExtendedFloatingActionButton(elevation = com.dasein.poryadok.ui.common.fabElevation(), containerColor = com.dasein.poryadok.ui.common.fabColor(), contentColor = MaterialTheme.colorScheme.onPrimary, onClick = { create(folder) }, icon = { Icon(Icons.Default.Add, null) }, text = { Text(btnLabel("Страница")) }) },
     ) { pad ->
         LazyColumn(Modifier.padding(pad).fillMaxSize().cardViewport(), contentPadding = PaddingValues(bottom = 96.dp)) {
             item {

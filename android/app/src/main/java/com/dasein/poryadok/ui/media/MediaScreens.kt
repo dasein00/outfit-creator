@@ -232,11 +232,11 @@ fun MediaListScreen(nav: NavHostController, kind: Int) {
             } else IconAction("habit/24", "Найти онлайн") { nav.navigate(Routes.mediaSearch(kind)) }
         },
         fab = {
-            if (selected.isNotEmpty()) androidx.compose.material3.ExtendedFloatingActionButton(
-                onClick = { bulk = true }, containerColor = MaterialTheme.colorScheme.primary,
+            if (selected.isNotEmpty()) androidx.compose.material3.ExtendedFloatingActionButton(elevation = com.dasein.poryadok.ui.common.fabElevation(), 
+                onClick = { bulk = true }, containerColor = com.dasein.poryadok.ui.common.fabColor(),
                 text = { Text("Действия · ${selected.size}") }, icon = { Glyph("ui:folder", 20.dp) },
             ) else Box {
-                FloatingActionButton(onClick = { menu = true }, containerColor = MaterialTheme.colorScheme.primary) { Icon(Icons.Default.Add, "Добавить") }
+                FloatingActionButton(elevation = com.dasein.poryadok.ui.common.fabElevation(), onClick = { menu = true }, containerColor = com.dasein.poryadok.ui.common.fabColor()) { Icon(Icons.Default.Add, "Добавить") }
                 DropdownMenu(menu, { menu = false }) {
                     DropdownMenuItem(text = { Text(btnLabel("Найти в каталоге")) }, leadingIcon = { Glyph("habit/24", 20.dp) }, onClick = { menu = false; nav.navigate(Routes.mediaSearch(kind)) })
                     if (kind == MediaKind.BOOK) DropdownMenuItem(text = { Text(btnLabel("Читалка: мои файлы книг")) }, leadingIcon = { Glyph("books/08", 20.dp) }, onClick = { menu = false; nav.navigate(com.dasein.poryadok.ui.reader.READER_ROUTE) })

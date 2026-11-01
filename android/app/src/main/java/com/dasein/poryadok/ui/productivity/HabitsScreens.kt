@@ -123,7 +123,7 @@ fun HabitsScreen(nav: NavHostController) {
         title = "Привычки",
         onBack = { nav.popBackStack() },
         fab = {
-            FloatingActionButton(onClick = { nav.navigate(Routes.habitEdit(0)) }, containerColor = MaterialTheme.colorScheme.primary) {
+            FloatingActionButton(elevation = com.dasein.poryadok.ui.common.fabElevation(), onClick = { nav.navigate(Routes.habitEdit(0)) }, containerColor = com.dasein.poryadok.ui.common.fabColor()) {
                 Icon(Icons.Default.Add, "Новая привычка")
             }
         },

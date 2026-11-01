@@ -146,7 +146,7 @@ fun CraftHomeScreen(nav: NavHostController) {
     Screen(
         "Рукоделие", onBack = { nav.popBackStack() },
         fab = {
-            if (kind != null) FloatingActionButton(onClick = { newPattern() }, containerColor = MaterialTheme.colorScheme.primary) {
+            if (kind != null) FloatingActionButton(elevation = com.dasein.poryadok.ui.common.fabElevation(), onClick = { newPattern() }, containerColor = com.dasein.poryadok.ui.common.fabColor()) {
                 Icon(Icons.Default.Add, "Новая схема")
             }
         },

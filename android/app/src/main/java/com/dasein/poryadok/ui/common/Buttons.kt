@@ -260,3 +260,11 @@ fun LabelEditHost() {
         )
     }
 }
+
+/** Цвет плавающих кнопок «+ …»: полупрозрачный — под кнопкой видно текст списка. */
+@androidx.compose.runtime.Composable
+fun fabColor(): androidx.compose.ui.graphics.Color = androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = .72f)
+
+/** Без тени: у полупрозрачной кнопки тень просвечивала бы квадратом. */
+@androidx.compose.runtime.Composable
+fun fabElevation() = androidx.compose.material3.FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)

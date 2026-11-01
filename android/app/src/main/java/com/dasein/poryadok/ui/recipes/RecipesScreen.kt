@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.recipes
 
+import androidx.compose.material.icons.filled.Add
 import com.dasein.poryadok.ui.common.cardViewport
 import com.dasein.poryadok.ui.common.swipeTabs
 import com.dasein.poryadok.ui.common.tabSlide
@@ -116,6 +117,16 @@ fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int, emb
             IconAction("food/04", "Список покупок") { nav.navigate(Routes.SHOPPING) }
             IconAction("food/22", "История готовки") { nav.navigate(Routes.COOK_HISTORY) }
             IconAction("food/28", "Шаблоны меню") { nav.navigate(Routes.PRESETS) }
+        },
+        // «+ Рецепт» поверх списка в «Каталоге» и «Моих» — полупрозрачная, как у упражнений.
+        fab = {
+            if (tab == 0 || tab == 3) androidx.compose.material3.ExtendedFloatingActionButton(
+                elevation = com.dasein.poryadok.ui.common.fabElevation(), containerColor = com.dasein.poryadok.ui.common.fabColor(),
+                contentColor = androidx.compose.material3.MaterialTheme.colorScheme.onPrimary,
+                onClick = { nav.navigate(Routes.recipeEdit(0)) },
+                icon = { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Default.Add, null) },
+                text = { Text(btnLabel("Рецепт")) },
+            )
         },
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize().swipeTabs(tab, RECIPE_TABS.size) { tab = it }) {

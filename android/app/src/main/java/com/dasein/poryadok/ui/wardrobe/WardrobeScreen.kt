@@ -128,7 +128,7 @@ fun WardrobeScreen(nav: NavHostController) {
             IconButton(onClick = { stats = true }) { Icon(Icons.Default.PieChart, "Статистика") }
         },
         fab = {
-            FloatingActionButton(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary, onClick = {
+            FloatingActionButton(elevation = com.dasein.poryadok.ui.common.fabElevation(), containerColor = com.dasein.poryadok.ui.common.fabColor(), contentColor = MaterialTheme.colorScheme.onPrimary, onClick = {
                 when (tab) {
                     0 -> picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     1 -> openEditor(nav)

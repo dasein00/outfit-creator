@@ -136,9 +136,9 @@ fun PressureHomeScreen(nav: NavHostController) {
             if (person != null) IconAction("ui:people", "Профиль") { nav.navigate(PressureRoutes.person(person.id)) }
         },
         fab = {
-            if (person != null) ExtendedFloatingActionButton(
+            if (person != null) ExtendedFloatingActionButton(elevation = com.dasein.poryadok.ui.common.fabElevation(), 
                 onClick = { nav.navigate(PressureRoutes.add(person.id)) },
-                containerColor = MaterialTheme.colorScheme.primary,
+                containerColor = com.dasein.poryadok.ui.common.fabColor(),
                 icon = { Icon(Icons.Default.Add, null) }, text = { Text(btnLabel("Замер")) },
             )
         },

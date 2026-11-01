@@ -103,7 +103,7 @@ fun TasksScreen(nav: NavHostController, onBack: (() -> Unit)? = null, showGoals:
             if (list == L_DONE) IconAction(Ic.trash, "Очистить") { confirmClear = true }
         },
         fab = {
-            if (list != L_DONE) FloatingActionButton(onClick = { quickAdd = true }, containerColor = MaterialTheme.colorScheme.primary) {
+            if (list != L_DONE) FloatingActionButton(elevation = com.dasein.poryadok.ui.common.fabElevation(), onClick = { quickAdd = true }, containerColor = com.dasein.poryadok.ui.common.fabColor()) {
                 Icon(Icons.Default.Add, "Добавить")
             }
         },

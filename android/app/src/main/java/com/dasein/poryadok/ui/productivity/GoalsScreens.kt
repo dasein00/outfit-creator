@@ -97,7 +97,7 @@ fun GoalsScreen(nav: NavHostController, embedded: Boolean = false) {
         title = "Цели",
         onBack = if (embedded) null else ({ nav.popBackStack() }),
         fab = {
-            FloatingActionButton(onClick = { nav.navigate(Routes.goal(0)) }, containerColor = MaterialTheme.colorScheme.primary) {
+            FloatingActionButton(elevation = com.dasein.poryadok.ui.common.fabElevation(), onClick = { nav.navigate(Routes.goal(0)) }, containerColor = com.dasein.poryadok.ui.common.fabColor()) {
                 Icon(Icons.Default.Add, "Новая цель")
             }
         },
