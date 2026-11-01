@@ -132,15 +132,15 @@ fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int, emb
                 FullCenter { CircularProgressIndicator() }
                 return@Column
             }
-            if (tab == 0) com.dasein.poryadok.ui.common.OutlinedButton(
+            if (tab == 0 || tab == 2 || tab == 3) com.dasein.poryadok.ui.common.OutlinedButton(
                 onClick = { nav.navigate(WHAT_TO_COOK_ROUTE) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
             ) { Text("Что приготовить из того, что есть дома?") }
             Column(Modifier.tabSlide(tab)) {
                 when (tab) {
                     0 -> Catalog(nav, book)
                     1 -> MenuPlanner(nav, book, initialMode)
-                    2 -> Favorites(nav, book)
-                    3 -> Mine(nav, book)
+                    2 -> Catalog(nav, book, FAV)
+                    3 -> Catalog(nav, book, MINE)
                     4 -> RecipeDraftsTab(nav)
                     else -> Archive(nav, book)
                 }
@@ -168,8 +168,9 @@ private val KCAL_OPTIONS = listOf("300" to "До 300 ккал", "450" to "До 4
 /** Какой лист фильтра открыт. */
 private enum class CatalogSheet { SORT, ALL, CATEGORY, CUISINE, TIME, KCAL, FEATURES, FRIDGE, MEAL, BASE, PROTEIN, DIFFICULTY }
 
+/** Каталог рецептов с поиском, сортировкой и фильтрами; [only] — тот же интерфейс для «Избранного» (FAV) и «Моих» (MINE). */
 @Composable
-private fun Catalog(nav: NavHostController, book: RecipeBook) {
+private fun Catalog(nav: NavHostController, book: RecipeBook, only: String = ALL) {
     val ctx = LocalContext.current
     var menuFor by remember { mutableStateOf<Recipe?>(null) }
     menuFor?.let { RecipeQuickMenu(nav, it) { menuFor = null } }
@@ -201,8 +202,10 @@ private fun Catalog(nav: NavHostController, book: RecipeBook) {
         }
     }
     val names: (Recipe) -> List<String> = { r -> book.ingredients[r.id].orEmpty().map { it.name } }
-    val fits = remember(book, fridge) {
-        if (fridge.isEmpty && !fridge.onlyHave) emptyMap() else book.recipes.associate { it.id to Fridge.fit(names(it), fridge) }
+    // Вкладки «Избранное» и «Мои» — тот же каталог, но только по своим блюдам.
+    val source = remember(book, only) { if (only == ALL) book.recipes else book.recipes.filter { inCat(it, only) } }
+    val fits = remember(source, fridge) {
+        if (fridge.isEmpty && !fridge.onlyHave) emptyMap() else source.associate { it.id to Fridge.fit(names(it), fridge) }
     }
     val fridgeOn = fits.isNotEmpty()
     // Все фильтры, кроме категории и кухни (по ним считаются числа в списках этих групп).
@@ -217,7 +220,7 @@ private fun Catalog(nav: NavHostController, book: RecipeBook) {
             (skip == "diff" || RecipeFacets.matchesDifficulty(diff, r.difficulty)) &&
             (skip == "fridge" || fits.isEmpty() || fits[r.id]?.ok == true)
     }
-    val searched = remember(book, query) { book.recipes.filter { r -> searchMatch(query, r, book.ingredients[r.id].orEmpty()) } }
+    val searched = remember(source, query) { source.filter { r -> searchMatch(query, r, book.ingredients[r.id].orEmpty()) } }
     val matched = remember(searched, filters, time, kcal, fits, meal, base, protein, diff) { searched.filter { pass(it, null) } }
     /** Сколько блюд даст вариант группы при остальных выбранных фильтрах. */
     fun countWith(group: String, test: (Recipe) -> Boolean): Int =
@@ -241,7 +244,7 @@ private fun Catalog(nav: NavHostController, book: RecipeBook) {
     val p = Paging.clamp(page, list.size, size)
     val pages = Paging.pages(list.size, size)
     val go: (Int) -> Unit = { page = it; scope.launch { listState.animateScrollToItem(1) } }
-    val cuisines = remember(book) { book.recipes.mapNotNull { cuisineOf(it.tags) }.distinct().sorted() }
+    val cuisines = remember(source) { source.mapNotNull { cuisineOf(it.tags) }.distinct().sorted() }
     val active = listOf(
         cat != ALL, cuisine.isNotEmpty(), time.isNotEmpty(), kcal.isNotEmpty(), filters.isNotEmpty(), fridgeOn,
         meal.isNotEmpty(), base.isNotEmpty(), protein.isNotEmpty(), diff.isNotEmpty(),
@@ -250,8 +253,8 @@ private fun Catalog(nav: NavHostController, book: RecipeBook) {
     val baseLabel = RecipeFacets.BASE_OPTIONS.firstOrNull { it.first == base }?.second
     val proteinLabel = RecipeFacets.PROTEIN_OPTIONS.firstOrNull { it.first == protein }?.second?.substringBefore(" (")
     val diffLabel = RecipeFacets.DIFFICULTY_OPTIONS.firstOrNull { it.first == diff }?.second
-    val fridgeProducts = remember(book) {
-        book.recipes.flatMap { r -> names(r).distinct() }.filter { !Fridge.isStaple(it) }
+    val fridgeProducts = remember(source) {
+        source.flatMap { r -> names(r).distinct() }.filter { !Fridge.isStaple(it) }
             .groupingBy { it }.eachCount().entries.sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
             .map { it.key to it.value }
     }
@@ -265,7 +268,7 @@ private fun Catalog(nav: NavHostController, book: RecipeBook) {
             sort = RecipeSort.valueOf(it.first()); sheet = null
         }
         CatalogSheet.CATEGORY -> OptionSheet(
-            "Категория", (listOf(ALL, FAV, MINE) + RECIPE_CATEGORIES).map { c -> FilterOption(c, c, matched.count { inCat(it, c) }) },
+            "Категория", ((if (only == ALL) listOf(ALL, FAV, MINE) else listOf(ALL)) + RECIPE_CATEGORIES).map { c -> FilterOption(c, c, matched.count { inCat(it, c) }) },
             setOf(cat), onDismiss = { sheet = null },
         ) { cat = it.firstOrNull() ?: ALL; sheet = null }
         CatalogSheet.CUISINE -> OptionSheet(
@@ -310,7 +313,7 @@ private fun Catalog(nav: NavHostController, book: RecipeBook) {
         ) { filters = it; sheet = null }
         CatalogSheet.FRIDGE -> FridgeSheet(
             fridgeProducts, fridge,
-            countFor = { spec -> book.recipes.count { Fridge.fit(names(it), spec).ok } },
+            countFor = { spec -> source.count { Fridge.fit(names(it), spec).ok } },
             onDismiss = { sheet = null },
         ) { saveFridge(it); sheet = null }
         CatalogSheet.ALL -> FilterSheet(
@@ -345,6 +348,7 @@ private fun Catalog(nav: NavHostController, book: RecipeBook) {
                 HGap(8.dp)
                 OutlinedButton(onClick = { nav.navigate(Routes.MENU_CREATE) }, Modifier.weight(1f)) { Text(btnLabel("Создать меню"), maxLines = 1, softWrap = false) }
             }
+            if (only == MINE) { Gap(8.dp); RecipeShareButtons(source.sortedByDescending { it.createdAt }) }
             Gap(4.dp)
         }
         item {
@@ -367,7 +371,11 @@ private fun Catalog(nav: NavHostController, book: RecipeBook) {
             Text("Значок архива рядом с сердечком убирает блюдо из каталога", fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 6.dp))
             Gap(6.dp)
         }
-        if (list.isEmpty()) item {
+        if (list.isEmpty() && source.isEmpty() && only == FAV) item {
+            Empty(Ic.heart, "Избранного пока нет", "Отмечайте сердечком блюда, которые готовите чаще всего, — они будут под рукой и первыми в подборе меню.")
+        } else if (list.isEmpty() && source.isEmpty() && only == MINE) item {
+            Empty(Ic.notebook, "Своих рецептов пока нет", "Добавьте блюдо: ингредиенты из базы продуктов, шаги — КБЖУ посчитается автоматически.")
+        } else if (list.isEmpty()) item {
             Empty(Ic.search, "Ничего не нашлось", if (fridgeOn) "Отметьте в холодильнике больше продуктов или выключите «Только если всё есть»." else "Измените запрос или фильтры — или добавьте свой рецепт.")
         }
         items(Paging.slice(list, p, size), key = { it.id }) { r ->
