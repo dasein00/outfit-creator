@@ -145,6 +145,14 @@ fun RecipeThumb(r: Recipe, size: Dp) {
         }
     } else if (bmp != null) {
         Image(bmp, null, Modifier.size(size).clip(RoundedCornerShape(14.dp)), contentScale = ContentScale.Crop)
+    } else if (r.photo.isBlank()) {
+        // Без картинки — иконка блюда нового стиля по названию (или похожего блюда).
+        val key = remember(r.name, r.category) { DishIcons.match(r.name, r.category) }
+        androidx.compose.runtime.CompositionLocalProvider(com.dasein.poryadok.ui.common.LocalIconEditable provides false) {
+            Box(Modifier.size(size).clip(RoundedCornerShape(14.dp)).background(LocalExtra.current.cardHigh), contentAlignment = Alignment.Center) {
+                Glyph(key, if (key.startsWith("dish/")) size * .92f else size * .55f, badge = false)
+            }
+        }
     } else {
         Box(
             Modifier.size(size).clip(RoundedCornerShape(14.dp)).background(LocalExtra.current.cardHigh),

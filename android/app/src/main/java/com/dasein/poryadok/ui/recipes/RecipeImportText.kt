@@ -621,8 +621,11 @@ internal suspend fun applyParsed(d: RecipeDraft, p: RecipeText.Parsed, text: Str
     var r = d.recipe.copy(notes = text.trim())
     // Название — по самому рецепту: фразы из подписи («итак, ингредиенты») не берём; без ИИ — главный продукт.
     val st = com.dasein.poryadok.logic.RecipeStyle
+    // Без названия: похожий по составу встроенный рецепт, иначе «главный продукт с вторым» («Овсяные хлопья с бананом»).
+    val main = ings.filter { it.unit != "по вкусу" }.sortedByDescending { it.grams }.map { it.name.lowercase() }
     val title = p.title?.takeUnless { st.isJunkTitle(it) } ?: g.title?.takeUnless { st.isJunkTitle(it) }
-        ?: ings.firstOrNull { it.unit != "по вкусу" }?.let { "Блюдо: " + it.name.lowercase() }
+        ?: DishIcons.similarName(ings.map { it.name })
+        ?: main.firstOrNull()?.let { m -> if (main.size > 1) "$m с ${main[1]}" else m }
     if ((r.name.isBlank() || st.isJunkTitle(r.name)) && title != null) r = r.copy(name = st.title(title))
     val total = ings.sumOf { it.grams }
     val servings = p.servings ?: RecipeText.guessServings(total)
@@ -649,6 +652,8 @@ internal suspend fun applyParsed(d: RecipeDraft, p: RecipeText.Parsed, text: Str
         tips = r.tips.ifBlank { (p.tips ?: g.tips).let { com.dasein.poryadok.logic.RecipeStyle.bullets(it) } },
         swaps = r.swaps.ifBlank { (p.swaps ?: g.swaps).let { com.dasein.poryadok.logic.RecipeStyle.bullets(it) } },
     )
+    // Иконка из банка нового стиля — по названию, а если такого блюда нет — похожего (своя иконка или фото не трогаются).
+    if (r.photo.isBlank()) r = r.copy(photo = DishIcons.match(r.name, r.category, ings.map { it.name }))
     d.recipe = r
     if (ings.isNotEmpty()) { d.ingredients.clear(); d.ingredients.addAll(ings) }
     if (p.steps.isNotEmpty()) { d.steps.clear(); d.steps.addAll(p.steps.map { com.dasein.poryadok.logic.RecipeStyle.step(it.text) }.filter { it.isNotBlank() }) }
