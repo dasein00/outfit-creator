@@ -24,7 +24,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import com.dasein.poryadok.ui.common.AppSheet
+import com.dasein.poryadok.ui.common.NoSheetInsets
 import com.dasein.poryadok.ui.common.OutlinedButton
 import com.dasein.poryadok.ui.common.Text
 import com.dasein.poryadok.ui.common.TextButton
@@ -183,7 +184,7 @@ fun MediaStatsSheet(kind: Int, items: List<MediaItem>, onDismiss: () -> Unit) {
     val extra = LocalExtra.current
     val scheme = MaterialTheme.colorScheme
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
+    AppSheet(onDismissRequest = onDismiss, sheetState = state) {
         SheetHeader("Статистика: ${MediaKind.plural[kind].lowercase()}", onDismiss)
         LazyColumn(Modifier.heightIn(max = 620.dp).padding(horizontal = 20.dp)) {
             item {

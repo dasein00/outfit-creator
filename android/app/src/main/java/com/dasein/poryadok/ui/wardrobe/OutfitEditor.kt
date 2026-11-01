@@ -61,7 +61,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import com.dasein.poryadok.ui.common.AppSheet
+import com.dasein.poryadok.ui.common.NoSheetInsets
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -375,7 +376,7 @@ fun OutfitEditorScreen(nav: NavHostController) {
     }
     if (bgSheet) {
         val state = rememberModalBottomSheetState()
-        ModalBottomSheet(onDismissRequest = { bgSheet = false }, sheetState = state) {
+        AppSheet(onDismissRequest = { bgSheet = false }, sheetState = state, contentWindowInsets = NoSheetInsets) {
             Column(Modifier.padding(horizontal = 16.dp).safeBottom()) {
                 Text(btnLabel("Изменить фон"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.align(Alignment.CenterHorizontally))
                 Gap(12.dp)
@@ -400,7 +401,7 @@ fun OutfitEditorScreen(nav: NavHostController) {
     }
     if (modeSheet) {
         val state = rememberModalBottomSheetState()
-        ModalBottomSheet(onDismissRequest = { modeSheet = false }, sheetState = state) {
+        AppSheet(onDismissRequest = { modeSheet = false }, sheetState = state, contentWindowInsets = NoSheetInsets) {
             Column(Modifier.padding(horizontal = 16.dp).safeBottom()) {
                 Text(btnLabel("Способ создания наряда"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.align(Alignment.CenterHorizontally))
                 Gap(12.dp)
@@ -500,8 +501,8 @@ fun AddItemsSheet(all: List<WardrobeItem>, initial: Set<String>, onDismiss: () -
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val shown = all.filter { !it.archived && (cat == "все" || it.category == cat) }
         .sortedBy { CATEGORIES.indexOf(it.category).let { i -> if (i < 0) 99 else i } }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
-        Column(Modifier.safeBottom()) {
+    AppSheet(onDismissRequest = onDismiss, sheetState = state, contentWindowInsets = NoSheetInsets) {
+        Column(Modifier.safeBottom(extra = 0.dp)) {
             LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item { Pill("Все", cat == "все") { cat = "все" } }
                 items(CATEGORIES) { c -> Pill(CATEGORY_LABELS[c] ?: c, cat == c) { cat = c } }
@@ -511,8 +512,9 @@ fun AddItemsSheet(all: List<WardrobeItem>, initial: Set<String>, onDismiss: () -
                 modifier = Modifier.fillMaxWidth().padding(32.dp),
             )
             LazyVerticalGrid(
-                GridCells.Fixed(3), Modifier.heightIn(max = 460.dp),
-                contentPadding = PaddingValues(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
+                // Сетка занимает всё свободное место шторки, внизу — только узкая строка «N выбрано · Готово».
+                GridCells.Fixed(3), Modifier.weight(1f, fill = false),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(shown, key = { it.id }) { it0 ->
                     val on = it0.id in picked
@@ -539,7 +541,7 @@ fun AddItemsSheet(all: List<WardrobeItem>, initial: Set<String>, onDismiss: () -
                     }
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("${picked.size} выбрано", color = extra.dim, modifier = Modifier.weight(1f))
                 TextButton(onClick = { onDone(picked) }) { Text(btnLabel("Готово"), fontWeight = FontWeight.SemiBold) }
             }

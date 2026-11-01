@@ -43,7 +43,8 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import com.dasein.poryadok.ui.common.AppSheet
+import com.dasein.poryadok.ui.common.NoSheetInsets
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -305,7 +306,7 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
     if (filters) {
         val state = rememberModalBottomSheetState()
         val palette = remember(all) { all.flatMap { it.colors.split(",") }.map { it.trim() }.filter { it.isNotBlank() }.distinct().take(24) }
-        ModalBottomSheet(onDismissRequest = { filters = false }, sheetState = state) {
+        AppSheet(onDismissRequest = { filters = false }, sheetState = state, contentWindowInsets = NoSheetInsets) {
             Column(Modifier.padding(horizontal = 20.dp).verticalScroll(rememberScrollState()).safeBottom()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(btnLabel("Фильтры"), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
@@ -546,7 +547,7 @@ private fun StatsSheet(all: List<WardrobeItem>, outfits: List<Outfit>, wears: Ma
     val spent = active.sumOf { it.price }
     val never = active.filter { wears[it.id].isNullOrEmpty() }
     val top = active.sortedByDescending { wears[it.id]?.size ?: 0 }.filter { (wears[it.id]?.size ?: 0) > 0 }.take(5)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
+    AppSheet(onDismissRequest = onDismiss, sheetState = state, contentWindowInsets = NoSheetInsets) {
         Column(Modifier.padding(horizontal = 20.dp).verticalScroll(rememberScrollState()).safeBottom()) {
             Text(btnLabel("Статистика гардероба"), style = MaterialTheme.typography.titleLarge)
             Gap(12.dp)

@@ -23,7 +23,8 @@ import androidx.compose.foundation.lazy.items
 import com.dasein.poryadok.ui.common.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import com.dasein.poryadok.ui.common.AppSheet
+import com.dasein.poryadok.ui.common.NoSheetInsets
 import com.dasein.poryadok.ui.common.OutlinedButton
 import androidx.compose.material3.Switch
 import com.dasein.poryadok.ui.common.Text
@@ -257,7 +258,7 @@ private fun ReviewSheet(kind: Int, items: List<MediaParse.KpItem>, onDismiss: ()
     var newList by remember { mutableStateOf(false) }
     val chosen = remember { mutableStateMapOf<String, Boolean>().apply { items.forEach { put(it.id, true) } } }
     var busy by remember { mutableStateOf(false) }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    AppSheet(onDismissRequest = onDismiss) {
         Column(Modifier.padding(horizontal = 16.dp)) {
             Text("Найдено: ${items.size}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Text(btnLabel("Статус для всех"), fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp))

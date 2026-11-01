@@ -30,7 +30,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import com.dasein.poryadok.ui.common.AppSheet
+import com.dasein.poryadok.ui.common.NoSheetInsets
 import androidx.compose.material3.OutlinedTextField
 import com.dasein.poryadok.ui.common.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -150,7 +151,7 @@ fun QuickAddSheet(onDismiss: () -> Unit, defaultDay: Long? = null, defaultProjec
         text = ""
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
+    AppSheet(onDismissRequest = onDismiss, sheetState = state) {
         Column(Modifier.padding(horizontal = 18.dp).padding(bottom = 18.dp).navigationBarsPadding().imePadding()) {
             Text(btnLabel("Новая задача"), style = MaterialTheme.typography.titleLarge)
             Hint("quickadd_syntax", "Пишите как говорите: «завтра в 18», «в пятницу», «каждый день», «!2» — приоритет, «#дом» — список, «@тег»", Modifier.padding(top = 2.dp, bottom = 10.dp), title = "Как писать быстро")

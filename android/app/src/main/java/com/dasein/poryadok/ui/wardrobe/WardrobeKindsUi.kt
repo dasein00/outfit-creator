@@ -31,7 +31,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import com.dasein.poryadok.ui.common.AppSheet
+import com.dasein.poryadok.ui.common.NoSheetInsets
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -108,7 +109,7 @@ fun KindsManagerSheet(onDismiss: () -> Unit) {
     var delete by remember { mutableStateOf<String?>(null) }
     var open by remember { mutableStateOf<String?>(null) }
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
+    AppSheet(onDismissRequest = onDismiss, sheetState = state, contentWindowInsets = NoSheetInsets) {
         Column(Modifier.padding(horizontal = 20.dp).verticalScroll(rememberScrollState()).safeBottom()) {
             Text(btnLabel("Категории"), style = MaterialTheme.typography.titleLarge)
             Text("Нажмите на категорию, чтобы увидеть её вещи и перенести их.", fontSize = 12.sp, color = extra.dim)
@@ -208,7 +209,7 @@ private fun KindItemsSheet(k: String, items: List<WardrobeItem>, onDismiss: () -
     var move by remember { mutableStateOf(false) }
     var del by remember { mutableStateOf(false) }
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
+    AppSheet(onDismissRequest = onDismiss, sheetState = state, contentWindowInsets = NoSheetInsets) {
         Column(Modifier.safeBottom()) {
             Text("${Kinds.plural(k)} · ${items.size}", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 20.dp))
             Text("Отметьте вещи и выберите действие", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(horizontal = 20.dp))

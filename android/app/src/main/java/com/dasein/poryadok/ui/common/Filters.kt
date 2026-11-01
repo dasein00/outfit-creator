@@ -25,7 +25,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
@@ -113,7 +112,7 @@ fun OptionSheet(
 ) {
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var pick by remember { mutableStateOf(selected) }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
+    AppSheet(onDismissRequest = onDismiss, sheetState = state) {
         SheetHeader(title, onDismiss, if (multi && pick.isNotEmpty()) ({ pick = emptySet() }) else null)
         LazyColumn(Modifier.heightIn(max = 460.dp)) {
             items(options, key = { it.key }) { o ->
@@ -168,7 +167,7 @@ fun FilterSheet(
         skipPartiallyExpanded = true,
         confirmValueChange = { swipeToClose || it != androidx.compose.material3.SheetValue.Hidden },
     )
-    ModalBottomSheet(
+    AppSheet(
         onDismissRequest = { if (swipeToClose) onDismiss() },
         sheetState = state,
         containerColor = MaterialTheme.colorScheme.surface,
