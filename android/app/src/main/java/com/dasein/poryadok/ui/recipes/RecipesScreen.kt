@@ -120,7 +120,7 @@ fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int, emb
         },
         // «+ Рецепт» поверх списка в «Каталоге» и «Моих» — полупрозрачная, как у упражнений.
         fab = {
-            if (tab == 0 || tab == 3) androidx.compose.material3.ExtendedFloatingActionButton(
+            if (tab == 0 || tab == 2 || tab == 3) androidx.compose.material3.ExtendedFloatingActionButton(
                 elevation = com.dasein.poryadok.ui.common.fabElevation(), containerColor = com.dasein.poryadok.ui.common.fabColor(),
                 contentColor = androidx.compose.material3.MaterialTheme.colorScheme.onPrimary,
                 onClick = { nav.navigate(Routes.recipeEdit(0)) },
@@ -354,11 +354,8 @@ private fun Catalog(nav: NavHostController, book: RecipeBook, only: String = ALL
             Gap(8.dp)
             SearchField(q, { q = it }, "Блюдо, ингредиенты, тег: «курица рис -грибы»")
             Gap(8.dp)
-            Row {
-                Button(onClick = { nav.navigate(Routes.recipeEdit(0)) }, Modifier.weight(1f)) { Text(btnLabel("+ Свой рецепт"), maxLines = 1, softWrap = false) }
-                HGap(8.dp)
-                OutlinedButton(onClick = { nav.navigate(Routes.MENU_CREATE) }, Modifier.weight(1f)) { Text(btnLabel("Создать меню"), maxLines = 1, softWrap = false) }
-            }
+            // «+ Рецепт» — плавающая кнопка внизу, здесь не дублируется.
+            OutlinedButton(onClick = { nav.navigate(Routes.MENU_CREATE) }, Modifier.fillMaxWidth()) { Text(btnLabel("Создать меню"), maxLines = 1, softWrap = false) }
             if (only == MINE) { Gap(8.dp); RecipeShareButtons(source.sortedByDescending { it.createdAt }) }
             Gap(4.dp)
         }

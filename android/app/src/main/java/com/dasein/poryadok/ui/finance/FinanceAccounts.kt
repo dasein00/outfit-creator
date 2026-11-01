@@ -132,7 +132,7 @@ fun AccountsTab(
                 OutlinedButton(onClick = onStatement, modifier = Modifier.weight(1f)) { Text(btnLabel("По выписке")) }
             }
             Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { onEdit(Account(name = "")) }, modifier = Modifier.weight(1f)) { Text(btnLabel("+ Новый счёт")) }
+                // Новый счёт — плавающей кнопкой «+».
                 OutlinedButton(onClick = { nav.navigate(Routes.txn(0)) }, modifier = Modifier.weight(1f)) { Text(btnLabel("Перевод / операция")) }
             }
             if (accounts.size > 2) ConsolidateAccountsButton(cur)

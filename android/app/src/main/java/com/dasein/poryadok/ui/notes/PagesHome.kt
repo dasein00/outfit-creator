@@ -205,7 +205,6 @@ fun PagesHome(nav: NavHostController, embedded: Boolean = false) {
                         }
                     }
                     Row(Modifier.padding(bottom = 6.dp)) {
-                        TextButton(onClick = { create(opened.id) }) { Text(btnLabel("+ Страница")) }
                         TextButton(onClick = { createFolder(opened.id) }) { Text(btnLabel("+ Папка")) }
                         TextButton(onClick = { open(opened.id) }) { Text(btnLabel("Открыть как страницу")) }
                     }

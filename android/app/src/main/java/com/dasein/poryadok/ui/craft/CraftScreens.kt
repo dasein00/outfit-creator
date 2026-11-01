@@ -179,10 +179,7 @@ fun CraftHomeScreen(nav: NavHostController) {
                             fontSize = 13.sp, color = extra.dim, lineHeight = 18.sp,
                         )
                     }
-                    Gap(10.dp)
-                    Button(onClick = { newPattern() }, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                        Text(btnLabel(when (kind) { CraftPattern.Kind.DIAMOND -> "Новая мозаика из фото"; CraftPattern.Kind.CROSS -> "Новая вышивка из фото"; else -> "Новая схема из фото" }))
-                    }
+                    // Новая схема из фото — плавающей кнопкой «+».
                     if (busy) Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Text(btnLabel("  Готовлю фото…"))
                     }

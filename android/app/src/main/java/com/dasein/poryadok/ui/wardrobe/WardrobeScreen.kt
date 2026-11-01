@@ -266,6 +266,7 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
             }
         }
         if (archive) Text("Архив: вещи, которые вы убрали", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(horizontal = 16.dp))
+        if (busy) Text("Убираю фон с фото…", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = 16.dp))
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),
             contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
@@ -275,17 +276,7 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
             state = gridState,
             modifier = Modifier.weight(1f).cardViewport().onGloballyPositioned { viewport.coords = it },
         ) {
-            item {
-                Box(
-                    Modifier.aspectRatio(.82f).clip(tileShape()).border(1.dp, extra.line, tileShape()).clickable(onClick = onAdd),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.Add, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary)
-                        Text(btnLabel(if (busy) "Убираю фон…" else "Вещь"), fontSize = 11.sp, color = extra.dim)
-                    }
-                }
-            }
+            // Добавить вещь — плавающей кнопкой «+», в сетке не дублируется.
             // «Свой порядок» и «Сначала новые» — группами по категориям, как в Fits и как в «Переместить вещи».
             val groups = if (sort <= 1) shown.groupBy { it.kind() }.toList().sortedBy { Kinds.all().indexOf(it.first).let { i -> if (i < 0) 99 else i } }
             else listOf("" to shown)
@@ -449,15 +440,7 @@ private fun SetsTab(nav: NavHostController, sets: List<WardrobeSet>, all: List<W
                 items(SET_KINDS) { (k, label) -> Pill(label, kind == k) { kind = k } }
             }
         }
-        item {
-            Column(Modifier.clickable(onClick = onNew)) {
-                Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(16.dp)).border(1.dp, extra.line, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Add, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
-                }
-                Text(btnLabel("Новая подборка"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
-                Text("желания, поездка, своё", fontSize = 12.sp, color = extra.dim)
-            }
-        }
+        // Новая подборка — плавающей кнопкой «+».
         items(shown, key = { it.id }) { s ->
             val ids = s.itemIds.split(",").filter { it.isNotBlank() }
             val four = ids.mapNotNull { byId[it] }.take(4)
