@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -39,6 +40,11 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Checkroom
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Flip
+import androidx.compose.material.icons.filled.UnfoldLess
+import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.ExpandLess
@@ -126,9 +132,16 @@ private val BACKGROUNDS = listOf(
 )
 
 class BoardVm : ViewModel() {
+    /** Просмотр образа на весь экран (без редактирования). */
+    var view by mutableStateOf(false)
+    var viewInit = false
+    /** Видны ли кнопки в просмотре (двойное касание переключает). */
+    var viewUi by mutableStateOf(false)
+    /** Образ открыли из просмотра — после сохранения вернуться в просмотр. */
+    var fromView = false
     val ed = Board()
     var loaded = false
-    var editing: Outfit? = null
+    var editing by mutableStateOf<Outfit?>(null)
     var planDay: Long? = null
 }
 
@@ -200,6 +213,7 @@ fun OutfitEditorScreen(nav: NavHostController) {
     var bgSheet by remember { mutableStateOf(false) }
     var modeSheet by remember { mutableStateOf(false) }
     var saveDialog by remember { mutableStateOf(false) }
+    if (!vm.viewInit) { vm.viewInit = true; vm.view = WardrobeBus.view; vm.fromView = WardrobeBus.view; WardrobeBus.view = false }
 
     LaunchedEffect(items) {
         if (vm.loaded || items.isEmpty()) return@LaunchedEffect
@@ -221,7 +235,32 @@ fun OutfitEditorScreen(nav: NavHostController) {
             ed.layers = layout(ctx, ed, start.filter { it in items }, items)
         }
         ed.commit()
-        if (ed.layers.isEmpty()) addSheet = true
+        if (ed.layers.isEmpty() && !vm.view) addSheet = true
+    }
+
+    /** Сохранить открытый образ без диалога (при выходе из редактирования в просмотр). */
+    fun saveQuiet() {
+        val old = vm.editing ?: return
+        val ls = ed.layers
+        val bg = ed.bg
+        val h = ed.h
+        io {
+            val preview = withContext(Dispatchers.Default) { renderPreview(ctx, ls, items, bg, h) } ?: old.preview
+            if (old.preview.isNotBlank() && old.preview != preview) java.io.File(old.preview).delete()
+            val upd = old.copy(preview = preview, layers = encodeLayers(ls), bg = bg)
+            Graph.dao.upsertOutfit(upd)
+            vm.editing = upd
+        }
+    }
+
+    // Просмотр: образ на весь экран без интерфейса; двойное касание показывает и прячет кнопки.
+    if (vm.view) {
+        OutfitViewer(
+            vm, items,
+            onBack = { nav.popBackStack() },
+            onEdit = { vm.view = false; vm.viewUi = false },
+        )
+        return
     }
 
     var layersOpen by remember { mutableStateOf(false) }
@@ -249,7 +288,10 @@ fun OutfitEditorScreen(nav: NavHostController) {
         actions = {
             IconButton(onClick = { ed.undo() }, enabled = ed.canUndo) { Icon(Icons.AutoMirrored.Filled.Undo, "Отменить") }
             IconButton(onClick = { ed.redo() }, enabled = ed.canRedo) { Icon(Icons.AutoMirrored.Filled.Redo, "Вернуть") }
-            TextButton(onClick = { saveDialog = true }, enabled = ed.layers.isNotEmpty()) { Text(btnLabel("Далее →"), fontWeight = FontWeight.SemiBold) }
+            // Сохранённый образ: «Готово» — сохранить и вернуться в просмотр.
+            if (vm.editing != null) TextButton(onClick = { saveQuiet(); ed.sel = null; vm.view = true; vm.viewUi = true }, enabled = ed.layers.isNotEmpty()) {
+                Text(btnLabel("Готово"), fontWeight = FontWeight.SemiBold)
+            } else TextButton(onClick = { saveDialog = true }, enabled = ed.layers.isNotEmpty()) { Text(btnLabel("Далее →"), fontWeight = FontWeight.SemiBold) }
         },
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
@@ -280,6 +322,8 @@ fun OutfitEditorScreen(nav: NavHostController) {
                                 ed.locked = if (locked) ed.locked - s.id else ed.locked + s.id
                             }
                             SideButton(Icons.Default.Shuffle, "Другая вещь") { ed.replaceWith(s.id, shuffleOne(s)); ed.commit() }
+                            SideButton(Icons.Default.Flip, "Отразить") { ed.replace(s.mirrored()); ed.commit() }
+                            SideButton(if (s.fold == 0) Icons.Default.UnfoldLess else Icons.Default.UnfoldMore, if (s.fold == 0) "Сложить" else "Развернуть") { ed.replace(s.nextFold()); ed.commit() }
                             SideButton(Icons.Default.FlipToFront, "Вперёд") { ed.layers = ed.layers.filter { it.id != s.id } + s; ed.commit() }
                             SideButton(Icons.Default.Delete, "Убрать") { ed.layers = ed.layers.filter { it.id != s.id }; ed.sel = null; ed.commit() }
                         }
@@ -503,7 +547,7 @@ private fun BoardCanvas(ed: Board, items: Map<String, WardrobeItem>, onEmptyTap:
             return ed.layers.asReversed().firstOrNull { l ->
                 val loc = toLocal(l.q, w.x, w.y) ?: return@firstOrNull false
                 if (loc.first !in 0f..1f || loc.second !in 0f..1f) return@firstOrNull false
-                val bmp = items[l.id]?.let { Bitmaps.load(ctx, it.src) } ?: return@firstOrNull true
+                val bmp = items[l.id]?.let { Bitmaps.folded(ctx, it.src, l.fold) } ?: return@firstOrNull true
                 (bmp.getPixel((loc.first * (bmp.width - 1)).toInt(), (loc.second * (bmp.height - 1)).toInt()) ushr 24) > 16
             }?.id
         }
@@ -692,4 +736,60 @@ private fun TuckChip(label: String, on: Boolean, onClick: () -> Unit) {
             .background(if (on) MaterialTheme.colorScheme.onSurface else Color.Transparent)
             .border(1.dp, LocalExtra.current.line, RoundedCornerShape(8.dp)).clickable(onClick = onClick).padding(horizontal = 6.dp, vertical = 3.dp),
     )
+}
+
+
+/**
+ * Просмотр образа на весь экран. Сначала — только образ, без интерфейса. Двойное касание показывает кнопки
+ * («Изменить», «Ношу сегодня», «Удалить»); ещё одно двойное касание прячет их. В редактировании двойное касание не работает.
+ */
+@Composable
+private fun OutfitViewer(vm: BoardVm, items: Map<String, WardrobeItem>, onBack: () -> Unit, onEdit: () -> Unit) {
+    val ctx = LocalContext.current
+    val ed = vm.ed
+    val o = vm.editing
+    val today = Dates.today()
+    var confirm by remember { mutableStateOf(false) }
+    val bg = if (ed.bg != 0) Color(ed.bg) else BoardColor
+    val ink = if (bg.red + bg.green + bg.blue < 1.2f) Color.White else BoardInk
+    Box(
+        Modifier.fillMaxSize().background(bg).pointerInput(Unit) { detectTapGestures(onDoubleTap = { vm.viewUi = !vm.viewUi }) },
+    ) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val scale = constraints.maxWidth / BOARD_W
+            // Образ по центру по высоте (он мог быть собран на холсте другой высоты).
+            val contentH = maxOf(ed.h, ed.layers.maxOfOrNull { l -> maxOf(l.q[1], l.q[3], l.q[5], l.q[7]) } ?: 0f) * scale
+            val oy = ((constraints.maxHeight - contentH) / 2f).coerceAtLeast(0f)
+            Canvas(Modifier.fillMaxSize()) { drawIntoCanvas { c -> drawBoard(ctx, c.nativeCanvas, scale, 0f, oy, ed.layers, items) } }
+        }
+        if (vm.viewUi) {
+            Row(
+                Modifier.align(Alignment.TopCenter).fillMaxWidth().background(bg.copy(alpha = .85f))
+                    .statusBarsPadding().padding(horizontal = 4.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Назад", tint = ink) }
+                Text(o?.name ?: "Наряд", color = ink, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            }
+            if (o != null) Row(
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(bg.copy(alpha = .85f)).safeBottom().padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                val worn = today in o.days()
+                ToolButton(Icons.Default.Edit, "Изменить", Modifier.weight(1f)) { onEdit() }
+                ToolButton(Icons.Default.Checkroom, if (worn) "Не ношу" else "Ношу сегодня", Modifier.weight(1f)) {
+                    val days = (if (worn) o.days() - today else o.days() + today).distinct().sorted().joinToString(",")
+                    val upd = o.copy(wornDays = days)
+                    vm.editing = upd
+                    io { Graph.dao.upsertOutfit(upd) }
+                }
+                ToolButton(Icons.Default.Delete, "Удалить", Modifier.weight(1f)) { confirm = true }
+            }
+        }
+    }
+    if (confirm && o != null) com.dasein.poryadok.ui.common.ConfirmDialog("Удалить наряд «${o.name}»?", "", onDismiss = { confirm = false }) {
+        io { if (o.preview.isNotBlank()) java.io.File(o.preview).delete(); Graph.dao.deleteOutfit(o) }
+        confirm = false
+        onBack()
+    }
 }

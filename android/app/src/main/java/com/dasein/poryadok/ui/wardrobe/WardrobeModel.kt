@@ -49,7 +49,13 @@ data class Stroke(val r: Float, val pts: List<Float>)
 
 /** Слой: вещь и её четырёхугольник TL, TR, BR, BL (8 чисел) в координатах доски. */
 @Serializable
-data class LayerData(val id: String, val q: List<Float>, val strokes: List<Stroke> = emptyList())
+data class LayerData(
+    val id: String,
+    val q: List<Float>,
+    val strokes: List<Stroke> = emptyList(),
+    /** Сложена пополам: 0 — нет, 1 — низ подогнут вверх, 2 — сложена вдоль (половина ширины). */
+    val fold: Int = 0,
+)
 
 @Serializable
 private data class ManifestItem(val id: String, val name: String, val category: String, val season: String, val file: String, val kind: String = "")
@@ -258,7 +264,7 @@ fun autoLayout(ctx: Context, ids: List<String>, items: Map<String, WardrobeItem>
 }
 
 object WardrobeSeed {
-    private const val VERSION = 6
+    private const val VERSION = 7
 
     suspend fun run() {
         val s = Graph.prefs.now()
@@ -336,7 +342,44 @@ object Bitmaps {
         }
     }
 
-    fun invalidate(src: String) { originals.remove(src); shadows.remove(src) }
+    private val folds = LruCache<String, Bitmap>(30)
+
+    /** Картинка вещи, сложенной пополам: [fold] 1 — нижняя половина подогнута наверх, 2 — правая половина сложена на левую. */
+    fun folded(ctx: Context, src: String, fold: Int): Bitmap? {
+        val b = load(ctx, src) ?: return null
+        if (fold == 0) return b
+        val key = "$src#$fold"
+        folds.get(key)?.let { return it }
+        val w = b.width
+        val h = b.height
+        val out: Bitmap
+        val shade = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            // Подогнутая часть чуть темнее — видно, что это сгиб.
+            colorFilter = android.graphics.LightingColorFilter(0xFFE6E6E6.toInt(), 0)
+        }
+        if (fold == 1) {
+            val hh = max(1, h / 2)
+            out = Bitmap.createBitmap(w, hh, Bitmap.Config.ARGB_8888)
+            val c = Canvas(out)
+            c.drawBitmap(b, android.graphics.Rect(0, 0, w, hh), android.graphics.Rect(0, 0, w, hh), null)
+            // Нижняя половина, перевёрнутая вверх, — поверх.
+            c.save(); c.scale(1f, -1f, 0f, hh / 2f)
+            c.drawBitmap(b, android.graphics.Rect(0, h - hh, w, h), android.graphics.Rect(0, 0, w, hh), shade)
+            c.restore()
+        } else {
+            val hw = max(1, w / 2)
+            out = Bitmap.createBitmap(hw, h, Bitmap.Config.ARGB_8888)
+            val c = Canvas(out)
+            c.drawBitmap(b, android.graphics.Rect(0, 0, hw, h), android.graphics.Rect(0, 0, hw, h), null)
+            c.save(); c.scale(-1f, 1f, hw / 2f, 0f)
+            c.drawBitmap(b, android.graphics.Rect(w - hw, 0, w, h), android.graphics.Rect(0, 0, hw, h), shade)
+            c.restore()
+        }
+        folds.put(key, out)
+        return out
+    }
+
+    fun invalidate(src: String) { originals.remove(src); shadows.remove(src); (1..2).forEach { folds.remove("$src#$it"); shadows.remove("$src#$it") } }
 }
 
 /** Матрица, переводящая прямоугольник картинки w×h в четырёхугольник q. */
@@ -370,8 +413,9 @@ fun drawBoard(ctx: Context, canvas: Canvas, scale: Float, ox: Float, oy: Float, 
     val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     layers.forEach { l ->
         val item = items[l.id] ?: return@forEach
-        val bmp = Bitmaps.load(ctx, item.src) ?: return@forEach
-        drawItem(canvas, item.src, bmp, quadMatrix(bmp.width.toFloat(), bmp.height.toFloat(), l.q, scale, ox, oy), 9f * scale, paint)
+        val bmp = Bitmaps.folded(ctx, item.src, l.fold) ?: return@forEach
+        val key = if (l.fold == 0) item.src else "${item.src}#${l.fold}"
+        drawItem(canvas, key, bmp, quadMatrix(bmp.width.toFloat(), bmp.height.toFloat(), l.q, scale, ox, oy), 9f * scale, paint)
     }
 }
 
@@ -506,4 +550,27 @@ suspend fun prepareUserItem(ctx: Context, uri: android.net.Uri): String? = withC
         f.outputStream().use { scaled.compress(Bitmap.CompressFormat.PNG, 100, it) }
         f.absolutePath
     }.getOrNull()
+}
+
+
+/** Отразить вещь зеркально (левое ↔ правое). */
+fun LayerData.mirrored(): LayerData = copy(q = listOf(q[2], q[3], q[0], q[1], q[6], q[7], q[4], q[5]))
+
+/**
+ * Сложить вещь пополам или развернуть: 0 → 1 (низ подогнут — высота вдвое меньше) → 2 (сложена вдоль — ширина вдвое меньше) → 0.
+ * Четырёхугольник меняется так, чтобы верх (или левый край) остался на месте.
+ */
+fun LayerData.nextFold(): LayerData {
+    // Развернуть текущий сгиб: дальний край — вдвое дальше от ближнего.
+    val open = when (fold) {
+        1 -> listOf(q[0], q[1], q[2], q[3], 2 * q[4] - q[2], 2 * q[5] - q[3], 2 * q[6] - q[0], 2 * q[7] - q[1])
+        2 -> listOf(q[0], q[1], 2 * q[2] - q[0], 2 * q[3] - q[1], 2 * q[4] - q[6], 2 * q[5] - q[7], q[6], q[7])
+        else -> q
+    }
+    val o = copy(q = open, fold = 0)
+    return when (fold) {
+        0 -> o.copy(q = listOf(open[0], open[1], open[2], open[3]) + o.run { listOf((q[2] + q[4]) / 2, (q[3] + q[5]) / 2, (q[0] + q[6]) / 2, (q[1] + q[7]) / 2) }, fold = 1)
+        1 -> o.copy(q = listOf(open[0], open[1]) + o.run { listOf((q[0] + q[2]) / 2, (q[1] + q[3]) / 2, (q[6] + q[4]) / 2, (q[7] + q[5]) / 2) } + listOf(open[6], open[7]), fold = 2)
+        else -> o
+    }
 }

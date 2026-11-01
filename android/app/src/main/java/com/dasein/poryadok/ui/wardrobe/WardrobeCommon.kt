@@ -68,10 +68,13 @@ object WardrobeBus {
     var pendingOutfit: Long? = null
     var startItems: List<String> = emptyList()
     var planDay: Long? = null
+    /** Открыть сохранённый образ в просмотре на весь экран (двойное касание — интерфейс). */
+    var view: Boolean = false
 }
 
 /** Открыть редактор наряда. */
-fun openEditor(nav: androidx.navigation.NavHostController, outfit: Long? = null, items: List<String> = emptyList(), planDay: Long? = null) {
+fun openEditor(nav: androidx.navigation.NavHostController, outfit: Long? = null, items: List<String> = emptyList(), planDay: Long? = null, view: Boolean = false) {
+    WardrobeBus.view = view && outfit != null
     WardrobeBus.pendingOutfit = outfit
     WardrobeBus.startItems = items
     WardrobeBus.planDay = planDay

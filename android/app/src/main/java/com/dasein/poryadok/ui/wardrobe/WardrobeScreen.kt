@@ -145,7 +145,7 @@ fun WardrobeScreen(nav: NavHostController) {
             }
             when (tab) {
                 0 -> ClothesTab(nav, allItems, wears, busy) { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
-                1 -> OutfitsTab(nav, outfits, today) { openOutfit = it }
+                1 -> OutfitsTab(nav, outfits, today) { openEditor(nav, outfit = it.id, view = true) }
                 else -> SetsTab(nav, sets, allItems) { newSet = true }
             }
         }

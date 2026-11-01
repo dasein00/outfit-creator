@@ -130,7 +130,7 @@ fun WardrobePlannerScreen(nav: NavHostController) {
             }
             if (tab == 0) DayView(
                 day, today, byDay, forecast, weather == null, weatherError,
-                onDay = { day = it }, onAdd = { pickFor = it }, onOpen = { open = it }, onUnplan = { o, d -> unplan(o, d) },
+                onDay = { day = it }, onAdd = { pickFor = it }, onOpen = { openEditor(nav, outfit = it.id, view = true) }, onUnplan = { o, d -> unplan(o, d) },
                 onDress = { d, hint -> openEditor(nav, items = WardrobeWeather.pick(hint, allItems), planDay = d) },
             )
             else MonthView(today, day, byDay) { d -> day = d; tab = 0 }

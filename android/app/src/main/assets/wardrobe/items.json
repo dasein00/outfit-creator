@@ -116,5 +116,14 @@
 {"id": "fl_y03", "name": "Оливковый бомбер с меховой подкладкой", "category": "верхняя одежда", "season": "зима", "kind": "jacket", "file": "y03.webp"},
 {"id": "fl_y04", "name": "Оливковая парка с капюшоном", "category": "верхняя одежда", "season": "зима", "kind": "parka", "file": "y04.webp"},
 {"id": "fl_y05", "name": "Коричневые дерби", "category": "обувь", "season": "любой", "kind": "shoes", "file": "y05.webp"},
-{"id": "fl_y06", "name": "Светлые беговые кроссовки", "category": "обувь", "season": "любой", "kind": "sneakers", "file": "y06.webp"}
+{"id": "fl_y06", "name": "Светлые беговые кроссовки", "category": "обувь", "season": "любой", "kind": "sneakers", "file": "y06.webp"},
+{"id": "fl_z00", "name": "Бежевые джоггеры с надписью TRUE RLGN", "category": "низ", "season": "осень", "kind": "joggers", "file": "z00.webp"},
+{"id": "fl_z01", "name": "Белая рубашка Befree с чёрными стрелками", "category": "верх", "season": "лето", "kind": "shirt", "file": "z01.webp"},
+{"id": "fl_z02", "name": "Белые шорты с вышивкой TOKYO и Tommy Hilfiger", "category": "низ", "season": "лето", "kind": "shorts", "file": "z02.webp"},
+{"id": "fl_z03", "name": "Выцветшие синие джинсы TIGER", "category": "низ", "season": "любой", "kind": "jeans", "file": "z03.webp"},
+{"id": "fl_z04", "name": "Голубые шорты с карманами и ремешками", "category": "низ", "season": "лето", "kind": "shorts", "file": "z04.webp"},
+{"id": "fl_z05", "name": "Джинсы TIGER с выцветшими акцентами", "category": "низ", "season": "любой", "kind": "jeans", "file": "z05.webp"},
+{"id": "fl_z06", "name": "Светло-серый пиджак Zara", "category": "верхняя одежда", "season": "любой", "kind": "blazer", "file": "z06.webp"},
+{"id": "fl_z07", "name": "Светлые джинсы Straight Fit с потёртостями", "category": "низ", "season": "любой", "kind": "jeans", "file": "z07.webp"},
+{"id": "fl_z08", "name": "Футболка с силуэтами пальм", "category": "верх", "season": "лето", "kind": "tee", "file": "z08.webp"}
 ]
