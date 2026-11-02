@@ -114,6 +114,9 @@ fun WardrobeScreen(nav: NavHostController) {
     var busy by remember { mutableStateOf(false) }
     var newSet by remember { mutableStateOf(false) }
     var openOutfit by remember { mutableStateOf<Outfit?>(null) }
+    // Режим перемещения вещей: пока он открыт, свайп не листает вкладки — палец нужен для перетаскивания.
+    var reorder by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(tab) { if (tab != 0) reorder = false }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
@@ -140,14 +143,14 @@ fun WardrobeScreen(nav: NavHostController) {
         },
     ) { pad ->
         // Свайп влево/вправо листает «Одежда → Наряды → Календарь».
-        Column(Modifier.padding(pad).fillMaxSize().swipeTabs(tab, 3) { tab = it }) {
+        Column(Modifier.padding(pad).fillMaxSize().then(if (reorder) Modifier else Modifier.swipeTabs(tab, 3) { tab = it })) {
             TabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.background) {
                 listOf("Одежда", "Наряды", "Календарь").forEachIndexed { i, t ->
                     Tab(tab == i, onClick = { tab = i }, text = { Text(btnLabel(t), fontWeight = if (tab == i) FontWeight.SemiBold else FontWeight.Normal) })
                 }
             }
             Box(Modifier.weight(1f).tabSlide(tab)) { when (tab) {
-                0 -> ClothesTab(nav, allItems, wears, busy) { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+                0 -> ClothesTab(nav, allItems, wears, busy, reorder, { reorder = it }) { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
                 1 -> OutfitsTab(nav, outfits, today) { openEditor(nav, outfit = it.id, view = true) }
                 else -> WardrobePlannerContent(nav)
             } }
@@ -173,7 +176,10 @@ fun WardrobeScreen(nav: NavHostController) {
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: Map<String, List<Long>>, busy: Boolean, onAdd: () -> Unit) {
+private fun ClothesTab(
+    nav: NavHostController, all: List<WardrobeItem>, wears: Map<String, List<Long>>, busy: Boolean,
+    reorder: Boolean, setReorder: (Boolean) -> Unit, onAdd: () -> Unit,
+) {
     val extra = LocalExtra.current
     val ctx = LocalContext.current
     // Фильтр по типам вещей (рубашки, куртки, джинсы…), несколько сразу; пусто — все.
@@ -181,7 +187,6 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
     val types = typesCsv.split(",").filter { it.isNotBlank() }.toSet()
     fun setTypes(t: Set<String>) { typesCsv = t.joinToString(",") }
     var order by remember { mutableStateOf(WardrobeOrder.get(ctx)) }
-    var reorder by remember { mutableStateOf(false) }
     var bgDialog by remember { mutableStateOf(false) }
     var typeQuery by remember { mutableStateOf("") }
     var manageKinds by remember { mutableStateOf(false) }
@@ -213,9 +218,9 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
     val kindCounts = remember(pool) { pool.groupingBy { it.kind() }.eachCount() }
     if (reorder) {
         // Перемещаем ровно то, что видно на экране (с фильтрами), в том же порядке; остальное остаётся на своих местах.
-        ReorderGrid(WardrobeOrder.sort(shown, order), onCancel = { reorder = false }) { ids, moved ->
+        ReorderGrid(WardrobeOrder.sort(shown, order), onCancel = { setReorder(false) }) { ids, moved ->
             val merged = WardrobeOrder.merge(WardrobeOrder.sort(all, order).map { it.id }, ids)
-            WardrobeOrder.set(ctx, merged); order = merged; sort = 0; reorder = false
+            WardrobeOrder.set(ctx, merged); order = merged; sort = 0; setReorder(false)
             // Вещь перенесли в другую группу — меняем её категорию (и раздел, если категория из другого раздела).
             val byId = all.associateBy { it.id }
             io { moved.forEach { (id, k) -> byId[id]?.let { Graph.dao.upsertWardrobeItem(it.copy(category = Kinds.parentOf(k), pct = k)) } } }
@@ -262,7 +267,7 @@ private fun ClothesTab(nav: NavHostController, all: List<WardrobeItem>, wears: M
                 IconButton(onClick = { sortMenu = true }) { Icon(Icons.Default.Sort, "Сортировка") }
                 DropdownMenu(sortMenu, { sortMenu = false }) {
                     SORTS.forEachIndexed { i, s -> DropdownMenuItem({ Text(btnLabel(s), fontWeight = if (i == sort) FontWeight.SemiBold else FontWeight.Normal) }, { sort = i; sortMenu = false }) }
-                    DropdownMenuItem({ Text(btnLabel("Переместить вещи…")) }, { sortMenu = false; reorder = true })
+                    DropdownMenuItem({ Text(btnLabel("Переместить вещи…")) }, { sortMenu = false; setReorder(true) })
                     DropdownMenuItem({ Text(btnLabel("Фон плашек…")) }, { sortMenu = false; bgDialog = true })
                     DropdownMenuItem({ Text(btnLabel("Категории…")) }, { sortMenu = false; manageKinds = true })
                 }
