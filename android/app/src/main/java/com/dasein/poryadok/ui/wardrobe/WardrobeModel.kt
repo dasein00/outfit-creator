@@ -104,14 +104,14 @@ val KIND_CM = linkedMapOf(
     "tee" to 70f, "longsleeve" to 71f, "polo" to 70f, "shirt" to 77f, "overshirt" to 76f, "sweatshirt" to 68f, "hoodie" to 70f, "sweater" to 66f,
     "jacket" to 66f, "blazer" to 77f, "parka" to 90f, "trench" to 106f, "coat" to 108f,
     "jeans" to 104f, "trousers" to 104f, "joggers" to 98f, "shorts" to 50f,
-    "sneakers" to 30f, "boots" to 34f, "shoes" to 30f, "bag" to 30f, "hat" to 20f, "socks" to 26f, "acc" to 24f,
+    "sneakers" to 30f, "boots" to 34f, "shoes" to 30f, "sandals" to 28f, "bag" to 30f, "hat" to 20f, "socks" to 26f, "acc" to 24f,
 )
 
 val KIND_LABELS = mapOf(
     "tee" to "Футболка", "longsleeve" to "Лонгслив", "polo" to "Поло", "shirt" to "Рубашка", "overshirt" to "Рубашка-куртка",
     "sweatshirt" to "Свитшот", "hoodie" to "Худи", "sweater" to "Свитер", "jacket" to "Куртка", "blazer" to "Пиджак", "parka" to "Парка",
     "trench" to "Плащ, тренч", "coat" to "Пальто", "jeans" to "Джинсы", "trousers" to "Брюки", "joggers" to "Джоггеры", "shorts" to "Шорты",
-    "sneakers" to "Кроссовки", "boots" to "Ботинки", "shoes" to "Туфли, лоферы",
+    "sneakers" to "Кроссовки", "boots" to "Ботинки", "shoes" to "Туфли, лоферы", "sandals" to "Сандалии, шлёпанцы",
     "bag" to "Сумка", "hat" to "Головной убор", "socks" to "Носки", "acc" to "Аксессуар",
 )
 
@@ -120,14 +120,14 @@ val KIND_PLURAL = mapOf(
     "shirt" to "Рубашки", "jacket" to "Куртки", "trench" to "Плащи и тренчи", "coat" to "Пальто", "tee" to "Футболки", "jeans" to "Джинсы",
     "trousers" to "Брюки", "sneakers" to "Кроссовки", "boots" to "Ботинки", "polo" to "Поло", "overshirt" to "Рубашки-куртки",
     "sweatshirt" to "Свитшоты", "hoodie" to "Худи", "sweater" to "Свитеры", "longsleeve" to "Лонгсливы", "blazer" to "Пиджаки",
-    "parka" to "Парки", "joggers" to "Джоггеры", "shorts" to "Шорты", "shoes" to "Туфли и лоферы", "hat" to "Шапки и кепки",
+    "parka" to "Парки", "joggers" to "Джоггеры", "shorts" to "Шорты", "shoes" to "Туфли и лоферы", "sandals" to "Сандалии и шлёпанцы", "hat" to "Шапки и кепки",
     "socks" to "Носки", "bag" to "Сумки", "acc" to "Аксессуары",
 )
 
 /** Порядок типов в фильтре: сначала основные. */
 val KIND_ORDER = listOf(
     "shirt", "jacket", "trench", "coat", "tee", "jeans", "trousers", "sneakers", "boots",
-    "polo", "overshirt", "sweatshirt", "hoodie", "sweater", "longsleeve", "blazer", "parka", "joggers", "shorts", "shoes", "hat", "socks", "bag", "acc",
+    "polo", "overshirt", "sweatshirt", "hoodie", "sweater", "longsleeve", "blazer", "parka", "joggers", "shorts", "shoes", "sandals", "hat", "socks", "bag", "acc",
 )
 
 /** Встроенные типы раздела. */
@@ -135,7 +135,7 @@ fun builtinKindsOf(category: String): List<String> = when (category) {
     "верх" -> listOf("tee", "longsleeve", "polo", "shirt", "overshirt", "sweatshirt", "hoodie", "sweater")
     "верхняя одежда" -> listOf("jacket", "blazer", "parka", "trench", "coat")
     "низ" -> listOf("jeans", "trousers", "joggers", "shorts")
-    "обувь" -> listOf("sneakers", "boots", "shoes")
+    "обувь" -> listOf("sneakers", "boots", "shoes", "sandals")
     else -> listOf("bag", "hat", "socks", "acc")
 }
 
@@ -143,7 +143,7 @@ private val KIND_RULES = listOf(
     "рубашка-куртк|куртка-рубашк" to "overshirt", "футболк" to "tee", "лонгслив" to "longsleeve", "поло(?![а-яё])" to "polo", "рубашк|сорочк" to "shirt",
     "свитшот" to "sweatshirt", "худи" to "hoodie", "свитер|джемпер|кардиган|пуловер" to "sweater", "водолазк" to "longsleeve", "пиджак|блейзер" to "blazer", "парк[аи]" to "parka",
     "плащ|тренч" to "trench", "пальто" to "coat", "бомбер|куртк|ветровк" to "jacket", "шорт" to "shorts", "джоггер|спортивн|штаны" to "joggers",
-    "джинс" to "jeans", "брюк|чинос" to "trousers", "кроссов|кед" to "sneakers", "ботин|сапог|челси" to "boots", "туфл|лофер|сандал|мокас" to "shoes",
+    "джинс" to "jeans", "брюк|чинос" to "trousers", "кроссов|кед" to "sneakers", "ботин|сапог|челси" to "boots", "сандал|шлёп|шлеп|сланц|слайд" to "sandals", "туфл|лофер|мокас" to "shoes",
     "сумк|рюкзак" to "bag", "кепк|шапк|панам" to "hat", "носк" to "socks",
 )
 
@@ -264,7 +264,7 @@ fun autoLayout(ctx: Context, ids: List<String>, items: Map<String, WardrobeItem>
 }
 
 object WardrobeSeed {
-    private const val VERSION = 10
+    private const val VERSION = 11
 
     suspend fun run() {
         val s = Graph.prefs.now()
