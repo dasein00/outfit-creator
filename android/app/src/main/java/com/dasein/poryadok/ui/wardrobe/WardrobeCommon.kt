@@ -220,14 +220,20 @@ fun ReorderGrid(items: List<WardrobeItem>, onCancel: () -> Unit, onDone: (List<S
                 }
             }
             val secs = layout()
-            fun posOf(id: String): androidx.compose.ui.geometry.Offset {
-                val sec = secs.firstOrNull { id in it.ids } ?: return androidx.compose.ui.geometry.Offset.Zero
+            fun posIn(all: List<Sec>, id: String): androidx.compose.ui.geometry.Offset {
+                val sec = all.firstOrNull { id in it.ids } ?: return androidx.compose.ui.geometry.Offset.Zero
                 val i = sec.ids.indexOf(id)
                 return androidx.compose.ui.geometry.Offset((i % cols) * cw, sec.top + headerH + (i / cols) * ch)
             }
-            fun idAt(p: androidx.compose.ui.geometry.Offset): String? = order.firstOrNull { id ->
-                val o = posOf(id)
-                p.x >= o.x && p.x < o.x + cw && p.y >= o.y && p.y < o.y + ch
+            fun posOf(id: String) = posIn(secs, id)
+            // Обработчик касаний живёт дольше одной перерисовки — раскладку для него считаем заново на каждом касании,
+            // иначе после перестановки он видел бы старые места и брал не ту вещь.
+            fun idAt(p: androidx.compose.ui.geometry.Offset): String? {
+                val all = layout()
+                return order.firstOrNull { id ->
+                    val o = posIn(all, id)
+                    p.x >= o.x && p.x < o.x + cw && p.y >= o.y && p.y < o.y + ch
+                }
             }
             /** Поставить перетаскиваемую вещь туда, где её центр: в нужную группу и на нужное место в ней. */
             fun retarget() {
@@ -274,7 +280,7 @@ fun ReorderGrid(items: List<WardrobeItem>, onCancel: () -> Unit, onDone: (List<S
                             detectDragGesturesAfterLongPress(
                                 onDragStart = { off ->
                                     val id = idAt(off)
-                                    if (id != null) { dragging = id; finger = off; grab = off - posOf(id) }
+                                    if (id != null) { dragging = id; finger = off; grab = off - posIn(layout(), id) }
                                 },
                                 onDragEnd = { dragging = null },
                                 onDragCancel = { dragging = null },
