@@ -158,7 +158,18 @@ fun setKindLabel(k: String) = when (k) { "wish" -> "Список желаний"
 /** Свой порядок вещей в «Одежде» («Переместить вещи»): список id в настройках телефона. */
 object WardrobeOrder {
     private fun sp(ctx: Context) = ctx.getSharedPreferences("wardrobe", Context.MODE_PRIVATE)
-    fun get(ctx: Context): List<String> = sp(ctx).getString("order", "").orEmpty().split(",").filter { it.isNotBlank() }
+    /** Свой порядок, а если его ещё не задавали — встроенный по умолчанию (assets/wardrobe/order.json). */
+    fun get(ctx: Context): List<String> =
+        sp(ctx).getString("order", "").orEmpty().split(",").filter { it.isNotBlank() }.ifEmpty { default(ctx) }
+
+    /** Встроенный порядок вещей. */
+    fun default(ctx: Context): List<String> = runCatching {
+        val arr = org.json.JSONArray(ctx.assets.open("wardrobe/order.json").bufferedReader().use { it.readText() })
+        List(arr.length()) { arr.getString(it) }
+    }.getOrDefault(emptyList())
+
+    /** Вернуть порядок по умолчанию. */
+    fun reset(ctx: Context): List<String> { sp(ctx).edit().remove("order").apply(); return default(ctx) }
     fun set(ctx: Context, ids: List<String>) { sp(ctx).edit().putString("order", ids.joinToString(",")).apply() }
 
     /** Вещи из списка — по нему; новые (которых в списке нет) — в начале, свежие первыми. */

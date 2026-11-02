@@ -268,6 +268,7 @@ private fun ClothesTab(
                 DropdownMenu(sortMenu, { sortMenu = false }) {
                     SORTS.forEachIndexed { i, s -> DropdownMenuItem({ Text(btnLabel(s), fontWeight = if (i == sort) FontWeight.SemiBold else FontWeight.Normal) }, { sort = i; sortMenu = false }) }
                     DropdownMenuItem({ Text(btnLabel("Переместить вещи…")) }, { sortMenu = false; setReorder(true) })
+                    DropdownMenuItem({ Text(btnLabel("Порядок по умолчанию")) }, { sortMenu = false; order = WardrobeOrder.reset(ctx); sort = 0 })
                     DropdownMenuItem({ Text(btnLabel("Фон плашек…")) }, { sortMenu = false; bgDialog = true })
                     DropdownMenuItem({ Text(btnLabel("Категории…")) }, { sortMenu = false; manageKinds = true })
                 }

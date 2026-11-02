@@ -264,7 +264,7 @@ fun autoLayout(ctx: Context, ids: List<String>, items: Map<String, WardrobeItem>
 }
 
 object WardrobeSeed {
-    private const val VERSION = 12
+    private const val VERSION = 13
 
     suspend fun run() {
         val s = Graph.prefs.now()
