@@ -79,17 +79,31 @@ data class RecipeBook(
     fun byId(id: Long?): Recipe? = recipes.firstOrNull { it.id == id } ?: archived.firstOrNull { it.id == id }
 }
 
+/**
+ * Последняя загруженная книга рецептов. Экран, на который вернулись (из карточки блюда назад), сразу получает
+ * готовые данные, а не пустой список на время загрузки из базы: иначе список на мгновение пуст — номер страницы
+ * и место прокрутки не на что восстановить, и каталог сбрасывается на первую страницу.
+ */
+private object RecipeBookCache {
+    var recipes: List<Recipe>? = null
+    var ingredients: List<RecipeIngredient>? = null
+    var book: RecipeBook? = null
+}
+
 @Composable
 fun rememberRecipeBook(): RecipeBook {
-    val recipes by observe<List<Recipe>?>(null) { Graph.extra.recipes() }
-    val ingredients by observe(emptyList()) { Graph.extra.ingredients() }
+    val recipes by observe(RecipeBookCache.recipes) { Graph.extra.recipes() }
+    val ingredients by observe(RecipeBookCache.ingredients) { Graph.extra.ingredients() }
     return remember(recipes, ingredients) {
-        val grouped = ingredients.groupBy { it.recipeId }
+        val cached = RecipeBookCache.book
+        if (cached != null && recipes === RecipeBookCache.recipes && ingredients === RecipeBookCache.ingredients) return@remember cached
+        val grouped = ingredients.orEmpty().groupBy { it.recipeId }
         val list = recipes.orEmpty()
+        // Готово, когда пришли и рецепты, и продукты: фильтры «Мясо», «Белок», «Из холодильника» смотрят на продукты.
         RecipeBook(
-            recipes != null, list.filter { !it.archived }, grouped,
+            recipes != null && ingredients != null, list.filter { !it.archived }, grouped,
             list.associate { it.id to RecipeRepo.macros(grouped[it.id].orEmpty(), it) }, list.filter { it.archived },
-        )
+        ).also { if (it.loaded) { RecipeBookCache.recipes = recipes; RecipeBookCache.ingredients = ingredients; RecipeBookCache.book = it } }
     }
 }
 

@@ -378,26 +378,33 @@ object PaintByNumbers {
         PAINT("Краски для картин по номерам", "Краска", "красок", Kind.PAINTS, "Из наборов картин по номерам"),
         WATERCOLOR_PENCIL("Акварельные карандаши", "Акварельный карандаш", "акварельных карандашей", Kind.PENCILS, "Акварельные"),
         ALCOHOL_MARKER("Спиртовые маркеры", "Спиртовой маркер", "спиртовых маркеров", Kind.MARKERS, "Спиртовые"),
-        WATERCOLOR_PAINT("Акварельные краски", "Акварельная краска", "акварельных красок", Kind.PAINTS, "Акварельные");
+        WATERCOLOR_PAINT("Акварельные краски", "Акварельная краска", "акварельных красок", Kind.PAINTS, "Акварельные"),
+        // Цветные ручки. Новые материалы — только в конец: номер материала хранится в раскрасках и настройках.
+        BALLPOINT_PEN("Шариковые ручки", "Шариковая ручка", "шариковых ручек", Kind.PENS, "Шариковые"),
+        ACRYLIC_PEN("Акриловые ручки", "Акриловая ручка", "акриловых ручек", Kind.PENS, "Акриловые"),
+        GEL_PEN("Гелевые ручки", "Гелевая ручка", "гелевых ручек", Kind.PENS, "Гелевые");
         val catalog: List<Pencil> get() = when (this) {
             PENCIL -> PENCILS_ALL; MARKER -> MARKERS_ALL; PAINT -> PAINTS_ALL; WATERCOLOR_PENCIL -> WATERCOLOR_PENCILS; ALCOHOL_MARKER -> ALCOHOL_MARKERS
             WATERCOLOR_PAINT -> WATERCOLOR_PAINTS
+            BALLPOINT_PEN -> BALLPOINT_PENS; ACRYLIC_PEN -> ACRYLIC_PENS; GEL_PEN -> GEL_PENS
         }
         val sets: List<Pair<String, List<String>>> get() = when (this) {
             PENCIL -> SETS; MARKER -> MARKER_SETS; PAINT -> PAINT_SETS; WATERCOLOR_PENCIL -> WATERCOLOR_SETS; ALCOHOL_MARKER -> ALCOHOL_SETS
             WATERCOLOR_PAINT -> WATERCOLOR_PAINT_SETS
+            BALLPOINT_PEN -> BALLPOINT_SETS; ACRYLIC_PEN -> ACRYLIC_PEN_SETS; GEL_PEN -> GEL_SETS
         }
         companion object { fun of(i: Int) = entries.getOrElse(i) { PENCIL } }
     }
 
     /** Чем раскрашивать — сначала вид материала, потом какой именно: цветные или акварельные карандаши и т. д. */
     enum class Kind(val title: String, val icon: String) {
-        PENCILS("Карандаши", "craft/05"), MARKERS("Маркеры", "craft/06"), PAINTS("Краски", "craft/07");
+        PENCILS("Карандаши", "craft/05"), MARKERS("Маркеры", "craft/06"), PAINTS("Краски", "craft/07"), PENS("Цветные ручки", "craft/10");
         /** Материалы этого вида в порядке показа. */
         val media: List<Medium> get() = when (this) {
             PENCILS -> listOf(Medium.PENCIL, Medium.WATERCOLOR_PENCIL)
             MARKERS -> listOf(Medium.MARKER, Medium.ALCOHOL_MARKER)
             PAINTS -> listOf(Medium.WATERCOLOR_PAINT, Medium.PAINT)
+            PENS -> listOf(Medium.BALLPOINT_PEN, Medium.ACRYLIC_PEN, Medium.GEL_PEN)
         }
     }
 
@@ -574,4 +581,73 @@ object PaintByNumbers {
         "168 цветов" to ALCOHOL_BASE.map { it.code } + spread(ALCOHOL_MARKERS.drop(76), 92),
         "${ALCOHOL_MARKERS.size} цветов" to ALCOHOL_MARKERS.map { it.code },
     )
+
+    // ---------- Цветные ручки ----------
+
+    /**
+     * Шариковые ручки — 24 цвета, как в наборах на 4–24: чернила ложатся штрихом, цвета чуть приглушённые.
+     * Номера «ШР…» — для удобства, не артикулы конкретной марки.
+     */
+    val BALLPOINT_PENS: List<Pencil> = listOf(
+        "Синий" to 0x1F3C8F, "Чёрный" to 0x1E1E22, "Красный" to 0xC8262E, "Зелёный" to 0x1F7A3E, "Фиолетовый" to 0x5A2F8A,
+        "Голубой" to 0x2F86C9, "Бирюзовый" to 0x16918E, "Салатовый" to 0x6FB43F, "Жёлтый" to 0xE8C21E, "Оранжевый" to 0xEE7A1E,
+        "Розовый" to 0xE0558E, "Малиновый" to 0xB51E5C, "Бордовый" to 0x7E1F2E, "Коричневый" to 0x6B4128, "Охра" to 0xB8862F,
+        "Тёмно-синий" to 0x1A2457, "Сиреневый" to 0x9A72C4, "Изумрудный" to 0x0F6E55, "Оливковый" to 0x6E7034, "Серый" to 0x6E6E72,
+        "Персиковый" to 0xF0A27A, "Небесный" to 0x7CB8E6, "Лаймовый" to 0xA7C93A, "Кирпичный" to 0xA4442D,
+    ).mapIndexed { i, (n, c) -> Pencil("ШР${i + 1}", n, c) }
+
+    val BALLPOINT_SETS: List<Pair<String, List<String>>> = listOf(
+        "4 цвета" to listOf(1, 2, 3, 4).map { "ШР$it" },
+        "10 цветов" to listOf(1, 2, 3, 4, 5, 6, 9, 10, 11, 14).map { "ШР$it" },
+        "12 цветов" to listOf(1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 13, 14).map { "ШР$it" },
+        "24 цвета" to BALLPOINT_PENS.map { it.code },
+    )
+
+    /**
+     * Акриловые ручки (кроющие, на водной основе, с наконечником-пулей) — 36 цветов, включая белый и металлики:
+     * ложатся плотно, светлый цвет перекрывает тёмный. Номера «АР…» — для удобства, не артикулы.
+     */
+    val ACRYLIC_PENS: List<Pencil> = listOf(
+        "Белый" to 0xF8F8F4, "Лимонный" to 0xFFEE4A, "Жёлтый" to 0xFFD21A, "Оранжевый" to 0xFF8A1A, "Коралловый" to 0xFF6B5B,
+        "Красный" to 0xDE2230, "Вишнёвый" to 0x9C1A30, "Розовый" to 0xF58CB4, "Фуксия" to 0xE0368E, "Пудровый" to 0xF3C4CC,
+        "Лавандовый" to 0xB9A0DC, "Фиолетовый" to 0x6438A0, "Небесный" to 0x9ED2F0, "Голубой" to 0x3FA6E2, "Синий" to 0x1E55B4,
+        "Тёмно-синий" to 0x17204E, "Бирюзовый" to 0x10AFAF, "Мятный" to 0x9EE0C8, "Салатовый" to 0xA8D84E, "Зелёный" to 0x2A9A48,
+        "Хвойный" to 0x1C4E34, "Оливковый" to 0x7C8034, "Телесный" to 0xF4CBAA, "Персиковый" to 0xF2A882, "Охра" to 0xC98E38,
+        "Коричневый" to 0x76482A, "Шоколадный" to 0x45291A, "Бежевый" to 0xE6D3B2, "Светло-серый" to 0xC9C9C6, "Серый" to 0x8A8A8A,
+        "Графит" to 0x3A3C40, "Чёрный" to 0x151515, "Золотой" to 0xC9A24A, "Серебряный" to 0xB8BBC0, "Бронзовый" to 0xA8743C,
+        "Медный" to 0xB5643A,
+    ).mapIndexed { i, (n, c) -> Pencil("АР${i + 1}", n, c) }
+
+    val ACRYLIC_PEN_SETS: List<Pair<String, List<String>>> = listOf(
+        "12 цветов" to listOf(1, 3, 4, 6, 8, 12, 14, 15, 20, 26, 30, 32).map { "АР$it" },
+        "24 цвета" to listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 17, 19, 20, 22, 23, 25, 26, 30, 32, 33).map { "АР$it" },
+        "36 цветов" to ACRYLIC_PENS.map { it.code },
+    )
+
+    /**
+     * Гелевые ручки — 48 цветов: классические, пастельные (кроющие, видны и на тёмной бумаге), неоновые и металлики.
+     * Номера «ГР…» — для удобства, не артикулы.
+     */
+    val GEL_PENS: List<Pencil> = listOf(
+        "Чёрный" to 0x18181C, "Синий" to 0x203F9C, "Красный" to 0xD42A34, "Зелёный" to 0x24924A, "Фиолетовый" to 0x6A35A6,
+        "Голубой" to 0x2E9BE0, "Бирюзовый" to 0x0FA5A8, "Салатовый" to 0x86C83C, "Жёлтый" to 0xF5CE1E, "Оранжевый" to 0xF5801E,
+        "Розовый" to 0xEC5C9C, "Малиновый" to 0xC0215E, "Бордовый" to 0x82202F, "Коричневый" to 0x704428, "Тёмно-синий" to 0x1B2560,
+        "Изумрудный" to 0x0E7458, "Оливковый" to 0x737534, "Серый" to 0x76767A, "Сиреневый" to 0xA27ACC, "Персиковый" to 0xF3A57E,
+        "Белый пастельный" to 0xF7F5EE, "Жёлтый пастельный" to 0xFBE9A2, "Персиковый пастельный" to 0xF9CDB2, "Розовый пастельный" to 0xF6BFD2,
+        "Сиреневый пастельный" to 0xD4C3EE, "Голубой пастельный" to 0xBCDDF4, "Мятный пастельный" to 0xBDEBD8, "Салатовый пастельный" to 0xD7EFA8,
+        "Бежевый пастельный" to 0xEADCC2, "Серый пастельный" to 0xD6D6D4, "Неоновый жёлтый" to 0xF2F23A, "Неоновый оранжевый" to 0xFF8F2E,
+        "Неоновый розовый" to 0xFF4FA3, "Неоновый зелёный" to 0x6CE85A, "Неоновый голубой" to 0x3EC8F5, "Неоновый красный" to 0xFF3D4E,
+        "Золотой" to 0xCFA84E, "Серебряный" to 0xBFC2C7, "Медный" to 0xBA6E45, "Бронзовый" to 0xA77B45, "Металлик розовый" to 0xD58AA8,
+        "Металлик синий" to 0x4F6FB8, "Металлик зелёный" to 0x4C9A6E, "Металлик фиолетовый" to 0x8A64B4, "Металлик красный" to 0xB83C48,
+        "Небесный" to 0x86C3EC, "Лавандовый" to 0xB59BDB, "Коралловый" to 0xF26F62,
+    ).mapIndexed { i, (n, c) -> Pencil("ГР${i + 1}", n, c) }
+
+    val GEL_SETS: List<Pair<String, List<String>>> = listOf(
+        "12 цветов" to (1..12).map { "ГР$it" },
+        "24 цвета" to (1..20).map { "ГР$it" } + listOf(21, 26, 37, 38).map { "ГР$it" },
+        // Классика, пастель и неон.
+        "36 цветов" to (1..36).map { "ГР$it" },
+        "48 цветов" to GEL_PENS.map { it.code },
+    )
+
 }

@@ -31,9 +31,10 @@ class App : Application() {
         super.onCreate()
         CrashLog.install(this)
         Graph.init(this)
+        com.dasein.poryadok.ui.theme.Holiday.load(this)
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onStart(owner: LifecycleOwner) = Lock.onStart()
-            override fun onStop(owner: LifecycleOwner) = Lock.onStop()
+            override fun onStart(owner: LifecycleOwner) { Lock.onStart(); com.dasein.poryadok.ui.theme.Holiday.onStart() }
+            override fun onStop(owner: LifecycleOwner) { Lock.onStop(); com.dasein.poryadok.ui.theme.Holiday.onStop() }
         })
     }
 

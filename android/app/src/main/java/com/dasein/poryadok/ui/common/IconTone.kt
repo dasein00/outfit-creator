@@ -21,9 +21,9 @@ import kotlin.math.sqrt
  * (шалфей, небо, роза, лаванда) оттенок поворачивается к нему, насыщенность подстраивается; в светлой теме
  * светлые формы становятся тёмными — иконки контрастны на светлом фоне без тёмной плашки.
  */
-data class IconTone(val hueShift: Float, val sat: Float, val light: Boolean, val mono: Int = 0) {
-    val identity get() = hueShift == 0f && sat == 1f && !light && mono == 0
-    val key get() = "$hueShift|$sat|$light|$mono"
+data class IconTone(val hueShift: Float, val sat: Float, val light: Boolean, val mono: Int = 0, val festive: Boolean = false) {
+    val identity get() = hueShift == 0f && sat == 1f && !light && mono == 0 && !festive
+    val key get() = "$hueShift|$sat|$light|$mono|$festive"
 }
 
 object IconTint {
@@ -47,6 +47,7 @@ object IconTint {
         val w = src.width; val h = src.height
         val px = IntArray(w * h).also { src.getPixels(it, 0, w, 0, 0, w, h) }
         val hsl = FloatArray(3)
+        if (t.festive) { festive(px, t.light, hsl); return Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888) }
         if (t.mono != 0) {
             // Одноцветные иконки: цвет задан (контраст с фоном, акцент или свой), светлота формы сохраняет детали рисунка.
             val mr = t.mono shr 16 and 255; val mg = t.mono shr 8 and 255; val mb = t.mono and 255
@@ -73,6 +74,36 @@ object IconTint {
             px[i] = (a shl 24) or fromHsl(hsl[0], hsl[1], hsl[2])
         }
         return Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888)
+    }
+
+    /**
+     * Новогодняя палитра по ролям частей рисунка, одинаково для всех иконок (формы и прозрачность не меняются):
+     * яркий акцент (оранжевый) — праздничный красный, его светлые блики — золотистый, светлые кремовые формы — белый,
+     * их тени и полутона — хвойный зелёный. В светлой теме светлые формы становятся тёмно-зелёными, как раньше
+     * становились тёмными: иконка остаётся контрастной на светлом фоне. Цвета приглушённые, не кислотные.
+     */
+    private fun festive(px: IntArray, light: Boolean, hsl: FloatArray) {
+        for (i in px.indices) {
+            val c = px[i]
+            val a = c ushr 24
+            if (a == 0) continue
+            val r = (c shr 16 and 255) / 255f; val g = (c shr 8 and 255) / 255f; val b = (c and 255) / 255f
+            val chroma = max(r, max(g, b)) - min(r, min(g, b))
+            toHsl(r, g, b, hsl)
+            val l = hsl[2]
+            val rgb = when {
+                // Акцент: светлые блики — золото, остальное — красный той же светлоты.
+                chroma >= .55f && l > .7f -> fromHsl(43f, .55f, if (light) .46f else .62f)
+                chroma >= .55f -> fromHsl(356f, .62f, (l * .95f).coerceIn(.3f, .55f))
+                // Светлые формы: белый (тёмная тема) или тёмно-зелёный (светлая).
+                l >= .8f -> if (light) fromHsl(150f, .42f, (.9f - .7f * l).coerceIn(.18f, .4f)) else fromHsl(40f, .3f, (l * 1.08f).coerceAtMost(.96f))
+                // Полутона и тени форм — зелёный.
+                l >= .35f -> if (light) fromHsl(150f, .4f, (.9f - .7f * l).coerceIn(.3f, .62f)) else fromHsl(148f, .36f, (l * .62f).coerceIn(.3f, .5f))
+                // Тёмные детали (контуры, стержень) — почти чёрный зелёный, в светлой теме остаются тёмными.
+                else -> fromHsl(150f, .3f, if (light) (l + .08f).coerceAtMost(.3f) else l.coerceAtLeast(.12f))
+            }
+            px[i] = (a shl 24) or rgb
+        }
     }
 
     private fun toHsl(r: Float, g: Float, b: Float, out: FloatArray) {
@@ -122,6 +153,13 @@ object IconTint {
 /** Оттенок иконок для текущего оформления. [onPlate] — иконка лежит на тёмной плашке: тогда без инверсии светлоты. */
 @Composable
 fun iconTone(onPlate: Boolean): IconTone {
+    // Новогодний режим: праздничные цвета для всех иконок. Контрастный режим и «контрастные» иконки — для читаемости — не трогаем.
+    val holiday = com.dasein.poryadok.ui.theme.Holiday.active
+    val look0 = com.dasein.poryadok.ui.theme.LocalLook.current
+    if (holiday && !look0.contrast && look0.icons != 1) {
+        val dark0 = LocalExtra.current.dark
+        return remember(dark0, onPlate) { IconTone(0f, 1f, light = !dark0 && !onPlate, festive = true) }
+    }
     val p = MaterialTheme.colorScheme.primary.toArgb() and 0xFFFFFF
     val dark = LocalExtra.current.dark
     val look = com.dasein.poryadok.ui.theme.LocalLook.current

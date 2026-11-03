@@ -185,7 +185,9 @@ private fun Catalog(nav: NavHostController, book: RecipeBook, only: String = ALL
     val ctx = LocalContext.current
     var menuFor by remember { mutableStateOf<Recipe?>(null) }
     menuFor?.let { RecipeQuickMenu(nav, it) { menuFor = null } }
-    val settings by observe(null) { Graph.prefs.settings }
+    // Настройки (холодильник) — сразу последние известные, чтобы при возврате на экран порядок и фильтр не менялись на ходу.
+    val settings by observe(CatalogMemory.settings) { Graph.prefs.settings }
+    androidx.compose.runtime.SideEffect { settings?.let { CatalogMemory.settings = it } }
     val fridge = remember(settings?.fridge) { Fridge.decode(settings?.fridge.orEmpty()) }
     var q by rememberSaveable { mutableStateOf("") }
     var cat by rememberSaveable { mutableStateOf(ALL) }
@@ -252,7 +254,16 @@ private fun Catalog(nav: NavHostController, book: RecipeBook, only: String = ALL
             RecipeSort.RELEVANCE -> base.sortedByDescending { TextQuery.score(it.name, it.tags + " " + book.ingredients[it.id].orEmpty().joinToString(" ") { i -> i.name }, query) }
         }
     }
-    LaunchedEffect(q, cat, cuisine, filters, sort, time, kcal, fridge, meal, base, protein, diff, prep) { page = 0 }
+    // Новые условия — с первой страницы. Сравниваем с сохранёнными условиями, а не просто при появлении на экране:
+    // экран создаётся заново при каждом возврате из карточки блюда, и сброс «при запуске» уводил на первую страницу.
+    val filterKey = if (settings == null) null else
+        listOf(q, cat, cuisine, filters.sorted(), sort, time, kcal, settings?.fridge.orEmpty(), meal, base, protein, diff, prep).joinToString("\u0001")
+    var lastFilterKey by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(filterKey) {
+        if (filterKey == null) return@LaunchedEffect
+        if (lastFilterKey != null && lastFilterKey != filterKey) page = 0
+        lastFilterKey = filterKey
+    }
     val p = Paging.clamp(page, list.size, size)
     val pages = Paging.pages(list.size, size)
     val go: (Int) -> Unit = { page = it; scope.launch { listState.animateScrollToItem(1) } }
@@ -610,4 +621,9 @@ private fun prepKindMatches(kind: String, r: Recipe): Boolean {
     val words = PREP_KINDS.firstOrNull { it.first == kind }?.third ?: return true
     val text = (r.name + " " + r.tags).lowercase()
     return words.any { it in text } || r.tags.split(',').any { it.trim().equals(kind, ignoreCase = true) }
+}
+
+/** Последние настройки для каталога — чтобы при возврате на экран не ждать их загрузки. */
+private object CatalogMemory {
+    var settings: com.dasein.poryadok.data.Settings? = null
 }

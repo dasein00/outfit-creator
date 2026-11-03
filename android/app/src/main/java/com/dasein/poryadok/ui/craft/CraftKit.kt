@@ -104,8 +104,9 @@ internal fun FieldLabel(text: String, value: String? = null) {
 private fun variantKey(k: PaintByNumbers.Kind) = "pbn_variant_${k.name}"
 
 /**
- * Чем раскрашивать — в два шага: сначала вид (карандаши, маркеры, краски), потом какие именно
- * (цветные или акварельные карандаши; акриловые или спиртовые маркеры; акварельные или из наборов картин по номерам).
+ * Чем раскрашивать — в два шага: сначала вид (карандаши, маркеры, краски, цветные ручки), потом какие именно
+ * (цветные или акварельные карандаши; акриловые или спиртовые маркеры; акварельные или из наборов картин по номерам;
+ * шариковые, акриловые или гелевые ручки).
  * Для каждого вида запоминается последний выбор.
  */
 @Composable
@@ -117,11 +118,15 @@ internal fun MaterialPicker(selected: Int, counts: Map<PaintByNumbers.Medium, In
         sp.edit().putInt(variantKey(m.kind), m.ordinal).apply()
         onSelect(m.ordinal)
     }
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        PaintByNumbers.Kind.entries.forEach { k ->
-            ChoiceCard(k.icon, k.title, null, k == cur.kind, Modifier.weight(1f)) {
-                if (k != cur.kind) pick(PaintByNumbers.Medium.of(sp.getInt(variantKey(k), k.media.first().ordinal)).takeIf { it.kind == k } ?: k.media.first())
+    // Виды — плитками по два в ряд, как техники в «Рукоделии»: названия не обрезаются и видов можно добавлять сколько угодно.
+    PaintByNumbers.Kind.entries.chunked(2).forEachIndexed { r, row ->
+        Row(Modifier.padding(top = if (r == 0) 0.dp else 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            row.forEach { k ->
+                ChoiceCard(k.icon, k.title, k.media.joinToString(", ") { it.variant.lowercase() }, k == cur.kind, Modifier.weight(1f)) {
+                    if (k != cur.kind) pick(PaintByNumbers.Medium.of(sp.getInt(variantKey(k), k.media.first().ordinal)).takeIf { it.kind == k } ?: k.media.first())
+                }
             }
+            if (row.size == 1) androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
         }
     }
     Text(

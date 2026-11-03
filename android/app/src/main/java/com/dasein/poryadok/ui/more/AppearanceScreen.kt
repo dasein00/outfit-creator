@@ -109,6 +109,8 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
             Segments(listOf("system" to "Как в системе", "light" to "Светлая", "dark" to "Тёмная"), settings.theme, { v -> io { Graph.prefs.update { it.copy(theme = v) } } })
             if (look.bgRgb != 0) Text("Сейчас выбран свой фон — светлая или тёмная тема определяется по нему.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
 
+            HolidaySettings()
+
             SectionTitle("Цвет акцента")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Palette.accents.forEachIndexed { i, (label, c) ->
@@ -384,4 +386,46 @@ fun ColorPickerDialog(start: Int, onDismiss: () -> Unit, onPick: (Int) -> Unit) 
         confirmButton = { TextButton(onClick = { onPick(rgb) }) { Text(btnLabel("Выбрать")) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(btnLabel("Отмена")) } },
     )
+}
+
+/**
+ * «Новогодний режим» — часть выбора темы: автоматическая праздничная тема с 15 декабря по 15 января
+ * и снежинки при входе. Снежинки — отдельный выключатель: без них тема остаётся, без темы их не бывает.
+ */
+@Composable
+private fun HolidaySettings() {
+    val ctx = LocalContext.current
+    val extra = LocalExtra.current
+    val h = com.dasein.poryadok.ui.theme.Holiday
+    val season = com.dasein.poryadok.logic.HolidaySeason
+    val auto = h.auto.value
+    val today = h.today.value
+    val fmt = java.time.format.DateTimeFormatter.ofPattern("d MMMM", java.util.Locale("ru"))
+    SectionTitle("Новогодний режим")
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(btnLabel("Автоматический новогодний режим"), fontWeight = FontWeight.SemiBold)
+            Text(
+                "Каждый год с 15 декабря по 15 января иконки в праздничных цветах: красный, белый, зелёный и немного золота. " +
+                    "Потом всё само возвращается к обычным цветам. " + when {
+                    !auto -> "Сейчас выключен — праздничная тема не включится."
+                    season.inSeason(today) -> "Сейчас действует — до ${season.seasonEnd(today).format(fmt)}."
+                    else -> "Включится ${season.nextStart(today).format(fmt)}."
+                },
+                fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
+            )
+        }
+        Switch(auto, { h.setAuto(ctx, it) })
+    }
+    Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(btnLabel("Падающие снежинки"), fontWeight = FontWeight.SemiBold, color = if (auto) Color.Unspecified else extra.dim)
+            Text(
+                if (auto) "5 секунд лёгкого снегопада при входе в приложение — не мешает нажимать и листать. Выключите, чтобы оставить только праздничные цвета."
+                else "Снежинки идут вместе с новогодним режимом — включите его, и выбор сохранится.",
+                fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
+            )
+        }
+        Switch(h.snow.value, { h.setSnow(ctx, it) }, enabled = auto)
+    }
 }

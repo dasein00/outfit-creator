@@ -243,6 +243,9 @@ fun PbnScreen(nav: NavHostController, id: Long) {
                     PaintByNumbers.Medium.WATERCOLOR_PENCIL -> "Акварельные карандаши: цвета подобраны такими, какими они становятся после воды. Заштрихуйте номер ровным слоем и пройдитесь влажной кистью — от светлых участков к тёмным, чтобы соседние цвета не смешались."
                     PaintByNumbers.Medium.ALCOHOL_MARKER -> "Спиртовые маркеры: цвет — один ровный слой, каждый следующий темнее. Закрашивайте сначала светлые номера, крупные участки ведите быстро и без остановок — так не останется полос. Бумага — плотная, для маркеров: спирт пропитывает тонкую насквозь."
                     PaintByNumbers.Medium.MARKER -> "Акриловые маркеры кроющие: светлый цвет ложится и поверх тёмного. Дайте слою высохнуть пару минут, прежде чем закрашивать соседний номер."
+                    PaintByNumbers.Medium.BALLPOINT_PEN -> "Шариковые ручки: закрашивайте мелкой штриховкой в одном направлении, без сильного нажима — так цвет ровный и бумага не продавливается. Тон можно усилить вторым слоем штрихов поперёк."
+                    PaintByNumbers.Medium.ACRYLIC_PEN -> "Акриловые ручки кроющие: светлый цвет ложится и поверх тёмного. Перед работой встряхните ручку и прокачайте наконечник на черновике, давайте слою высохнуть, прежде чем закрашивать соседний номер."
+                    PaintByNumbers.Medium.GEL_PEN -> "Гелевые ручки: ведите плавно, без нажима, и давайте гелю высохнуть, чтобы не размазать. Пастельные и металлики кроющие — ими удобно закрашивать светлые номера и детали поверх."
                     else -> null
                 }?.let { tip -> Text(tip, fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp, modifier = Modifier.padding(top = 8.dp)) }
             }
@@ -296,14 +299,14 @@ fun PbnScreen(nav: NavHostController, id: Long) {
     }
 }
 
-/** «Мои материалы»: карандаши, маркеры и краски — отметить, что есть (готовые наборы), добавить свои цвета по фото. */
+/** «Мои материалы»: карандаши, маркеры, краски и цветные ручки — отметить, что есть (готовые наборы), добавить свои цвета по фото. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun PencilsScreen(nav: NavHostController) {
+fun PencilsScreen(nav: NavHostController, initialMedium: Int = -1) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     val ver = PbnStore.version.intValue
-    var mi by rememberSaveable { mutableIntStateOf(PbnStore.lastMedium(ctx)) }
+    var mi by rememberSaveable { mutableIntStateOf(if (initialMedium >= 0) initialMedium else PbnStore.lastMedium(ctx)) }
     val medium = PaintByNumbers.Medium.of(mi)
     val owned = remember(ver, medium) { PbnStore.owned(ctx, medium) }
     val custom = remember(ver, medium) { PbnStore.custom(ctx, medium) }

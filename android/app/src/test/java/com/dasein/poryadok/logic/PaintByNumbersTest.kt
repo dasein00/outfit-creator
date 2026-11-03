@@ -46,9 +46,11 @@ class PaintByNumbersTest {
             val mc = m.catalog.map { it.code }.toSet()
             assertEquals(m.catalog.size, mc.size)
             m.sets.forEach { (_, l) -> assertTrue(mc.containsAll(l)) }
-            // Наборы: 12, 24, 36, 48 цветов, дальше — по возрастанию, последний — весь каталог.
+            // Наборы по возрастанию, последний — весь каталог. Карандаши, маркеры и краски — 12, 24, 36, 48 цветов и больше;
+            // у цветных ручек наборы меньше (шариковые — от 4 цветов).
             val sizes = m.sets.map { it.second.size }
-            assertEquals("$m", listOf(12, 24, 36, 48), sizes.take(4))
+            if (m.kind != PaintByNumbers.Kind.PENS) assertEquals("$m", listOf(12, 24, 36, 48), sizes.take(4))
+            else assertTrue("$m", sizes.size >= 2)
             assertEquals("$m", sizes.sorted(), sizes)
             assertEquals("$m", m.catalog.size, sizes.last())
             m.sets.forEach { (_, l) -> assertEquals("$m", l.size, l.toSet().size) }

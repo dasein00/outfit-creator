@@ -119,11 +119,12 @@ object SectionIndex {
             // Рукоделие
             add(Dest("Мои схемы", Routes.CRAFT_MINE, "d21/00", craft, "мозаика вышивка"))
             add(Dest("Картина по номерам", Routes.CRAFT_PBN, "d21/00", craft, "раскраска"))
-            add(Dest("Карандаши", Routes.CRAFT_PENCILS, "d21/00", craft))
+            add(Dest("Карандаши", Routes.CRAFT_PENCILS, "d21/00", craft, "маркеры краски материалы"))
+            add(Dest("Цветные ручки", Routes.craftPencils(com.dasein.poryadok.logic.PaintByNumbers.Medium.BALLPOINT_PEN.ordinal), "craft/10", craft, "шариковые акриловые гелевые ручки картины по номерам"))
             add(Dest("Запасы", Routes.CRAFT_STASH, "d21/00", craft, "стразы нитки"))
 
             // Прочее
-            add(Dest("Оформление", APPEARANCE_ROUTE, "ui:sliders", "Настройки", "цвет фон тема шрифт размер текста иконки контраст акцент тёмная светлая"))
+            add(Dest("Оформление", APPEARANCE_ROUTE, "ui:sliders", "Настройки", "цвет фон тема шрифт размер текста иконки контраст акцент тёмная светлая новогодний режим новый год снежинки снег праздник"))
             add(Dest("Погода", Routes.WEATHER, "ui:sun", keys = "прогноз дождь температура"))
             add(Dest("Колесо баланса", Routes.WHEEL, "ui:wheel", keys = "сферы жизни"))
             add(Dest("Поиск по записям", Routes.SEARCH, "ui:search", keys = "задачи заметки события операции найти"))

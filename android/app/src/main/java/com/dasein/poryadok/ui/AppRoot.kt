@@ -115,6 +115,8 @@ object Routes {
     const val CRAFT_MINE = "craftMine"
     const val CRAFT_PBN = "craftPbn"
     const val CRAFT_PENCILS = "craftPencils"
+    /** «Мои материалы» сразу на нужном материале (номер [com.dasein.poryadok.logic.PaintByNumbers.Medium]). */
+    fun craftPencils(medium: Int) = "$CRAFT_PENCILS?m=$medium"
     fun pbn(id: Long) = "craftPbn/$id"
     const val SEARCH = "search"
     const val RECIPES = "recipes"
@@ -393,7 +395,10 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             composable(Routes.CRAFT_STASH) { com.dasein.poryadok.ui.craft.CraftStashScreen(nav) }
             composable(Routes.CRAFT_MINE) { com.dasein.poryadok.ui.craft.CraftMineScreen(nav) }
             composable(Routes.CRAFT_PBN) { com.dasein.poryadok.ui.craft.PbnHomeScreen(nav) }
-            composable(Routes.CRAFT_PENCILS) { com.dasein.poryadok.ui.craft.PencilsScreen(nav) }
+            composable(
+                "${Routes.CRAFT_PENCILS}?m={m}",
+                arguments = listOf(navArgument("m") { type = NavType.IntType; defaultValue = -1 }),
+            ) { e -> com.dasein.poryadok.ui.craft.PencilsScreen(nav, e.arguments?.getInt("m") ?: -1) }
             composable("craftPbn/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
                 com.dasein.poryadok.ui.craft.PbnScreen(nav, it.long("id"))
             }

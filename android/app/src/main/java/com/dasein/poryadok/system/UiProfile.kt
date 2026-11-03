@@ -151,6 +151,7 @@ object UiProfile {
             val (data, files) = read(ctx, input)
             Graph.prefs.update { cur -> data.settings?.let { applySettings(cur, it) } ?: cur }
             com.dasein.poryadok.ui.theme.Look.reload(ctx)
+            com.dasein.poryadok.ui.theme.Holiday.reload(ctx)
             com.dasein.poryadok.ui.training.Muscles.reload()
             Widgets.refresh(ctx)
             files

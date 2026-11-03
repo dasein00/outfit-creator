@@ -61,11 +61,14 @@ class MainActivity : FragmentActivity() {
                 }
             }
             PoryadokTheme(theme = s.theme, accent = s.accent) {
-                val unlocked by Lock.unlocked
-                if (s.pinHash.isNotEmpty() && !unlocked) {
-                    LockScreen(this, s) { Lock.unlocked.value = true }
-                } else {
-                    AppRoot(s, deepLink)
+                // Новогодний режим: следит за датой и при входе показывает снегопад поверх экрана.
+                com.dasein.poryadok.ui.common.HolidayHost {
+                    val unlocked by Lock.unlocked
+                    if (s.pinHash.isNotEmpty() && !unlocked) {
+                        LockScreen(this, s) { Lock.unlocked.value = true }
+                    } else {
+                        AppRoot(s, deepLink)
+                    }
                 }
             }
         }
