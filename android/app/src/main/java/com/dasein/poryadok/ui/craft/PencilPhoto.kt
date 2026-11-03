@@ -133,9 +133,9 @@ internal fun PencilPhotoPicker(medium: PaintByNumbers.Medium = PaintByNumbers.Me
             fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
         )
         Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { runCatching { camera.launch(camUri) } }, enabled = !busy, modifier = Modifier.weight(1f)) { Text(btnLabel("📷 По камере")) }
+            Button(onClick = { runCatching { camera.launch(camUri) } }, enabled = !busy, modifier = Modifier.weight(1f)) { com.dasein.poryadok.ui.common.GlyphLabel("ui:camera", btnLabel("По камере")) }
             OutlinedButton(onClick = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy, modifier = Modifier.weight(1f)) {
-                Text(btnLabel("🖼 Пипеткой по фото"))
+                com.dasein.poryadok.ui.common.GlyphLabel("ui:image", btnLabel("Пипеткой по фото"))
             }
         }
         if (busy) Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {

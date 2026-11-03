@@ -12,6 +12,13 @@ import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.IconAction
 import com.dasein.poryadok.ui.common.Ic
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Flag
+import com.dasein.poryadok.ui.common.safeBottom
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -79,11 +86,21 @@ private const val L_WEEK = "week"
 private const val L_INBOX = "inbox"
 private const val L_ALL = "all"
 private const val L_MATRIX = "matrix"
+private const val L_HABITS = "habits"
 private const val L_DONE = "done"
 
+/** Порядок внутри группы — как в Todoist: сначала со временем (по часам), потом по приоритету, потом по дате создания. */
+private val TASK_ORDER = compareBy<TaskItem>({ it.dueMin ?: Int.MAX_VALUE }, { -it.priority }, { it.createdAt })
+
+/**
+ * «Задачи» по образцу Todoist, TickTick и Things: умные списки сверху, в «Сегодня» — итог дня кольцом,
+ * привычки на сегодня, просроченное с переносом на сегодня одной кнопкой и свёрнутое «Выполнено сегодня».
+ * Удержание задачи — быстрое меню: срок, приоритет, удаление. «Привычки» — отдельный список здесь же.
+ */
 @Composable
 fun TasksScreen(nav: NavHostController, onBack: (() -> Unit)? = null, showGoals: Boolean = true) {
     val dao = Graph.dao
+    val extra = LocalExtra.current
     val tasks by observe(emptyList()) { dao.tasks() }
     val projects by observe(emptyList()) { dao.projects() }
     val subtasks by observe(emptyList()) { dao.subtasks() }
@@ -91,6 +108,8 @@ fun TasksScreen(nav: NavHostController, onBack: (() -> Unit)? = null, showGoals:
     var quickAdd by remember { mutableStateOf(false) }
     var editProject by remember { mutableStateOf<Project?>(null) }
     var confirmClear by remember { mutableStateOf(false) }
+    var menuFor by remember { mutableStateOf<TaskItem?>(null) }
+    var showDoneToday by rememberSaveable { mutableStateOf(false) }
     val today = Dates.today()
     val open = tasks.filter { !it.done }
     val selectedProject = list.removePrefix("p").toLongOrNull()?.let { id -> projects.firstOrNull { it.id == id } }
@@ -103,9 +122,11 @@ fun TasksScreen(nav: NavHostController, onBack: (() -> Unit)? = null, showGoals:
             if (list == L_DONE) IconAction(Ic.trash, "Очистить") { confirmClear = true }
         },
         fab = {
-            if (list != L_DONE) FloatingActionButton(elevation = com.dasein.poryadok.ui.common.fabElevation(), onClick = { quickAdd = true }, containerColor = com.dasein.poryadok.ui.common.fabColor()) {
-                Icon(Icons.Default.Add, "Добавить")
-            }
+            if (list != L_DONE) FloatingActionButton(
+                elevation = com.dasein.poryadok.ui.common.fabElevation(),
+                onClick = { if (list == L_HABITS) nav.navigate(Routes.habitEdit(0)) else quickAdd = true },
+                containerColor = com.dasein.poryadok.ui.common.fabColor(),
+            ) { Icon(Icons.Default.Add, if (list == L_HABITS) "Новая привычка" else "Добавить") }
         },
     ) { pad ->
         Column(Modifier.fillMaxSize().padding(pad)) {
@@ -113,6 +134,7 @@ fun TasksScreen(nav: NavHostController, onBack: (() -> Unit)? = null, showGoals:
                 add(Triple(L_TODAY, "Сегодня", open.count { it.dueDay != null && it.dueDay <= today }))
                 add(Triple(L_WEEK, "7 дней", open.count { it.dueDay != null && it.dueDay in today..today + 6 }))
                 add(Triple(L_INBOX, "Входящие", open.count { it.projectId == null }))
+                add(Triple(L_HABITS, "Привычки", -1))
                 add(Triple(L_ALL, "Все", open.size))
                 add(Triple(L_MATRIX, "Матрица", -1))
                 projects.forEach { p -> add(Triple("p${p.id}", p.name, open.count { it.projectId == p.id })) }
@@ -128,23 +150,30 @@ fun TasksScreen(nav: NavHostController, onBack: (() -> Unit)? = null, showGoals:
                     val project = id.removePrefix("p").toLongOrNull()?.let { pid -> projects.firstOrNull { it.id == pid } }
                     Surface(
                         shape = RoundedCornerShape(20.dp),
-                        color = if (selected) MaterialTheme.colorScheme.onSurface else LocalExtra.current.card,
+                        color = if (selected) MaterialTheme.colorScheme.onSurface else extra.card,
                         modifier = Modifier.clip(RoundedCornerShape(20.dp)).combinedClickable(
                             onClick = { list = id },
                             onLongClick = { if (project != null) editProject = project },
                         ),
                     ) {
-                        Row(Modifier.padding(start = 8.dp, end = 14.dp, top = 5.dp, bottom = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.padding(start = 8.dp, end = if (count > 0) 6.dp else 14.dp, top = 5.dp, bottom = 5.dp), verticalAlignment = Alignment.CenterVertically) {
                             Glyph(
                                 project?.emoji ?: when (id) {
-                                    L_TODAY -> "ui:sun"; L_WEEK -> "cal/10"; L_INBOX -> Glyphs.INBOX; L_MATRIX -> "cal/40"; L_DONE -> "ui:check"; else -> "ui:grid"
+                                    L_TODAY -> "ui:sun"; L_WEEK -> "cal/10"; L_INBOX -> Glyphs.INBOX; L_HABITS -> "d04/00"; L_MATRIX -> "cal/40"; L_DONE -> "ui:check"; else -> "ui:grid"
                                 },
                                 18.dp,
                             )
                             Text(
-                                if (count > 0) "  $label  $count" else "  $label",
+                                "  $label",
                                 color = if (selected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface,
                                 fontSize = 14.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                            )
+                            // Счётчик — бейджем, как в Todoist и TickTick.
+                            if (count > 0) Text(
+                                "$count", fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                                color = if (selected) MaterialTheme.colorScheme.onSurface else extra.dim,
+                                modifier = Modifier.padding(start = 6.dp).clip(RoundedCornerShape(10.dp))
+                                    .background(if (selected) MaterialTheme.colorScheme.surface else extra.line).padding(horizontal = 7.dp, vertical = 1.dp),
                             )
                         }
                     }
@@ -159,38 +188,61 @@ fun TasksScreen(nav: NavHostController, onBack: (() -> Unit)? = null, showGoals:
                 }
             }
 
-            // Цели — полосой над задачами: прогресс, срок (он же в календаре) и быстрый переход.
-            if (!showGoals) GoalsStrip(nav)
             when (list) {
                 L_MATRIX -> Matrix(open, today, nav)
+                L_HABITS -> HabitsContent(nav, Modifier.weight(1f))
                 else -> {
+                    val doneToday = tasks.filter { it.done && it.doneAt != null && Dates.dayOf(it.doneAt) == today }.sortedByDescending { it.doneAt }
+                    val overdue = open.filter { it.overdue(today) && it.dueDay != null && it.dueDay < today }.sortedWith(compareBy<TaskItem> { it.dueDay }.then(TASK_ORDER))
                     val groups: List<Pair<String, List<TaskItem>>> = when (list) {
                         L_TODAY -> listOf(
-                            "Просрочено" to open.filter { it.dueDay != null && it.dueDay < today },
-                            "Сегодня" to open.filter { it.dueDay == today },
+                            "Просрочено" to overdue,
+                            "Сегодня" to open.filter { it.dueDay == today }.sortedWith(TASK_ORDER),
                         )
-                        L_WEEK -> (0..6).map { d -> Dates.label(today + d, today) + " · " + Dates.weekdayShort(today + d) to open.filter { it.dueDay == today + d } } +
-                            listOf("Позже" to open.filter { it.dueDay != null && it.dueDay > today + 6 })
-                        L_INBOX -> listOf("" to open.filter { it.projectId == null })
+                        L_WEEK -> (0..6).map { d -> Dates.label(today + d, today) + " · " + Dates.weekdayShort(today + d) to open.filter { it.dueDay == today + d }.sortedWith(TASK_ORDER) } +
+                            listOf("Позже" to open.filter { it.dueDay != null && it.dueDay > today + 6 }.sortedWith(compareBy<TaskItem> { it.dueDay }.then(TASK_ORDER)))
+                        L_INBOX -> listOf("" to open.filter { it.projectId == null }.sortedWith(compareBy<TaskItem> { it.dueDay ?: Long.MAX_VALUE }.then(TASK_ORDER)))
                         L_ALL -> listOf("Входящие" to open.filter { it.projectId == null }) +
                             projects.map { p -> p.name to open.filter { it.projectId == p.id } }
                         L_DONE -> listOf("" to tasks.filter { it.done }.sortedByDescending { it.doneAt ?: 0 })
                         else -> listOf(
-                            "" to open.filter { it.projectId == selectedProject?.id },
+                            "" to open.filter { it.projectId == selectedProject?.id }.sortedWith(compareBy<TaskItem> { it.dueDay ?: Long.MAX_VALUE }.then(TASK_ORDER)),
                             "Выполнено" to tasks.filter { it.done && it.projectId == selectedProject?.id },
                         )
                     }.filter { it.second.isNotEmpty() }
 
-                    if (groups.isEmpty()) {
-                        Empty(
-                            if (list == L_DONE) "ui:check" else "ui:leaves",
-                            if (list == L_DONE) "Пока ничего не выполнено" else "Здесь чисто",
-                            if (list == L_DONE) "Отмечайте задачи — они появятся здесь." else "Добавьте задачу кнопкой «+». Можно писать «завтра в 10 !2 #работа».",
-                        )
-                    } else LazyColumn(modifier = Modifier.cardViewport(), contentPadding = PaddingValues(bottom = 96.dp)) {
+                    LazyColumn(modifier = Modifier.cardViewport(), contentPadding = PaddingValues(bottom = 96.dp)) {
+                        if (list == L_TODAY) {
+                            item(key = "hero") {
+                                val dueToday = open.count { it.dueDay != null && it.dueDay <= today }
+                                TodayHero(doneToday.size, dueToday, overdue.size, today)
+                            }
+                            // Привычки на сегодня — здесь же, над задачами.
+                            item(key = "habits") { TodayHabitsStrip(nav) { list = L_HABITS } }
+                            // Цели — полосой над задачами: прогресс, срок (он же в календаре) и быстрый переход.
+                            if (!showGoals) item(key = "goals") { GoalsStrip(nav) }
+                        } else if (!showGoals && list == L_ALL) item(key = "goals") { GoalsStrip(nav) }
+
+                        if (groups.isEmpty() && !(list == L_TODAY && doneToday.isNotEmpty())) item(key = "empty") {
+                            Empty(
+                                if (list == L_DONE) "ui:check" else "ui:leaves",
+                                when (list) { L_DONE -> "Пока ничего не выполнено"; L_TODAY -> "На сегодня всё"; else -> "Здесь чисто" },
+                                when (list) {
+                                    L_DONE -> "Отмечайте задачи — они появятся здесь."
+                                    L_TODAY -> "Свободный день. Добавьте задачу кнопкой «+» — можно писать «в 18 позвонить маме !2»."
+                                    else -> "Добавьте задачу кнопкой «+». Можно писать «завтра в 10 !2 #работа»."
+                                },
+                            )
+                        }
                         groups.forEach { (title, group) ->
                             if (title.isNotEmpty()) item(key = "h$title") {
-                                SectionTitle("$title  ${group.size}")
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Box(Modifier.weight(1f)) { SectionTitle("$title  ${group.size}") }
+                                    // Как в Todoist: всё просроченное — на сегодня одной кнопкой.
+                                    if (title == "Просрочено") androidx.compose.material3.TextButton(onClick = {
+                                        io { group.forEach { dao.upsertTask(it.copy(dueDay = today)) } }
+                                    }) { Text(btnLabel("Перенести на сегодня"), fontSize = 13.sp) }
+                                }
                             }
                             item(key = "g$title") {
                                 Tile(padding = 6.dp) {
@@ -199,12 +251,33 @@ fun TasksScreen(nav: NavHostController, onBack: (() -> Unit)? = null, showGoals:
                                         TaskRow(
                                             t, projects.firstOrNull { it.id == t.projectId }, subs.count(Subtask::done), subs.size,
                                             onOpen = { nav.navigate(Routes.task(t.id)) }, showProject = list != "p${t.projectId}",
+                                            onLongClick = { menuFor = t },
                                         )
                                     }
                                 }
                             }
                         }
-                        item { HowTo("tasks") }
+                        // Выполненное за сегодня — свёрнуто, по нажатию раскрывается.
+                        if (list == L_TODAY && doneToday.isNotEmpty()) {
+                            item(key = "doneTodayHead") {
+                                Row(
+                                    Modifier.fillMaxWidth().padding(top = 8.dp).clip(RoundedCornerShape(12.dp)).clickable { showDoneToday = !showDoneToday }.padding(vertical = 8.dp, horizontal = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Glyph("ui:check", 18.dp)
+                                    Text("  Выполнено сегодня  ${doneToday.size}", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = extra.dim, modifier = Modifier.weight(1f))
+                                    Icon(if (showDoneToday) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null, tint = extra.dim)
+                                }
+                            }
+                            if (showDoneToday) item(key = "doneToday") {
+                                Tile(padding = 6.dp) {
+                                    doneToday.forEach { t ->
+                                        TaskRow(t, projects.firstOrNull { it.id == t.projectId }, 0, 0, onOpen = { nav.navigate(Routes.task(t.id)) }, onLongClick = { menuFor = t })
+                                    }
+                                }
+                            }
+                        }
+                        item(key = "howto") { HowTo("tasks") }
                     }
                 }
             }
@@ -216,11 +289,98 @@ fun TasksScreen(nav: NavHostController, onBack: (() -> Unit)? = null, showGoals:
         defaultDay = if (list == L_TODAY) today else null,
         defaultProject = selectedProject?.id,
     )
+    menuFor?.let { t -> TaskQuickMenu(t, today, nav) { menuFor = null } }
     editProject?.let { p -> ProjectDialog(p, onDismiss = { editProject = null }) }
     if (confirmClear) ConfirmDialog(
         "Очистить выполненные?", "Все выполненные задачи будут удалены навсегда.",
         onDismiss = { confirmClear = false },
     ) { io { dao.deleteDoneTasks() } }
+}
+
+/** Итог дня, как в TickTick и Things: кольцо «сделано из запланированного», дата и что осталось. */
+@Composable
+private fun TodayHero(done: Int, left: Int, overdue: Int, today: Long) {
+    val extra = LocalExtra.current
+    val total = done + left
+    val progress = if (total == 0) 0f else done / total.toFloat()
+    Tile(Modifier.padding(top = 2.dp, bottom = 6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            com.dasein.poryadok.ui.common.ProgressRing(progress, if (left == 0 && total > 0) extra.ok else MaterialTheme.colorScheme.primary, size = 58.dp) {
+                Text(if (total == 0) "—" else "$done/$total", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Column(Modifier.padding(start = 14.dp).weight(1f)) {
+                Text("${Dates.weekdayFull(today)}, ${Dates.short(today)}", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    when {
+                        total == 0 -> "Планов на сегодня нет"
+                        left == 0 -> "Всё сделано — отличный день!"
+                        overdue > 0 -> "Осталось $left, из них просрочено $overdue"
+                        else -> "Осталось $left из $total"
+                    },
+                    fontSize = 13.sp, color = if (overdue > 0) extra.danger else extra.dim,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Быстрые действия по удержанию задачи (как в Todoist): срок — сегодня, завтра, через неделю, без срока;
+ * приоритет; выполнить; удалить.
+ */
+@Composable
+private fun TaskQuickMenu(t: TaskItem, today: Long, nav: NavHostController, onDismiss: () -> Unit) {
+    val dao = Graph.dao
+    val extra = LocalExtra.current
+    var confirmDelete by remember { mutableStateOf(false) }
+    fun save(n: TaskItem) { io { dao.upsertTask(n) }; onDismiss() }
+    com.dasein.poryadok.ui.common.AppSheet(onDismissRequest = onDismiss, contentWindowInsets = com.dasein.poryadok.ui.common.NoSheetInsets) {
+        Column(Modifier.padding(horizontal = 16.dp).safeBottom()) {
+            Text(t.title, style = MaterialTheme.typography.titleMedium, maxLines = 2)
+            t.whenText(today)?.let { Text(it, fontSize = 12.sp, color = if (t.overdue(today)) extra.danger else extra.dim) }
+            SectionTitle("Срок")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(Triple("Сегодня", "ui:sun", today), Triple("Завтра", "cal/10", today + 1), Triple("Через неделю", "cal/00", today + 7), Triple("Без срока", "cal/22", null))
+                    .forEach { (label, glyph, day) ->
+                        Column(
+                            Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(if (t.dueDay == day) MaterialTheme.colorScheme.primary.copy(alpha = .16f) else extra.card)
+                                .clickable { save(t.copy(dueDay = day, dueMin = if (day == null) null else t.dueMin, remind = if (day == null) false else t.remind)) }
+                                .padding(vertical = 10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Glyph(glyph, 22.dp)
+                            Text(label, fontSize = 12.sp, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
+                        }
+                    }
+            }
+            SectionTitle("Приоритет")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(0 to "Нет", 1 to "Низкий", 2 to "Средний", 3 to "Высокий").forEach { (p, label) ->
+                    val c = if (p == 0) extra.dim else com.dasein.poryadok.ui.common.priorityColor(p)
+                    Row(
+                        Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(if (t.priority == p) c.copy(alpha = .18f) else extra.card)
+                            .clickable { save(t.copy(priority = p)) }.padding(vertical = 10.dp),
+                        horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Default.Flag, null, tint = c, modifier = Modifier.size(16.dp))
+                        Text(" $label", fontSize = 12.sp, maxLines = 1)
+                    }
+                }
+            }
+            Gap(12.dp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                com.dasein.poryadok.ui.common.OutlinedButton(onClick = { io { com.dasein.poryadok.Repo.toggleTask(t) }; onDismiss() }, modifier = Modifier.weight(1f)) {
+                    Text(btnLabel(if (t.done) "Вернуть" else "Выполнить"))
+                }
+                com.dasein.poryadok.ui.common.OutlinedButton(onClick = { onDismiss(); nav.navigate(Routes.task(t.id)) }, modifier = Modifier.weight(1f)) { Text(btnLabel("Открыть")) }
+            }
+            TextButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) { Text(btnLabel("Удалить задачу"), color = extra.danger) }
+        }
+    }
+    if (confirmDelete) ConfirmDialog("Удалить «${t.title}»?", "Задача и её подзадачи удалятся.", onDismiss = { confirmDelete = false }) {
+        io { dao.deleteTask(t) }
+        onDismiss()
+    }
 }
 
 @Composable

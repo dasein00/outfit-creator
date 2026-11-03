@@ -14,12 +14,16 @@ import java.time.LocalDate
 object Holiday {
     private const val KEY_AUTO = "holiday_auto"
     private const val KEY_SNOW = "holiday_snow"
+    private const val KEY_PREVIEW = "holiday_preview"
 
     /** Автоматический новогодний режим (по умолчанию включён). */
     val auto = mutableStateOf(true)
 
     /** Падающие снежинки при входе (по умолчанию включены). Не влияет на цвета. */
     val snow = mutableStateOf(true)
+
+    /** Тестовый режим: новогодняя тема в любой день, чтобы посмотреть её заранее. */
+    val preview = mutableStateOf(false)
 
     /** Сегодняшняя дата телефона — обновляется при входе и раз в минуту, пока приложение открыто. */
     val today = mutableStateOf(LocalDate.now())
@@ -40,6 +44,7 @@ object Holiday {
         val p = sp(ctx)
         auto.value = p.getBoolean(KEY_AUTO, true)
         snow.value = p.getBoolean(KEY_SNOW, true)
+        preview.value = p.getBoolean(KEY_PREVIEW, false)
         loaded = true
     }
 
@@ -49,11 +54,20 @@ object Holiday {
     fun setAuto(ctx: Context, v: Boolean) { auto.value = v; sp(ctx).edit().putBoolean(KEY_AUTO, v).apply() }
     fun setSnow(ctx: Context, v: Boolean) { snow.value = v; sp(ctx).edit().putBoolean(KEY_SNOW, v).apply() }
 
+    /** Включили тестовый режим — сразу и снег, чтобы было видно, как выглядит вход. */
+    fun setPreview(ctx: Context, v: Boolean) {
+        preview.value = v; sp(ctx).edit().putBoolean(KEY_PREVIEW, v).apply()
+        if (v) letItSnow()
+    }
+
+    /** Показать снегопад сейчас (кнопка в настройках) — как при новом входе. */
+    fun letItSnow() { entry.intValue++ }
+
     /** Новогодние цвета сейчас включены. */
-    val active: Boolean get() = HolidaySeason.themeActive(auto.value, today.value)
+    val active: Boolean get() = HolidaySeason.themeActive(auto.value, today.value, preview.value)
 
     /** Снегопад при входе сейчас разрешён. */
-    val snowNow: Boolean get() = HolidaySeason.snowAllowed(auto.value, snow.value, today.value)
+    val snowNow: Boolean get() = HolidaySeason.snowAllowed(auto.value, snow.value, today.value, preview.value)
 
     fun refreshDate() {
         val d = LocalDate.now()

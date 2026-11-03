@@ -37,6 +37,15 @@ class HolidaySeasonTest {
         assertFalse(HolidaySeason.snowAllowed(auto = true, snow = true, d = d(2026, 12, 14)))
     }
 
+    @Test fun previewModeWorksAnyDay() {
+        val nov = d(2026, 11, 3)
+        assertTrue("тестовый режим включает тему вне сезона", HolidaySeason.themeActive(auto = true, d = nov, preview = true))
+        assertTrue("и даже при выключенном автоматическом режиме", HolidaySeason.themeActive(auto = false, d = nov, preview = true))
+        assertTrue(HolidaySeason.snowAllowed(auto = false, snow = true, d = nov, preview = true))
+        assertFalse("снежинки по-прежнему выключаются отдельно", HolidaySeason.snowAllowed(auto = true, snow = false, d = nov, preview = true))
+        assertFalse("без тестового режима — обычное оформление", HolidaySeason.themeActive(auto = true, d = nov, preview = false))
+    }
+
     @Test fun newEntry() {
         assertTrue("первый запуск", HolidaySeason.isNewEntry(0L, 1_000L))
         assertFalse("переключились на минуту", HolidaySeason.isNewEntry(1_000L, 61_000L))

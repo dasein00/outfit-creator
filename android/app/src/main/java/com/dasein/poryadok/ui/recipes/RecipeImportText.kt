@@ -546,7 +546,7 @@ internal fun RecipeTextDialog(d: RecipeDraft, onDismiss: () -> Unit) {
                     enabled = !shotBusy,
                     modifier = Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(min = 48.dp),
                     onClick = { shots.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                ) { Text(if (shotBusy) "Распознаю текст…" else btnLabel("📷 Текст описания со скриншота")) }
+                ) { if (shotBusy) Text("Распознаю текст…") else com.dasein.poryadok.ui.common.GlyphLabel("ui:camera", btnLabel("Текст описания со скриншота")) }
                 TextInput(ingrText, { ingrText = it }, "Текст из поста: ингредиенты, граммовки", Modifier.padding(top = 6.dp), singleLine = false, minLines = 3)
                 if (showLogin) com.dasein.poryadok.ui.common.InstaLoginDialog {
                     showLogin = false

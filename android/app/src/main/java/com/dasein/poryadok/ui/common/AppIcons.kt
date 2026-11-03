@@ -168,3 +168,25 @@ fun Empty(@DrawableRes icon: Int, title: String, text: String, modifier: Modifie
         Text(text, color = LocalExtra.current.dim, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
     }
 }
+
+/**
+ * Подпись с фирменной иконкой вместо эмодзи («📷 По камере» → иконка камеры + «По камере»):
+ * иконка перекрашивается вместе с оформлением, текст идёт через «Тексты интерфейса».
+ */
+@Composable
+fun GlyphLabel(
+    glyph: String,
+    text: String,
+    modifier: Modifier = Modifier,
+    size: Dp = 18.dp,
+    color: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified,
+    fontSize: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
+    fontWeight: androidx.compose.ui.text.font.FontWeight? = null,
+    maxLines: Int = Int.MAX_VALUE,
+) {
+    androidx.compose.foundation.layout.Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Glyph(glyph, size, badge = false)
+        androidx.compose.foundation.layout.Spacer(Modifier.size(6.dp))
+        Text(text, color = color, fontSize = fontSize, fontWeight = fontWeight, maxLines = maxLines)
+    }
+}

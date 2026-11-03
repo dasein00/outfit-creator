@@ -160,5 +160,7 @@
 {"id": "fl_v13", "name": "Оливковые сандалии Nike на платформе", "category": "обувь", "season": "лето", "kind": "sandals", "file": "v13.webp"},
 {"id": "fl_v14", "name": "Бежевые шлёпанцы adidas Adilette", "category": "обувь", "season": "лето", "kind": "sandals", "file": "v14.webp"},
 {"id": "fl_v15", "name": "Чёрные высокие кеды Converse × Comme des Garçons PLAY", "category": "обувь", "season": "любой", "kind": "sneakers", "file": "v15.webp"},
-{"id": "fl_v16", "name": "Графитовая вельветовая рубашка TBOE", "category": "верх", "season": "осень", "kind": "shirt", "file": "v16.webp"}
+{"id": "fl_v16", "name": "Графитовая вельветовая рубашка TBOE", "category": "верх", "season": "осень", "kind": "shirt", "file": "v16.webp"},
+{"id": "fl_v17", "name": "Песочная футболка с принтом башни", "category": "верх", "season": "лето", "kind": "tee", "file": "v17.webp"},
+{"id": "fl_v18", "name": "Песочное поло из пике", "category": "верх", "season": "лето", "kind": "polo", "file": "v18.webp"}
 ]

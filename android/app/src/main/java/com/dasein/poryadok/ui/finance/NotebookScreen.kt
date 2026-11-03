@@ -276,7 +276,7 @@ private fun MonthCard(year: Int, month: Int, incomeSum: Double, incomeDays: Int,
                     Text(Money.format(w.amount ?: 0.0, cur), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 }
                 if (conflict) Text(
-                    "⚠ не совпадает: $cmp по записям — ${Money.format(computed!!, cur)}. Сохранены оба значения.",
+                    "Не совпадает: $cmp по записям — ${Money.format(computed!!, cur)}. Сохранены оба значения.",
                     fontSize = 12.sp, color = extra.warn,
                 )
             }

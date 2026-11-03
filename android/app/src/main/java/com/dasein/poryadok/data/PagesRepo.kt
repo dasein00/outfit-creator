@@ -89,11 +89,11 @@ object PagesRepo {
                 BlockType.NUMBER -> { n++; "  ".repeat(b.indent) + "$n. ${b.text}" }
                 BlockType.TODO -> "- [${if (b.checked) "x" else " "}] ${b.text}"
                 BlockType.QUOTE -> "> ${b.text}"
-                BlockType.CALLOUT -> "> 💡 ${b.text}"
+                BlockType.CALLOUT -> "> ${b.text}"
                 BlockType.CODE -> "```\n${b.text}\n```"
                 BlockType.DIVIDER -> "---"
                 BlockType.IMAGE -> "![${b.text}](${b.media.substringAfterLast('/')})"
-                BlockType.PAGE -> "📄 ${titles[b.media.toLongOrNull()] ?: "Страница"}"
+                BlockType.PAGE -> "Страница: ${titles[b.media.toLongOrNull()] ?: "Страница"}"
                 BlockType.VIDEO -> "▶ [${b.text.ifBlank { if (b.media.startsWith("/")) "Видео" else com.dasein.poryadok.logic.VideoEmbed.provider(b.media) }}](${if (b.media.startsWith("/")) b.media.substringAfterLast('/') else b.media})"
                 BlockType.TOGGLE -> "▸ ${b.text}\n${b.media.lines().joinToString("\n") { "    $it" }}"
                 else -> b.text

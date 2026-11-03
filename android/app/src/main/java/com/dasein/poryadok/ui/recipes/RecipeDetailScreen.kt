@@ -421,10 +421,10 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
                                 val end = timers[i]
                                 val label = if (end != null) {
                                     val left = ((end - now) / 1000).coerceAtLeast(0)
-                                    "⏱ %d:%02d · стоп".format(left / 60, left % 60)
-                                } else "⏱ Таймер $mins мин"
-                                Text(
-                                    label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary,
+                                    "%d:%02d · стоп".format(left / 60, left % 60)
+                                } else "Таймер $mins мин"
+                                com.dasein.poryadok.ui.common.GlyphLabel(
+                                    "ui:timer", label, size = 16.dp, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(top = 6.dp).clip(RoundedCornerShape(10.dp))
                                         .background(MaterialTheme.colorScheme.primary.copy(alpha = .12f))
                                         .clickable { if (end != null) timers.remove(i) else { timers[i] = System.currentTimeMillis() + mins * 60_000L; now = System.currentTimeMillis() } }
@@ -438,7 +438,7 @@ fun RecipeDetailScreen(nav: NavHostController, id: Long) {
             if (detailed && detail != null) TextButton(onClick = { com.dasein.poryadok.system.RecipeDetail.forget(ctx, id); detail = null; makeDetail() }, enabled = !detailBusy) {
                 Text(if (detailBusy) "Расписываю заново…" else "Расписать заново")
             }
-            if (shown.isNotEmpty() && doneCount == shown.size) Text(btnLabel("Готово! Приятного аппетита 🍽"), color = green, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
+            if (shown.isNotEmpty() && doneCount == shown.size) com.dasein.poryadok.ui.common.GlyphLabel("cal/27", btnLabel("Готово! Приятного аппетита"), color = green, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
             if (steps.isEmpty()) Text(btnLabel("Шаги не добавлены"), color = extra.dim)
             }
             RecipeRating(r.id)

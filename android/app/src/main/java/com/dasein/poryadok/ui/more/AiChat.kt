@@ -96,7 +96,7 @@ object AiChats {
         val text: String,
         /** Картинки (фото и кадры видео) — пути к JPEG в files/ai_chat/media. */
         val images: List<String> = emptyList(),
-        /** Подписи вложений для показа: «📄 отчёт.pdf», «🎬 видео.mp4». */
+        /** Подписи вложений для показа: «Файл: отчёт.pdf», «Видео: видео.mp4» (у старых сообщений — с эмодзи). */
         val files: List<String> = emptyList(),
         /** Текст из файлов и речь из видео — уходит ИИ вместе с сообщением. */
         val extra: String = "",
@@ -204,7 +204,7 @@ private suspend fun videoAttach(ctx: Context, uri: Uri, name: String, onStage: (
         append("[Видео «$name»: ${frames.size} кадров по порядку")
         if (!speech.isNullOrBlank()) append("; расшифровка речи ниже]\n$speech") else append("; речи нет или не распознана]")
     }
-    Attach("🎬 $name", frames, text)
+    Attach("Видео: $name", frames, text)
 }
 
 @Composable
@@ -232,9 +232,9 @@ fun AiChatScreen(nav: NavHostController) {
                 val name = nameOf(ctx, uri)
                 preparing = "Готовлю «$name»…"
                 val a = when {
-                    mime.startsWith("image/") -> withContext(Dispatchers.IO) { decodeImage(ctx, uri)?.let { saveJpeg(ctx, it) } }?.let { Attach("🖼 $name", listOf(it)) }
+                    mime.startsWith("image/") -> withContext(Dispatchers.IO) { decodeImage(ctx, uri)?.let { saveJpeg(ctx, it) } }?.let { Attach("Фото: $name", listOf(it)) }
                     mime.startsWith("video/") -> videoAttach(ctx, uri, name) { preparing = it }
-                    else -> withContext(Dispatchers.IO) { fileText(ctx, uri, name, mime) }?.let { Attach("📄 $name", text = "[Файл «$name»]\n$it") }
+                    else -> withContext(Dispatchers.IO) { fileText(ctx, uri, name, mime) }?.let { Attach("Файл: $name", text = "[Файл «$name»]\n$it") }
                 }
                 if (a != null) attachments = attachments + a
                 else Toast.makeText(ctx, "Не удалось прочитать «$name»", Toast.LENGTH_SHORT).show()
@@ -364,7 +364,11 @@ private fun Bubble(m: AiChats.Msg) {
                     img?.let { Image(it, null, Modifier.size(84.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop) }
                 }
             }
-            m.files.filter { !it.startsWith("🖼") }.forEach { Text(it, fontSize = 12.sp, color = extra.dim) }
+            // Вложение — фирменной иконкой по виду (фото показываются картинкой выше и подписью не дублируются).
+            m.files.filter { !it.startsWith("🖼") && !it.startsWith("Фото: ") }.forEach { f ->
+                val glyph = if (f.startsWith("Видео: ") || f.startsWith("🎬")) "ui:v_film" else "ui:document"
+                com.dasein.poryadok.ui.common.GlyphLabel(glyph, f.removePrefix("🎬 ").removePrefix("📄 ").removePrefix("Видео: ").removePrefix("Файл: "), size = 14.dp, fontSize = 12.sp, color = extra.dim)
+            }
             if (m.text.isNotBlank()) SelectionContainer { Text(m.text, fontSize = 15.sp, lineHeight = 21.sp) }
         }
     }

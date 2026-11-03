@@ -198,8 +198,9 @@ fun RecipeEditScreen(nav: NavHostController, id: Long, draft: String? = null) {
     ) { pad ->
         Column(Modifier.padding(pad).padding(horizontal = 16.dp)) {
             if (aiBusyHere) com.dasein.poryadok.ui.common.Tile(Modifier.padding(bottom = 6.dp), padding = 10.dp) {
-                Text(
-                    (if (myDraft?.ai == 2) "✨ " + myDraft?.aiStage.orEmpty().ifBlank { "ИИ заполняет карточку…" } else "✨ Карточка в очереди ИИ…") +
+                com.dasein.poryadok.ui.common.GlyphLabel(
+                    "ui:v_spark",
+                    (if (myDraft?.ai == 2) myDraft?.aiStage.orEmpty().ifBlank { "ИИ заполняет карточку…" } else "Карточка в очереди ИИ…") +
                         " Можно выйти и создать другую — готовая будет в «Черновиках».",
                     fontSize = 13.sp,
                 )
@@ -301,7 +302,7 @@ private fun StepBasics(d: RecipeDraft) {
     var fromText by remember { mutableStateOf(RecipeInbox.take()?.let { t -> d.recipe = d.recipe.copy(notes = t); true } ?: false) }
     // Рецепт из подписи в Instagram: ингредиенты, порции и этапы разбираются сами.
     Button(onClick = { fromText = true }, modifier = Modifier.fillMaxWidth()) {
-        Text(if (r.notes.isBlank()) "📋 Рецепт из видео, Instagram или по ссылке" else "📋 Описание блюда — разобрать заново")
+        com.dasein.poryadok.ui.common.GlyphLabel("cal/24", if (r.notes.isBlank()) "Рецепт из видео, Instagram или по ссылке" else "Описание блюда — разобрать заново")
     }
     if (fromText) RecipeTextDialog(d) { fromText = false }
     Gap(10.dp)
@@ -357,7 +358,7 @@ private fun StepBasics(d: RecipeDraft) {
             d.recipe = d.recipe.copy(tags = (d.recipe.tagList() + got).map { it.trim() }.filter { it.isNotEmpty() }.distinct().take(10).joinToString(", "))
             tagsBusy = false
         }
-    }) { Text(if (tagsBusy) "Подбираю теги…" else "✨ Подобрать теги автоматически") }
+    }) { if (tagsBusy) Text("Подбираю теги…") else com.dasein.poryadok.ui.common.GlyphLabel("ui:v_spark", "Подобрать теги автоматически") }
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
         listOf("быстро", "высокобелковые", "низкоуглеводные", "вегетарианские", "заготовка", "заморозка", "засолка", "копчение", "без сахара", "постное").forEach { t ->
             val on = t in r.tagList()

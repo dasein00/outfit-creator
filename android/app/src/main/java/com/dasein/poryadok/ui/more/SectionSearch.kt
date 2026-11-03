@@ -61,6 +61,7 @@ object SectionIndex {
             add(Dest("Топы", Routes.TOPS_HUB, "d17/03", keys = "фильмы сериалы книги"))
             add(Dest("Все разделы", Routes.MORE, "d01/04", keys = "ещё меню"))
             HUB.forEach { h -> add(Dest(h.title, h.route, h.icon, keys = h.sub)) }
+            add(Dest("Привычки", Routes.HABITS, "d04/00", keys = "серии статистика задачи"))
 
             // Финансы
             listOf("Операции" to "траты список", "Счета" to "остаток баланс карты вклад сбережения капитал подушка",

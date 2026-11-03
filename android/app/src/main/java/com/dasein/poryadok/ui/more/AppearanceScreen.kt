@@ -417,15 +417,32 @@ private fun HolidaySettings() {
         }
         Switch(auto, { h.setAuto(ctx, it) })
     }
+    val preview = h.preview.value
+    val canSnow = auto || preview
     Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(btnLabel("Падающие снежинки"), fontWeight = FontWeight.SemiBold, color = if (auto) Color.Unspecified else extra.dim)
+            Text(btnLabel("Падающие снежинки"), fontWeight = FontWeight.SemiBold, color = if (canSnow) Color.Unspecified else extra.dim)
             Text(
-                if (auto) "5 секунд лёгкого снегопада при входе в приложение — не мешает нажимать и листать. Выключите, чтобы оставить только праздничные цвета."
+                if (canSnow) "5 секунд лёгкого снегопада при входе в приложение — не мешает нажимать и листать. Выключите, чтобы оставить только праздничные цвета."
                 else "Снежинки идут вместе с новогодним режимом — включите его, и выбор сохранится.",
                 fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
             )
         }
-        Switch(h.snow.value, { h.setSnow(ctx, it) }, enabled = auto)
+        Switch(h.snow.value, { h.setSnow(ctx, it) }, enabled = canSnow)
     }
+    Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(btnLabel("Тестовый режим"), fontWeight = FontWeight.SemiBold)
+            Text(
+                "Включает новогоднее оформление прямо сейчас, в любой день, — чтобы посмотреть его заранее. " +
+                    "Работает, пока не выключите, даже вне сезона и при выключенном автоматическом режиме.",
+                fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
+            )
+        }
+        Switch(preview, { h.setPreview(ctx, it) })
+    }
+    if (h.active) OutlinedButton(
+        onClick = { h.letItSnow() }, enabled = h.snow.value,
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+    ) { Text(btnLabel(if (h.snow.value) "Показать снегопад сейчас" else "Снегопад выключен")) }
 }

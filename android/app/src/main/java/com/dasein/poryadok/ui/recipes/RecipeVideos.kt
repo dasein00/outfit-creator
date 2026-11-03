@@ -122,7 +122,7 @@ fun RecipeSourceButton(r: Recipe) {
                 .onFailure { android.widget.Toast.makeText(ctx, "Не удалось открыть ссылку", android.widget.Toast.LENGTH_SHORT).show() }
         },
         modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-    ) { com.dasein.poryadok.ui.common.Text("🔗 Источник · " + RecipeVideos.hostLabel(url)) }
+    ) { com.dasein.poryadok.ui.common.GlyphLabel("cal/46", "Источник · " + RecipeVideos.hostLabel(url)) }
 }
 
 /**

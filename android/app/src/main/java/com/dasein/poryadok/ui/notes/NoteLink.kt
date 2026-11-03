@@ -50,5 +50,5 @@ fun NoteLinkButton(nav: NavHostController, linked: Long?, title: String, modifie
             }
         },
         modifier = modifier.fillMaxWidth().padding(top = 6.dp),
-    ) { Text(if (page != null) "📝 Открыть заметку «${page.title.ifBlank { "Без названия" }}»" else btnLabel("📝 Создать заметку")) }
+    ) { com.dasein.poryadok.ui.common.GlyphLabel("habit/23", if (page != null) "Открыть заметку «${page.title.ifBlank { "Без названия" }}»" else btnLabel("Создать заметку")) }
 }

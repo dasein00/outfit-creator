@@ -229,13 +229,16 @@ fun RecipeDraftsTab(nav: androidx.navigation.NavHostController) {
                     androidx.compose.foundation.layout.Column(Modifier.weight(1f).padding(start = 10.dp)) {
                         com.dasein.poryadok.ui.common.Text(d.title, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, maxLines = 2)
                         val status = when {
-                            d.id == running || d.ai == 2 -> "✨ " + d.aiStage.ifBlank { "ИИ заполняет…" }
-                            d.ai == 1 -> "⏳ В очереди ИИ"
+                            d.id == running || d.ai == 2 -> d.aiStage.ifBlank { "ИИ заполняет…" }
+                            d.ai == 1 -> "В очереди ИИ"
                             d.ai == 3 -> "✓ Заполнено ИИ — откройте и сохраните"
                             d.ai == 4 -> "ИИ не смог: ${d.aiError}"
                             else -> "${d.ingredients.size} ингр. · ${d.steps.count { it.isNotBlank() }} этапов"
                         }
-                        com.dasein.poryadok.ui.common.Text(status, fontSize = 12.sp, color = if (d.ai == 3) extra.ok else if (d.ai == 4) extra.danger else extra.dim, maxLines = 2)
+                        val statusGlyph = when { d.id == running || d.ai == 2 -> "ui:v_spark"; d.ai == 1 -> "cal/12"; else -> null }
+                        val statusColor = if (d.ai == 3) extra.ok else if (d.ai == 4) extra.danger else extra.dim
+                        if (statusGlyph != null) com.dasein.poryadok.ui.common.GlyphLabel(statusGlyph, status, size = 14.dp, fontSize = 12.sp, color = statusColor, maxLines = 2)
+                        else com.dasein.poryadok.ui.common.Text(status, fontSize = 12.sp, color = statusColor, maxLines = 2)
                         com.dasein.poryadok.ui.common.Text(java.text.SimpleDateFormat("d MMM, HH:mm", java.util.Locale("ru")).format(java.util.Date(d.updatedAt)), fontSize = 11.sp, color = extra.dim)
                     }
                     androidx.compose.material3.IconButton(onClick = { deleting = d }) { com.dasein.poryadok.ui.common.Glyph("ui:trash", 22.dp, badge = false) }

@@ -94,7 +94,7 @@ internal fun NoteVideoBlock(
                 Modifier.fillMaxWidth().background(extra.card).clickable { openExternal(ctx, media) }.padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("🔗", fontSize = 22.sp)
+                com.dasein.poryadok.ui.common.Glyph("cal/46", 26.dp, badge = false)
                 Column(Modifier.weight(1f).padding(start = 10.dp)) {
                     Text(VideoEmbed.provider(media), fontWeight = FontWeight.SemiBold)
                     Text(media, fontSize = 12.sp, color = extra.dim, maxLines = 1, overflow = TextOverflow.Ellipsis)

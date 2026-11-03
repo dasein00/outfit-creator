@@ -651,6 +651,12 @@ fun PageScreen(nav: NavHostController, id: Long) {
                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = 8.dp),
                     )
                 }
+                @Composable
+                fun GlyphTool(glyph: String, onClick: () -> Unit) {
+                    Box(Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick).padding(horizontal = 9.dp, vertical = 8.dp)) {
+                        com.dasein.poryadok.ui.common.Glyph(glyph, 20.dp, badge = false)
+                    }
+                }
                 if (fid != null) {
                     Box {
                         Tool("Aa") { typeMenu = true }
@@ -675,7 +681,7 @@ fun PageScreen(nav: NavHostController, id: Long) {
                             .background(Color(0x66E0B040)).padding(horizontal = 10.dp, vertical = 6.dp),
                     )
                     if (st.blocks.getOrNull(st.index(fid))?.let { it.type == BlockType.TODO && st.plain(it.id).isNotBlank() } == true) Tool("→ Задача") { toTasks = listOf(fid) }
-                    Tool("🔗") { linkFor = fid }
+                    GlyphTool("cal/46") { linkFor = fid }
                     Tool("☐") { st.setType(fid, if (st.blocks.getOrNull(st.index(fid))?.type == BlockType.TODO) BlockType.TEXT else BlockType.TODO) }
                     Tool("•") { st.setType(fid, if (st.blocks.getOrNull(st.index(fid))?.type == BlockType.BULLET) BlockType.TEXT else BlockType.BULLET) }
                     Tool("⇥") { st.update(fid) { if (it.type in BlockType.CONTINUES) it.copy(indent = (it.indent + 1).coerceAtMost(4)) else it } }

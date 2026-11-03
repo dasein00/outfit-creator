@@ -131,7 +131,7 @@ fun CultureCard(i: CultureDay.Item, date: LocalDate? = null) {
         Row(verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(if (i.kind == CultureDay.BIRTH) "🎂" else "🎬", fontSize = 15.sp)
+                    com.dasein.poryadok.ui.common.Glyph(if (i.kind == CultureDay.BIRTH) "cal/31" else "habit/01", 18.dp, badge = false)
                     RegionBadge(i.region)
                 }
                 Text(i.name, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, modifier = Modifier.padding(top = 4.dp))
@@ -183,7 +183,7 @@ fun HomeCultureCard(nav: NavHostController) {
         Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(if (i.kind == CultureDay.BIRTH) "🎂 День рождения" else "🎬 Событие", fontSize = 12.sp, color = extra.dim)
+                    com.dasein.poryadok.ui.common.GlyphLabel(if (i.kind == CultureDay.BIRTH) "cal/31" else "habit/01", if (i.kind == CultureDay.BIRTH) "День рождения" else "Событие", size = 14.dp, fontSize = 12.sp, color = extra.dim)
                     RegionBadge(i.region)
                 }
                 Text(i.name, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, modifier = Modifier.padding(top = 2.dp))

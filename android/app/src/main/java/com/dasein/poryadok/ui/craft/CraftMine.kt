@@ -151,7 +151,7 @@ fun CraftMineScreen(nav: NavHostController) {
             )
             Gap(8.dp)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { runCatching { camera.launch(camUri) } }, enabled = !busy, modifier = Modifier.weight(1f)) { Text(btnLabel("📷 Снять")) }
+                Button(onClick = { runCatching { camera.launch(camUri) } }, enabled = !busy, modifier = Modifier.weight(1f)) { com.dasein.poryadok.ui.common.GlyphLabel("ui:camera", btnLabel("Снять")) }
                 OutlinedButton(onClick = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy, modifier = Modifier.weight(1f)) { Text(btnLabel("Из галереи")) }
             }
             if (busy) Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {

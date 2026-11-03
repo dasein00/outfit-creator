@@ -117,12 +117,19 @@ fun StatusCard(a: PressureInsight.Assessment, doctor: Boolean) {
                 Text(btnLabel("Оценка сформирована на основании:"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
                 a.basis.forEach { Text("• $it", fontSize = 14.sp, lineHeight = 20.sp) }
                 Text(btnLabel("Как считается уровень"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
-                Text(
-                    "🟢 стабильное — среднее за 7 дней ниже порога и без роста; 🟡 требует наблюдения — у порога, рост к прошлой неделе ≥5 мм или превышение без устойчивости; " +
-                        "🟠 устойчиво повышенное — выше порога и за 7, и за 14 дней; 🔴 требует медицинской оценки — среднее ≥160/100, повторные значения ≥180/110 " +
-                        "или повышение при диабете, болезни почек или сердца. Нужно минимум 3 дня и 4 замера за неделю.",
-                    fontSize = 13.sp, lineHeight = 18.sp,
-                )
+                // Уровни — цветной точкой статуса, как на шкале, а не эмодзи.
+                listOf(
+                    PressureInsight.Status.STABLE to "стабильное — среднее за 7 дней ниже порога и без роста",
+                    PressureInsight.Status.WATCH to "требует наблюдения — у порога, рост к прошлой неделе ≥5 мм или превышение без устойчивости",
+                    PressureInsight.Status.ELEVATED to "устойчиво повышенное — выше порога и за 7, и за 14 дней",
+                    PressureInsight.Status.MEDICAL to "требует медицинской оценки — среднее ≥160/100, повторные значения ≥180/110 или повышение при диабете, болезни почек или сердца",
+                ).forEach { (st, t) ->
+                    Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Top) {
+                        Box(Modifier.padding(top = 5.dp).size(10.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color(st.color)))
+                        Text(t, fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.padding(start = 8.dp))
+                    }
+                }
+                Text("Нужно минимум 3 дня и 4 замера за неделю.", fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.padding(top = 4.dp))
                 Text("Источники: ${PressureInsight.SOURCES}.", fontSize = 12.sp, color = LocalExtra.current.dim, modifier = Modifier.padding(top = 10.dp))
             }
         },
@@ -364,9 +371,9 @@ fun DayProfileCard(rs: List<Pressure.Reading>) {
     Tile {
         Text(btnLabel("Суточный профиль · 30 дней"), fontWeight = FontWeight.SemiBold)
         Row(Modifier.padding(top = 6.dp)) {
-            listOf(Triple("🌅 Утро", prof.morning, "4–11 ч"), Triple("☀️ День", prof.day, "12–16 ч"), Triple("🌙 Вечер", prof.evening, "17–23 ч")).forEach { (l, a, h) ->
+            listOf(Triple("Утро", prof.morning, "4–11 ч"), Triple("День", prof.day, "12–16 ч"), Triple("Вечер", prof.evening, "17–23 ч")).forEach { (l, a, h) ->
                 Column(Modifier.weight(1f)) {
-                    Text(l, fontSize = 13.sp)
+                    com.dasein.poryadok.ui.common.GlyphLabel(when (l) { "Утро" -> "sleep/18"; "День" -> "ui:sun"; else -> "ui:moon" }, l, size = 16.dp, fontSize = 13.sp)
                     Text(a?.let { "${it.sys}/${it.dia}" } ?: "—", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                     Text(a?.let { "$h · ${it.n} зам." } ?: h, fontSize = 10.sp, color = extra.dim)
                 }

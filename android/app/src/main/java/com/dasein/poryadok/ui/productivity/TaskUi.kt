@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 
 package com.dasein.poryadok.ui.productivity
 
@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -87,11 +89,12 @@ fun TaskRow(
     subTotal: Int,
     onOpen: () -> Unit,
     showProject: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val extra = LocalExtra.current
     val today = Dates.today()
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 10.dp, horizontal = 4.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).combinedClickable(onClick = onOpen, onLongClick = onLongClick).padding(vertical = 10.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CheckDot(t.done, priorityColor(t.priority).let { if (t.priority == 0) extra.dim else it }, onClick = { io { Repo.toggleTask(t) } })
@@ -103,7 +106,7 @@ fun TaskRow(
             )
             val meta = buildList {
                 t.whenText(today)?.let { add(it) }
-                if (subTotal > 0) add("☑ $subDone/$subTotal")
+                if (subTotal > 0) add("подзадачи $subDone/$subTotal")
                 if (showProject && project != null) add(project.name)
                 if (t.tags.isNotBlank()) add(t.tags.split(',').filter { it.isNotBlank() }.joinToString(" ") { "@$it" })
             }

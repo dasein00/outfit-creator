@@ -209,7 +209,7 @@ fun BodyTab(nav: NavHostController, profile: BodyProfile, weights: List<WeightEn
     OutlinedButton(
         onClick = { shot.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) },
         enabled = !reading, modifier = Modifier.fillMaxWidth(),
-    ) { Text(if (reading) "Распознаю скриншот…" else "📷 Из Fitdays — по скриншоту") }
+    ) { if (reading) Text("Распознаю скриншот…") else com.dasein.poryadok.ui.common.GlyphLabel("ui:camera", "Из Fitdays — по скриншоту") }
     Text(
         "В Fitdays откройте результат взвешивания и сделайте скриншот (или «Поделиться» → DASEIN). Цифры распознаются на телефоне — проверьте и сохраните.",
         fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp),

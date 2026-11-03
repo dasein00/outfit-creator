@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalLayoutApi::class)
+@file:OptIn(ExperimentalLayoutApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 
 package com.dasein.poryadok.ui.productivity
 
@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -110,15 +112,9 @@ private fun Habit.schedule() = HabitSchedule(daysMask, timesPerWeek)
 private fun doneDays(h: Habit, logs: List<HabitLog>): Set<Long> =
     logs.filter { it.habitId == h.id && it.value >= h.target }.map { it.day }.toSet()
 
+/** Привычки отдельным экраном (уведомления, виджет, «Главное»); то же самое — список «Привычки» в «Задачах». */
 @Composable
 fun HabitsScreen(nav: NavHostController) {
-    val dao = Graph.dao
-    val habits by observe(emptyList()) { dao.habits() }
-    val logs by observe(emptyList()) { dao.habitLogs() }
-    val today = Dates.today()
-    val extra = LocalExtra.current
-    val week = (6 downTo 0).map { today - it }
-
     Screen(
         title = "Привычки",
         onBack = { nav.popBackStack() },
@@ -127,9 +123,21 @@ fun HabitsScreen(nav: NavHostController) {
                 Icon(Icons.Default.Add, "Новая привычка")
             }
         },
-    ) { pad ->
+    ) { pad -> HabitsContent(nav, Modifier.padding(pad)) }
+}
+
+/** Привычки: итог дня, неделя по каждой привычке с отметкой нажатием, серии; пусто — шаблоны для старта. */
+@Composable
+fun HabitsContent(nav: NavHostController, modifier: Modifier = Modifier) {
+    val dao = Graph.dao
+    val habits by observe(emptyList()) { dao.habits() }
+    val logs by observe(emptyList()) { dao.habitLogs() }
+    val today = Dates.today()
+    val extra = LocalExtra.current
+    val week = (6 downTo 0).map { today - it }
+    run {
         if (habits.isEmpty()) {
-            Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(16.dp)) {
+            Column(modifier.verticalScroll(rememberScrollState()).padding(16.dp)) {
                 Empty(Ic.leaves, "Начните с одной привычки", "Выберите шаблон или создайте свою. Маленькие шаги каждый день работают лучше рывков.")
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     HABIT_TEMPLATES.forEach { tpl ->
@@ -144,11 +152,11 @@ fun HabitsScreen(nav: NavHostController) {
                 }
                 HowTo("habits")
             }
-            return@Screen
+            return@run
         }
         val todays = habits.filter { it.schedule().isScheduled(today) }
         val doneCount = todays.count { h -> (logs.firstOrNull { it.habitId == h.id && it.day == today }?.value ?: 0) >= h.target }
-        LazyColumn(Modifier.padding(pad).cardViewport(), contentPadding = PaddingValues(bottom = 96.dp)) {
+        LazyColumn(modifier.cardViewport(), contentPadding = PaddingValues(bottom = 96.dp)) {
             item {
                 Tile {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -219,6 +227,49 @@ fun HabitsScreen(nav: NavHostController) {
                 }
             }
             item { HowTo("habits") }
+        }
+    }
+}
+
+/**
+ * «Привычки на сегодня» полосой над задачами (как в TickTick): кружок-прогресс, нажатие — отметить,
+ * удержание — открыть привычку. Пусто, если на сегодня привычек нет.
+ */
+@Composable
+fun TodayHabitsStrip(nav: NavHostController, onAll: () -> Unit) {
+    val dao = Graph.dao
+    val habits by observe(emptyList()) { dao.habits() }
+    val logs by observe(emptyList()) { dao.habitLogs() }
+    val today = Dates.today()
+    val extra = LocalExtra.current
+    val todays = habits.filter { it.schedule().isScheduled(today) }
+    if (todays.isEmpty()) return
+    val value = { h: Habit -> logs.firstOrNull { it.habitId == h.id && it.day == today }?.value ?: 0 }
+    val done = todays.count { value(it) >= it.target }
+    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(btnLabel("Привычки на сегодня"), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        Text("  $done/${todays.size}", fontSize = 13.sp, color = if (done == todays.size) extra.ok else extra.dim, modifier = Modifier.weight(1f))
+        androidx.compose.material3.TextButton(onClick = onAll) { Text(btnLabel("Все"), fontSize = 13.sp) }
+    }
+    androidx.compose.foundation.lazy.LazyRow(
+        contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(bottom = 8.dp),
+    ) {
+        items(todays, key = { "h" + it.id }) { h ->
+            val v = value(h)
+            val ok = v >= h.target
+            val color = Palette.item(h.color)
+            Column(
+                Modifier.width(76.dp).clip(RoundedCornerShape(16.dp)).background(if (ok) color.copy(alpha = .16f) else extra.card)
+                    .combinedClickable(onClick = { io { Repo.tapHabit(h, today, v) } }, onLongClick = { nav.navigate(Routes.habit(h.id)) })
+                    .padding(vertical = 10.dp, horizontal = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                ProgressRing(if (h.target <= 0) 0f else v / h.target.toFloat(), color, size = 40.dp, stroke = 4.dp) {
+                    if (ok) Text(btnLabel("✓"), fontWeight = FontWeight.Bold, fontSize = 15.sp, color = color) else Glyph(h.emoji, 18.dp)
+                }
+                Text(h.name, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 13.sp, modifier = Modifier.padding(top = 6.dp))
+            }
         }
     }
 }
