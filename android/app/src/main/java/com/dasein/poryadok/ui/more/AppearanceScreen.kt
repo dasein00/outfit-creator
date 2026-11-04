@@ -392,6 +392,7 @@ fun ColorPickerDialog(start: Int, onDismiss: () -> Unit, onPick: (Int) -> Unit) 
  * «Новогодний режим» — часть выбора темы: автоматическая праздничная тема с 15 декабря по 15 января
  * и снежинки при входе. Снежинки — отдельный выключатель: без них тема остаётся, без темы их не бывает.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun HolidaySettings() {
     val ctx = LocalContext.current
