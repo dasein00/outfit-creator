@@ -15,6 +15,11 @@ object Holiday {
     private const val KEY_AUTO = "holiday_auto"
     private const val KEY_SNOW = "holiday_snow"
     private const val KEY_PREVIEW = "holiday_preview"
+    private const val KEY_LIGHTS = "holiday_lights"
+    private const val KEY_LIGHTS_MODE = "holiday_lights_mode"
+
+    /** Режимы гирлянды: переливы цветами, бегущие огни, мерцание. */
+    val LIGHT_MODES = listOf("Переливы", "Бегущие огни", "Мерцание")
 
     /** Автоматический новогодний режим (по умолчанию включён). */
     val auto = mutableStateOf(true)
@@ -24,6 +29,12 @@ object Holiday {
 
     /** Тестовый режим: новогодняя тема в любой день, чтобы посмотреть её заранее. */
     val preview = mutableStateOf(false)
+
+    /** Гирлянда горит (нажатие на неё включает и выключает). */
+    val lights = mutableStateOf(true)
+
+    /** Режим огоньков — номер в [LIGHT_MODES] (удержание переключает). */
+    val lightsMode = androidx.compose.runtime.mutableIntStateOf(0)
 
     /** Сегодняшняя дата телефона — обновляется при входе и раз в минуту, пока приложение открыто. */
     val today = mutableStateOf(LocalDate.now())
@@ -45,6 +56,8 @@ object Holiday {
         auto.value = p.getBoolean(KEY_AUTO, true)
         snow.value = p.getBoolean(KEY_SNOW, true)
         preview.value = p.getBoolean(KEY_PREVIEW, false)
+        lights.value = p.getBoolean(KEY_LIGHTS, true)
+        lightsMode.intValue = p.getInt(KEY_LIGHTS_MODE, 0).coerceIn(0, LIGHT_MODES.lastIndex)
         loaded = true
     }
 
@@ -58,6 +71,15 @@ object Holiday {
     fun setPreview(ctx: Context, v: Boolean) {
         preview.value = v; sp(ctx).edit().putBoolean(KEY_PREVIEW, v).apply()
         if (v) letItSnow()
+    }
+
+    fun setLights(ctx: Context, v: Boolean) { lights.value = v; sp(ctx).edit().putBoolean(KEY_LIGHTS, v).apply() }
+
+    /** Следующий режим огоньков; выключенная гирлянда при этом загорается. */
+    fun nextLightsMode(ctx: Context) {
+        lightsMode.intValue = (lightsMode.intValue + 1) % LIGHT_MODES.size
+        sp(ctx).edit().putInt(KEY_LIGHTS_MODE, lightsMode.intValue).apply()
+        if (!lights.value) setLights(ctx, true)
     }
 
     /** Показать снегопад сейчас (кнопка в настройках) — как при новом входе. */

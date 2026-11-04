@@ -125,7 +125,8 @@ fun Tile(
     val holder = if (onClick != null && onLongClick == null) androidx.compose.runtime.remember { LabelHolder() } else null
     val round = com.dasein.poryadok.ui.theme.LocalLook.current.cardRound.dp
     Surface(
-        modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(round)).let {
+        // В новогоднем режиме — снежная шапка по верхнему краю (только рисунок, размеры не меняются).
+        modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(round)).snowCap().let {
             when {
                 onLongClick != null -> it.combinedClickable(onClick = onClick ?: {}, onLongClick = onLongClick)
                 onClick != null -> (if (holder != null && LocalIconEditable.current) it.labelLongPress(holder) else it).clickable(onClick = onClick)

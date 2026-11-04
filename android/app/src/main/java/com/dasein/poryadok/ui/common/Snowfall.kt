@@ -37,6 +37,7 @@ fun HolidayHost(content: @Composable () -> Unit) {
     }
     Box(Modifier.fillMaxSize()) {
         content()
+        HolidayGarland()
         Snowfall()
     }
 }
@@ -72,19 +73,18 @@ private fun Snowfall() {
         running = false
     }
     if (!running) return
-    val dark = LocalExtra.current.dark
     // На светлом фоне белый снег не виден — там снежинки ледяного голубого оттенка.
-    val tint = if (dark) Color.White else Color(0xFFAFC4DA)
+    val tint = snowTint()
     val flakes = remember {
         val rnd = Random(entry)
-        List(70) {
+        List(50) {
             // Три размера: мелкие падают медленнее и прозрачнее — так снег выглядит объёмным.
             val layer = rnd.nextInt(3)
             Flake(
                 x = rnd.nextFloat(),
                 y0 = -rnd.nextFloat() * .9f - .05f,
                 speed = (.16f + .07f * layer + rnd.nextFloat() * .06f),
-                radius = (1.6f + 1.4f * layer + rnd.nextFloat()),
+                radius = (3f + 2f * layer + rnd.nextFloat() * 1.5f),
                 sway = .008f + rnd.nextFloat() * .018f,
                 swayHz = .25f + rnd.nextFloat() * .35f,
                 phase = rnd.nextFloat() * 2f * PI.toFloat(),
@@ -102,7 +102,8 @@ private fun Snowfall() {
             val y = (f.y0 + f.speed * t) * size.height
             if (y < -20f || y > size.height + 20f) return@forEach
             val x = (f.x + f.sway * sin(2f * PI.toFloat() * f.swayHz * t + f.phase)) * size.width
-            drawCircle(tint, f.radius * dp, Offset(x, y), alpha = f.alpha * fade)
+            // Шестиконечная снежинка, медленно поворачивается.
+            snowflake(Offset(x, y), f.radius * dp, tint, f.alpha * fade, angle = (f.phase * 57f + t * 25f * (if (f.swayHz > .4f) 1f else -1f)))
         }
     }
 }

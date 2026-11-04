@@ -432,6 +432,27 @@ private fun HolidaySettings() {
     }
     Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
+            Text(btnLabel("Гирлянда"), fontWeight = FontWeight.SemiBold, color = if (canSnow) Color.Unspecified else extra.dim)
+            Text(
+                "Огоньки вдоль верха экрана и еловые ветки, на карточках — снежные шапки. Нажмите на гирлянду — включится или погаснет, " +
+                    "удержите — сменится режим.",
+                fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
+            )
+        }
+        Switch(h.lights.value, { h.setLights(ctx, it) }, enabled = canSnow)
+    }
+    if (canSnow) androidx.compose.foundation.layout.FlowRow(
+        Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        h.LIGHT_MODES.forEachIndexed { i, m ->
+            com.dasein.poryadok.ui.common.Pill(m, h.lights.value && h.lightsMode.intValue == i) {
+                while (h.lightsMode.intValue != i) h.nextLightsMode(ctx)
+                if (!h.lights.value) h.setLights(ctx, true)
+            }
+        }
+    }
+    Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
             Text(btnLabel("Тестовый режим"), fontWeight = FontWeight.SemiBold)
             Text(
                 "Включает новогоднее оформление прямо сейчас, в любой день, — чтобы посмотреть его заранее. " +
