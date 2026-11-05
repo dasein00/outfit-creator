@@ -219,19 +219,23 @@ fun Modifier.snowCap(seed: Int = 0): Modifier = drawWithContent {
     val w = size.width
     if (w < 80.dp.toPx() || size.height < 36.dp.toPx()) return@drawWithContent
     val rnd = kotlin.random.Random(seed)
-    val waveA = 1.6f + rnd.nextFloat() * 1.8f
-    val waveB = 1.1f + rnd.nextFloat() * 1.4f
     val path = Path().apply {
         moveTo(0f, 0f)
         lineTo(w, 0f)
-        lineTo(w, h * .6f)
-        // Неровный нижний край: волны разной высоты, у каждой карточки свои.
-        val bumps = (w / (34.dp.toPx() + rnd.nextFloat() * 14.dp.toPx())).toInt().coerceAtLeast(3)
-        for (i in bumps downTo 1) {
-            val x0 = w * i / bumps
-            val x1 = w * (i - 1) / bumps
-            val depth = h * (.75f + .35f * sin(i * waveA))
-            quadraticTo((x0 + x1) / 2, depth * 1.35f, x1, h * (.45f + .2f * cos(i * waveB)))
+        // Нижний край без симметрии: волны разной ширины, глубины и с перекосом — у каждой карточки свои.
+        var x = w
+        var y = h * (.35f + rnd.nextFloat() * .35f)
+        lineTo(w, y)
+        while (x > 0f) {
+            val step = (18.dp.toPx() + rnd.nextFloat() * 38.dp.toPx()).coerceAtMost(x)
+            val nx = (x - step).coerceAtLeast(0f)
+            val ny = h * (.3f + rnd.nextFloat() * .45f)
+            // Вершина волны смещена от середины в случайную сторону — волна несимметричная.
+            val skew = .25f + rnd.nextFloat() * .5f
+            val depth = h * (1f + rnd.nextFloat() * .75f)
+            quadraticTo(x - step * skew, depth, nx, ny)
+            x = nx
+            y = ny
         }
         close()
     }
