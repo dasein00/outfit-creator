@@ -208,44 +208,87 @@ fun DrawScope.snowflake(center: Offset, radius: Float, color: Color, alpha: Floa
 }
 
 /**
- * Снежная шапка по верхнему краю карточки (в новогоднем режиме): белый сугроб с неровным краем и парой сосулек-капель.
- * Только рисование — размеры, отступы и нажатия карточки не меняются.
+ * Снежная шапка по верхнему краю карточки (в новогоднем режиме): белый сугроб с неровным краем и ледяные сосульки.
+ * [seed] — у каждой карточки свой: волны края и сосульки (сколько, где, какой длины и толщины) расставлены
+ * случайно, поэтому шапки не повторяются. Только рисование — размеры, отступы и нажатия карточки не меняются.
  */
-fun Modifier.snowCap(): Modifier = drawWithContent {
+fun Modifier.snowCap(seed: Int = 0): Modifier = drawWithContent {
     drawContent()
     if (!Holiday.active) return@drawWithContent
     val h = 7.dp.toPx()
     val w = size.width
     if (w < 80.dp.toPx() || size.height < 36.dp.toPx()) return@drawWithContent
+    val rnd = kotlin.random.Random(seed)
+    val waveA = 1.6f + rnd.nextFloat() * 1.8f
+    val waveB = 1.1f + rnd.nextFloat() * 1.4f
     val path = Path().apply {
         moveTo(0f, 0f)
         lineTo(w, 0f)
         lineTo(w, h * .6f)
-        // Неровный нижний край: волны разной высоты, по ширине карточки всегда одинаковые.
-        val bumps = (w / 40.dp.toPx()).toInt().coerceAtLeast(3)
+        // Неровный нижний край: волны разной высоты, у каждой карточки свои.
+        val bumps = (w / (34.dp.toPx() + rnd.nextFloat() * 14.dp.toPx())).toInt().coerceAtLeast(3)
         for (i in bumps downTo 1) {
             val x0 = w * i / bumps
             val x1 = w * (i - 1) / bumps
-            val depth = h * (.75f + .35f * sin(i * 2.3f))
-            quadraticTo((x0 + x1) / 2, depth * 1.35f, x1, h * (.45f + .2f * cos(i * 1.7f)))
+            val depth = h * (.75f + .35f * sin(i * waveA))
+            quadraticTo((x0 + x1) / 2, depth * 1.35f, x1, h * (.45f + .2f * cos(i * waveB)))
         }
         close()
     }
-    val dark = Color.White
     drawPath(path, Color(0x22000000), style = Stroke(1.2.dp.toPx()))
-    drawPath(path, dark.copy(alpha = .93f))
-    // Сосульки: острые, разной длины, с голубоватой тенью вдоль одного края.
+    drawPath(path, Color.White.copy(alpha = .93f))
+    // Сосульки: от 2 до ~6 на карточку (больше на широких), в случайных местах, иногда парой, разной длины.
     val unit = 1.dp.toPx()
-    listOf(.12f to 11f, .16f to 7f, .47f to 13f, .52f to 8f, .81f to 10f, .86f to 6f).forEach { (f, len) ->
-        if (w < 140.dp.toPx() && f in 0.4f..0.6f) return@forEach
-        val x = w * f
-        val top = h * .55f
-        val half = (2.2f + len * .12f) * unit
-        val ice = Path().apply { moveTo(x - half, top); lineTo(x + half, top); lineTo(x + half * .15f, top + len * unit); lineTo(x - half * .15f, top + len * unit * .96f); close() }
-        drawPath(ice, Color.White.copy(alpha = .92f))
-        val shade = Path().apply { moveTo(x + half * .2f, top); lineTo(x + half, top); lineTo(x + half * .15f, top + len * unit); close() }
-        drawPath(shade, Color(0xFFC9D6E3).copy(alpha = .9f))
+    val count = (w / 70.dp.toPx()).toInt().coerceIn(2, 7) + rnd.nextInt(-1, 2)
+    var i = 0
+    while (i < count) {
+        val x = w * (.05f + rnd.nextFloat() * .9f)
+        icicle(Offset(x, h * .5f), (6f + rnd.nextFloat() * 11f) * unit, (2.4f + rnd.nextFloat() * 2.4f) * unit, rnd.nextFloat())
+        // Иногда рядом вторая, покороче.
+        if (rnd.nextFloat() < .35f) {
+            val dx = (5f + rnd.nextFloat() * 4f) * unit * (if (rnd.nextBoolean()) 1 else -1)
+            icicle(Offset(x + dx, h * .55f), (4f + rnd.nextFloat() * 6f) * unit, (1.8f + rnd.nextFloat() * 1.6f) * unit, rnd.nextFloat())
+            i++
+        }
+        i++
     }
+}
+
+/**
+ * Ледяная сосулька: сужается к острому кончику и слегка изогнута; лёд голубоватый и полупрозрачный —
+ * у основания почти белый, к кончику прозрачно-голубой; вдоль грани узкий блик, на конце прозрачная капелька.
+ */
+private fun DrawScope.icicle(top: Offset, length: Float, halfWidth: Float, bend: Float) {
+    val tipX = top.x + (bend - .5f) * halfWidth * .8f
+    val tipY = top.y + length
+    val body = Path().apply {
+        moveTo(top.x - halfWidth, top.y)
+        lineTo(top.x + halfWidth, top.y)
+        quadraticTo(top.x + halfWidth * .55f, top.y + length * .55f, tipX + halfWidth * .08f, tipY)
+        quadraticTo(top.x - halfWidth * .45f, top.y + length * .5f, top.x - halfWidth, top.y)
+        close()
+    }
+    drawPath(
+        body,
+        Brush.verticalGradient(
+            listOf(Color(0xF2F4FAFF), Color(0xD9CFE6F7), Color(0xA69CC9EA), Color(0x667FB6E0)),
+            startY = top.y, endY = tipY,
+        ),
+    )
+    // Тень по правой грани — объём льда.
+    val shade = Path().apply {
+        moveTo(top.x + halfWidth * .25f, top.y)
+        lineTo(top.x + halfWidth, top.y)
+        quadraticTo(top.x + halfWidth * .55f, top.y + length * .55f, tipX + halfWidth * .08f, tipY)
+        close()
+    }
+    drawPath(shade, Color(0x557FAED6))
+    // Блик вдоль левой грани и тонкий светлый контур — «стеклянный» лёд.
+    drawLine(Color.White.copy(alpha = .8f), Offset(top.x - halfWidth * .45f, top.y + length * .08f), Offset(top.x - halfWidth * .15f, top.y + length * .6f), (halfWidth * .28f).coerceAtLeast(1f), StrokeCap.Round)
+    drawPath(body, Color.White.copy(alpha = .35f), style = Stroke(.8f))
+    // Капелька на кончике.
+    drawCircle(Color(0xB3BFE0F5), halfWidth * .32f, Offset(tipX, tipY + halfWidth * .25f))
+    drawCircle(Color.White.copy(alpha = .8f), halfWidth * .12f, Offset(tipX - halfWidth * .1f, tipY + halfWidth * .15f))
 }
 
 /**
