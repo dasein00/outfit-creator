@@ -171,7 +171,14 @@ fun PoryadokTheme(theme: String, accent: Int, content: @Composable () -> Unit) {
     }
     val acc = if (look.accentRgb != 0) Look.color(look.accentRgb) else Palette.accents.getOrNull(accent)?.second ?: Palette.Brass
     val base = if (dark) baseDark(acc) else baseLight(acc)
-    val bg = if (look.bgRgb != 0) Look.color(look.bgRgb) else base.background
+    // Новогодний режим: фон глубокого клюквенно-красного цвета (тёмная тема) или нежно-розовый (светлая).
+    // Тёмный и приглушённый, чтобы красные детали иконок и текст оставались на нём хорошо различимы.
+    val holiday = Holiday.active && !look.contrast
+    val bg = when {
+        look.bgRgb != 0 -> Look.color(look.bgRgb)
+        holiday -> if (dark) Color(0xFF2A1215) else Color(0xFFFBEDEC)
+        else -> base.background
+    }
     // Текст всегда различим на фоне: свой цвет текста, слишком близкий к фону, сам сдвигается к контрастному.
     val text0 = when {
         look.textRgb != 0 -> Look.color(look.textRgb)
@@ -179,7 +186,7 @@ fun PoryadokTheme(theme: String, accent: Int, content: @Composable () -> Unit) {
         else -> base.onBackground
     }
     val text1 = Look.readable(text0, bg, 4.5f)
-    val custom = look.bgRgb != 0 || look.textRgb != 0 || look.contrast
+    val custom = look.bgRgb != 0 || look.textRgb != 0 || look.contrast || holiday
     val scheme0 = if (!custom) base else {
         val card = Look.mix(bg, text1, if (dark) .07f else .03f).let { if (!dark && look.bgRgb != 0) Look.mix(bg, Color.White, .6f) else it }
         val cardHigh = Look.mix(bg, text1, if (dark) .13f else .08f)
@@ -212,9 +219,8 @@ fun PoryadokTheme(theme: String, accent: Int, content: @Composable () -> Unit) {
             ok = Look.readableOn(e.ok, bgs, 3f), warn = Look.readableOn(e.warn, bgs, 3f), danger = Look.readableOn(e.danger, bgs, 3f),
         )
     }
-    // Новогодний режим: карточки холодного сине-серого цвета (как плашка «Праздники и события»),
-    // на нём лучше смотрятся снежные шапки и снег. После праздников цвет сам возвращается.
-    val extra = if (Holiday.active && !look.contrast) extra0.copy(card = if (dark) Color(0xFF292C33) else Color(0xFFE5EAF1)) else extra0
+    // Плашки полупрозрачные (холодное «матовое стекло»): сквозь них видно красный фон и снег.
+    val extra = if (holiday) extra0.copy(card = if (dark) Color(0x8C2E323C) else Color(0xA6FFFFFF)) else extra0
     val typography = androidx.compose.runtime.remember(look.font) { typographyFor(look.font) }
     val density = androidx.compose.ui.platform.LocalDensity.current
     androidx.compose.runtime.CompositionLocalProvider(

@@ -1,5 +1,6 @@
 package com.dasein.poryadok.ui.health
 
+import com.dasein.poryadok.ui.common.chartDot
 import androidx.compose.foundation.Canvas
 import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.foundation.layout.Column
@@ -155,8 +156,10 @@ private fun AreaChart(points: List<Pair<Long, Double>>, digits: Int, color: Colo
             drawPath(line, color, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
         }
         points.forEachIndexed { i, (_, v) ->
-            drawCircle(bg, 4.dp.toPx(), Offset(x(i), y(v)))
-            drawCircle(color, 4.dp.toPx(), Offset(x(i), y(v)), style = Stroke(2.dp.toPx()))
+            if (com.dasein.poryadok.ui.theme.Holiday.active) chartDot(color, 4.dp.toPx(), Offset(x(i), y(v)), i) else {
+                drawCircle(bg, 4.dp.toPx(), Offset(x(i), y(v)))
+                drawCircle(color, 4.dp.toPx(), Offset(x(i), y(v)), style = Stroke(2.dp.toPx()))
+            }
         }
 
         // Даты: не больше пяти подписей, чтобы не налезали.

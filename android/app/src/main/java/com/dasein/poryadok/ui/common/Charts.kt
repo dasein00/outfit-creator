@@ -332,7 +332,7 @@ fun LineChart(
                         if (v == null) return@forEachIndexed
                         val px = x(i); val py = y(v)
                         if (!started) { path.moveTo(px, py); started = true } else path.lineTo(px, py)
-                        if (!s.dashed) drawCircle(s.color, if (i == z.selected) 9f else 5f, Offset(px, py))
+                        if (!s.dashed) chartDot(s.color, if (i == z.selected) 9f else 5f, Offset(px, py), i, i == z.selected)
                     }
                     drawPath(
                         path, s.color,

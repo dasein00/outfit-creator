@@ -1,5 +1,6 @@
 package com.dasein.poryadok.ui.health
 
+import com.dasein.poryadok.ui.common.chartDot
 import android.content.Intent
 import com.dasein.poryadok.ui.common.btnLabel
 import android.widget.Toast
@@ -402,7 +403,7 @@ private fun TrendChart(rs: List<Pressure.Reading>, t: Pressure.Target) {
         }
         listOf(rs.map { it.time to it.sys } to Color(0xFFD9542B), rs.map { it.time to it.dia } to Color(0xFF4C8BD6)).forEach { (pts, col) ->
             pts.zipWithNext().forEach { (a, b) -> drawLine(col, Offset(x(a.first), y(a.second)), Offset(x(b.first), y(b.second)), 4f) }
-            pts.forEach { (tm, v) -> drawCircle(col, 6f, Offset(x(tm), y(v))) }
+            pts.forEachIndexed { i, (tm, v) -> chartDot(col, 6f, Offset(x(tm), y(v)), i) }
         }
     }
     Row { Text("${hi}", fontSize = 10.sp, color = extra.dim, modifier = Modifier.weight(1f)); Text(btnLabel("пунктир — 140 и 90"), fontSize = 10.sp, color = extra.dim) }

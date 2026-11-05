@@ -1,5 +1,6 @@
 package com.dasein.poryadok.ui.today
 
+import com.dasein.poryadok.ui.common.chartDot
 import com.dasein.poryadok.ui.common.FitText
 import com.dasein.poryadok.ui.common.btnLabel
 import androidx.compose.runtime.remember
@@ -66,7 +67,7 @@ fun Sparkline(values: List<Float>, color: Color, modifier: Modifier = Modifier, 
         fun y(v: Float) = size.height * (1f - (v - lo) / (hi - lo))
         band?.let { b -> drawRect(Color(0xFF3E9B5B).copy(alpha = .13f), Offset(0f, y(b.endInclusive)), androidx.compose.ui.geometry.Size(size.width, y(b.start) - y(b.endInclusive))) }
         for (i in 0 until values.size - 1) drawLine(color, Offset(x(i), y(values[i])), Offset(x(i + 1), y(values[i + 1])), 3.5f)
-        drawCircle(color, 5.5f, Offset(x(values.size - 1), y(values.last())))
+        chartDot(color, 5.5f, Offset(x(values.size - 1), y(values.last())), values.size - 1)
     }
 }
 
@@ -230,7 +231,7 @@ private fun DualSpark(sys: List<Float>, dia: List<Float>, t: Pressure.Target) {
         drawRect(band, Offset(0f, y(t.diaHigh.toFloat())), androidx.compose.ui.geometry.Size(size.width, y(t.diaLow.toFloat()) - y(t.diaHigh.toFloat())))
         listOf(sys to Color(0xFFD9542B), dia to Color(0xFF4C8BD6)).forEach { (vs, col) ->
             for (i in 0 until vs.size - 1) drawLine(col, Offset(x(i), y(vs[i])), Offset(x(i + 1), y(vs[i + 1])), 3.5f)
-            vs.forEachIndexed { i, v -> drawCircle(col, if (i == vs.size - 1) 6f else 3.5f, Offset(x(i), y(v))) }
+            vs.forEachIndexed { i, v -> chartDot(col, if (i == vs.size - 1) 6f else 3.5f, Offset(x(i), y(v)), i) }
         }
     }
 }

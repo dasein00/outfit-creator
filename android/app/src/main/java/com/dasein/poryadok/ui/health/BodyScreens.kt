@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.health
 
+import com.dasein.poryadok.ui.common.chartDot
 import android.graphics.BitmapFactory
 import com.dasein.poryadok.ui.common.btnLabel
 import com.dasein.poryadok.ui.common.HowTo
@@ -276,7 +277,7 @@ fun Sparkline(values: List<Float>, modifier: Modifier) {
         val area = Path().apply { addPath(line); lineTo(size.width, size.height); lineTo(0f, size.height); close() }
         drawPath(area, Brush.verticalGradient(listOf(color.copy(alpha = .25f), color.copy(alpha = 0f))))
         drawPath(line, color, style = Stroke(2.dp.toPx()))
-        drawCircle(color, 3.dp.toPx(), Offset(x(values.lastIndex), y(values.last())))
+        chartDot(color, 3.dp.toPx(), Offset(x(values.lastIndex), y(values.last())), values.lastIndex)
     }
 }
 
@@ -567,8 +568,10 @@ fun TrendChart(points: List<Pair<Long, Double>>, monthLabels: Boolean, modifier:
             visible.forEach { i ->
                 val c = Offset(x(i), y(points[i].second))
                 val r = if (i == z.selected) 6.dp.toPx() else 4.dp.toPx()
-                drawCircle(Color.White, r, c)
-                drawCircle(color, r, c, style = Stroke(2.dp.toPx()))
+                if (com.dasein.poryadok.ui.theme.Holiday.active) chartDot(color, r, c, i, i == z.selected) else {
+                    drawCircle(Color.White, r, c)
+                    drawCircle(color, r, c, style = Stroke(2.dp.toPx()))
+                }
             }
         }
         // Подписи значений рисуются вне обрезки и сдвигаются внутрь, чтобы крайние не срезались.

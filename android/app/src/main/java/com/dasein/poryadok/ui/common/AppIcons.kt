@@ -130,7 +130,7 @@ internal fun AppIconRaw(
 ) {
     val a = if (dimmed) .5f else 1f
     val ctx = androidx.compose.ui.platform.LocalContext.current
-    val tone = iconTone(onPlate = badge)
+    val tone = iconTone(onPlate = badge, gold = Ic.nameOf(res)?.let { "ui:$it" in GOLD_ICONS } == true)
     val img = rememberBitmap("res:$res|${tone.key}", { IconTint.peek("res:$res", tone) }) { IconTint.res(ctx, res, tone) }
     val inner = @Composable { m: Modifier -> if (img != null) Image(img, null, m) else Image(painterResource(res), null, m) }
     if (badge) {

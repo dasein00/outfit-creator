@@ -234,9 +234,30 @@ fun Modifier.snowCap(): Modifier = drawWithContent {
     val dark = Color.White
     drawPath(path, Color(0x22000000), style = Stroke(1.2.dp.toPx()))
     drawPath(path, dark.copy(alpha = .93f))
-    // Пара капель-сосулек.
-    listOf(.18f, .63f).forEach { f ->
+    // Сосульки: острые, разной длины, с голубоватой тенью вдоль одного края.
+    val unit = 1.dp.toPx()
+    listOf(.12f to 11f, .16f to 7f, .47f to 13f, .52f to 8f, .81f to 10f, .86f to 6f).forEach { (f, len) ->
+        if (w < 140.dp.toPx() && f in .4f...6f) return@forEach
         val x = w * f
-        drawOval(dark.copy(alpha = .9f), Offset(x - 2.dp.toPx(), h * .6f), Size(4.dp.toPx(), 6.dp.toPx()))
+        val top = h * .55f
+        val half = (2.2f + len * .12f) * unit
+        val ice = Path().apply { moveTo(x - half, top); lineTo(x + half, top); lineTo(x + half * .15f, top + len * unit); lineTo(x - half * .15f, top + len * unit * .96f); close() }
+        drawPath(ice, Color.White.copy(alpha = .92f))
+        val shade = Path().apply { moveTo(x + half * .2f, top); lineTo(x + half, top); lineTo(x + half * .15f, top + len * unit); close() }
+        drawPath(shade, Color(0xFFC9D6E3).copy(alpha = .9f))
     }
+}
+
+/**
+ * Точка графика: в новогоднем режиме — маленькая лампочка гирлянды (цвет по номеру точки, свечение, цоколь),
+ * иначе обычный кружок цвета линии. [index] — номер точки: соседние лампочки разного цвета.
+ */
+fun DrawScope.chartDot(color: Color, radius: Float, center: Offset, index: Int = 0, selected: Boolean = false) {
+    if (!Holiday.active) { drawCircle(color, radius, center); return }
+    val c = BULBS[(index % BULBS.size + BULBS.size) % BULBS.size]
+    val r = radius.coerceAtLeast(3.dp.toPx()) * (if (selected) 1.35f else 1f)
+    drawCircle(Brush.radialGradient(listOf(c.copy(alpha = .55f), c.copy(alpha = .15f), Color.Transparent), center, r * 4f), r * 4f, center)
+    drawRect(Color(0xFF3A342C), Offset(center.x - r * .4f, center.y - r * 1.55f), Size(r * .8f, r * .6f))
+    drawOval(c, Offset(center.x - r * .78f, center.y - r * 1.05f), Size(r * 1.56f, r * 2f))
+    drawOval(Color.White.copy(alpha = .55f), Offset(center.x - r * .45f, center.y - r * .75f), Size(r * .45f, r * .65f))
 }

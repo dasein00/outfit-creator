@@ -2,6 +2,7 @@
 
 package com.dasein.poryadok.ui.health
 
+import com.dasein.poryadok.ui.common.chartDot
 import android.content.Context
 import com.dasein.poryadok.ui.common.btnLabel
 import android.content.Intent
@@ -304,7 +305,7 @@ fun ZoomChart(p: Pressure.Person, rs: List<Pressure.Reading>) {
                         pts.zipWithNext().forEach { (a, b) ->
                             if (b.time >= viewStart - viewSpan / 10 && a.time <= viewStart + viewSpan * 11 / 10) drawLine(col, Offset(x(a.time), y(f(a))), Offset(x(b.time), y(f(b))), 3f)
                         }
-                        visible.forEach { q -> drawCircle(col, r, Offset(x(q.time), y(f(q)))) }
+                        visible.forEachIndexed { i, q -> chartDot(col, r, Offset(x(q.time), y(f(q))), i) }
                     }
                 }
                 // Даты по оси времени.

@@ -263,7 +263,7 @@ internal fun GlyphRaw(key: String, editKey: String?, size: Dp = 24.dp, modifier0
     }
     // Иконки перекрашиваются под цвет оформления; в светлой теме — тёмные, без плашки. Блюда — как есть.
     val useBadge = (badge ?: false) && !key.startsWith("dish/")
-    val tone = iconTone(onPlate = useBadge)
+    val tone = iconTone(onPlate = useBadge, gold = key in GOLD_ICONS)
     // Из памяти — сразу; если иконки там нет, декодируем и перекрашиваем в фоне, а не в главном потоке (иначе рывки при прокрутке).
     val img = rememberBitmap("$key|${tone.key}|$ver", { Glyphs.peek(key, tone) }) {
         if (key.startsWith("dish/")) Glyphs.load(ctx, key) else Glyphs.loadTinted(ctx, key, tone)
