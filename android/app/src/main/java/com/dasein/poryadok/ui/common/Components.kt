@@ -132,6 +132,9 @@ fun Tile(
     val round = com.dasein.poryadok.ui.theme.LocalLook.current.cardRound.dp
     // У каждой карточки свои сосульки; номер сохраняется — при прокрутке туда-обратно шапка не меняется.
     val snowSeed = androidx.compose.runtime.saveable.rememberSaveable { kotlin.random.Random.nextInt() }
+    // Стиль плашек из «Оформления» (стекло, градиент, контур…) — только у обычной карточки, цветные плашки как есть.
+    val plain = color == LocalExtra.current.card
+    val decor = if (plain) currentCardDecor(color) else null
     Surface(
         // В новогоднем режиме — снежная шапка по верхнему краю (только рисунок, размеры не меняются).
         modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(round)).snowCap(snowSeed).let {
@@ -140,14 +143,14 @@ fun Tile(
                 onClick != null -> (if (holder != null && LocalIconEditable.current) it.labelLongPress(holder) else it).clickable(onClick = onClick)
                 else -> it
             }
-        },
-        color = color,
+        }.let { if (decor?.brush != null) it.background(decor.brush, RoundedCornerShape(round)) else it },
+        color = when { decor == null -> color; decor.brush != null -> Color.Transparent; else -> decor.fill },
         shape = RoundedCornerShape(round),
         // Рамка — только у обычной карточки: цветные плашки и так отделены от фона.
-        border = if (color == LocalExtra.current.card) cardBorder() else null,
+        border = decor?.border ?: if (plain) cardBorder() else null,
     ) {
         // Текст в карточке различим на её цвете (своя заливка карточки, цветные плашки).
-        com.dasein.poryadok.ui.theme.OnBackground(color) {
+        com.dasein.poryadok.ui.theme.OnBackground(decor?.fill ?: color) {
             if (holder != null) androidx.compose.runtime.CompositionLocalProvider(LocalLabelHolder provides holder) { Column(Modifier.padding(padding), content = content) }
             else Column(Modifier.padding(padding), content = content)
         }

@@ -54,7 +54,8 @@ import com.dasein.poryadok.ui.common.OutlinedButton
 import com.dasein.poryadok.ui.common.Screen
 import com.dasein.poryadok.ui.common.SectionTitle
 import com.dasein.poryadok.ui.common.snowCap
-import com.dasein.poryadok.ui.common.deepGradient
+import com.dasein.poryadok.ui.common.fancyBackground
+import com.dasein.poryadok.ui.common.cardFill
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.animateFloat
@@ -113,14 +114,18 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             Preview()
 
-            SectionTitle("Тема")
+            LookPresetsSection(settings)
+
+            SectionTitle("Тема", action = if (settings.theme != "system") "Как в теме" else null, onAction = { io { Graph.prefs.update { it.copy(theme = "system") } } })
             Segments(listOf("system" to "Как в системе", "light" to "Светлая", "dark" to "Тёмная"), settings.theme, { v -> io { Graph.prefs.update { it.copy(theme = v) } } })
             if (look.bgRgb != 0) Text("Сейчас выбран свой фон — светлая или тёмная тема определяется по нему.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
             MiniScreen(Focus.NONE)
 
             HolidaySettings()
 
-            SectionTitle("Цвет акцента")
+            SectionTitle("Цвет акцента", action = if (look.accentRgb != 0 || settings.accent != 0) "Как в теме" else null, onAction = {
+                set { it.copy(accentRgb = 0) }; io { Graph.prefs.update { s -> s.copy(accent = 0) } }
+            })
             FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Palette.accents.forEachIndexed { i, (label, c) ->
                     Swatch(c, label, look.accentRgb == 0 && settings.accent == i) {
@@ -133,7 +138,7 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
             MiniScreen(Focus.ACCENT)
 
             val holidayNow = com.dasein.poryadok.ui.theme.Holiday.active && !look.contrast
-            SectionTitle("Фон")
+            SectionTitle("Фон", action = if (look.bgRgb != 0) "Как в теме" else null, onAction = { set { it.copy(bgRgb = 0, bgStyle = -1) } })
             if (holidayNow) HolidayNote()
             Text(btnLabel("Глубокие цвета"), fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(bottom = 6.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -151,7 +156,16 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
             }
             MiniScreen(Focus.BG)
 
-            SectionTitle("Плашки")
+            SectionTitle("Стиль фона", action = if (look.bgFx >= 0) "Как в теме" else null, onAction = { set { it.copy(bgFx = -1) } })
+            Text(
+                "Популярные приёмы современных интерфейсов: бархатный и диагональный градиент, «аврора» и меш из мягких цветных пятен, прожектор, зерно, боке. " +
+                    "Пятна берут цвета из сочетания к фону. Работает и с однотонным фоном.",
+                fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp, modifier = Modifier.padding(bottom = 6.dp),
+            )
+            BgFxPicker(look) { fx -> set { it.copy(bgFx = fx) } }
+            MiniScreen(Focus.BG)
+
+            SectionTitle("Плашки", action = if (look.cardStyle != -1) "Как в теме" else null, onAction = { set { it.copy(cardStyle = -1, cardRgb = 0) } })
             if (holidayNow) HolidayNote()
             Text(
                 "Цвет карточек на всех экранах. Полупрозрачные пропускают фон — особенно красиво с глубокими цветами. Текст на них сам остаётся различимым.",
@@ -172,7 +186,16 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
             }
             MiniScreen(Focus.CARD)
 
-            SectionTitle("Цвет текста")
+            SectionTitle("Стиль плашек", action = if (look.cardFx >= 0) "Как в теме" else null, onAction = { set { it.copy(cardFx = -1) } })
+            Text(
+                "Стекло — светлый блик и тонкая светящаяся рамка; градиент — перелив в цвет сочетания; контур — прозрачная плашка с цветной рамкой; " +
+                    "неон — рамка-градиент; объём — мягкий свет сверху и тень снизу.",
+                fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp, modifier = Modifier.padding(bottom = 6.dp),
+            )
+            CardFxPicker(look) { fx -> set { it.copy(cardFx = fx) } }
+            MiniScreen(Focus.CARD)
+
+            SectionTitle("Цвет текста", action = if (look.textRgb != 0) "Как в теме" else null, onAction = { set { it.copy(textRgb = 0) } })
             FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Swatch(null, "Авто", look.textRgb == 0, auto = true) { set { it.copy(textRgb = 0) } }
                 Look.TEXTS.forEach { (label, rgb) -> Swatch(Look.color(rgb), label, look.textRgb == rgb) { set { it.copy(textRgb = rgb) } } }
@@ -191,7 +214,7 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
                 fontSize = 12.sp, color = if (ratio >= 4.5) extra.ok else extra.danger, modifier = Modifier.padding(top = 6.dp),
             )
 
-            SectionTitle("Контрастный режим")
+            SectionTitle("Контрастный режим", action = if (look.contrast) "Как в теме" else null, onAction = { set { it.copy(contrast = false) } })
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(btnLabel("Максимальный контраст"), fontWeight = FontWeight.SemiBold)
@@ -204,7 +227,7 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
             }
             MiniScreen(Focus.NONE)
 
-            SectionTitle("Анимация")
+            SectionTitle("Анимация", action = if (!com.dasein.poryadok.ui.common.TabAnim.enabled.value) "Как в теме" else null, onAction = { com.dasein.poryadok.ui.common.TabAnim.setEnabled(true) })
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(btnLabel("Анимация переходов"), fontWeight = FontWeight.SemiBold)
@@ -217,7 +240,7 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
             }
             AnimPreview(com.dasein.poryadok.ui.common.TabAnim.enabled.value)
 
-            SectionTitle("Иконки")
+            SectionTitle("Иконки", action = if (look.icons != 0 || look.iconPalette != -1) "Как в теме" else null, onAction = { set { it.copy(icons = 0, iconRgb = 0, iconPalette = -1) } })
             Look.ICON_MODES.forEachIndexed { i, label ->
                 Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { if (i == 3 && look.iconRgb == 0) pick = Pick.ICON; set { it.copy(icons = i) } }.padding(vertical = 2.dp),
@@ -228,12 +251,13 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
                     if (i == 3) Box(Modifier.size(22.dp).clip(CircleShape).background(if (look.iconRgb != 0) Look.color(look.iconRgb) else extra.line).clickable { pick = Pick.ICON })
                 }
             }
+            if (look.icons == 4) IconPalettePicker(look) { i -> set { it.copy(iconPalette = i, icons = 4) } }
             // Иконки на фоне и на плашке — как они будут выглядеть в приложении.
             Column(Modifier.padding(top = 6.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).border(1.dp, extra.line, RoundedCornerShape(16.dp)).padding(10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     listOf("d01/00", "d12/00", "d01/02", "d06/00", "tutor/18", "ui:home").forEach { Glyph(it, 30.dp, badge = false) }
                 }
-                Box(Modifier.padding(top = 8.dp).fillMaxWidth().clip(RoundedCornerShape(look.cardRound.dp)).background(extra.card).padding(10.dp)) {
+                Box(Modifier.padding(top = 8.dp).fillMaxWidth().clip(RoundedCornerShape(look.cardRound.dp)).cardFill(RoundedCornerShape(look.cardRound.dp)).padding(10.dp)) {
                     com.dasein.poryadok.ui.theme.OnBackground(extra.card) {
                         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                             listOf("d17/03", "d06/00", "d12/00", "d01/02", "ui:home").forEach { Glyph(it, 26.dp, badge = false) }
@@ -242,7 +266,7 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
                 }
             }
 
-            SectionTitle("Шрифт")
+            SectionTitle("Шрифт", action = if (look.font != 5) "Как в теме" else null, onAction = { set { it.copy(font = 5) } })
             Look.FONTS.forEach { (label, id) ->
                 val family = when (id) { 5 -> com.dasein.poryadok.ui.theme.Medeo; 1 -> FontFamily.SansSerif; 2 -> FontFamily.Serif; 3 -> FontFamily.Monospace; 4 -> FontFamily.Cursive; else -> FontFamily.Serif }
                 Row(
@@ -257,7 +281,7 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
                 }
             }
 
-            SectionTitle("Размер текста")
+            SectionTitle("Размер текста", action = if (look.scale != 1f) "Как в теме" else null, onAction = { set { it.copy(scale = 1f) } })
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("A", fontSize = 13.sp)
                 Slider(look.scale, { v -> set { it.copy(scale = (v * 20).roundToInt() / 20f) } }, valueRange = .8f..1.5f, steps = 13, modifier = Modifier.weight(1f).padding(horizontal = 8.dp))
@@ -270,7 +294,7 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
                 Text("Мелкая подпись · 12:30", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
             }
 
-            SectionTitle("Скругление карточек")
+            SectionTitle("Скругление карточек", action = if (look.cardRound != 18) "Как в теме" else null, onAction = { set { it.copy(cardRound = 18) } })
             Slider(look.cardRound.toFloat(), { v -> set { it.copy(cardRound = v.roundToInt()) } }, valueRange = 4f..32f)
             Text("${look.cardRound} dp", fontSize = 12.sp, color = extra.dim)
             RoundPreview(look.cardRound)
@@ -648,7 +672,8 @@ private fun MiniScreen(focus: Focus) {
     val cs = MaterialTheme.colorScheme
     val h = com.dasein.poryadok.ui.theme.Holiday
     val holiday = h.active && !look.contrast
-    val grad = if (holiday) h.bg().let { if (extra.dark) it.dark else it.light } else Look.deep(look)
+    val grad = if (holiday) h.bg().let { if (extra.dark) it.dark else it.light } else Look.gradient(look, cs.background)
+    val pal = com.dasein.poryadok.ui.theme.currentPalette()
     val mark = Look.readable(if (focus == Focus.ACCENT) cs.onBackground else cs.primary, cs.background, 3f)
     val phase = if (focus == Focus.NONE) null else androidx.compose.animation.core.rememberInfiniteTransition(label = "mark").animateFloat(
         0f, 34f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900, easing = androidx.compose.animation.core.LinearEasing)), label = "phase",
@@ -661,7 +686,7 @@ private fun MiniScreen(focus: Focus) {
             .focusMark(focus == Focus.BG, mark, 18.dp, ph),
     ) {
         androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-            if (grad != null) deepGradient(grad, extra.dark) else drawRect(cs.background)
+            if (grad != null) fancyBackground(grad, if (holiday) 0 else Look.fx(look), pal, extra.dark) else drawRect(cs.background)
         }
         Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -670,7 +695,7 @@ private fun MiniScreen(focus: Focus) {
             }
             Text("Четверг, 5 ноября", fontSize = 11.sp, color = extra.dim)
             Column(
-                Modifier.padding(top = 8.dp).fillMaxWidth().clip(RoundedCornerShape(cardR)).background(extra.card)
+                Modifier.padding(top = 8.dp).fillMaxWidth().clip(RoundedCornerShape(cardR)).cardFill(RoundedCornerShape(cardR))
                     .focusMark(focus == Focus.CARD, mark, cardR, ph).padding(10.dp),
             ) {
                 com.dasein.poryadok.ui.theme.OnBackground(extra.card) {
@@ -730,7 +755,7 @@ private fun AnimPreview(enabled: Boolean) {
             label = "tabs",
             modifier = Modifier.padding(top = 8.dp).fillMaxWidth(),
         ) { t ->
-            Box(Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(r)).background(extra.card).padding(horizontal = 12.dp), contentAlignment = Alignment.CenterStart) {
+            Box(Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(r)).cardFill(RoundedCornerShape(r)).padding(horizontal = 12.dp), contentAlignment = Alignment.CenterStart) {
                 com.dasein.poryadok.ui.theme.OnBackground(extra.card) {
                     Text(if (t == 0) "Купить продукты · Позвонить маме" else "Вода · Зарядка · Чтение", fontSize = 12.sp)
                 }
@@ -746,12 +771,12 @@ private fun RoundPreview(round: Int) {
     val extra = LocalExtra.current
     val r = round.dp
     Row(Modifier.padding(top = 8.dp).fillMaxWidth().height(84.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Box(Modifier.weight(1.4f).fillMaxSize().clip(RoundedCornerShape(r)).background(extra.card).border(1.dp, extra.line, RoundedCornerShape(r)).padding(10.dp)) {
+        Box(Modifier.weight(1.4f).fillMaxSize().clip(RoundedCornerShape(r)).cardFill(RoundedCornerShape(r)).padding(10.dp)) {
             com.dasein.poryadok.ui.theme.OnBackground(extra.card) { Text("Карточка", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             repeat(2) {
-                Box(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(r)).background(extra.card).border(1.dp, extra.line, RoundedCornerShape(r)))
+                Box(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(r)).cardFill(RoundedCornerShape(r)))
             }
         }
     }

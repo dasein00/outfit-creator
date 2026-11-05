@@ -21,9 +21,13 @@ import kotlin.math.sqrt
  * (шалфей, небо, роза, лаванда) оттенок поворачивается к нему, насыщенность подстраивается; в светлой теме
  * светлые формы становятся тёмными — иконки контрастны на светлом фоне без тёмной плашки.
  */
-data class IconTone(val hueShift: Float, val sat: Float, val light: Boolean, val mono: Int = 0, val festive: Boolean = false, val gold: Boolean = false) {
-    val identity get() = hueShift == 0f && sat == 1f && !light && mono == 0 && !festive
-    val key get() = "$hueShift|$sat|$light|$mono|$festive|$gold"
+data class IconTone(
+    val hueShift: Float, val sat: Float, val light: Boolean, val mono: Int = 0, val festive: Boolean = false, val gold: Boolean = false,
+    /** Сочетание цветов, подобранное к фону: иконка раскрашивается по ролям частей рисунка, а не в один цвет. */
+    val palette: com.dasein.poryadok.ui.theme.IconPalette? = null,
+) {
+    val identity get() = hueShift == 0f && sat == 1f && !light && mono == 0 && !festive && palette == null
+    val key get() = "$hueShift|$sat|$light|$mono|$festive|$gold|${palette?.name}"
 }
 
 /** Иконки «жёлтых» вещей — солнце, огонь, свет, награды, звёзды: в новогоднем режиме их акцент праздничный золотой. */
@@ -54,6 +58,7 @@ object IconTint {
         val px = IntArray(w * h).also { src.getPixels(it, 0, w, 0, 0, w, h) }
         val hsl = FloatArray(3)
         if (t.festive) { festive(px, t.light, t.gold, hsl); return Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888) }
+        t.palette?.let { paletteMap(px, t.light, t.gold, it, hsl); return Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888) }
         if (t.mono != 0) {
             // Одноцветные иконки: цвет задан (контраст с фоном, акцент или свой), светлота формы сохраняет детали рисунка.
             val mr = t.mono shr 16 and 255; val mg = t.mono shr 8 and 255; val mb = t.mono and 255
@@ -118,6 +123,40 @@ object IconTint {
         }
     }
 
+    /**
+     * Раскраска по сочетанию [p] — по тем же ролям, что и новогодняя: яркие детали — акцент сочетания, их блики и
+     * жёлтое — светлый акцент, светлые формы — светлый тон (в светлой теме — тёмный), полутона — средний, контуры — тёмный.
+     * Светлота исходного пикселя сохраняет детали рисунка.
+     */
+    private fun paletteMap(px: IntArray, light: Boolean, gold: Boolean, p: com.dasein.poryadok.ui.theme.IconPalette, hsl: FloatArray) {
+        val roles = listOf(p.accent, p.highlight, p.light, p.mid, p.deep).map { c ->
+            FloatArray(3).also { toHsl((c shr 16 and 255) / 255f, (c shr 8 and 255) / 255f, (c and 255) / 255f, it) }
+        }
+        val (acc, hi, lt, md, dp) = roles
+        fun role(r: FloatArray, l: Float, center: Float, lo: Float = .08f, top: Float = .97f) =
+            fromHsl(r[0], r[1], (r[2] + (l - center) * .5f).coerceIn(lo, top))
+        for (i in px.indices) {
+            val c = px[i]
+            val a = c ushr 24
+            if (a == 0) continue
+            val r = (c shr 16 and 255) / 255f; val g = (c shr 8 and 255) / 255f; val b = (c and 255) / 255f
+            val chroma = max(r, max(g, b)) - min(r, min(g, b))
+            toHsl(r, g, b, hsl)
+            val l = hsl[2]; val hue = hsl[0]
+            val rgb = when {
+                chroma >= .45f && (hue in 40f..75f || gold) && hue !in 170f..280f -> role(hi, l, .6f, if (light) .35f else .5f)
+                chroma >= .45f && hue in 170f..280f -> role(md, l, .55f, .3f, .75f)
+                chroma >= .55f && l > .7f -> role(hi, l, .8f, if (light) .35f else .5f)
+                chroma >= .55f -> role(acc, l, .5f, .3f, .75f)
+                // Светлые формы: на тёмном фоне — светлый тон сочетания, на светлом — тёмный, чтобы иконка была видна.
+                l >= .8f -> if (light) role(dp, .9f - .7f * l, .25f, .1f, .42f) else role(lt, l, .9f, .7f)
+                l >= .35f -> if (light) role(md, l * .8f, .45f, .25f, .6f) else role(md, l, .55f, .3f, .72f)
+                else -> if (light) role(dp, l, .2f, .08f, .3f) else role(dp, l, .2f, .12f, .4f)
+            }
+            px[i] = (a shl 24) or rgb
+        }
+    }
+
     private fun toHsl(r: Float, g: Float, b: Float, out: FloatArray) {
         val mx = max(r, max(g, b)); val mn = min(r, min(g, b))
         val l = (mx + mn) / 2
@@ -176,6 +215,10 @@ fun iconTone(onPlate: Boolean, gold: Boolean = false): IconTone {
     val dark = LocalExtra.current.dark
     val look = com.dasein.poryadok.ui.theme.LocalLook.current
     val text = MaterialTheme.colorScheme.onBackground.toArgb() and 0xFFFFFF
+    if (look.icons == 4) {
+        val pal = com.dasein.poryadok.ui.theme.currentPalette()
+        return remember(pal, dark, onPlate, gold) { IconTone(0f, 1f, light = !dark && !onPlate, gold = gold, palette = pal) }
+    }
     val mono = when (look.icons) {
         // Контраст: на плашке (она тёмная) — светлые, иначе — цвета текста, то есть всегда видны на фоне.
         1 -> if (onPlate) 0xF0ECE3 else text
