@@ -424,7 +424,7 @@ private fun HolidaySettings() {
         Column(Modifier.weight(1f)) {
             Text(btnLabel("Падающие снежинки"), fontWeight = FontWeight.SemiBold, color = if (canSnow) Color.Unspecified else extra.dim)
             Text(
-                if (canSnow) "При входе в приложение 5 секунд идёт снег, снежинки долетают до низа экрана, оседают сугробом и тают. Не мешает нажимать и листать."
+                if (canSnow) "При входе в приложение 5 секунд идёт снег, потом снежинки улетают за нижний край экрана. Не мешает нажимать и листать."
                 else "Снежинки идут вместе с новогодним режимом — включите его, и выбор сохранится.",
                 fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
             )

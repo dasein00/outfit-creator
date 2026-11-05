@@ -203,7 +203,7 @@ fun PoryadokTheme(theme: String, accent: Int, content: @Composable () -> Unit) {
         onSecondary = Look.readable(scheme0.onSecondary, scheme0.secondary, 4.5f),
         onError = Look.readable(scheme0.onError, scheme0.error, 4.5f),
     )
-    val extra = if (!custom) (if (dark) DarkExtra else LightExtra) else {
+    val extra0 = if (!custom) (if (dark) DarkExtra else LightExtra) else {
         val e = if (dark) DarkExtra else LightExtra
         val bgs = listOf(scheme.background, scheme.surfaceContainer)
         e.copy(
@@ -212,6 +212,9 @@ fun PoryadokTheme(theme: String, accent: Int, content: @Composable () -> Unit) {
             ok = Look.readableOn(e.ok, bgs, 3f), warn = Look.readableOn(e.warn, bgs, 3f), danger = Look.readableOn(e.danger, bgs, 3f),
         )
     }
+    // Новогодний режим: карточки холодного сине-серого цвета (как плашка «Праздники и события»),
+    // на нём лучше смотрятся снежные шапки и снег. После праздников цвет сам возвращается.
+    val extra = if (Holiday.active && !look.contrast) extra0.copy(card = if (dark) Color(0xFF292C33) else Color(0xFFE5EAF1)) else extra0
     val typography = androidx.compose.runtime.remember(look.font) { typographyFor(look.font) }
     val density = androidx.compose.ui.platform.LocalDensity.current
     androidx.compose.runtime.CompositionLocalProvider(

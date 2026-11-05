@@ -100,8 +100,7 @@ private class Flake(val x: Float, val y0: Float, val speed: Float, val radius: F
 
 /**
  * Снегопад при новом входе в приложение (не при переходах между разделами): 5 секунд идёт снег, потом новые
- * снежинки больше не появляются, а уже летящие долетают до низа экрана и оседают сугробом над кнопками Android;
- * полежав, сугроб тает. Только рисование — нажатия, прокрутка и жесты проходят сквозь снег.
+ * снежинки больше не появляются, а уже летящие улетают за нижний край экрана. Только рисование — нажатия, прокрутка и жесты проходят сквозь снег.
  * Позиции — функция времени: каждый кадр перерисовывается только холст, без перестройки интерфейса.
  */
 @Composable
@@ -129,9 +128,9 @@ private fun Snowfall() {
             )
         }
     }
-    // Сколько всего длится: пока не осядет последняя снежинка, ещё 3 с лежит, потом 2 с тает.
-    val landedAll = flakes.maxOf { (1f - it.ground - it.y0) / it.speed }
-    val totalMs = ((landedAll + 5f) * 1000).toLong()
+    // Сколько всего длится: пока последняя снежинка не улетит за нижний край экрана.
+    val goneAll = flakes.maxOf { (1.06f - it.y0) / it.speed }
+    val totalMs = (goneAll * 1000).toLong()
     LaunchedEffect(entry, allowed) {
         // Снег один раз на вход: перерисовки, поворот экрана и возврат в раздел не запускают его снова.
         // Вход засчитывается, даже если снег сейчас не нужен: включённые позже снежинки ждут следующего входа.
@@ -150,23 +149,14 @@ private fun Snowfall() {
     val tint = snowTint()
     Canvas(Modifier.fillMaxSize()) {
         val t = elapsed.longValue / 1000f
-        val total = totalMs / 1000f
-        // Появляется за 0,4 с; лежащий сугроб тает последние 2 секунды.
+        // Появляется за 0,4 с, дальше снежинки просто улетают за нижний край экрана — без исчезания на месте.
         val fadeIn = (t / .4f).coerceAtMost(1f)
-        val melt = ((total - t) / 2f).coerceIn(0f, 1f)
-        val floor = size.height - navBottom
         flakes.forEach { f ->
-            val groundY = floor - f.ground * size.height - f.radius * density
-            val landT = (groundY / size.height - f.y0) / f.speed
-            val tt = min(t, landT)
-            val y = (f.y0 + f.speed * tt) * size.height
-            if (y < -20f) return@forEach
-            val x = (f.x + f.sway * sin(2f * PI.toFloat() * f.swayHz * tt + f.phase)) * size.width
-            val landed = t >= landT
-            // Осевшие снежинки лежат неподвижно и чуть ярче — получается сугроб у нижнего края.
-            val a = f.alpha * fadeIn * melt * (if (landed) 1.1f else 1f)
-            val spin = if (landed) f.phase * 57f + landT * 25f else f.phase * 57f + tt * 25f * (if (f.swayHz > .4f) 1f else -1f)
-            snowflake(Offset(x, max(y, -20f)), f.radius * density, tint, a.coerceAtMost(1f), angle = spin)
+            val y = (f.y0 + f.speed * t) * size.height
+            if (y < -20f || y > size.height + 30f) return@forEach
+            val x = (f.x + f.sway * sin(2f * PI.toFloat() * f.swayHz * t + f.phase)) * size.width
+            val spin = f.phase * 57f + t * 25f * (if (f.swayHz > .4f) 1f else -1f)
+            snowflake(Offset(x, y), f.radius * density, tint, f.alpha * fadeIn, angle = spin)
         }
     }
 }

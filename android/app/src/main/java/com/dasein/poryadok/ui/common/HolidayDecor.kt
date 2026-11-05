@@ -122,11 +122,15 @@ fun HolidayGarland() {
 
 private fun DrawScope.drawGarland(wire: Path, points: List<Offset>, on: Boolean, mode: Int, t: Float) {
     drawPath(wire, Color(0xFF2B2620), style = Stroke(1.6.dp.toPx(), cap = StrokeCap.Round))
-    val r = 4.dp.toPx()
+    val r = 4.5.dp.toPx()
     points.forEachIndexed { i, p ->
         val (color, glow) = if (!on) Color(0xFF4A4238) to 0f else bulb(i, mode, t)
         val c = Offset(p.x, p.y + r * 1.6f)
-        if (glow > .05f) drawCircle(Brush.radialGradient(listOf(color.copy(alpha = .6f * glow), Color.Transparent), c, r * 3.6f), r * 3.6f, c)
+        // Свечение в два слоя: широкий мягкий ореол и яркое ядро вокруг колбы.
+        if (glow > .05f) {
+            drawCircle(Brush.radialGradient(listOf(color.copy(alpha = .55f * glow), color.copy(alpha = .18f * glow), Color.Transparent), c, r * 7f), r * 7f, c)
+            drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = .5f * glow), color.copy(alpha = .85f * glow), Color.Transparent), c, r * 2.8f), r * 2.8f, c)
+        }
         // Цоколь и колба: погасшая лампочка темнее, горящая — яркая с бликом.
         drawRect(Color(0xFF3A342C), Offset(p.x - r * .45f, p.y), Size(r * .9f, r * .7f))
         val body = if (on) lerp(color.copy(alpha = 1f), Color(0xFF3A342C), (1f - glow) * .55f) else color
