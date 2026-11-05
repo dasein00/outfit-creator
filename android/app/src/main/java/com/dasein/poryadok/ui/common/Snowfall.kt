@@ -107,10 +107,10 @@ private class Flake(val x: Float, val y0: Float, val speed: Float, val radius: F
 @Composable
 private fun Snowfall() {
     val ctx = LocalContext.current
-    val density = LocalDensity.current
+    val dens = LocalDensity.current
     val entry = Holiday.entry.intValue
     val allowed = Holiday.snowNow
-    val navBottom = WindowInsets.navigationBars.getBottom(density).toFloat()
+    val navBottom = WindowInsets.navigationBars.getBottom(dens).toFloat()
     var running by remember { mutableStateOf(false) }
     val elapsed = remember { mutableLongStateOf(0L) }
     val flakes = remember(entry) {
