@@ -256,7 +256,7 @@ fun Modifier.snowCap(seed: Int = 0): Modifier = drawWithContent {
 
 /**
  * Ледяная сосулька: сужается к острому кончику и слегка изогнута; лёд голубоватый и полупрозрачный —
- * у основания почти белый, к кончику прозрачно-голубой; вдоль грани узкий блик, на конце прозрачная капелька.
+ * у основания почти белый, к кончику прозрачно-голубой; вдоль грани узкий блик.
  */
 private fun DrawScope.icicle(top: Offset, length: Float, halfWidth: Float, bend: Float) {
     val tipX = top.x + (bend - .5f) * halfWidth * .8f
@@ -286,9 +286,6 @@ private fun DrawScope.icicle(top: Offset, length: Float, halfWidth: Float, bend:
     // Блик вдоль левой грани и тонкий светлый контур — «стеклянный» лёд.
     drawLine(Color.White.copy(alpha = .8f), Offset(top.x - halfWidth * .45f, top.y + length * .08f), Offset(top.x - halfWidth * .15f, top.y + length * .6f), (halfWidth * .28f).coerceAtLeast(1f), StrokeCap.Round)
     drawPath(body, Color.White.copy(alpha = .35f), style = Stroke(.8f))
-    // Капелька на кончике.
-    drawCircle(Color(0xB3BFE0F5), halfWidth * .32f, Offset(tipX, tipY + halfWidth * .25f))
-    drawCircle(Color.White.copy(alpha = .8f), halfWidth * .12f, Offset(tipX - halfWidth * .1f, tipY + halfWidth * .15f))
 }
 
 /**
