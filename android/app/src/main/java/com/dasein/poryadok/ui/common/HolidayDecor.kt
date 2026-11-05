@@ -20,12 +20,14 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -42,6 +44,28 @@ import kotlin.math.sin
  * Новогодние украшения поверх интерфейса: гирлянда с еловыми ветками вверху экрана, снежные шапки на карточках
  * и шестиконечные снежинки. Рисуются только в новогоднем режиме (сезон или тестовый режим).
  */
+
+/**
+ * Нарисованные украшения из assets/holiday: полосы снега (snow_*), одиночные сосульки (ice_*) и сдвоенные (pair_*).
+ * Грузятся один раз в фоне, когда включается новогодний режим; пока не загружены — шапки рисуются кодом.
+ */
+object HolidayAssets {
+    val ready = androidx.compose.runtime.mutableStateOf(false)
+    var snow: List<androidx.compose.ui.graphics.ImageBitmap> = emptyList(); private set
+    var ice: List<androidx.compose.ui.graphics.ImageBitmap> = emptyList(); private set
+    var pairs: List<androidx.compose.ui.graphics.ImageBitmap> = emptyList(); private set
+
+    fun load(ctx: android.content.Context) {
+        if (ready.value) return
+        fun group(prefix: String) = runCatching {
+            ctx.assets.list("holiday").orEmpty().filter { it.startsWith(prefix) }.sorted().mapNotNull { f ->
+                ctx.assets.open("holiday/$f").use { android.graphics.BitmapFactory.decodeStream(it) }?.asImageBitmap()
+            }
+        }.getOrDefault(emptyList())
+        snow = group("snow_"); ice = group("ice_"); pairs = group("pair_")
+        ready.value = snow.isNotEmpty() && ice.isNotEmpty()
+    }
+}
 
 /** Огоньки гирлянды: красный, золотой, зелёный, синий и тёплый белый — в тон новогодней палитры иконок. */
 private val BULBS = listOf(Color(0xFFE53935), Color(0xFFFFC24A), Color(0xFF43A047), Color(0xFF42A5F5), Color(0xFFFFE7B0))
@@ -219,6 +243,7 @@ fun Modifier.snowCap(seed: Int = 0): Modifier = drawWithContent {
     val w = size.width
     if (w < 80.dp.toPx() || size.height < 36.dp.toPx()) return@drawWithContent
     val rnd = kotlin.random.Random(seed)
+    if (HolidayAssets.ready.value) { pictureCap(rnd, seed, w); return@drawWithContent }
     val path = Path().apply {
         moveTo(0f, 0f)
         lineTo(w, 0f)
@@ -256,6 +281,41 @@ fun Modifier.snowCap(seed: Int = 0): Modifier = drawWithContent {
         }
         i++
     }
+}
+
+/**
+ * Шапка из нарисованных картинок: случайная полоса снега и случайный её кусок (толщина снега везде одинаковая,
+ * узоры не повторяются), под ней — случайные сосульки, одиночные и сдвоенные, разной длины, иногда отражённые.
+ */
+private fun DrawScope.pictureCap(rnd: kotlin.random.Random, seed: Int, w: Float) {
+    val a = HolidayAssets
+    val strip = a.snow[(seed % a.snow.size + a.snow.size) % a.snow.size]
+    val thick = 10.dp.toPx()
+    val scale = thick / strip.height
+    val srcW = (w / scale).toInt().coerceIn(1, strip.width)
+    val srcX = if (strip.width > srcW) rnd.nextInt(strip.width - srcW + 1) else 0
+    // Сосульки — сначала, чтобы снег лёг поверх их верхушек.
+    val count = (w / 64.dp.toPx()).toInt().coerceIn(2, 7) + rnd.nextInt(-1, 2)
+    repeat(count) {
+        val pair = a.pairs.isNotEmpty() && rnd.nextFloat() < .3f
+        val img = if (pair) a.pairs[rnd.nextInt(a.pairs.size)] else a.ice[rnd.nextInt(a.ice.size)]
+        val hh = (9f + rnd.nextFloat() * 15f).dp.toPx()
+        val ww = hh * img.width / img.height
+        val x = w * (.05f + rnd.nextFloat() * .9f)
+        val top = thick * .45f
+        val flip = rnd.nextBoolean()
+        withTransform({ if (flip) scale(-1f, 1f, Offset(x, top)) }) {
+            drawImage(
+                img, srcOffset = androidx.compose.ui.unit.IntOffset.Zero, srcSize = androidx.compose.ui.unit.IntSize(img.width, img.height),
+                dstOffset = androidx.compose.ui.unit.IntOffset((x - ww / 2).toInt(), top.toInt()),
+                dstSize = androidx.compose.ui.unit.IntSize(ww.toInt().coerceAtLeast(1), hh.toInt().coerceAtLeast(1)), alpha = .88f,
+            )
+        }
+    }
+    drawImage(
+        strip, srcOffset = androidx.compose.ui.unit.IntOffset(srcX, 0), srcSize = androidx.compose.ui.unit.IntSize(srcW, strip.height),
+        dstOffset = androidx.compose.ui.unit.IntOffset.Zero, dstSize = androidx.compose.ui.unit.IntSize(w.toInt(), thick.toInt()),
+    )
 }
 
 /**
@@ -301,8 +361,11 @@ fun DrawScope.chartDot(color: Color, radius: Float, center: Offset, index: Int =
     if (!Holiday.active) { drawCircle(color, radius, center); return }
     val c = BULBS[(index % BULBS.size + BULBS.size) % BULBS.size]
     val r = radius.coerceAtLeast(3.dp.toPx()) * (if (selected) 1.35f else 1f)
-    drawCircle(Brush.radialGradient(listOf(c.copy(alpha = .55f), c.copy(alpha = .15f), Color.Transparent), center, r * 4f), r * 4f, center)
+    // Мигают, как гирлянда: у каждой лампочки свой ритм (по общим часам украшений).
+    val t = Holiday.clock.floatValue
+    val glow = .25f + .75f * (.5f + .5f * sin(t * 3f + index * 1.7f))
+    drawCircle(Brush.radialGradient(listOf(c.copy(alpha = .7f * glow), c.copy(alpha = .2f * glow), Color.Transparent), center, r * 4.5f), r * 4.5f, center)
     drawRect(Color(0xFF3A342C), Offset(center.x - r * .4f, center.y - r * 1.55f), Size(r * .8f, r * .6f))
-    drawOval(c, Offset(center.x - r * .78f, center.y - r * 1.05f), Size(r * 1.56f, r * 2f))
+    drawOval(lerp(c, Color(0xFF3A342C), (1f - glow) * .5f), Offset(center.x - r * .78f, center.y - r * 1.05f), Size(r * 1.56f, r * 2f))
     drawOval(Color.White.copy(alpha = .55f), Offset(center.x - r * .45f, center.y - r * .75f), Size(r * .45f, r * .65f))
 }

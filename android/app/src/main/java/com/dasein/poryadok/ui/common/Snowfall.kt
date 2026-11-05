@@ -15,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -42,7 +43,11 @@ fun HolidayHost(content: @Composable () -> Unit) {
     }
     // Одни часы на все украшения (~30 кадров в секунду) — и только пока есть что анимировать.
     val active = Holiday.active
-    val animate = active && (Holiday.lights.value || Holiday.backdrop.value)
+    // Часы идут весь новогодний режим: по ним мигают гирлянда и лампочки на графиках, падает снег на фоне.
+    val animate = active
+    // Картинки снега и сосулек — в фоне, один раз.
+    val appCtx = LocalContext.current.applicationContext
+    LaunchedEffect(active) { if (active) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { HolidayAssets.load(appCtx) } }
     LaunchedEffect(animate) {
         if (!animate) return@LaunchedEffect
         val start = withFrameMillis { it } - (Holiday.clock.floatValue * 1000).toLong()
@@ -81,10 +86,18 @@ private val BACK_FLAKES = Random(2026).let { rnd ->
  */
 @Composable
 fun HolidayBackdrop() {
-    if (!Holiday.active || !Holiday.backdrop.value) return
+    if (!Holiday.active) return
     val tint = snowTint()
-    val strength = if (LocalExtra.current.dark) .16f else .3f
+    val dark = LocalExtra.current.dark
+    val strength = if (dark) .16f else .3f
+    val flakes = Holiday.backdrop.value
     Canvas(Modifier.fillMaxSize()) {
+        // Бархатный красный: светлее и насыщеннее сверху по центру, к краям глубже и темнее — как ткань под светом.
+        val velvet = if (dark) listOf(Color(0xFF8C1A2B), Color(0xFF5E0F1C), Color(0xFF330710)) else listOf(Color(0xFFFBE9E9), Color(0xFFF3D3D5), Color(0xFFE6B9BD))
+        drawRect(Brush.radialGradient(velvet, Offset(size.width * .5f, size.height * .18f), maxOf(size.width, size.height) * .95f))
+        // Мягкий отсвет сверху — «ворс» бархата.
+        drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = if (dark) .05f else .15f), Color.Transparent), 0f, size.height * .35f))
+        if (!flakes) return@Canvas
         val t = Holiday.clock.floatValue
         BACK_FLAKES.forEach { f ->
             // Падает сверху вниз и снова появляется сверху — бесконечно, по кругу.

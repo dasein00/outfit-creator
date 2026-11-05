@@ -174,9 +174,10 @@ fun PoryadokTheme(theme: String, accent: Int, content: @Composable () -> Unit) {
     // Новогодний режим: фон глубокого клюквенно-красного цвета (тёмная тема) или нежно-розовый (светлая).
     // Тёмный и приглушённый, чтобы красные детали иконок и текст оставались на нём хорошо различимы.
     val holiday = Holiday.active && !look.contrast
+    // Праздничный бархатно-красный — даже если в «Оформлении» выбран свой фон (после праздников он вернётся).
     val bg = when {
+        holiday -> if (dark) Color(0xFF4A0C17) else Color(0xFFF6E1E2)
         look.bgRgb != 0 -> Look.color(look.bgRgb)
-        holiday -> if (dark) Color(0xFF2A1215) else Color(0xFFFBEDEC)
         else -> base.background
     }
     // Текст всегда различим на фоне: свой цвет текста, слишком близкий к фону, сам сдвигается к контрастному.

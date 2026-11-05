@@ -86,7 +86,7 @@ fun Screen(
 ) {
     // В новогоднем режиме под всем экраном — полупрозрачный падающий снег: фон рисуется отдельным слоем,
     // а сам экран становится прозрачным, чтобы снег был виден между карточками.
-    val backdrop = com.dasein.poryadok.ui.theme.Holiday.active && com.dasein.poryadok.ui.theme.Holiday.backdrop.value
+    val backdrop = com.dasein.poryadok.ui.theme.Holiday.active
     Box(Modifier.fillMaxSize().let { if (backdrop) it.background(MaterialTheme.colorScheme.background) else it }) {
     HolidayBackdrop()
     Scaffold(
