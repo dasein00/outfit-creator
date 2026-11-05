@@ -54,6 +54,10 @@ import com.dasein.poryadok.ui.common.OutlinedButton
 import com.dasein.poryadok.ui.common.Screen
 import com.dasein.poryadok.ui.common.SectionTitle
 import com.dasein.poryadok.ui.common.snowCap
+import com.dasein.poryadok.ui.common.deepGradient
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.animateFloat
 import com.dasein.poryadok.ui.common.Segments
 import com.dasein.poryadok.ui.common.TextButton
 import com.dasein.poryadok.ui.common.TextInput
@@ -69,7 +73,7 @@ import kotlin.math.roundToInt
 const val APPEARANCE_ROUTE = "appearance"
 
 /** Что выбираем в палитре: акцент, фон, текст или цвет иконок. */
-private enum class Pick { ACCENT, BG, TEXT, ICON }
+private enum class Pick { ACCENT, BG, TEXT, ICON, CARD }
 
 /**
  * «Оформление»: тема, акцент (16 цветов и свой), фон, цвет текста, контрастный режим, иконки, шрифт, размер текста,
@@ -112,6 +116,7 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
             SectionTitle("Тема")
             Segments(listOf("system" to "Как в системе", "light" to "Светлая", "dark" to "Тёмная"), settings.theme, { v -> io { Graph.prefs.update { it.copy(theme = v) } } })
             if (look.bgRgb != 0) Text("Сейчас выбран свой фон — светлая или тёмная тема определяется по нему.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
+            MiniScreen(Focus.NONE)
 
             HolidaySettings()
 
@@ -125,13 +130,47 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
                 }
                 Swatch(if (look.accentRgb != 0) Look.color(look.accentRgb) else null, "Свой", look.accentRgb != 0) { pick = Pick.ACCENT }
             }
+            MiniScreen(Focus.ACCENT)
 
+            val holidayNow = com.dasein.poryadok.ui.theme.Holiday.active && !look.contrast
             SectionTitle("Фон")
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Swatch(null, "По теме", look.bgRgb == 0, auto = true) { set { it.copy(bgRgb = 0) } }
-                Look.BACKGROUNDS.forEach { (label, rgb) -> Swatch(Look.color(rgb), label, look.bgRgb == rgb) { set { it.copy(bgRgb = rgb) } } }
-                Swatch(null, "Свой", look.bgRgb != 0 && Look.BACKGROUNDS.none { it.second == look.bgRgb }) { pick = Pick.BG }
+            if (holidayNow) HolidayNote()
+            Text(btnLabel("Глубокие цвета"), fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(bottom = 6.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Look.DEEP_BACKGROUNDS.forEachIndexed { i, d ->
+                    StyleSwatch(d.name, look.bgStyle == i, androidx.compose.ui.graphics.Brush.radialGradient(d.colors)) {
+                        set { it.copy(bgStyle = i, bgRgb = d.colors[1].toArgb() and 0xFFFFFF) }
+                    }
+                }
             }
+            Text(btnLabel("Однотонные"), fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 10.dp, bottom = 6.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Swatch(null, "По теме", look.bgRgb == 0, auto = true) { set { it.copy(bgRgb = 0, bgStyle = -1) } }
+                Look.BACKGROUNDS.forEach { (label, rgb) -> Swatch(Look.color(rgb), label, look.bgStyle < 0 && look.bgRgb == rgb) { set { it.copy(bgRgb = rgb, bgStyle = -1) } } }
+                Swatch(null, "Свой", look.bgStyle < 0 && look.bgRgb != 0 && Look.BACKGROUNDS.none { it.second == look.bgRgb }) { pick = Pick.BG }
+            }
+            MiniScreen(Focus.BG)
+
+            SectionTitle("Плашки")
+            if (holidayNow) HolidayNote()
+            Text(
+                "Цвет карточек на всех экранах. Полупрозрачные пропускают фон — особенно красиво с глубокими цветами. Текст на них сам остаётся различимым.",
+                fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp, modifier = Modifier.padding(bottom = 6.dp),
+            )
+            val themeDark = extra.dark
+            val under = Look.deep(look)?.get(1) ?: MaterialTheme.colorScheme.background
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                StyleSwatch("По теме", look.cardStyle == -1, androidx.compose.ui.graphics.SolidColor(Look.mix(under, MaterialTheme.colorScheme.onBackground, if (themeDark) .07f else .03f))) {
+                    set { it.copy(cardStyle = -1) }
+                }
+                Look.CARDS.forEachIndexed { i, cc ->
+                    val c = if (themeDark) cc.dark else cc.light
+                    // Плашка показана поверх текущего фона — так видна её полупрозрачность.
+                    StyleSwatch(cc.name, look.cardStyle == i, androidx.compose.ui.graphics.SolidColor(Look.mix(under, c.copy(alpha = 1f), c.alpha))) { set { it.copy(cardStyle = i) } }
+                }
+                StyleSwatch("Свой", look.cardStyle == -2, androidx.compose.ui.graphics.SolidColor(if (look.cardStyle == -2 && look.cardRgb != 0) Look.mix(under, Color(look.cardRgb).copy(alpha = 1f), Color(look.cardRgb).alpha) else extra.line)) { pick = Pick.CARD }
+            }
+            MiniScreen(Focus.CARD)
 
             SectionTitle("Цвет текста")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -139,6 +178,7 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
                 Look.TEXTS.forEach { (label, rgb) -> Swatch(Look.color(rgb), label, look.textRgb == rgb) { set { it.copy(textRgb = rgb) } } }
                 Swatch(null, "Свой", look.textRgb != 0 && Look.TEXTS.none { it.second == look.textRgb }) { pick = Pick.TEXT }
             }
+            MiniScreen(Focus.TEXT)
             val bg = MaterialTheme.colorScheme.background
             val fg = MaterialTheme.colorScheme.onBackground
             val ratio = Look.contrast(bg, fg)
@@ -162,6 +202,7 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
                 }
                 Switch(look.contrast, { on -> set { it.copy(contrast = on, icons = if (on && it.icons == 0) 1 else it.icons) } })
             }
+            MiniScreen(Focus.NONE)
 
             SectionTitle("Анимация")
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -174,6 +215,7 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
                 }
                 Switch(com.dasein.poryadok.ui.common.TabAnim.enabled.value, { com.dasein.poryadok.ui.common.TabAnim.setEnabled(it) })
             }
+            AnimPreview(com.dasein.poryadok.ui.common.TabAnim.enabled.value)
 
             SectionTitle("Иконки")
             Look.ICON_MODES.forEachIndexed { i, label ->
@@ -186,8 +228,18 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
                     if (i == 3) Box(Modifier.size(22.dp).clip(CircleShape).background(if (look.iconRgb != 0) Look.color(look.iconRgb) else extra.line).clickable { pick = Pick.ICON })
                 }
             }
-            Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                listOf("d01/00", "d12/00", "d01/02", "d06/00", "tutor/18", "ui:home").forEach { Glyph(it, 30.dp, badge = false) }
+            // Иконки на фоне и на плашке — как они будут выглядеть в приложении.
+            Column(Modifier.padding(top = 6.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).border(1.dp, extra.line, RoundedCornerShape(16.dp)).padding(10.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    listOf("d01/00", "d12/00", "d01/02", "d06/00", "tutor/18", "ui:home").forEach { Glyph(it, 30.dp, badge = false) }
+                }
+                Box(Modifier.padding(top = 8.dp).fillMaxWidth().clip(RoundedCornerShape(look.cardRound.dp)).background(extra.card).padding(10.dp)) {
+                    com.dasein.poryadok.ui.theme.OnBackground(extra.card) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                            listOf("d17/03", "d06/00", "d12/00", "d01/02", "ui:home").forEach { Glyph(it, 26.dp, badge = false) }
+                        }
+                    }
+                }
             }
 
             SectionTitle("Шрифт")
@@ -212,10 +264,16 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
                 Text("A", fontSize = 22.sp)
             }
             Text("${(look.scale * 100).roundToInt()}% от системного размера", fontSize = 12.sp, color = extra.dim)
+            Tile(Modifier.padding(top = 8.dp)) {
+                Text("Заголовок карточки", style = MaterialTheme.typography.titleMedium)
+                Text("Обычный текст: так читаются задачи, рецепты и заметки.", fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+                Text("Мелкая подпись · 12:30", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
+            }
 
             SectionTitle("Скругление карточек")
             Slider(look.cardRound.toFloat(), { v -> set { it.copy(cardRound = v.roundToInt()) } }, valueRange = 4f..32f)
             Text("${look.cardRound} dp", fontSize = 12.sp, color = extra.dim)
+            RoundPreview(look.cardRound)
 
             SectionTitle("Тексты интерфейса")
             Text(
@@ -286,6 +344,7 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
             Pick.BG -> look.bgRgb.takeIf { it != 0 } ?: (MaterialTheme.colorScheme.background.toArgb() and 0xFFFFFF)
             Pick.TEXT -> look.textRgb.takeIf { it != 0 } ?: (MaterialTheme.colorScheme.onBackground.toArgb() and 0xFFFFFF)
             Pick.ICON -> look.iconRgb.takeIf { it != 0 } ?: (MaterialTheme.colorScheme.primary.toArgb() and 0xFFFFFF)
+            Pick.CARD -> (look.cardRgb.takeIf { it != 0 } ?: extra.card.toArgb()) and 0xFFFFFF
         }
         ColorPickerDialog(start, onDismiss = { pick = null }) { rgb ->
             // 0 значит «по умолчанию», поэтому чистый чёрный храним как почти чёрный.
@@ -293,9 +352,11 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
             set {
                 when (p) {
                     Pick.ACCENT -> it.copy(accentRgb = v)
-                    Pick.BG -> it.copy(bgRgb = v)
+                    Pick.BG -> it.copy(bgRgb = v, bgStyle = -1)
                     Pick.TEXT -> it.copy(textRgb = v)
                     Pick.ICON -> it.copy(iconRgb = v, icons = 3)
+                    // Свои плашки — слегка прозрачные, чтобы фон просвечивал.
+                    Pick.CARD -> it.copy(cardRgb = v or (0xE0 shl 24), cardStyle = -2)
                 }
             }
             pick = null
@@ -548,5 +609,150 @@ private fun StyleSwatch(name: String, selected: Boolean, brush: androidx.compose
                 .border(if (selected) 3.dp else 1.dp, if (selected) MaterialTheme.colorScheme.primary else extra.line, CircleShape),
         )
         Text(name, fontSize = 11.sp, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center, lineHeight = 13.sp, modifier = Modifier.padding(top = 4.dp))
+    }
+}
+
+/** Сейчас действует новогодний режим: его фон и плашки главнее, обычные вернутся после праздников. */
+@Composable
+private fun HolidayNote() {
+    Text(
+        "Сейчас действует новогодний режим — его фон и плашки настраиваются выше. Выбранное здесь сохранится и вернётся после праздников.",
+        fontSize = 12.sp, color = LocalExtra.current.warn, lineHeight = 16.sp, modifier = Modifier.padding(bottom = 6.dp),
+    )
+}
+
+/** Что подсвечено в мини-экране: редактируемый объект обведён бегущим пунктиром. */
+private enum class Focus { NONE, BG, CARD, TEXT, ACCENT }
+
+/** Бегущий пунктир вокруг редактируемого объекта. */
+private fun Modifier.focusMark(on: Boolean, color: Color, radius: androidx.compose.ui.unit.Dp, phase: () -> Float): Modifier =
+    if (!on) this else drawWithContent {
+        drawContent()
+        val w = 2.dp.toPx()
+        drawRoundRect(
+            color, topLeft = androidx.compose.ui.geometry.Offset(w / 2, w / 2),
+            size = androidx.compose.ui.geometry.Size(size.width - w, size.height - w),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius.toPx()),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(w, pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 7f), phase())),
+        )
+    }
+
+/**
+ * Мини-экран в текущем оформлении: фон (однотонный, глубокий или новогодний), заголовок, плашка с текстом,
+ * кнопкой и полосой прогресса, нижняя панель. Редактируемая часть ([focus]) обведена бегущим пунктиром.
+ */
+@Composable
+private fun MiniScreen(focus: Focus) {
+    val extra = LocalExtra.current
+    val look = com.dasein.poryadok.ui.theme.LocalLook.current
+    val cs = MaterialTheme.colorScheme
+    val h = com.dasein.poryadok.ui.theme.Holiday
+    val holiday = h.active && !look.contrast
+    val grad = if (holiday) h.bg().let { if (extra.dark) it.dark else it.light } else Look.deep(look)
+    val mark = Look.readable(if (focus == Focus.ACCENT) cs.onBackground else cs.primary, cs.background, 3f)
+    val phase = if (focus == Focus.NONE) null else androidx.compose.animation.core.rememberInfiniteTransition(label = "mark").animateFloat(
+        0f, 34f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900, easing = androidx.compose.animation.core.LinearEasing)), label = "phase",
+    )
+    val ph = { -(phase?.value ?: 0f) }
+    val outer = RoundedCornerShape(18.dp)
+    val cardR = (look.cardRound * .8f).dp
+    Box(
+        Modifier.padding(top = 10.dp).fillMaxWidth().height(196.dp).clip(outer).border(1.dp, extra.line, outer)
+            .focusMark(focus == Focus.BG, mark, 18.dp, ph),
+    ) {
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            if (grad != null) deepGradient(grad, extra.dark) else drawRect(cs.background)
+        }
+        Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Сегодня", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = cs.onBackground, modifier = Modifier.weight(1f))
+                Glyph("ui:home", 18.dp, badge = false)
+            }
+            Text("Четверг, 5 ноября", fontSize = 11.sp, color = extra.dim)
+            Column(
+                Modifier.padding(top = 8.dp).fillMaxWidth().clip(RoundedCornerShape(cardR)).background(extra.card)
+                    .focusMark(focus == Focus.CARD, mark, cardR, ph).padding(10.dp),
+            ) {
+                com.dasein.poryadok.ui.theme.OnBackground(extra.card) {
+                    Column(Modifier.focusMark(focus == Focus.TEXT, mark, 6.dp, ph).padding(horizontal = 4.dp, vertical = 2.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Glyph("d01/00", 18.dp, badge = false)
+                            Text("Пример плашки", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.padding(start = 6.dp))
+                        }
+                        Text("Основной текст карточки", fontSize = 12.sp)
+                        Text("Подпись приглушённым цветом", fontSize = 11.sp, color = extra.dim)
+                    }
+                    Row(
+                        Modifier.padding(top = 6.dp).focusMark(focus == Focus.ACCENT, mark, 12.dp, ph).padding(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(Modifier.clip(RoundedCornerShape(50)).background(cs.primary).padding(horizontal = 12.dp, vertical = 4.dp)) {
+                            Text("Кнопка", fontSize = 12.sp, color = cs.onPrimary, fontWeight = FontWeight.SemiBold)
+                        }
+                        Box(Modifier.padding(start = 10.dp).weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(extra.line)) {
+                            Box(Modifier.fillMaxWidth(.62f).fillMaxSize().background(cs.primary))
+                        }
+                        Text("62%", fontSize = 11.sp, color = cs.primary, modifier = Modifier.padding(start = 6.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Как сменяются подразделы: две мини-вкладки сами переключаются — плавно или сразу, как в приложении. */
+@Composable
+private fun AnimPreview(enabled: Boolean) {
+    val extra = LocalExtra.current
+    val cs = MaterialTheme.colorScheme
+    val r = com.dasein.poryadok.ui.theme.LocalLook.current.cardRound.dp
+    var tab by remember { mutableStateOf(0) }
+    LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(1600); tab = 1 - tab } }
+    val tabs = listOf("Задачи", "Привычки")
+    Column(Modifier.padding(top = 8.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).border(1.dp, extra.line, RoundedCornerShape(16.dp)).padding(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            tabs.forEachIndexed { i, t ->
+                Box(Modifier.clip(RoundedCornerShape(50)).background(if (tab == i) cs.primary else extra.card).padding(horizontal = 12.dp, vertical = 4.dp)) {
+                    Text(t, fontSize = 12.sp, color = if (tab == i) cs.onPrimary else cs.onBackground)
+                }
+            }
+        }
+        androidx.compose.animation.AnimatedContent(
+            targetState = tab,
+            transitionSpec = {
+                if (!enabled) androidx.compose.animation.EnterTransition.None togetherWith androidx.compose.animation.ExitTransition.None
+                else {
+                    val dir = if (targetState > initialState) 1 else -1
+                    (androidx.compose.animation.slideInHorizontally { it * dir } + androidx.compose.animation.fadeIn()) togetherWith
+                        (androidx.compose.animation.slideOutHorizontally { -it * dir } + androidx.compose.animation.fadeOut())
+                }
+            },
+            label = "tabs",
+            modifier = Modifier.padding(top = 8.dp).fillMaxWidth(),
+        ) { t ->
+            Box(Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(r)).background(extra.card).padding(horizontal = 12.dp), contentAlignment = Alignment.CenterStart) {
+                com.dasein.poryadok.ui.theme.OnBackground(extra.card) {
+                    Text(if (t == 0) "Купить продукты · Позвонить маме" else "Вода · Зарядка · Чтение", fontSize = 12.sp)
+                }
+            }
+        }
+        Text(if (enabled) "Сейчас: плавная смена" else "Сейчас: мгновенно, без анимации", fontSize = 11.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
+    }
+}
+
+/** Карточки с текущим скруглением: большая, средняя и кнопка-плашка. */
+@Composable
+private fun RoundPreview(round: Int) {
+    val extra = LocalExtra.current
+    val r = round.dp
+    Row(Modifier.padding(top = 8.dp).fillMaxWidth().height(84.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.weight(1.4f).fillMaxSize().clip(RoundedCornerShape(r)).background(extra.card).border(1.dp, extra.line, RoundedCornerShape(r)).padding(10.dp)) {
+            com.dasein.poryadok.ui.theme.OnBackground(extra.card) { Text("Карточка", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            repeat(2) {
+                Box(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(r)).background(extra.card).border(1.dp, extra.line, RoundedCornerShape(r)))
+            }
+        }
     }
 }

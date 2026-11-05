@@ -143,7 +143,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
     val taskProgressTotal = todayTasks.size + doneToday.size
 
     // Новогодний снег под карточками — как в общем Screen.
-    val backdrop = com.dasein.poryadok.ui.theme.Holiday.active
+    val backdrop = com.dasein.poryadok.ui.common.hasBackdrop()
     androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().let { if (backdrop) it.background(MaterialTheme.colorScheme.background) else it }) {
     com.dasein.poryadok.ui.common.HolidayBackdrop()
     Scaffold(

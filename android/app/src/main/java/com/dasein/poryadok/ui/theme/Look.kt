@@ -20,7 +20,18 @@ data class LookSettings(
     val iconRgb: Int = 0,
     val contrast: Boolean = false,
     val cardRound: Int = 18,
+    /** Глубокий фон-градиент: номер в [Look.DEEP_BACKGROUNDS], -1 — однотонный фон. */
+    val bgStyle: Int = -1,
+    /** Плашки: номер в [Look.CARDS], -1 — по теме, -2 — свой цвет [cardRgb]. */
+    val cardStyle: Int = -1,
+    val cardRgb: Int = 0,
 )
+
+/** Глубокий фон: бархатный градиент — центр, середина, края. */
+class DeepBg(val name: String, val colors: List<Color>)
+
+/** Цвет плашек для тёмной и светлой темы (полупрозрачный — сквозь него виден фон). */
+class CardColor(val name: String, val dark: Color, val light: Color)
 
 object Look {
     /** Шрифты: заголовки / основной текст. */
@@ -55,6 +66,49 @@ object Look {
         "Чернила" to 0xFF211D18.toInt(), "Чёрный" to 0xFF000000.toInt(), "Графит" to 0xFF2E3138.toInt(), "Тёмно-синий" to 0xFF1B2A41.toInt(),
     )
 
+    private fun c(v: Long) = Color(v)
+
+    /** Палитра глубоких цветов для фона: градиент, светлее к центру и глубже к краям. */
+    val DEEP_BACKGROUNDS = listOf(
+        DeepBg("Изумруд", listOf(c(0xFF1F5C46), c(0xFF123829), c(0xFF081C14))),
+        DeepBg("Вино", listOf(c(0xFF6E1A2C), c(0xFF46101D), c(0xFF22070E))),
+        DeepBg("Сапфир", listOf(c(0xFF234A86), c(0xFF142B55), c(0xFF09152C))),
+        DeepBg("Аметист", listOf(c(0xFF4C2A78), c(0xFF2E1A4C), c(0xFF160C26))),
+        DeepBg("Океан", listOf(c(0xFF145A66), c(0xFF0C3840), c(0xFF051B20))),
+        DeepBg("Полночь", listOf(c(0xFF1E2A4A), c(0xFF111A30), c(0xFF070B16))),
+        DeepBg("Хвоя", listOf(c(0xFF2E4A22), c(0xFF1C2F15), c(0xFF0D170A))),
+        DeepBg("Бронза", listOf(c(0xFF6A4A1C), c(0xFF433010), c(0xFF201607))),
+        DeepBg("Шоколад", listOf(c(0xFF5A3B28), c(0xFF382418), c(0xFF1C110B))),
+        DeepBg("Графит", listOf(c(0xFF3A3F47), c(0xFF23272D), c(0xFF111316))),
+        DeepBg("Жемчуг", listOf(c(0xFFFFFFFF), c(0xFFF2EFEA), c(0xFFE2DDD4))),
+        DeepBg("Лаванда", listOf(c(0xFFF6F2FC), c(0xFFE9E1F5), c(0xFFD6CAEA))),
+        DeepBg("Шалфей", listOf(c(0xFFF2F8F3), c(0xFFDFEDE3), c(0xFFC8DECF))),
+        DeepBg("Персик", listOf(c(0xFFFFF4EC), c(0xFFF8E2D2), c(0xFFEDCDB6))),
+    )
+
+    /** Цвета плашек: полупрозрачные и плотные, для тёмной и светлой темы. */
+    val CARDS = listOf(
+        CardColor("Матовое стекло", c(0x8C2E323C), c(0xA6FFFFFF)),
+        CardColor("Дымка", c(0x26FFFFFF), c(0x12000000)),
+        CardColor("Плотные", c(0xF21C1C1E), c(0xF7FFFFFF)),
+        CardColor("Бордо", c(0xA6611626), c(0xB3F7DDE0)),
+        CardColor("Хвоя", c(0xA61B4A33), c(0xB3DDEFE4)),
+        CardColor("Сапфир", c(0xA61B2E5A), c(0xB3DCE6F7)),
+        CardColor("Слива", c(0xA63E1E5A), c(0xB3EADDF5)),
+        CardColor("Золото", c(0x4DC9A24A), c(0x99F7E7C0)),
+        CardColor("Сливочный", c(0x40FADFAF), c(0xB3FFF6E6)),
+    )
+
+    /** Градиент выбранного глубокого фона или null (однотонный фон). */
+    fun deep(s: LookSettings): List<Color>? = if (s.bgStyle >= 0 && s.bgRgb != 0) DEEP_BACKGROUNDS.getOrNull(s.bgStyle)?.colors else null
+
+    /** Свой цвет плашек или null («по теме»). */
+    fun cardColor(s: LookSettings, dark: Boolean): Color? = when {
+        s.cardStyle == -2 && s.cardRgb != 0 -> Color(s.cardRgb)
+        s.cardStyle >= 0 -> CARDS.getOrNull(s.cardStyle)?.let { if (dark) it.dark else it.light }
+        else -> null
+    }
+
     val state = mutableStateOf(LookSettings())
     private var loaded = false
 
@@ -69,6 +123,8 @@ object Look {
                 font = if (!p.getBoolean("look_medeo", false)) { p.edit().putBoolean("look_medeo", true).putInt("look_font", 5).apply(); 5 } else p.getInt("look_font", 5), scale = p.getFloat("look_scale", 1f).coerceIn(.8f, 1.5f),
                 icons = p.getInt("look_icons", 0), iconRgb = p.getInt("look_icon_rgb", 0), contrast = p.getBoolean("look_contrast", false),
                 cardRound = p.getInt("look_round", 18).coerceIn(4, 32),
+                bgStyle = p.getInt("look_bg_style", -1).coerceIn(-1, DEEP_BACKGROUNDS.lastIndex),
+                cardStyle = p.getInt("look_card_style", -1).coerceIn(-2, CARDS.lastIndex), cardRgb = p.getInt("look_card_rgb", 0),
             )
             loaded = true
         }
@@ -85,6 +141,7 @@ object Look {
             .putInt("look_font", s.font).putFloat("look_scale", s.scale)
             .putInt("look_icons", s.icons).putInt("look_icon_rgb", s.iconRgb).putBoolean("look_contrast", s.contrast)
             .putInt("look_round", s.cardRound)
+            .putInt("look_bg_style", s.bgStyle).putInt("look_card_style", s.cardStyle).putInt("look_card_rgb", s.cardRgb)
             .apply()
     }
 

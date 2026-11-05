@@ -187,9 +187,12 @@ fun PoryadokTheme(theme: String, accent: Int, content: @Composable () -> Unit) {
         else -> base.onBackground
     }
     val text1 = Look.readable(text0, bg, 4.5f)
-    val custom = look.bgRgb != 0 || look.textRgb != 0 || look.contrast || holiday
+    // Свой цвет плашек (может быть полупрозрачным): текст проверяется на том, как плашка ляжет на фон.
+    val cardOver = if (holiday) null else Look.cardColor(look, dark)
+    val custom = look.bgRgb != 0 || look.textRgb != 0 || look.contrast || holiday || cardOver != null
     val scheme0 = if (!custom) base else {
-        val card = Look.mix(bg, text1, if (dark) .07f else .03f).let { if (!dark && look.bgRgb != 0) Look.mix(bg, Color.White, .6f) else it }
+        val card = cardOver?.let { Look.mix(bg, it.copy(alpha = 1f), it.alpha) }
+            ?: Look.mix(bg, text1, if (dark) .07f else .03f).let { if (!dark && look.bgRgb != 0) Look.mix(bg, Color.White, .6f) else it }
         val cardHigh = Look.mix(bg, text1, if (dark) .13f else .08f)
         val text = Look.readableOn(text1, listOf(bg, card, cardHigh), 4.5f)
         // Второстепенный текст — бледнее основного, но не ниже 3:1 и на фоне, и на карточках.
@@ -221,7 +224,11 @@ fun PoryadokTheme(theme: String, accent: Int, content: @Composable () -> Unit) {
         )
     }
     // Плашки полупрозрачные (холодное «матовое стекло»): сквозь них видно красный фон и снег.
-    val extra = if (holiday) extra0.copy(card = Holiday.card().let { if (dark) it.dark else it.light }) else extra0
+    val extra = when {
+        holiday -> extra0.copy(card = Holiday.card().let { if (dark) it.dark else it.light })
+        cardOver != null -> extra0.copy(card = cardOver)
+        else -> extra0
+    }
     val typography = androidx.compose.runtime.remember(look.font) { typographyFor(look.font) }
     val density = androidx.compose.ui.platform.LocalDensity.current
     androidx.compose.runtime.CompositionLocalProvider(

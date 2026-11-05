@@ -86,7 +86,7 @@ private val BACK_FLAKES = Random(2026).let { rnd ->
  */
 @Composable
 fun HolidayBackdrop() {
-    if (!Holiday.active) return
+    if (!Holiday.active) { DeepBackdrop(); return }
     val tint = snowTint()
     val dark = LocalExtra.current.dark
     val strength = if (dark) .16f else .3f
@@ -115,6 +115,23 @@ fun HolidayBackdrop() {
             snowflake(Offset(x, p * size.height), f.radius * density, tint, strength * f.alpha, angle = f.phase * 57f + t * 8f)
         }
     }
+}
+
+/** Под экраном рисуется свой слой фона: новогодний бархат или глубокий градиент из «Оформления». */
+fun hasBackdrop(): Boolean = Holiday.active || com.dasein.poryadok.ui.theme.Look.deep(com.dasein.poryadok.ui.theme.Look.state.value) != null
+
+/** Глубокий фон обычной темы: бархатный градиент, светлее сверху по центру, глубже к краям. */
+@Composable
+private fun DeepBackdrop() {
+    val v = com.dasein.poryadok.ui.theme.Look.deep(com.dasein.poryadok.ui.theme.Look.state.value) ?: return
+    val dark = LocalExtra.current.dark
+    Canvas(Modifier.fillMaxSize()) { deepGradient(v, dark) }
+}
+
+/** Бархатный градиент с мягким бликом сверху — общий для фона и превью. */
+fun androidx.compose.ui.graphics.drawscope.DrawScope.deepGradient(v: List<Color>, dark: Boolean) {
+    drawRect(Brush.radialGradient(v, Offset(size.width * .5f, size.height * .3f), maxOf(size.width, size.height) * .9f))
+    drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = if (dark) .04f else .12f), Color.Transparent), 0f, size.height * .35f))
 }
 
 /** Снежинка входного снегопада. Всё в долях экрана; [ground] — на какой высоте от низа она осядет. */
