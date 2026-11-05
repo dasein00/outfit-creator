@@ -237,7 +237,7 @@ fun Modifier.snowCap(): Modifier = drawWithContent {
     // Сосульки: острые, разной длины, с голубоватой тенью вдоль одного края.
     val unit = 1.dp.toPx()
     listOf(.12f to 11f, .16f to 7f, .47f to 13f, .52f to 8f, .81f to 10f, .86f to 6f).forEach { (f, len) ->
-        if (w < 140.dp.toPx() && f in .4f...6f) return@forEach
+        if (w < 140.dp.toPx() && f in 0.4f..0.6f) return@forEach
         val x = w * f
         val top = h * .55f
         val half = (2.2f + len * .12f) * unit
