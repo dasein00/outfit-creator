@@ -271,7 +271,8 @@ private fun DrawScope.icicle(top: Offset, length: Float, halfWidth: Float, bend:
     drawPath(
         body,
         Brush.verticalGradient(
-            listOf(Color(0xF2F4FAFF), Color(0xD9CFE6F7), Color(0xA69CC9EA), Color(0x667FB6E0)),
+            // Полупрозрачный синеватый лёд в тон плашек: у основания светлый, к кончику почти прозрачный.
+            listOf(Color(0xD9E6F0F8), Color(0xA6B9CFE2), Color(0x738FAFCC), Color(0x337A9CC0)),
             startY = top.y, endY = tipY,
         ),
     )
@@ -282,10 +283,10 @@ private fun DrawScope.icicle(top: Offset, length: Float, halfWidth: Float, bend:
         quadraticTo(top.x + halfWidth * .55f, top.y + length * .55f, tipX + halfWidth * .08f, tipY)
         close()
     }
-    drawPath(shade, Color(0x557FAED6))
+    drawPath(shade, Color(0x406F8FB4))
     // Блик вдоль левой грани и тонкий светлый контур — «стеклянный» лёд.
-    drawLine(Color.White.copy(alpha = .8f), Offset(top.x - halfWidth * .45f, top.y + length * .08f), Offset(top.x - halfWidth * .15f, top.y + length * .6f), (halfWidth * .28f).coerceAtLeast(1f), StrokeCap.Round)
-    drawPath(body, Color.White.copy(alpha = .35f), style = Stroke(.8f))
+    drawLine(Color.White.copy(alpha = .6f), Offset(top.x - halfWidth * .45f, top.y + length * .08f), Offset(top.x - halfWidth * .15f, top.y + length * .6f), (halfWidth * .28f).coerceAtLeast(1f), StrokeCap.Round)
+    drawPath(body, Color(0x66DCE8F4), style = Stroke(.8f))
 }
 
 /**
