@@ -424,7 +424,7 @@ private fun HolidaySettings() {
         Column(Modifier.weight(1f)) {
             Text(btnLabel("Падающие снежинки"), fontWeight = FontWeight.SemiBold, color = if (canSnow) Color.Unspecified else extra.dim)
             Text(
-                if (canSnow) "5 секунд лёгкого снегопада при входе в приложение — не мешает нажимать и листать. Выключите, чтобы оставить только праздничные цвета."
+                if (canSnow) "При входе в приложение 5 секунд идёт снег, снежинки долетают до низа экрана, оседают сугробом и тают. Не мешает нажимать и листать."
                 else "Снежинки идут вместе с новогодним режимом — включите его, и выбор сохранится.",
                 fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
             )
@@ -433,10 +433,17 @@ private fun HolidaySettings() {
     }
     Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
+            Text(btnLabel("Снег на фоне"), fontWeight = FontWeight.SemiBold, color = if (canSnow) Color.Unspecified else extra.dim)
+            Text("Полупрозрачные снежинки медленно падают под карточками, пока открыто приложение.", fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp)
+        }
+        Switch(h.backdrop.value, { h.setBackdrop(ctx, it) }, enabled = canSnow)
+    }
+    Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
             Text(btnLabel("Гирлянда"), fontWeight = FontWeight.SemiBold, color = if (canSnow) Color.Unspecified else extra.dim)
             Text(
-                "Огоньки вдоль верха экрана и еловые ветки, на карточках — снежные шапки. Нажмите на гирлянду — включится или погаснет, " +
-                    "удержите — сменится режим.",
+                "Огоньки вдоль верха экрана и еловые ветки, на карточках — снежные шапки. Нажмите на любую лампочку — гирлянда погаснет или загорится, " +
+                    "удержите лампочку — сменится режим.",
                 fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
             )
         }

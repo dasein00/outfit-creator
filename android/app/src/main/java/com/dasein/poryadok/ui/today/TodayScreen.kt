@@ -142,8 +142,12 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
     val todayReminders = remindersOn(reminders, today).filter { !it.done }
     val taskProgressTotal = todayTasks.size + doneToday.size
 
+    // Новогодний снег под карточками — как в общем Screen.
+    val backdrop = com.dasein.poryadok.ui.theme.Holiday.active && com.dasein.poryadok.ui.theme.Holiday.backdrop.value
+    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().let { if (backdrop) it.background(MaterialTheme.colorScheme.background) else it }) {
+    com.dasein.poryadok.ui.common.HolidayBackdrop()
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = if (backdrop) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.background,
         // Отступ снизу — и от кнопок Android, и от клавиатуры (как в общем Screen).
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets.systemBars.union(androidx.compose.foundation.layout.WindowInsets.ime),
     ) { pad ->
@@ -415,6 +419,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                 }
             }
         }
+    }
     }
     if (quickAdd) QuickAddSheet(onDismiss = { quickAdd = false }, defaultDay = today)
 }

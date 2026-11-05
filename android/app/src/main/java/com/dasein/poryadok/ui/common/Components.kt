@@ -84,6 +84,11 @@ fun Screen(
     fab: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
+    // В новогоднем режиме под всем экраном — полупрозрачный падающий снег: фон рисуется отдельным слоем,
+    // а сам экран становится прозрачным, чтобы снег был виден между карточками.
+    val backdrop = com.dasein.poryadok.ui.theme.Holiday.active && com.dasein.poryadok.ui.theme.Holiday.backdrop.value
+    Box(Modifier.fillMaxSize().let { if (backdrop) it.background(MaterialTheme.colorScheme.background) else it }) {
+    HolidayBackdrop()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -102,13 +107,14 @@ fun Screen(
             )
         },
         floatingActionButton = { Editable { fab() } },
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = if (backdrop) Color.Transparent else MaterialTheme.colorScheme.background,
         // Снизу отступ и от кнопок Android, и от экранной клавиатуры: поле, в которое печатаете, остаётся видно
         // (прокручиваемый экран сам подтягивает его над клавиатурой).
         contentWindowInsets = WindowInsets.systemBars.union(WindowInsets.ime),
     ) { pad ->
         // Отступ уже учтён — вложенные imePadding()/navigationBarsPadding() не добавят его второй раз.
         Box(Modifier.consumeWindowInsets(pad), propagateMinConstraints = true) { content(pad) }
+    }
     }
 }
 

@@ -17,6 +17,7 @@ object Holiday {
     private const val KEY_PREVIEW = "holiday_preview"
     private const val KEY_LIGHTS = "holiday_lights"
     private const val KEY_LIGHTS_MODE = "holiday_lights_mode"
+    private const val KEY_BACKDROP = "holiday_backdrop"
 
     /** Режимы гирлянды: переливы цветами, бегущие огни, мерцание. */
     val LIGHT_MODES = listOf("Переливы", "Бегущие огни", "Мерцание")
@@ -35,6 +36,12 @@ object Holiday {
 
     /** Режим огоньков — номер в [LIGHT_MODES] (удержание переключает). */
     val lightsMode = androidx.compose.runtime.mutableIntStateOf(0)
+
+    /** Полупрозрачный снег на фоне под карточками (по умолчанию включён). */
+    val backdrop = mutableStateOf(true)
+
+    /** Общие часы украшений, секунды: по ним мигает гирлянда и идёт снег на фоне (один таймер на всё приложение). */
+    val clock = androidx.compose.runtime.mutableFloatStateOf(0f)
 
     /** Сегодняшняя дата телефона — обновляется при входе и раз в минуту, пока приложение открыто. */
     val today = mutableStateOf(LocalDate.now())
@@ -57,6 +64,7 @@ object Holiday {
         snow.value = p.getBoolean(KEY_SNOW, true)
         preview.value = p.getBoolean(KEY_PREVIEW, false)
         lights.value = p.getBoolean(KEY_LIGHTS, true)
+        backdrop.value = p.getBoolean(KEY_BACKDROP, true)
         lightsMode.intValue = p.getInt(KEY_LIGHTS_MODE, 0).coerceIn(0, LIGHT_MODES.lastIndex)
         loaded = true
     }
@@ -72,6 +80,8 @@ object Holiday {
         preview.value = v; sp(ctx).edit().putBoolean(KEY_PREVIEW, v).apply()
         if (v) letItSnow()
     }
+
+    fun setBackdrop(ctx: Context, v: Boolean) { backdrop.value = v; sp(ctx).edit().putBoolean(KEY_BACKDROP, v).apply() }
 
     fun setLights(ctx: Context, v: Boolean) { lights.value = v; sp(ctx).edit().putBoolean(KEY_LIGHTS, v).apply() }
 

@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -46,52 +49,10 @@ private val PINE_DARK = Color(0xFF1C4A2C)
 private val PINE = Color(0xFF2E6B3F)
 private val BERRY = Color(0xFFD32F2F)
 
-/**
- * Гирлянда вдоль строки состояния, по углам — еловые ветки с ягодами. Нажатие на гирлянду включает и выключает
- * её, удержание — следующий режим: переливы, бегущие огни, мерцание. Касаться можно только полосы строки состояния,
- * поэтому кнопки верхней панели под гирляндой нажимаются как обычно.
- */
-@Composable
-fun HolidayGarland() {
-    if (!Holiday.active) return
-    val ctx = LocalContext.current
-    val density = LocalDensity.current
-    val bar = with(density) { WindowInsets.statusBars.getTop(density).toDp() }.coerceAtLeast(20.dp)
-    val on = Holiday.lights.value
-    val mode = Holiday.lightsMode.intValue
-    val time = remember { mutableFloatStateOf(0f) }
-    // Огоньки живут ~30 кадров в секунду и только пока гирлянда горит; в энергосбережении горят ровно.
-    LaunchedEffect(on, mode) {
-        if (!on || TabAnim.saving(ctx)) return@LaunchedEffect
-        val start = withFrameMillis { it }
-        while (true) {
-            time.floatValue = (withFrameMillis { it } - start) / 1000f
-            kotlinx.coroutines.delay(33)
-        }
-    }
-    Box(Modifier.fillMaxWidth().height(bar + 30.dp)) {
-        Canvas(Modifier.fillMaxWidth().height(bar + 30.dp)) {
-            drawGarland(bar.toPx(), on, mode, time.floatValue)
-            drawPine(Offset(0f, 0f), mirror = false)
-            drawPine(Offset(size.width, 0f), mirror = true)
-        }
-        // Зона касания — только строка состояния.
-        Box(
-            Modifier.fillMaxWidth().height(bar).pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = { Holiday.setLights(ctx, !Holiday.lights.value) },
-                    onLongPress = { Holiday.nextLightsMode(ctx) },
-                )
-            },
-        )
-    }
-}
-
-private fun DrawScope.drawGarland(bar: Float, on: Boolean, mode: Int, t: Float) {
+/** Где висят лампочки гирлянды: три провиса провода по ширине экрана, по 8 лампочек в каждом. */
+private fun garlandPoints(w: Float, bar: Float, sag: Float): Pair<Path, List<Offset>> {
     val swags = 3
     val y0 = bar * .45f
-    val sag = 14.dp.toPx()
-    val w = size.width
     val wire = Path()
     val points = ArrayList<Offset>()
     val perSwag = 8
@@ -109,16 +70,68 @@ private fun DrawScope.drawGarland(bar: Float, on: Boolean, mode: Int, t: Float) 
             points += Offset(x, y)
         }
     }
+    return wire to points
+}
+
+/**
+ * Гирлянда вдоль верха экрана, по углам — еловые ветки с ягодами. Огоньки мигают всё время, пока гирлянда горит.
+ * Нажатие на любую лампочку включает и выключает гирлянду, удержание — следующий режим: переливы, бегущие огни,
+ * мерцание. Касания ловят только сами лампочки (кружки ~26 dp), поэтому кнопки верхней панели вокруг нажимаются
+ * как обычно, а касания строки состояния, которые телефон забирает себе, не нужны.
+ */
+@Composable
+fun HolidayGarland() {
+    if (!Holiday.active) return
+    val ctx = LocalContext.current
+    val density = LocalDensity.current
+    val bar = with(density) { WindowInsets.statusBars.getTop(density).toDp() }.coerceAtLeast(20.dp)
+    val on = Holiday.lights.value
+    val mode = Holiday.lightsMode.intValue
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().height(bar + 34.dp)) {
+        val wPx = constraints.maxWidth.toFloat()
+        val barPx = with(density) { bar.toPx() }
+        val sagPx = with(density) { 14.dp.toPx() }
+        val bulbR = with(density) { 4.dp.toPx() }
+        val (wire, points) = remember(wPx, barPx) { garlandPoints(wPx, barPx, sagPx) }
+        Canvas(Modifier.fillMaxSize()) {
+            drawGarland(wire, points, on, mode, Holiday.clock.floatValue)
+            drawPine(Offset(0f, 0f), mirror = false)
+            drawPine(Offset(size.width, 0f), mirror = true)
+        }
+        // Мишень для касания на каждой лампочке.
+        val hit = 26.dp
+        val hitPx = with(density) { hit.toPx() }
+        points.forEach { p ->
+            Box(
+                Modifier
+                    .offset { androidx.compose.ui.unit.IntOffset((p.x - hitPx / 2).toInt(), (p.y + bulbR * 1.6f - hitPx / 2).toInt()) }
+                    .size(hit)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = { Holiday.setLights(ctx, !Holiday.lights.value) },
+                            onLongPress = {
+                                Holiday.nextLightsMode(ctx)
+                                android.widget.Toast.makeText(ctx, "Гирлянда: " + Holiday.LIGHT_MODES[Holiday.lightsMode.intValue].lowercase(), android.widget.Toast.LENGTH_SHORT).show()
+                            },
+                        )
+                    },
+            )
+        }
+    }
+}
+
+private fun DrawScope.drawGarland(wire: Path, points: List<Offset>, on: Boolean, mode: Int, t: Float) {
     drawPath(wire, Color(0xFF2B2620), style = Stroke(1.6.dp.toPx(), cap = StrokeCap.Round))
     val r = 4.dp.toPx()
     points.forEachIndexed { i, p ->
         val (color, glow) = if (!on) Color(0xFF4A4238) to 0f else bulb(i, mode, t)
         val c = Offset(p.x, p.y + r * 1.6f)
-        if (glow > 0f) drawCircle(Brush.radialGradient(listOf(color.copy(alpha = .55f * glow), Color.Transparent), c, r * 3.4f), r * 3.4f, c)
-        // Цоколь и колба.
+        if (glow > .05f) drawCircle(Brush.radialGradient(listOf(color.copy(alpha = .6f * glow), Color.Transparent), c, r * 3.6f), r * 3.6f, c)
+        // Цоколь и колба: погасшая лампочка темнее, горящая — яркая с бликом.
         drawRect(Color(0xFF3A342C), Offset(p.x - r * .45f, p.y), Size(r * .9f, r * .7f))
-        drawOval(color, Offset(c.x - r * .8f, c.y - r), Size(r * 1.6f, r * 2.1f))
-        drawOval(Color.White.copy(alpha = if (on) .35f * glow + .1f else .08f), Offset(c.x - r * .45f, c.y - r * .7f), Size(r * .5f, r * .7f))
+        val body = if (on) lerp(color.copy(alpha = 1f), Color(0xFF3A342C), (1f - glow) * .55f) else color
+        drawOval(body, Offset(c.x - r * .8f, c.y - r), Size(r * 1.6f, r * 2.1f))
+        drawOval(Color.White.copy(alpha = if (on) .4f * glow + .08f else .08f), Offset(c.x - r * .45f, c.y - r * .7f), Size(r * .5f, r * .7f))
     }
 }
 
@@ -129,18 +142,19 @@ private fun bulb(i: Int, mode: Int, t: Float): Pair<Color, Float> = when (mode) 
         val f = t * .6f + i * .35f
         val a = floor(f).toInt()
         val c = lerp(BULBS[a.mod(BULBS.size)], BULBS[(a + 1).mod(BULBS.size)], f - a)
-        c to (.75f + .25f * sin(t * 2.2f + i))
+        // Мигают по очереди: яркость гуляет от почти погасшей до полной.
+        c to (.2f + .8f * (.5f + .5f * sin(t * 3.2f + i * 1.3f)))
     }
     // Бегущие огни: свои цвета, по гирлянде бежит яркая полоса.
     1 -> {
         val pos = (t * 7f) % 24f
         val d = ((i - pos) % 24f + 24f) % 24f
-        BULBS[i % BULBS.size] to (if (d < 4f) 1f else .25f)
+        BULBS[i % BULBS.size] to (if (d < 4f) 1f else .12f)
     }
     // Мерцание: каждый огонёк вспыхивает в своём ритме.
     else -> {
         val v = sin(t * (1.3f + (i * 37 % 11) / 6f) + i * 1.7f)
-        BULBS[i % BULBS.size] to (if (v > .2f) 1f else .2f)
+        BULBS[i % BULBS.size] to (if (v > .2f) 1f else .1f)
     }
 }
 
@@ -222,7 +236,3 @@ fun Modifier.snowCap(): Modifier = drawWithContent {
         drawOval(dark.copy(alpha = .9f), Offset(x - 2.dp.toPx(), h * .6f), Size(4.dp.toPx(), 6.dp.toPx()))
     }
 }
-
-/** Цвет снега: на тёмной теме белый, на светлой — ледяной голубой, чтобы был виден. */
-@Composable
-fun snowTint(): Color = if (LocalExtra.current.dark) Color.White else Color(0xFFAFC4DA)

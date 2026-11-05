@@ -2,7 +2,9 @@ package com.dasein.poryadok.ui.common
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -15,16 +17,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import com.dasein.poryadok.logic.HolidaySeason
 import com.dasein.poryadok.ui.theme.Holiday
 import com.dasein.poryadok.ui.theme.LocalExtra
 import kotlin.math.PI
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sin
 import kotlin.random.Random
 
 /**
- * Корень приложения в новогодний сезон: следит за датой (тема включается и выключается сама, без перезапуска)
- * и при новом входе в приложение один раз показывает снегопад поверх всего экрана.
+ * Корень приложения в новогодний сезон: следит за датой (тема включается и выключается сама, без перезапуска),
+ * ведёт общие часы украшений, рисует гирлянду и при новом входе один раз показывает снегопад поверх экрана.
  */
 @Composable
 fun HolidayHost(content: @Composable () -> Unit) {
@@ -35,6 +40,17 @@ fun HolidayHost(content: @Composable () -> Unit) {
             Holiday.refreshDate()
         }
     }
+    // Одни часы на все украшения (~30 кадров в секунду) — и только пока есть что анимировать.
+    val active = Holiday.active
+    val animate = active && (Holiday.lights.value || Holiday.backdrop.value)
+    LaunchedEffect(animate) {
+        if (!animate) return@LaunchedEffect
+        val start = withFrameMillis { it } - (Holiday.clock.floatValue * 1000).toLong()
+        while (true) {
+            Holiday.clock.floatValue = (withFrameMillis { it } - start) / 1000f
+            kotlinx.coroutines.delay(33)
+        }
+    }
     Box(Modifier.fillMaxSize()) {
         content()
         HolidayGarland()
@@ -42,22 +58,80 @@ fun HolidayHost(content: @Composable () -> Unit) {
     }
 }
 
-/** Одна снежинка: где начинается, как быстро падает и как покачивается. Всё в долях экрана. */
-private class Flake(val x: Float, val y0: Float, val speed: Float, val radius: Float, val sway: Float, val swayHz: Float, val phase: Float, val alpha: Float)
+/** Цвет снежинок: на тёмной теме белый, на светлой — ледяной голубой, чтобы был виден. */
+@Composable
+fun snowTint(): Color = if (LocalExtra.current.dark) Color.White else Color(0xFFAFC4DA)
+
+/** Снежинка фона: где, как быстро падает, покачивается и вращается. Всё в долях экрана. */
+private class BackFlake(val x: Float, val y0: Float, val speed: Float, val radius: Float, val sway: Float, val swayHz: Float, val phase: Float, val alpha: Float)
+
+private val BACK_FLAKES = Random(2026).let { rnd ->
+    List(26) {
+        BackFlake(
+            x = rnd.nextFloat(), y0 = rnd.nextFloat(), speed = .03f + rnd.nextFloat() * .045f,
+            radius = 3.5f + rnd.nextFloat() * 5f, sway = .01f + rnd.nextFloat() * .02f, swayHz = .08f + rnd.nextFloat() * .15f,
+            phase = rnd.nextFloat() * 6.28f, alpha = .35f + rnd.nextFloat() * .65f,
+        )
+    }
+}
 
 /**
- * Снегопад на 5 секунд при новом входе в приложение (не при переходах между разделами).
- * Только рисование — без обработки касаний, поэтому нажатия, прокрутка и жесты проходят сквозь снег.
- * Позиции снежинок — функция времени: каждый кадр перерисовывается только холст, без перестройки интерфейса.
- * Не показывается в режиме энергосбережения, при низком заряде и с выключенными в системе анимациями.
+ * Полупрозрачный снег на фоне экрана — под карточками, верхней панелью и кнопками (рисуется первым слоем,
+ * всё остальное лежит поверх). Медленный и бледный, чтобы не мешать читать. Без касаний — только рисунок.
+ */
+@Composable
+fun HolidayBackdrop() {
+    if (!Holiday.active || !Holiday.backdrop.value) return
+    val tint = snowTint()
+    val strength = if (LocalExtra.current.dark) .16f else .3f
+    Canvas(Modifier.fillMaxSize()) {
+        val t = Holiday.clock.floatValue
+        BACK_FLAKES.forEach { f ->
+            // Падает сверху вниз и снова появляется сверху — бесконечно, по кругу.
+            val p = ((f.y0 + f.speed * t) % 1.1f + 1.1f) % 1.1f - .05f
+            val x = (f.x + f.sway * sin(2f * PI.toFloat() * f.swayHz * t + f.phase)) * size.width
+            snowflake(Offset(x, p * size.height), f.radius * density, tint, strength * f.alpha, angle = f.phase * 57f + t * 8f)
+        }
+    }
+}
+
+/** Снежинка входного снегопада. Всё в долях экрана; [ground] — на какой высоте от низа она осядет. */
+private class Flake(val x: Float, val y0: Float, val speed: Float, val radius: Float, val sway: Float, val swayHz: Float, val phase: Float, val alpha: Float, val ground: Float)
+
+/**
+ * Снегопад при новом входе в приложение (не при переходах между разделами): 5 секунд идёт снег, потом новые
+ * снежинки больше не появляются, а уже летящие долетают до низа экрана и оседают сугробом над кнопками Android;
+ * полежав, сугроб тает. Только рисование — нажатия, прокрутка и жесты проходят сквозь снег.
+ * Позиции — функция времени: каждый кадр перерисовывается только холст, без перестройки интерфейса.
  */
 @Composable
 private fun Snowfall() {
     val ctx = LocalContext.current
+    val density = LocalDensity.current
     val entry = Holiday.entry.intValue
     val allowed = Holiday.snowNow
+    val navBottom = WindowInsets.navigationBars.getBottom(density).toFloat()
     var running by remember { mutableStateOf(false) }
     val elapsed = remember { mutableLongStateOf(0L) }
+    val flakes = remember(entry) {
+        val rnd = Random(entry)
+        List(56) {
+            // Три размера: мелкие падают медленнее и прозрачнее — так снег выглядит объёмным.
+            val layer = rnd.nextInt(3)
+            val speed = .16f + .07f * layer + rnd.nextFloat() * .06f
+            // Появляется за первые 5 секунд (стартовая высота подобрана под скорость), дальше — только долетают.
+            val appearAt = rnd.nextFloat() * (HolidaySeason.SNOW_MS / 1000f)
+            Flake(
+                x = rnd.nextFloat(), y0 = -.04f - speed * appearAt, speed = speed,
+                radius = 3f + 2f * layer + rnd.nextFloat() * 1.5f, sway = .008f + rnd.nextFloat() * .018f,
+                swayHz = .25f + rnd.nextFloat() * .35f, phase = rnd.nextFloat() * 2f * PI.toFloat(),
+                alpha = .55f + .15f * layer + rnd.nextFloat() * .15f, ground = rnd.nextFloat() * .028f,
+            )
+        }
+    }
+    // Сколько всего длится: пока не осядет последняя снежинка, ещё 3 с лежит, потом 2 с тает.
+    val landedAll = flakes.maxOf { (1f - it.ground - it.y0) / it.speed }
+    val totalMs = ((landedAll + 5f) * 1000).toLong()
     LaunchedEffect(entry, allowed) {
         // Снег один раз на вход: перерисовки, поворот экрана и возврат в раздел не запускают его снова.
         // Вход засчитывается, даже если снег сейчас не нужен: включённые позже снежинки ждут следующего входа.
@@ -67,43 +141,32 @@ private fun Snowfall() {
         running = true
         elapsed.longValue = 0L
         val start = withFrameMillis { it }
-        while (elapsed.longValue < HolidaySeason.SNOW_MS) {
+        while (elapsed.longValue < totalMs) {
             elapsed.longValue = withFrameMillis { it } - start
         }
         running = false
     }
     if (!running) return
-    // На светлом фоне белый снег не виден — там снежинки ледяного голубого оттенка.
     val tint = snowTint()
-    val flakes = remember {
-        val rnd = Random(entry)
-        List(50) {
-            // Три размера: мелкие падают медленнее и прозрачнее — так снег выглядит объёмным.
-            val layer = rnd.nextInt(3)
-            Flake(
-                x = rnd.nextFloat(),
-                y0 = -rnd.nextFloat() * .9f - .05f,
-                speed = (.16f + .07f * layer + rnd.nextFloat() * .06f),
-                radius = (3f + 2f * layer + rnd.nextFloat() * 1.5f),
-                sway = .008f + rnd.nextFloat() * .018f,
-                swayHz = .25f + rnd.nextFloat() * .35f,
-                phase = rnd.nextFloat() * 2f * PI.toFloat(),
-                alpha = .55f + .15f * layer + rnd.nextFloat() * .15f,
-            )
-        }
-    }
     Canvas(Modifier.fillMaxSize()) {
         val t = elapsed.longValue / 1000f
-        val total = HolidaySeason.SNOW_MS / 1000f
-        // Плавно появляется за 0,4 с и тает последнюю секунду.
-        val fade = (t / .4f).coerceAtMost(1f) * ((total - t) / 1f).coerceIn(0f, 1f)
-        val dp = density
+        val total = totalMs / 1000f
+        // Появляется за 0,4 с; лежащий сугроб тает последние 2 секунды.
+        val fadeIn = (t / .4f).coerceAtMost(1f)
+        val melt = ((total - t) / 2f).coerceIn(0f, 1f)
+        val floor = size.height - navBottom
         flakes.forEach { f ->
-            val y = (f.y0 + f.speed * t) * size.height
-            if (y < -20f || y > size.height + 20f) return@forEach
-            val x = (f.x + f.sway * sin(2f * PI.toFloat() * f.swayHz * t + f.phase)) * size.width
-            // Шестиконечная снежинка, медленно поворачивается.
-            snowflake(Offset(x, y), f.radius * dp, tint, f.alpha * fade, angle = (f.phase * 57f + t * 25f * (if (f.swayHz > .4f) 1f else -1f)))
+            val groundY = floor - f.ground * size.height - f.radius * density
+            val landT = (groundY / size.height - f.y0) / f.speed
+            val tt = min(t, landT)
+            val y = (f.y0 + f.speed * tt) * size.height
+            if (y < -20f) return@forEach
+            val x = (f.x + f.sway * sin(2f * PI.toFloat() * f.swayHz * tt + f.phase)) * size.width
+            val landed = t >= landT
+            // Осевшие снежинки лежат неподвижно и чуть ярче — получается сугроб у нижнего края.
+            val a = f.alpha * fadeIn * melt * (if (landed) 1.1f else 1f)
+            val spin = if (landed) f.phase * 57f + landT * 25f else f.phase * 57f + tt * 25f * (if (f.swayHz > .4f) 1f else -1f)
+            snowflake(Offset(x, max(y, -20f)), f.radius * density, tint, a.coerceAtMost(1f), angle = spin)
         }
     }
 }
