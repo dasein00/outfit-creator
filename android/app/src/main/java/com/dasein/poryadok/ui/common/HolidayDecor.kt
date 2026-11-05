@@ -54,6 +54,9 @@ object HolidayAssets {
     var snow: List<androidx.compose.ui.graphics.ImageBitmap> = emptyList(); private set
     var ice: List<androidx.compose.ui.graphics.ImageBitmap> = emptyList(); private set
     var pairs: List<androidx.compose.ui.graphics.ImageBitmap> = emptyList(); private set
+    /** Хвойная кайма фона: остролист, пуансеттии, ветки — сверху и снизу экрана. */
+    var borderTop: androidx.compose.ui.graphics.ImageBitmap? = null; private set
+    var borderBottom: androidx.compose.ui.graphics.ImageBitmap? = null; private set
 
     fun load(ctx: android.content.Context) {
         if (ready.value) return
@@ -63,6 +66,7 @@ object HolidayAssets {
             }
         }.getOrDefault(emptyList())
         snow = group("snow_"); ice = group("ice_"); pairs = group("pair_")
+        borderTop = group("border_top").firstOrNull(); borderBottom = group("border_bottom").firstOrNull()
         ready.value = snow.isNotEmpty() && ice.isNotEmpty()
     }
 }
@@ -236,9 +240,10 @@ fun DrawScope.snowflake(center: Offset, radius: Float, color: Color, alpha: Floa
  * [seed] — у каждой карточки свой: волны края и сосульки (сколько, где, какой длины и толщины) расставлены
  * случайно, поэтому шапки не повторяются. Только рисование — размеры, отступы и нажатия карточки не меняются.
  */
-fun Modifier.snowCap(seed: Int = 0): Modifier = drawWithContent {
+fun Modifier.snowCap(seed: Int = 0, force: Boolean = false): Modifier = drawWithContent {
     drawContent()
-    if (!Holiday.active) return@drawWithContent
+    // [force] — показать и вне новогоднего режима (превью в «Оформлении»).
+    if (!force && !Holiday.active) return@drawWithContent
     val h = 7.dp.toPx()
     val w = size.width
     if (w < 80.dp.toPx() || size.height < 36.dp.toPx()) return@drawWithContent
@@ -299,10 +304,11 @@ private fun DrawScope.pictureCap(rnd: kotlin.random.Random, seed: Int, w: Float)
     repeat(count) {
         val pair = a.pairs.isNotEmpty() && rnd.nextFloat() < .3f
         val img = if (pair) a.pairs[rnd.nextInt(a.pairs.size)] else a.ice[rnd.nextInt(a.ice.size)]
-        val hh = (9f + rnd.nextFloat() * 15f).dp.toPx()
+        // Верх сосульки утоплен в снег почти на всю толщину шапки — основания не видно.
+        val hh = (9f + rnd.nextFloat() * 15f).dp.toPx() + thick * .6f
         val ww = hh * img.width / img.height
         val x = w * (.05f + rnd.nextFloat() * .9f)
-        val top = thick * .45f
+        val top = thick * .05f
         val flip = rnd.nextBoolean()
         withTransform({ if (flip) scale(-1f, 1f, Offset(x, top)) }) {
             drawImage(

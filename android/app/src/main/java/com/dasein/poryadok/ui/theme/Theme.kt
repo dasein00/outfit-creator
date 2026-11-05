@@ -176,7 +176,7 @@ fun PoryadokTheme(theme: String, accent: Int, content: @Composable () -> Unit) {
     val holiday = Holiday.active && !look.contrast
     // Праздничный бархатно-красный — даже если в «Оформлении» выбран свой фон (после праздников он вернётся).
     val bg = when {
-        holiday -> if (dark) Color(0xFF4A0C17) else Color(0xFFF6E1E2)
+        holiday -> Holiday.bg().let { if (dark) it.dark[1] else it.light[1] }
         look.bgRgb != 0 -> Look.color(look.bgRgb)
         else -> base.background
     }
@@ -221,7 +221,7 @@ fun PoryadokTheme(theme: String, accent: Int, content: @Composable () -> Unit) {
         )
     }
     // Плашки полупрозрачные (холодное «матовое стекло»): сквозь них видно красный фон и снег.
-    val extra = if (holiday) extra0.copy(card = if (dark) Color(0x8C2E323C) else Color(0xA6FFFFFF)) else extra0
+    val extra = if (holiday) extra0.copy(card = Holiday.card().let { if (dark) it.dark else it.light }) else extra0
     val typography = androidx.compose.runtime.remember(look.font) { typographyFor(look.font) }
     val density = androidx.compose.ui.platform.LocalDensity.current
     androidx.compose.runtime.CompositionLocalProvider(

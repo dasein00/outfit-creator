@@ -18,6 +18,42 @@ object Holiday {
     private const val KEY_LIGHTS = "holiday_lights"
     private const val KEY_LIGHTS_MODE = "holiday_lights_mode"
     private const val KEY_BACKDROP = "holiday_backdrop"
+    private const val KEY_BG_STYLE = "holiday_bg_style"
+    private const val KEY_CARD_STYLE = "holiday_card_style"
+
+    /** Фон новогоднего режима: бархатный градиент — центр, середина, края (тёмная тема и светлая). */
+    class BgStyle(val name: String, val dark: List<androidx.compose.ui.graphics.Color>, val light: List<androidx.compose.ui.graphics.Color>)
+
+    /** Цвет плашек новогоднего режима — полупрозрачный, сквозь него видно фон (тёмная тема и светлая). */
+    class CardStyle(val name: String, val dark: androidx.compose.ui.graphics.Color, val light: androidx.compose.ui.graphics.Color)
+
+    private fun c(v: Long) = androidx.compose.ui.graphics.Color(v)
+
+    val BG_STYLES = listOf(
+        BgStyle("Зелёный бархат", listOf(c(0xFF235A41), c(0xFF15352A), c(0xFF0A1E16)), listOf(c(0xFFEFF7F2), c(0xFFDCEDE3), c(0xFFC6E0D0))),
+        BgStyle("Красный бархат", listOf(c(0xFF8C1A2B), c(0xFF5E0F1C), c(0xFF330710)), listOf(c(0xFFFBE9E9), c(0xFFF3D3D5), c(0xFFE6B9BD))),
+        BgStyle("Синяя ночь", listOf(c(0xFF27447A), c(0xFF162850), c(0xFF0A142B)), listOf(c(0xFFEDF2FB), c(0xFFD9E3F4), c(0xFFC3D2EC))),
+        BgStyle("Шоколад", listOf(c(0xFF5E3D29), c(0xFF3B2519), c(0xFF1F130C)), listOf(c(0xFFF8EFE6), c(0xFFEEDFCF), c(0xFFE2CDB7))),
+    )
+
+    val CARD_STYLES = listOf(
+        CardStyle("Матовое стекло", c(0x8C2E323C), c(0xA6FFFFFF)),
+        CardStyle("Бордовый", c(0xA6611626), c(0xB3F7DDE0)),
+        CardStyle("Хвойный", c(0xA61B4A33), c(0xB3DDEFE4)),
+        CardStyle("Тёмный", c(0xB3121212), c(0xCCFFFFFF)),
+        CardStyle("Сливочный", c(0x40FADFAF), c(0xB3FFF6E6)),
+    )
+
+    /** Выбранный фон — номер в [BG_STYLES] (по умолчанию зелёный бархат). */
+    val bgStyle = androidx.compose.runtime.mutableIntStateOf(0)
+
+    /** Выбранные плашки — номер в [CARD_STYLES]. */
+    val cardStyle = androidx.compose.runtime.mutableIntStateOf(0)
+
+    fun bg(): BgStyle = BG_STYLES.getOrElse(bgStyle.intValue) { BG_STYLES[0] }
+    fun card(): CardStyle = CARD_STYLES.getOrElse(cardStyle.intValue) { CARD_STYLES[0] }
+    fun setBgStyle(ctx: Context, i: Int) { bgStyle.intValue = i; sp(ctx).edit().putInt(KEY_BG_STYLE, i).apply() }
+    fun setCardStyle(ctx: Context, i: Int) { cardStyle.intValue = i; sp(ctx).edit().putInt(KEY_CARD_STYLE, i).apply() }
 
     /** Режимы гирлянды: переливы цветами, бегущие огни, мерцание. */
     val LIGHT_MODES = listOf("Переливы", "Бегущие огни", "Мерцание")
@@ -65,6 +101,8 @@ object Holiday {
         preview.value = p.getBoolean(KEY_PREVIEW, false)
         lights.value = p.getBoolean(KEY_LIGHTS, true)
         backdrop.value = p.getBoolean(KEY_BACKDROP, true)
+        bgStyle.intValue = p.getInt(KEY_BG_STYLE, 0).coerceIn(0, BG_STYLES.lastIndex)
+        cardStyle.intValue = p.getInt(KEY_CARD_STYLE, 0).coerceIn(0, CARD_STYLES.lastIndex)
         lightsMode.intValue = p.getInt(KEY_LIGHTS_MODE, 0).coerceIn(0, LIGHT_MODES.lastIndex)
         loaded = true
     }

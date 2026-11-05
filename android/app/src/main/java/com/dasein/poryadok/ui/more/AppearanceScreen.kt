@@ -5,6 +5,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -50,6 +53,7 @@ import com.dasein.poryadok.ui.common.Glyph
 import com.dasein.poryadok.ui.common.OutlinedButton
 import com.dasein.poryadok.ui.common.Screen
 import com.dasein.poryadok.ui.common.SectionTitle
+import com.dasein.poryadok.ui.common.snowCap
 import com.dasein.poryadok.ui.common.Segments
 import com.dasein.poryadok.ui.common.TextButton
 import com.dasein.poryadok.ui.common.TextInput
@@ -459,6 +463,7 @@ private fun HolidaySettings() {
             }
         }
     }
+    HolidayLookPicker()
     Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(btnLabel("Тестовый режим"), fontWeight = FontWeight.SemiBold)
@@ -474,4 +479,74 @@ private fun HolidaySettings() {
         onClick = { h.letItSnow() }, enabled = h.snow.value,
         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
     ) { Text(btnLabel(if (h.snow.value) "Показать снегопад сейчас" else "Снегопад выключен")) }
+}
+
+/**
+ * Выбор фона и цвета плашек для новогоднего режима — с живым превью: бархатный фон с хвойной каймой
+ * и пример плашки со снежной шапкой и сосульками. Превью видно и вне сезона.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun HolidayLookPicker() {
+    val ctx = LocalContext.current
+    val extra = LocalExtra.current
+    val h = com.dasein.poryadok.ui.theme.Holiday
+    val dark = extra.dark
+    val assets = com.dasein.poryadok.ui.common.HolidayAssets
+    LaunchedEffect(Unit) { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { assets.load(ctx.applicationContext) } }
+    val bg = h.bg()
+    val card = h.card().let { if (dark) it.dark else it.light }
+    Text(btnLabel("Фон и плашки"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 14.dp))
+    // Превью.
+    Box(Modifier.padding(top = 8.dp).fillMaxWidth().height(170.dp).clip(RoundedCornerShape(18.dp))) {
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            val v = if (dark) bg.dark else bg.light
+            drawRect(androidx.compose.ui.graphics.Brush.radialGradient(v, androidx.compose.ui.geometry.Offset(size.width * .5f, size.height * .3f), maxOf(size.width, size.height) * .9f))
+            if (assets.ready.value) assets.borderBottom?.let { img ->
+                val hh = size.width * img.height / img.width
+                drawImage(img, srcOffset = androidx.compose.ui.unit.IntOffset.Zero, srcSize = androidx.compose.ui.unit.IntSize(img.width, img.height),
+                    dstOffset = androidx.compose.ui.unit.IntOffset(0, (size.height - hh).toInt()), dstSize = androidx.compose.ui.unit.IntSize(size.width.toInt(), hh.toInt()), alpha = .9f)
+            }
+        }
+        Box(
+            Modifier.align(Alignment.TopCenter).padding(horizontal = 18.dp, vertical = 18.dp).fillMaxWidth().height(86.dp)
+                .clip(RoundedCornerShape(com.dasein.poryadok.ui.theme.LocalLook.current.cardRound.dp)).background(card).snowCap(2026, force = true),
+        ) {
+            com.dasein.poryadok.ui.theme.OnBackground(card) {
+                Column(Modifier.padding(start = 14.dp, top = 24.dp)) {
+                    Text(btnLabel("Пример плашки"), fontWeight = FontWeight.SemiBold)
+                    Text("Так будут выглядеть карточки", fontSize = 12.sp, color = extra.dim)
+                }
+            }
+        }
+    }
+    Text(btnLabel("Фон"), fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 10.dp, bottom = 6.dp))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        h.BG_STYLES.forEachIndexed { i, st ->
+            val v = if (dark) st.dark else st.light
+            StyleSwatch(st.name, h.bgStyle.intValue == i, androidx.compose.ui.graphics.Brush.radialGradient(v)) { h.setBgStyle(ctx, i) }
+        }
+    }
+    Text(btnLabel("Плашки"), fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(top = 10.dp, bottom = 6.dp))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        h.CARD_STYLES.forEachIndexed { i, st ->
+            val c = if (dark) st.dark else st.light
+            // Плашка показана поверх выбранного фона — так видна её полупрозрачность.
+            val base = (if (dark) bg.dark else bg.light)[1]
+            StyleSwatch(st.name, h.cardStyle.intValue == i, androidx.compose.ui.graphics.SolidColor(com.dasein.poryadok.ui.theme.Look.mix(base, c.copy(alpha = 1f), c.alpha))) { h.setCardStyle(ctx, i) }
+        }
+    }
+}
+
+/** Кружок-образец с подписью; выбранный — с рамкой акцента. */
+@Composable
+private fun StyleSwatch(name: String, selected: Boolean, brush: androidx.compose.ui.graphics.Brush, onClick: () -> Unit) {
+    val extra = LocalExtra.current
+    Column(Modifier.width(76.dp).clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            Modifier.size(42.dp).clip(CircleShape).background(brush)
+                .border(if (selected) 3.dp else 1.dp, if (selected) MaterialTheme.colorScheme.primary else extra.line, CircleShape),
+        )
+        Text(name, fontSize = 11.sp, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center, lineHeight = 13.sp, modifier = Modifier.padding(top = 4.dp))
+    }
 }

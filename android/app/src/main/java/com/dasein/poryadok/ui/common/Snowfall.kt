@@ -92,11 +92,20 @@ fun HolidayBackdrop() {
     val strength = if (dark) .16f else .3f
     val flakes = Holiday.backdrop.value
     Canvas(Modifier.fillMaxSize()) {
-        // Бархатный красный: светлее и насыщеннее сверху по центру, к краям глубже и темнее — как ткань под светом.
-        val velvet = if (dark) listOf(Color(0xFF8C1A2B), Color(0xFF5E0F1C), Color(0xFF330710)) else listOf(Color(0xFFFBE9E9), Color(0xFFF3D3D5), Color(0xFFE6B9BD))
-        drawRect(Brush.radialGradient(velvet, Offset(size.width * .5f, size.height * .18f), maxOf(size.width, size.height) * .95f))
-        // Мягкий отсвет сверху — «ворс» бархата.
-        drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = if (dark) .05f else .15f), Color.Transparent), 0f, size.height * .35f))
+        // Бархат выбранного цвета: светлее и насыщеннее сверху по центру, к краям глубже — как ткань под светом.
+        val st = Holiday.bg()
+        val velvet = if (dark) st.dark else st.light
+        drawRect(Brush.radialGradient(velvet, Offset(size.width * .5f, size.height * .3f), maxOf(size.width, size.height) * .9f))
+        drawRect(Brush.verticalGradient(listOf(Color.White.copy(alpha = if (dark) .04f else .12f), Color.Transparent), 0f, size.height * .35f))
+        val t0 = Holiday.clock.floatValue
+        // Хвойная кайма сверху и снизу — под карточками, видна между ними.
+        HolidayAssets.borderBottom?.let { img -> drawBorder(img, top = false) }
+        HolidayAssets.borderTop?.let { img -> drawBorder(img, top = true) }
+        // Мерцающие золотые искорки вместо статичных снежинок.
+        SPARKLES.forEach { sp ->
+            val a = (.5f + .5f * sin(t0 * sp.speed + sp.phase)).let { it * it }
+            if (a > .05f) sparkle(Offset(sp.x * size.width, sp.y * size.height), sp.r * density, Color(0xFFF2C760), a * (if (dark) .85f else .7f))
+        }
         if (!flakes) return@Canvas
         val t = Holiday.clock.floatValue
         BACK_FLAKES.forEach { f ->
@@ -172,4 +181,40 @@ private fun Snowfall() {
             snowflake(Offset(x, y), f.radius * density, tint, f.alpha * fadeIn, angle = spin)
         }
     }
+}
+
+/** Золотые искорки фона: место (доли экрана), размер, ритм мерцания. */
+private class Sparkle(val x: Float, val y: Float, val r: Float, val speed: Float, val phase: Float)
+
+private val SPARKLES = Random(1225).let { rnd ->
+    List(16) {
+        // Больше у верхнего и нижнего края — рядом с хвойной каймой.
+        val y = if (it % 3 == 0) .3f + rnd.nextFloat() * .4f else if (it % 2 == 0) rnd.nextFloat() * .22f else .78f + rnd.nextFloat() * .2f
+        Sparkle(rnd.nextFloat(), y, 3f + rnd.nextFloat() * 4f, .8f + rnd.nextFloat() * 1.6f, rnd.nextFloat() * 6.28f)
+    }
+}
+
+/** Четырёхлучевая искорка: ромб с вогнутыми гранями и мягким ореолом. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.sparkle(c: Offset, r: Float, color: Color, alpha: Float) {
+    drawCircle(Brush.radialGradient(listOf(color.copy(alpha = .35f * alpha), Color.Transparent), c, r * 2.2f), r * 2.2f, c)
+    val p = androidx.compose.ui.graphics.Path().apply {
+        moveTo(c.x, c.y - r)
+        quadraticTo(c.x, c.y, c.x + r, c.y)
+        quadraticTo(c.x, c.y, c.x, c.y + r)
+        quadraticTo(c.x, c.y, c.x - r, c.y)
+        quadraticTo(c.x, c.y, c.x, c.y - r)
+        close()
+    }
+    drawPath(p, color, alpha = alpha)
+}
+
+/** Кайма во всю ширину экрана: снизу — над кнопками Android, сверху — от края экрана. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawBorder(img: androidx.compose.ui.graphics.ImageBitmap, top: Boolean) {
+    val h = size.width * img.height / img.width
+    val y = if (top) 0f else size.height - h
+    drawImage(
+        img, srcOffset = androidx.compose.ui.unit.IntOffset.Zero, srcSize = androidx.compose.ui.unit.IntSize(img.width, img.height),
+        dstOffset = androidx.compose.ui.unit.IntOffset(0, y.toInt()), dstSize = androidx.compose.ui.unit.IntSize(size.width.toInt(), h.toInt()),
+        alpha = if (top) .75f else .9f,
+    )
 }
