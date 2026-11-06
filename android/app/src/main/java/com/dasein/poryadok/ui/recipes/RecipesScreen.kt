@@ -143,9 +143,6 @@ fun RecipesScreen(nav: NavHostController, initialTab: Int, initialMode: Int, emb
                 FullCenter { CircularProgressIndicator() }
                 return@Column
             }
-            if (tab == 0 || tab == 2 || tab == 3) com.dasein.poryadok.ui.common.OutlinedButton(
-                onClick = { nav.navigate(WHAT_TO_COOK_ROUTE) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-            ) { Text("Что приготовить из того, что есть дома?") }
             Column(Modifier.tabSlide(tab)) {
                 when (tab) {
                     0 -> Catalog(nav, book)
@@ -368,6 +365,9 @@ private fun Catalog(nav: NavHostController, book: RecipeBook, only: String = ALL
             Gap(8.dp)
             // «+ Рецепт» — плавающая кнопка внизу, здесь не дублируется.
             OutlinedButton(onClick = { nav.navigate(Routes.MENU_CREATE) }, Modifier.fillMaxWidth()) { Text(btnLabel("Создать меню"), maxLines = 1, softWrap = false) }
+            // «Что приготовить» — в начале списка и уезжает вместе с ним при прокрутке.
+            Gap(6.dp)
+            OutlinedButton(onClick = { nav.navigate(WHAT_TO_COOK_ROUTE) }, Modifier.fillMaxWidth()) { Text("Что приготовить из того, что есть дома?") }
             if (only == MINE) { Gap(8.dp); RecipeShareButtons(source.sortedByDescending { it.createdAt }) }
             Gap(4.dp)
         }
