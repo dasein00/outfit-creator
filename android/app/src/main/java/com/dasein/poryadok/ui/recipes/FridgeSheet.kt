@@ -56,7 +56,7 @@ fun FridgeSheet(
     var onlyHave by remember { mutableStateOf(spec.onlyHave) }
     var mode by remember { mutableIntStateOf(if (spec.main.isEmpty()) 0 else 1) }
     var q by remember { mutableStateOf("") }
-    val cur = Fridge.Spec(main, have, missing, onlyHave)
+    val cur = spec.copy(main = main, have = have, missing = missing, onlyHave = onlyHave)
     val count = remember(cur) { countFor(cur) }
     val extra = LocalExtra.current
     val scheme = MaterialTheme.colorScheme

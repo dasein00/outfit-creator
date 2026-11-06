@@ -41,9 +41,36 @@ class FridgeAndWidgetTest {
         assertTrue(Fridge.rank(a) < Fridge.rank(b))
     }
 
+    @Test fun sameProductDifferentNames() {
+        assertTrue(Fridge.same("Курица", "Куриное филе"))
+        assertTrue(Fridge.same("Творог", "Творог 5%"))
+        assertTrue(Fridge.same("Помидоры", "Помидор черри"))
+        assertTrue(Fridge.same("Яйца", "Яйцо куриное"))
+        assertFalse("яйцо — не курица", Fridge.same("Курица", "Яйцо куриное"))
+        assertFalse(Fridge.same("Сыр", "Сырники"))
+    }
+
+    @Test fun pickModes() {
+        val chickenRice = listOf("Куриное филе", "Рис", "Соль")
+        val syrniki = listOf("Творог 5%", "Яйцо куриное", "Мука", "Сахар")
+        val casserole = listOf("Курица", "Творог", "Соль")
+        val have = setOf("Курица", "Творог")
+        val any = listOf(chickenRice, syrniki, casserole).map { Fridge.pick(it, have, emptySet(), Fridge.Mode.ANY) }
+        assertTrue(any.all { it.ok })
+        assertEquals(listOf("Курица", "Творог"), any[2].matched)
+        val all = listOf(chickenRice, syrniki, casserole).map { Fridge.pick(it, have, emptySet(), Fridge.Mode.ALL).ok }
+        assertEquals(listOf(false, false, true), all)
+        val only = listOf(chickenRice, syrniki, casserole).map { Fridge.pick(it, have, emptySet(), Fridge.Mode.ONLY).ok }
+        assertEquals("только из курицы и творога (соль — всегда есть)", listOf(false, false, true), only)
+        assertFalse("исключённый продукт", Fridge.pick(chickenRice, have, setOf("Рис"), Fridge.Mode.ANY).ok)
+        assertEquals(listOf("Рис"), Fridge.pick(chickenRice, have, emptySet(), Fridge.Mode.ANY).lacking)
+    }
+
     @Test fun specRoundTrip() {
         val spec = Fridge.Spec(setOf("Куриное филе"), setOf("Рис", "Лук"), setOf("Грибы"), true)
         assertEquals(spec, Fridge.decode(Fridge.encode(spec)))
+        val m = spec.copy(mode = Fridge.Mode.ONLY)
+        assertEquals(m, Fridge.decode(Fridge.encode(m)))
         assertEquals(Fridge.Spec(), Fridge.decode(""))
     }
 

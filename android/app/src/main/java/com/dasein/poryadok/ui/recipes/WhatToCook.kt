@@ -73,7 +73,10 @@ fun WhatToCookScreen(nav: NavHostController) {
     val settings by observe(null) { Graph.prefs.settings }
     val spec = remember(settings?.fridge) { Fridge.decode(settings?.fridge.orEmpty()) }
     val have = spec.have
-    fun save(h: Set<String>) = io { Graph.prefs.update { it.copy(fridge = Fridge.encode(spec.copy(have = h, onlyHave = false))) } }
+    val exclude = spec.missing
+    val mode = spec.mode
+    fun saveSpec(f: (Fridge.Spec) -> Fridge.Spec) = io { Graph.prefs.update { it.copy(fridge = Fridge.encode(f(Fridge.decode(it.fridge)))) } }
+    fun save(h: Set<String>) = saveSpec { it.copy(have = h) }
     val names: (Recipe) -> List<String> = { r -> book.ingredients[r.id].orEmpty().map { it.name } }
     // Продукты из рецептов: по частоте.
     val products = remember(book) {
@@ -81,28 +84,37 @@ fun WhatToCookScreen(nav: NavHostController) {
             .groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.map { it.key }
     }
     var input by remember { mutableStateOf("") }
+    var excludeInput by remember { mutableStateOf("") }
     val nq = Fridge.norm(input.substringAfterLast(','))
     val suggest = remember(nq, products, have) {
         if (nq.length < 2) emptyList() else products.filter { nq in Fridge.norm(it) && it !in have }.take(8)
     }
     /** «курица, рис, помидоры» → продукты из базы (по совпадению начала слова), остальное — как написано. */
+    fun parse(text: String): List<String> = text.split(',', ';', '\n').map { it.trim() }.filter { it.length >= 2 }.map { p ->
+        val n = Fridge.norm(p)
+        products.firstOrNull { Fridge.norm(it) == n } ?: products.firstOrNull { Fridge.norm(it).startsWith(n) }
+            ?: products.firstOrNull { n in Fridge.norm(it) } ?: p.replaceFirstChar { it.uppercase() }
+    }
     fun addTyped() {
-        val parts = input.split(',', ';', '\n').map { it.trim() }.filter { it.length >= 2 }
-        val found = parts.map { p ->
-            val n = Fridge.norm(p)
-            products.firstOrNull { Fridge.norm(it) == n } ?: products.firstOrNull { Fridge.norm(it).startsWith(n) }
-                ?: products.firstOrNull { n in Fridge.norm(it) } ?: p.replaceFirstChar { it.uppercase() }
-        }
-        if (found.isNotEmpty()) save(have + found)
+        val found = parse(input)
+        if (found.isNotEmpty()) saveSpec { it.copy(have = it.have + found, missing = it.missing - found.toSet()) }
         input = ""
     }
-    val fits = remember(book, have) {
-        if (have.isEmpty()) emptyList()
-        else book.recipes.map { it to Fridge.fit(names(it), Fridge.Spec(have = have)) }.filter { it.second.used > 0 }
+    fun addExcluded() {
+        val found = parse(excludeInput)
+        if (found.isNotEmpty()) saveSpec { it.copy(missing = it.missing + found, have = it.have - found.toSet()) }
+        excludeInput = ""
     }
-    val ready = fits.filter { it.second.lacking.isEmpty() }.sortedByDescending { it.second.used }
-    val one = fits.filter { it.second.lacking.size == 1 }.sortedByDescending { it.second.used }
-    val two = fits.filter { it.second.lacking.size in 2..3 }.sortedWith(compareBy<Pair<Recipe, Fridge.Fit>> { it.second.lacking.size }.thenByDescending { it.second.used })
+    val fits = remember(book, have, exclude, mode) {
+        if (have.isEmpty()) emptyList()
+        else book.recipes.map { it to Fridge.pick(names(it), have, exclude, mode) }.filter { it.second.ok }
+    }
+    // Сначала блюда, где больше выбранных продуктов (курица и творог — выше, чем только курица), затем — где меньше докупать.
+    val order = compareByDescending<Pair<Recipe, Fridge.Pick>> { it.second.matched.size }.thenBy { it.second.lacking.size }.thenByDescending { it.second.used }
+    val ready = fits.filter { it.second.lacking.isEmpty() }.sortedWith(order)
+    val one = fits.filter { it.second.lacking.size == 1 }.sortedWith(order)
+    val two = fits.filter { it.second.lacking.size in 2..3 }.sortedWith(order)
+    val more = if (mode == Fridge.Mode.ALL) fits.filter { it.second.lacking.size > 3 }.sortedWith(order) else emptyList()
     val aiOn = remember { com.dasein.poryadok.system.Ai.enabled(ctx) }
     var aiBusy by remember { mutableStateOf(false) }
     var aiText by remember { mutableStateOf<String?>(null) }
@@ -110,7 +122,7 @@ fun WhatToCookScreen(nav: NavHostController) {
     Screen("Что приготовить", onBack = { nav.popBackStack() }) { pad ->
         LazyColumn(Modifier.padding(pad).fillMaxSize().padding(horizontal = 16.dp)) {
             item {
-                Text("Напишите или отметьте, что есть дома, — покажу блюда, для которых всё есть, и где не хватает пары продуктов. Соль, масло и специи считаются имеющимися.", fontSize = 13.sp, color = extra.dim)
+                Text("Напишите или отметьте, что есть дома, и выберите, как подбирать: с любым из продуктов, со всеми сразу или только из них. Соль, масло и специи считаются имеющимися.", fontSize = 13.sp, color = extra.dim)
                 Gap(8.dp)
                 OutlinedTextField(
                     input, { input = it }, Modifier.fillMaxWidth(), singleLine = true, shape = RoundedCornerShape(14.dp),
@@ -125,11 +137,39 @@ fun WhatToCookScreen(nav: NavHostController) {
                 Gap(10.dp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Есть дома · ${have.size}", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                    if (have.isNotEmpty()) TextButton(onClick = { save(emptySet()) }) { Text("Очистить") }
+                    if (have.isNotEmpty() || exclude.isNotEmpty()) TextButton(onClick = { saveSpec { it.copy(have = emptySet(), missing = emptySet()) } }) { Text("Очистить") }
                 }
                 if (have.isEmpty()) Text("Пока пусто. Начните вводить продукт или нажмите на частые ниже.", fontSize = 13.sp, color = extra.dim)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
                     have.sorted().forEach { p -> Pill("$p  ✕", true) { save(have - p) } }
+                }
+                // Как подбирать: любой из продуктов, все обязательно или только из них.
+                Gap(10.dp)
+                Text("Как подбирать", fontWeight = FontWeight.SemiBold)
+                com.dasein.poryadok.ui.common.Segments(
+                    listOf(Fridge.Mode.ANY to "Любой из них", Fridge.Mode.ALL to "Все в блюде", Fridge.Mode.ONLY to "Только из них"),
+                    mode, { m -> saveSpec { it.copy(mode = m) } }, Modifier.padding(top = 4.dp),
+                )
+                Text(
+                    when (mode) {
+                        Fridge.Mode.ANY -> "Блюда хотя бы с одним из продуктов. Выше — те, где их больше: с курицей и творогом раньше, чем только с курицей."
+                        Fridge.Mode.ALL -> "В блюде обязательно есть все отмеченные продукты, остальное можно докупить — недостающее видно у блюда."
+                        Fridge.Mode.ONLY -> "Только блюда целиком из отмеченных продуктов — ничего докупать не нужно. Соль, масло, сахар и специи считаются имеющимися."
+                    },
+                    fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp, modifier = Modifier.padding(top = 4.dp),
+                )
+                // Исключить: блюда с этими продуктами не показываются (аллергия, не любите, закончились).
+                Gap(10.dp)
+                Text("Без этих продуктов", fontWeight = FontWeight.SemiBold)
+                OutlinedTextField(
+                    excludeInput, { excludeInput = it }, Modifier.fillMaxWidth().padding(top = 4.dp), singleLine = true, shape = RoundedCornerShape(14.dp),
+                    placeholder = { Text("Например: грибы, лук") },
+                    trailingIcon = { if (excludeInput.isNotBlank()) TextButton(onClick = { addExcluded() }) { Text("Исключить") } },
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { addExcluded() }),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                )
+                if (exclude.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
+                    exclude.sorted().forEach { p -> Pill("без: $p  ✕", false) { saveSpec { it.copy(missing = it.missing - p) } } }
                 }
                 Gap(8.dp)
                 Text("Частые продукты", fontSize = 12.sp, color = extra.dim)
@@ -157,7 +197,7 @@ fun WhatToCookScreen(nav: NavHostController) {
                 }
                 Gap(6.dp)
             }
-            fun section(title: String, list: List<Pair<Recipe, Fridge.Fit>>) {
+            fun section(title: String, list: List<Pair<Recipe, Fridge.Pick>>) {
                 if (list.isEmpty()) return
                 item(key = "h_$title") { SectionTitle("$title · ${list.size}") }
                 items(list.take(60), key = { "${title}_${it.first.id}" }) { (r, fit) ->
@@ -170,8 +210,8 @@ fun WhatToCookScreen(nav: NavHostController) {
                         Column(Modifier.weight(1f).padding(start = 10.dp)) {
                             Text(r.name, fontWeight = FontWeight.SemiBold, maxLines = 2)
                             Text(
-                                "из ваших продуктов: ${fit.used}" + if (r.totalMin() > 0) " · ${r.totalMin()} мин" else "",
-                                fontSize = 12.sp, color = extra.dim,
+                                "С вашим: " + fit.matched.joinToString(", ") { it.lowercase() } + if (r.totalMin() > 0) " · ${r.totalMin()} мин" else "",
+                                fontSize = 12.sp, color = if (fit.matched.size == have.size && have.size > 1) MaterialTheme.colorScheme.primary else extra.dim,
                             )
                             if (fit.lacking.isNotEmpty()) Text("Не хватает: " + fit.lacking.joinToString(", "), fontSize = 12.sp, color = extra.warn)
                         }
@@ -185,7 +225,17 @@ fun WhatToCookScreen(nav: NavHostController) {
             section("Можно приготовить сейчас", ready)
             section("Не хватает одного продукта", one)
             section("Не хватает 2–3 продуктов", two)
-            if (have.isNotEmpty() && fits.isEmpty()) item { Text("Блюд с этими продуктами в книге нет. Добавьте ещё продуктов или попросите ИИ придумать блюдо.", color = extra.dim, modifier = Modifier.padding(vertical = 12.dp)) }
+            section("Не хватает 4 и больше", more)
+            if (have.isNotEmpty() && fits.isEmpty()) item {
+                Text(
+                    when (mode) {
+                        Fridge.Mode.ALL -> "Блюд, где есть сразу все отмеченные продукты, в книге нет. Попробуйте «Любой из них» или уберите один продукт."
+                        Fridge.Mode.ONLY -> "Блюд только из этих продуктов в книге нет. Попробуйте «Все в блюде» — покажу, что докупить."
+                        else -> "Блюд с этими продуктами в книге нет. Добавьте ещё продуктов или попросите ИИ придумать блюдо."
+                    },
+                    color = extra.dim, modifier = Modifier.padding(vertical = 12.dp),
+                )
+            }
             item { Gap(40.dp) }
         }
     }
