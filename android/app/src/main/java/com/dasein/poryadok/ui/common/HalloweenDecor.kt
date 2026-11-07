@@ -125,7 +125,6 @@ private val FIREFLIES = Random(3110).let { r -> List(14) { Firefly(r.nextFloat()
 
 /** Где на нижней кайме злые глаза: дупла деревьев, куст справа (центр, доли картинки каймы) и ширина глаз (доли экрана). */
 private val TREE_EYES = listOf(Triple(.089f, .225f, .026f), Triple(.061f, .435f, .032f), Triple(.903f, .267f, .026f), Triple(.935f, .487f, .032f))
-private val BUSH_EYES = listOf(Triple(.952f, .739f, .042f), Triple(.955f, .859f, .042f))
 /** Норы в земле нижней каймы: сюда спускаются пауки, внутри потом горят глаза. */
 private val BURROWS = listOf(.074f to .915f, .381f to .915f, .6875f to .892f)
 /** Ветки деревьев нижней каймы, на которых сидят вороны (верх ветки). */
@@ -213,8 +212,7 @@ fun DrawScope.halloweenScene(t: Float, dark: Boolean) {
     }
     // Злые глаза в дуплах и в кусте: каждая пара моргает в своём ритме, иногда гаснет и загорается снова.
     if (Halloween.eyes.value) {
-        TREE_EYES.forEachIndexed { i, (fx, fy, ew) -> evilEyes(i, t, w * fx, by + bh * fy, w * ew, roam = true) }
-        BUSH_EYES.forEachIndexed { i, (fx, fy, ew) -> evilEyes(i + 4, t, w * fx, by + bh * fy, w * ew, roam = true) }
+        TREE_EYES.forEachIndexed { i, (fx, fy, _) -> evilEyes(i, t, w * fx, by + bh * fy, 2.2f * density, roam = true) }
     }
     if (Halloween.crows.value) crows(t, w, by, bh)
     if (fogOn) fogBand(as0.fog1, by + bh * .8f, bh * .3f, 22f, t, lav.copy(alpha = .2f))
@@ -226,26 +224,30 @@ fun DrawScope.halloweenScene(t: Float, dark: Boolean) {
     if (Halloween.webs.value) webSpider(t, w, th, by, bh)
 }
 
-/** Пара злых глаз с центром в ([cx], [cy]): моргает (иногда дважды), при [roam] — то гаснет, то загорается. */
-private fun DrawScope.evilEyes(i: Int, t: Float, cx: Float, cy: Float, ew: Float, roam: Boolean, alpha: Float = 1f) {
-    val all = HalloweenAssets.evil
-    if (all.isEmpty()) return
-    val set = all[i % all.size]
+/**
+ * Пара красных глаз-точек с центром в ([cx], [cy]), как у паучков: на месте моргают (иногда дважды подряд),
+ * при [roam] — то гаснут, то загораются. [r] — радиус точки.
+ */
+private fun DrawScope.evilEyes(i: Int, t: Float, cx: Float, cy: Float, r: Float, roam: Boolean, alpha: Float = 1f) {
     val vis = alpha * if (roam) ((sin(t * .19f + i * 2.3f) + .3f) / .35f).coerceIn(0f, 1f) else 1f
     if (vis <= .01f) return
     val p = 2.6f + (i * 1.37f) % 3.1f
     val ph = (t + i * 1.7f) % p
     val dbl = (((t + i * 1.7f) / p).toInt() + i) % 3 == 0
-    fun blink(x: Float) = when { x < .06f -> 1; x < .12f -> 2; x < .2f -> 3; x < .26f -> 2; x < .32f -> 1; else -> 0 }
-    val frame = when {
-        ph < .32f -> blink(ph)
-        dbl && ph in .45f..0.77f -> blink(ph - .45f)
-        else -> 0
+    // Открытость: 1 — открыты, 0 — закрыты; моргание ~0,25 с.
+    fun lid(x: Float) = if (x < .25f) kotlin.math.abs(x - .125f) / .125f else 1f
+    val open = when {
+        ph < .25f -> lid(ph)
+        dbl && ph in .38f..0.63f -> lid(ph - .38f)
+        else -> 1f
+    }.coerceAtLeast(.12f)
+    val gap = r * 3.4f
+    glow(EYE_RED, Offset(cx, cy), r * 5f, .28f * vis * open)
+    for (sx in listOf(-1f, 1f)) {
+        val c = Offset(cx + sx * gap / 2f, cy)
+        scale(1f, open, c) { drawCircle(EYE_RED.copy(alpha = vis), r, c) }
+        if (open > .6f) drawCircle(Color.White.copy(alpha = .5f * vis), r * .3f, c + Offset(-r * .3f, -r * .3f))
     }
-    val b = set[frame]
-    val eh = ew * b.height / b.width
-    if (frame < 3) glow(EYE_RED, Offset(cx, cy), ew * .6f, .3f * vis * (1f - frame * .25f))
-    img(b, cx - ew / 2f, cy - eh / 2f, ew, eh, alpha = vis)
 }
 
 /** Ворона в стайке: где сидит, куда летит, когда взлетела. */
@@ -273,7 +275,7 @@ private object Crows {
 private fun DrawScope.crows(t: Float, w: Float, by: Float, bh: Float) {
     val a = HalloweenAssets
     Crows.step(t)
-    val cw = w * .085f
+    val cw = w * .065f
     fun perch(i: Int) = Offset(CROW_PERCHES[i].first * w, by + CROW_PERCHES[i].second * bh)
     fun drawCrow(f: ImageBitmap, feet: Offset, faceLeft: Boolean) {
         val x = feet.x - cw * .473f; val y = feet.y - cw * .925f
@@ -330,7 +332,7 @@ private fun DrawScope.webSpider(t: Float, w: Float, th: Float, by: Float, bh: Fl
     val burrow = Offset(BURROWS[bi].first * w, by + BURROWS[bi].second * bh)
     val sx = (if (leftSide) .06f else .95f) * w
     val startY = th * .29f
-    val groundY = burrow.y - bh * .02f
+    val groundY = burrow.y + bh * .035f   // лапки на земле у норы, а не над ней
     val speed = w * .11f
     val tw = 18.dp.toPx(); val tH = tw * a.spiderTop[0].height / a.spiderTop[0].width
     val sw = 20.dp.toPx(); val sH = sw * a.spiderSide[0].height / a.spiderSide[0].width
@@ -365,7 +367,7 @@ private fun DrawScope.webSpider(t: Float, w: Float, th: Float, by: Float, bh: Fl
     if (k < tIn) { peek(1f - k / tIn); return }
     k -= tIn
     // В норе — горящие глаза.
-    if (k < tStay) { evilEyes(bi + 7, t, burrow.x, burrow.y - bh * .015f, w * .04f, roam = false, alpha = (k / .5f).coerceAtMost(1f)); return }
+    if (k < tStay) { evilEyes(bi + 7, t, burrow.x, burrow.y - bh * .015f, 2.6f * density, roam = false, alpha = (k / .5f).coerceAtMost(1f)); return }
     k -= tStay
     if (k < tOut) { peek(k / tOut); return }
     k -= tOut
@@ -466,20 +468,23 @@ fun Modifier.halloweenCap(seed: Int, force: Boolean = false): Modifier = drawWit
     val rnd = Random(seed)
     val w = size.width
     val capH = 22.dp.toPx()
-    val pieceW = capH * a.caps[0].width / a.caps[0].height
+    val natural = capH * a.caps[0].width / a.caps[0].height
+    // Целые полосы — с началом и концом: по ширине плашки укладывается целое число полос (чуть растянутых или сжатых).
+    val ov = .06f
+    val count = maxOf(1, kotlin.math.round(w / (natural * (1 - ov))).toInt())
+    val pieceW = w / (count - (count - 1) * ov)
     // Самые глубокие ложбинки холмика (~80 % высоты картинки) приходятся на верхний край плашки — рамки не видно.
     val top = -capH * .8f
     var k = seed.mod(8)
-    var x = -rnd.nextFloat() * pieceW * .25f
+    var x = 0f
     val holes = ArrayList<Offset>()
-    while (x < w) {
+    repeat(count) {
         img(a.caps[k], x, top, pieceW, capH)
         CAP_HOLES[k].forEach { (hx, hy) ->
             val p = Offset(x + hx * pieceW, top + hy * capH)
             if (p.x > 10.dp.toPx() && p.x < w - 10.dp.toPx()) holes += p
         }
-        // Концы полос сужаются к низу — следующая полоса заходит на конец предыдущей, без просветов.
-        x += pieceW * .86f
+        x += pieceW * (1 - ov)
         k = (k + 3) % 8
     }
     if ((!Halloween.spiders.value && !force) || holes.isEmpty()) return@drawWithContent
