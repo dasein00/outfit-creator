@@ -26,6 +26,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.layout
 import kotlin.math.roundToInt
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
