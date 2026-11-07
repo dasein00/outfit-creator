@@ -67,6 +67,12 @@ object HalloweenAssets {
     var leaves: List<ImageBitmap> = emptyList(); private set
     var fallBats: List<ImageBitmap> = emptyList(); private set
     var stars: List<ImageBitmap> = emptyList(); private set
+    /** Шапки плашек: холмик со мхом, травой, грибами и норами (первые 4 — одна нора, остальные — две). */
+    var caps: List<ImageBitmap> = emptyList(); private set
+    /** Паучок: сбоку (идёт вправо), сверху (идёт вверх), выглядывает из норы. */
+    var spiderSide: List<ImageBitmap> = emptyList(); private set
+    var spiderTop: List<ImageBitmap> = emptyList(); private set
+    var spiderPeek: List<ImageBitmap> = emptyList(); private set
 
     fun load(ctx: android.content.Context) {
         if (ready.value) return
@@ -77,6 +83,7 @@ object HalloweenAssets {
         eyes = (0 until 4).map { k -> (0 until 3).mapNotNull { one("eyes_${k}_$it") } }.filter { it.size == 3 }
         hand = many("hand", 6); ghost = many("ghost", 6); ghostling = many("ghostling", 4)
         leaves = many("fall_leaf", 6); fallBats = many("fall_bat", 3); stars = many("fall_star", 3)
+        caps = many("cap", 8); spiderSide = many("spider_side", 4); spiderTop = many("spider_top", 4); spiderPeek = many("spider_peek", 3)
         ready.value = near != null && batHang.size == 4 && batFly.size == 4 && eyes.isNotEmpty() && hand.size == 6 && ghost.size == 6
     }
 }
@@ -262,17 +269,98 @@ fun HalloweenBackdrop(modifier: Modifier = Modifier.fillMaxSize()) {
     Canvas(modifier) { halloweenScene(Holiday.clock.floatValue, dark) }
 }
 
+/** Где норы на картинках шапок: центр (доли ширины и высоты картинки). */
+private val CAP_HOLES = listOf(
+    listOf(.257f to .79f), listOf(.749f to .79f), listOf(.287f to .795f), listOf(.725f to .8f),
+    listOf(.231f to .845f, .798f to .845f), listOf(.203f to .841f, .824f to .841f),
+    listOf(.194f to .841f, .804f to .841f), listOf(.172f to .845f, .784f to .845f),
+)
+
 /**
- * Шапка плашки в хэллоуинский режим: земляной холмик со мхом и норы (одна или две). Время от времени из норы
- * выползает паучок: при двух норах — перебегает по шапке в другую, при одной — гуляет по плашке и возвращается.
+ * Шапка плашки в хэллоуинский режим: холмик со мхом, травой и грибами садится на верхний край плашки
+ * (трава и грибы торчат над ней), в холмике — норы. Время от времени из норы выглядывает и выползает паучок:
+ * при двух норах перебегает по холмику в другую, при одной — гуляет по плашке и возвращается в ту же.
+ * Ставится ДО обрезки плашки по форме — так шапка может выступать над её краем.
  */
 fun Modifier.halloweenCap(seed: Int, force: Boolean = false): Modifier = drawWithContent {
     drawContent()
     if (!force && !Halloween.active) return@drawWithContent
+    val a = HalloweenAssets
+    if (!a.ready.value || a.caps.size < 8 || a.spiderSide.size < 4 || a.spiderTop.size < 4 || a.spiderPeek.size < 3) {
+        proceduralCap(seed, force); return@drawWithContent
+    }
+    val rnd = Random(seed)
+    val w = size.width
+    val capH = 20.dp.toPx()
+    val pieceW = capH * a.caps[0].width / a.caps[0].height
+    val top = capH * .45f - capH           // холмик на ~45 % своей высоты лежит на плашке, остальное — над краем
+    var k = seed.mod(8)
+    var x = -rnd.nextFloat() * pieceW * .25f
+    val holes = ArrayList<Offset>()
+    while (x < w) {
+        img(a.caps[k], x, top, pieceW, capH)
+        CAP_HOLES[k].forEach { (hx, hy) ->
+            val p = Offset(x + hx * pieceW, top + hy * capH)
+            if (p.x > 10.dp.toPx() && p.x < w - 10.dp.toPx()) holes += p
+        }
+        x += pieceW - 1f
+        k = (k + 3) % 8
+    }
+    if ((!Halloween.spiders.value && !force) || holes.isEmpty()) return@drawWithContent
+    val t = Holiday.clock.floatValue
+    val period = 15f + seed.mod(5)
+    val local = (t + seed.mod(97)) % period
+    val walk = 6f
+    if (local > walk) return@drawWithContent
+    val peekT = .7f
+    val sideW = 18.dp.toPx(); val sideH = sideW * a.spiderSide[0].height / a.spiderSide[0].width
+    val peekW = 18.dp.toPx(); val peekH = peekW * a.spiderPeek[0].height / a.spiderPeek[0].width
+    val first = holes[seed.mod(holes.size).let { if (holes.size >= 2 && it == holes.lastIndex) it - 1 else it }]
+    fun peek(at: Offset, u: Float) {
+        val f = a.spiderPeek[(u * 3).toInt().coerceIn(0, 2)]
+        img(f, at.x - peekW / 2f, at.y + capH * .08f - peekH, peekW, peekH)
+    }
+    val frame = (t * 10f).toInt() % 4
+    if (holes.size >= 2) {
+        val b = holes[holes.indexOf(first) + 1]
+        when {
+            local < peekT -> peek(first, local / peekT)
+            local > walk - peekT -> peek(b, (walk - local) / peekT)
+            else -> {
+                val u = ((local - peekT) / (walk - 2 * peekT)).let { it * it * (3 - 2 * it) }
+                val px = first.x + (b.x - first.x) * u
+                val py = first.y - capH * .32f + sin(u * PI.toFloat() * 5f) * .8f * density
+                val left = b.x < first.x
+                val f = a.spiderSide[frame]
+                if (left) scale(-1f, 1f, Offset(px, py)) { img(f, px - sideW / 2f, py - sideH / 2f, sideW, sideH) }
+                else img(f, px - sideW / 2f, py - sideH / 2f, sideW, sideH)
+            }
+        }
+    } else {
+        when {
+            local < peekT -> peek(first, local / peekT)
+            local > walk - peekT -> peek(first, (walk - local) / peekT)
+            else -> {
+                // Прогулка по плашке: вниз от норы, петлёй, и обратно к норе.
+                val u = (local - peekT) / (walk - 2 * peekT)
+                val ang = u * 2f * PI.toFloat()
+                val r = 26.dp.toPx()
+                val pos = Offset(first.x + r * 1.5f * sin(ang), first.y + r * (1 - cos(ang)))
+                val d = Offset(r * 1.5f * cos(ang), r * sin(ang))
+                val heading = atan2(d.y, d.x) * 180f / PI.toFloat() + 90f
+                val f = a.spiderTop[frame]
+                val tw = 16.dp.toPx(); val th = tw * f.height / f.width
+                rotate(heading, pos) { img(f, pos.x - tw / 2f, pos.y - th / 2f, tw, th) }
+            }
+        }
+    }
+}
+
+/** Запасная шапка, пока картинки не загрузились: нарисованный холмик с норами и паучком. */
+private fun DrawScope.proceduralCap(seed: Int, force: Boolean) {
     val rnd = Random(seed)
     val ch = 9.dp.toPx()
     val w = size.width
-    // Холмик: волнистый верх, прямой низ.
     val top = Path()
     top.moveTo(0f, ch * .55f)
     var x = 0f
@@ -287,13 +375,6 @@ fun Modifier.halloweenCap(seed: Int, force: Boolean = false): Modifier = drawWit
     drawPath(fill, PLUM)
     drawPath(top, MOSS, style = Stroke(2.2f * density, cap = StrokeCap.Round))
     drawPath(top, LIME.copy(alpha = .8f), style = Stroke(.9f * density, cap = StrokeCap.Round))
-    // Травинки.
-    repeat(6) {
-        val gx = rnd.nextFloat() * w
-        val gy = ch * .45f
-        drawLine(MOSS, Offset(gx, gy), Offset(gx + (rnd.nextFloat() - .5f) * 4 * density, gy - (2.5f + rnd.nextFloat() * 3f) * density), 1.2f * density, StrokeCap.Round)
-    }
-    // Норы.
     val two = (seed and 1) == 1
     val holes = if (two) listOf(w * (.15f + rnd.nextFloat() * .15f), w * (.62f + rnd.nextFloat() * .2f)) else listOf(w * (.25f + rnd.nextFloat() * .5f))
     val hw = 13.dp.toPx(); val hh = 6.dp.toPx(); val hy = ch * .62f
@@ -301,34 +382,15 @@ fun Modifier.halloweenCap(seed: Int, force: Boolean = false): Modifier = drawWit
         drawOval(Color(0xFF0D0711), Offset(hx - hw / 2f, hy - hh / 2f), Size(hw, hh))
         drawArc(LIME.copy(alpha = .7f), 190f, 160f, false, Offset(hx - hw / 2f, hy - hh / 2f), Size(hw, hh), style = Stroke(1f * density))
     }
-    if (!Halloween.spiders.value && !force) return@drawWithContent
-    // Паучок: выход раз в 15–19 с, прогулка ~7 с.
+    if (!Halloween.spiders.value && !force) return
     val t = Holiday.clock.floatValue
-    val period = 15f + (seed.mod(5))
-    val local = (t + seed.mod(97)) % period
-    if (local > 7f) return@drawWithContent
+    val local = (t + seed.mod(97)) % (15f + seed.mod(5))
+    if (local > 7f) return
     val a = holes[0]
-    val emerge = .7f
-    val pos: Offset
-    val dir: Offset
-    val sc: Float
-    if (two) {
-        val b = holes[1]
-        val u = ((local - emerge) / (7f - 2 * emerge)).coerceIn(0f, 1f)
-        val s = u * u * (3 - 2 * u)
-        val px = a + (b - a) * s
-        pos = Offset(px, ch * .3f + sin(s * PI.toFloat() * 6f) * .6f * density)
-        dir = Offset(b - a, 0f)
-        sc = when { local < emerge -> local / emerge; local > 7f - emerge -> (7f - local) / emerge; else -> 1f }
-    } else {
-        val r = 26.dp.toPx()
-        val u = ((local - emerge) / (7f - 2 * emerge)).coerceIn(0f, 1f)
-        val ang = u * 2f * PI.toFloat()
-        pos = Offset(a + r * 1.5f * sin(ang), hy + r * (1 - cos(ang)))
-        dir = Offset(r * 1.5f * cos(ang), r * sin(ang)).let { if (it.getDistance() < .01f) Offset(0f, 1f) else it }
-        sc = when { local < emerge -> local / emerge; local > 7f - emerge -> (7f - local) / emerge; else -> 1f }
-    }
-    spider(pos, atan2(dir.y, dir.x) * 180f / PI.toFloat(), sc.coerceIn(0f, 1f), t, 4.2f * density)
+    val u = ((local - .7f) / 5.6f).coerceIn(0f, 1f)
+    val sc = when { local < .7f -> local / .7f; local > 6.3f -> (7f - local) / .7f; else -> 1f }
+    val pos = if (two) Offset(a + (holes[1] - a) * u * u * (3 - 2 * u), ch * .3f) else Offset(a + 39.dp.toPx() * sin(u * 6.283f), hy + 26.dp.toPx() * (1 - cos(u * 6.283f)))
+    spider(pos, 0f, sc.coerceIn(0f, 1f), t, 4.2f * density)
 }
 
 /** Паучок сверху: брюшко, голова, восемь шагающих лапок, красные глазки. Смотрит по [angle]. */

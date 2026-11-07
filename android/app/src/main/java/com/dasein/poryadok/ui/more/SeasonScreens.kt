@@ -114,7 +114,7 @@ fun HalloweenSettingsScreen(nav: NavHostController) {
                 val card = h.card().let { if (extra.dark) it.dark else it.light }
                 Box(
                     Modifier.align(Alignment.Center).padding(horizontal = 22.dp).fillMaxWidth().height(96.dp)
-                        .clip(RoundedCornerShape(LocalLook.current.cardRound.dp)).background(card).halloweenCap(2027, force = true),
+                        .halloweenCap(2027, force = true).clip(RoundedCornerShape(LocalLook.current.cardRound.dp)).background(card),
                 ) {
                     OnBackground(card) {
                         Column(Modifier.padding(start = 14.dp, top = 24.dp)) {

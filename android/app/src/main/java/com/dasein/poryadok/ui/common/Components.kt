@@ -137,7 +137,7 @@ fun Tile(
     val decor = if (plain) currentCardDecor(color) else null
     Surface(
         // В новогоднем режиме — снежная шапка по верхнему краю (только рисунок, размеры не меняются).
-        modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(round)).snowCap(snowSeed).halloweenCap(snowSeed).let {
+        modifier = modifier.fillMaxWidth().halloweenCap(snowSeed).clip(RoundedCornerShape(round)).snowCap(snowSeed).let {
             when {
                 onLongClick != null -> it.combinedClickable(onClick = onClick ?: {}, onLongClick = onLongClick)
                 onClick != null -> (if (holder != null && LocalIconEditable.current) it.labelLongPress(holder) else it).clickable(onClick = onClick)
