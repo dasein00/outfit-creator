@@ -82,7 +82,7 @@ private enum class Pick { ACCENT, BG, TEXT, ICON, CARD }
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AppearanceScreen(nav: NavHostController, settings: Settings) {
+fun AppearanceScreen(nav: NavHostController, settings: Settings, sec: String? = null) {
     val ctx = LocalContext.current
     val extra = LocalExtra.current
     val look = Look.state.value
@@ -110,22 +110,23 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
         }
     }
 
-    Screen("Оформление", onBack = { nav.popBackStack() }) { pad ->
+    Screen(LOOK_SECTIONS.firstOrNull { it.key == sec }?.title ?: "Оформление", onBack = { nav.popBackStack() }) { pad ->
         Column(Modifier.padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             Preview()
+            if (sec == null) AppearanceHub(nav, settings)
 
+            if (sec == "presets") {
             LookPresetsSection(settings)
+            }
 
+            if (sec == "colors") {
             SectionTitle("Тема", action = if (settings.theme != "system") "Как в теме" else null, onAction = { io { Graph.prefs.update { it.copy(theme = "system") } } })
             Segments(listOf("system" to "Как в системе", "light" to "Светлая", "dark" to "Тёмная"), settings.theme, { v -> io { Graph.prefs.update { it.copy(theme = v) } } })
             if (look.bgRgb != 0) Text("Сейчас выбран свой фон — светлая или тёмная тема определяется по нему.", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
             MiniScreen(Focus.NONE)
+            }
 
-            // Праздничные темы — отдельными подразделами.
-            SectionTitle("Праздничные темы")
-            SeasonRow("Новогодний режим", "15 декабря — 15 января: гирлянда, снег, сосульки, сани Санты", com.dasein.poryadok.ui.theme.Holiday.active) { nav.navigate(HOLIDAY_ROUTE) }
-            SeasonRow("Хэллоуин", "15 октября — 2 ноября: кладбище в тумане, глаза, летучие мыши, пауки, привидение", com.dasein.poryadok.ui.theme.Halloween.active) { nav.navigate(HALLOWEEN_ROUTE) }
-
+            if (sec == "colors") {
             SectionTitle("Цвет акцента", action = if (look.accentRgb != 0 || settings.accent != 0) "Как в теме" else null, onAction = {
                 set { it.copy(accentRgb = 0) }; io { Graph.prefs.update { s -> s.copy(accent = 0) } }
             })
@@ -140,7 +141,9 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
             }
             MiniScreen(Focus.ACCENT)
 
+            }
             val holidayNow = com.dasein.poryadok.ui.theme.Holiday.active && !look.contrast
+            if (sec == "background") {
             SectionTitle("Фон", action = if (look.bgRgb != 0) "Как в теме" else null, onAction = { set { it.copy(bgRgb = 0, bgStyle = -1) } })
             if (holidayNow) HolidayNote()
             Text(btnLabel("Глубокие цвета"), fontSize = 13.sp, color = extra.dim, modifier = Modifier.padding(bottom = 6.dp))
@@ -168,6 +171,8 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
             BgFxPicker(look) { fx -> set { it.copy(bgFx = fx) } }
             MiniScreen(Focus.BG)
 
+            }
+            if (sec == "cards") {
             SectionTitle("Плашки", action = if (look.cardStyle != -1) "Как в теме" else null, onAction = { set { it.copy(cardStyle = -1, cardRgb = 0) } })
             if (holidayNow) HolidayNote()
             Text(
@@ -198,6 +203,8 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
             CardFxPicker(look) { fx -> set { it.copy(cardFx = fx) } }
             MiniScreen(Focus.CARD)
 
+            }
+            if (sec == "colors") {
             SectionTitle("Цвет текста", action = if (look.textRgb != 0) "Как в теме" else null, onAction = { set { it.copy(textRgb = 0) } })
             FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Swatch(null, "Авто", look.textRgb == 0, auto = true) { set { it.copy(textRgb = 0) } }
@@ -230,6 +237,8 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
             }
             MiniScreen(Focus.NONE)
 
+            }
+            if (sec == "motion") {
             SectionTitle("Анимация", action = if (!com.dasein.poryadok.ui.common.TabAnim.enabled.value) "Как в теме" else null, onAction = { com.dasein.poryadok.ui.common.TabAnim.setEnabled(true) })
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -243,6 +252,8 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
             }
             AnimPreview(com.dasein.poryadok.ui.common.TabAnim.enabled.value)
 
+            }
+            if (sec == "icons") {
             SectionTitle("Иконки", action = if (look.icons != 0 || look.iconPalette != -1) "Как в теме" else null, onAction = { set { it.copy(icons = 0, iconRgb = 0, iconPalette = -1) } })
             Look.ICON_MODES.forEachIndexed { i, label ->
                 Row(
@@ -269,6 +280,8 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
                 }
             }
 
+            }
+            if (sec == "font") {
             SectionTitle("Шрифт", action = if (look.font != 5) "Как в теме" else null, onAction = { set { it.copy(font = 5) } })
             Look.FONTS.forEach { (label, id) ->
                 val family = when (id) { 5 -> com.dasein.poryadok.ui.theme.Medeo; 1 -> FontFamily.SansSerif; 2 -> FontFamily.Serif; 3 -> FontFamily.Monospace; 4 -> FontFamily.Cursive; else -> FontFamily.Serif }
@@ -297,11 +310,15 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
                 Text("Мелкая подпись · 12:30", fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 4.dp))
             }
 
+            }
+            if (sec == "cards") {
             SectionTitle("Скругление карточек", action = if (look.cardRound != 18) "Как в теме" else null, onAction = { set { it.copy(cardRound = 18) } })
             Slider(look.cardRound.toFloat(), { v -> set { it.copy(cardRound = v.roundToInt()) } }, valueRange = 4f..32f)
             Text("${look.cardRound} dp", fontSize = 12.sp, color = extra.dim)
             RoundPreview(look.cardRound)
 
+            }
+            if (sec == "texts") {
             SectionTitle("Тексты интерфейса")
             Text(
                 "Названия кнопок, плашек, заголовков и подсказок во всех разделах: поиск по всему приложению, разделы и свой вариант для любого текста.",
@@ -332,6 +349,8 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
                 if (hiddenPlates > 0) TextButton(onClick = { com.dasein.poryadok.ui.common.UiState.showAllPlates(ctx) }) { Text(btnLabel("Показать все")) }
             }
 
+            }
+            if (sec == "profile") {
             SectionTitle("Файл оформления")
             Text(
                 "Всё оформление одним файлом: тема, цвета, шрифт, тексты и названия кнопок, свои иконки, главная и виджет. Записей, PIN и ключей в нём нет. " +
@@ -361,6 +380,7 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
                 "Все эти настройки сохраняются в «Файл оформления» и в резервную копию — на новом телефоне всё будет так же.",
                 fontSize = 12.sp, color = extra.dim, modifier = Modifier.padding(top = 8.dp),
             )
+            }
             Gap(40.dp)
         }
     }
@@ -797,4 +817,77 @@ private fun RoundPreview(round: Int) {
             }
         }
     }
+}
+
+/** Подраздел «Оформления»: ключ маршрута, название, что внутри. */
+internal class LookSection(val key: String, val title: String, val desc: String)
+
+internal val LOOK_SECTIONS = listOf(
+    LookSection("presets", "Мои оформления", "Сохранённые наборы — переключаться одним нажатием"),
+    LookSection("colors", "Тема и цвета", "Светлая или тёмная, акцент, цвет текста, контраст"),
+    LookSection("background", "Фон", "Глубокие цвета, однотонные и стили: аврора, меш, зерно…"),
+    LookSection("cards", "Плашки", "Цвет, стекло, градиент, контур и скругление"),
+    LookSection("icons", "Иконки", "Цветные, контрастные, в цвет акцента или сочетание к фону"),
+    LookSection("font", "Шрифт и размер", "Гарнитура и размер текста"),
+    LookSection("motion", "Анимация", "Плавная смена подразделов"),
+    LookSection("texts", "Тексты интерфейса", "Названия кнопок и плашек, режим редактора"),
+    LookSection("profile", "Файл оформления", "Экспорт, импорт и сброс к стандартному"),
+)
+
+/** Главная «Оформления»: плитки подразделов в две колонки и праздничные темы. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AppearanceHub(nav: NavHostController, settings: Settings) {
+    val extra = LocalExtra.current
+    val look = Look.state.value
+    val cs = MaterialTheme.colorScheme
+    val r = RoundedCornerShape(look.cardRound.dp)
+    @Composable
+    fun hubTile(title: String, desc: String, modifier: Modifier, onClick: () -> Unit, mark: @Composable () -> Unit) {
+        Tile(modifier.heightIn(min = 118.dp), onClick = onClick, padding = 12.dp, caps = false) {
+            Box(Modifier.height(30.dp), contentAlignment = Alignment.CenterStart) { mark() }
+            Text(btnLabel(title), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp), maxLines = 2)
+            Text(desc, fontSize = 11.sp, color = extra.dim, lineHeight = 14.sp, maxLines = 3)
+        }
+    }
+    @Composable
+    fun mark(key: String) {
+        when (key) {
+            "presets" -> Text("${com.dasein.poryadok.ui.theme.LookPresets.list.value.size}", fontWeight = FontWeight.Bold, fontSize = 22.sp, color = cs.primary)
+            "colors" -> Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Box(Modifier.size(22.dp).clip(CircleShape).background(cs.primary))
+                Box(Modifier.size(22.dp).clip(CircleShape).background(cs.onBackground))
+                Box(Modifier.size(22.dp).clip(CircleShape).background(cs.background).border(1.dp, extra.line, CircleShape))
+            }
+            "background" -> Box(
+                Modifier.size(width = 44.dp, height = 26.dp).clip(RoundedCornerShape(8.dp)).border(1.dp, extra.line, RoundedCornerShape(8.dp))
+                    .background(Look.gradient(look, cs.background)?.let { androidx.compose.ui.graphics.Brush.radialGradient(it) } ?: androidx.compose.ui.graphics.SolidColor(cs.background)),
+            )
+            "cards" -> Box(Modifier.size(width = 44.dp, height = 26.dp).clip(RoundedCornerShape(minOf(look.cardRound, 12).dp)).cardFill(RoundedCornerShape(minOf(look.cardRound, 12).dp)))
+            "icons" -> Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { listOf("d01/00", "d12/00", "d06/00").forEach { Glyph(it, 26.dp, badge = false) } }
+            "font" -> Text("Аа", fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
+            "motion" -> Text(if (com.dasein.poryadok.ui.common.TabAnim.enabled.value) "вкл" else "выкл", fontWeight = FontWeight.SemiBold, color = cs.primary)
+            "texts" -> Text("Т", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = cs.primary)
+            else -> Text("⇅", fontSize = 22.sp, color = cs.primary)
+        }
+    }
+    SectionTitle("Разделы")
+    LOOK_SECTIONS.chunked(2).forEach { row ->
+        Row(Modifier.padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            row.forEach { s -> hubTile(s.title, s.desc, Modifier.weight(1f), { nav.navigate("look/${s.key}") }) { mark(s.key) } }
+            if (row.size == 1) Box(Modifier.weight(1f))
+        }
+    }
+    SectionTitle("Праздничные темы")
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        val ny = com.dasein.poryadok.ui.theme.Holiday.active
+        val hw = com.dasein.poryadok.ui.theme.Halloween.active
+        hubTile("Новогодний режим", "15 декабря — 15 января" + if (ny) " · сейчас включён" else "", Modifier.weight(1f), { nav.navigate(HOLIDAY_ROUTE) }) {
+            Box(Modifier.size(width = 44.dp, height = 26.dp).clip(RoundedCornerShape(8.dp)).background(androidx.compose.ui.graphics.Brush.radialGradient(com.dasein.poryadok.ui.theme.Holiday.bg().dark)))
+        }
+        hubTile("Хэллоуин", "15 октября — 2 ноября" + if (hw) " · сейчас включён" else "", Modifier.weight(1f), { nav.navigate(HALLOWEEN_ROUTE) }) {
+            Box(Modifier.size(width = 44.dp, height = 26.dp).clip(RoundedCornerShape(8.dp)).background(androidx.compose.ui.graphics.Brush.radialGradient(com.dasein.poryadok.ui.theme.Halloween.bg().dark)))
+        }
+    }
+    Gap(24.dp)
 }

@@ -496,6 +496,9 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
                 com.dasein.poryadok.ui.reader.ReaderBookScreen(nav, it.arguments?.getLong("id") ?: 0L)
             }
             composable(com.dasein.poryadok.ui.more.APPEARANCE_ROUTE) { com.dasein.poryadok.ui.more.AppearanceScreen(nav, settings) }
+            composable("look/{section}", arguments = listOf(navArgument("section") { type = NavType.StringType })) {
+                com.dasein.poryadok.ui.more.AppearanceScreen(nav, settings, it.arguments?.getString("section"))
+            }
             composable(com.dasein.poryadok.ui.more.HOLIDAY_ROUTE) { com.dasein.poryadok.ui.more.HolidaySettingsScreen(nav) }
             composable(com.dasein.poryadok.ui.more.HALLOWEEN_ROUTE) { com.dasein.poryadok.ui.more.HalloweenSettingsScreen(nav) }
             composable(com.dasein.poryadok.ui.more.UI_TEXTS_ROUTE) { com.dasein.poryadok.ui.more.UiTextsScreen(nav) }

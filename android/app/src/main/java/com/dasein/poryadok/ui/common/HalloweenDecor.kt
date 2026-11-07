@@ -367,7 +367,7 @@ private fun DrawScope.webSpider(t: Float, w: Float, th: Float, by: Float, bh: Fl
     if (k < tIn) { peek(1f - k / tIn); return }
     k -= tIn
     // В норе — горящие глаза.
-    if (k < tStay) { evilEyes(bi + 7, t, burrow.x, burrow.y - bh * .015f, 2.6f * density, roam = false, alpha = (k / .5f).coerceAtMost(1f)); return }
+    if (k < tStay) { evilEyes(bi + 7, t, burrow.x, burrow.y - bh * .015f, .9f * density, roam = false, alpha = (k / .5f).coerceAtMost(1f)); return }
     k -= tStay
     if (k < tOut) { peek(k / tOut); return }
     k -= tOut
