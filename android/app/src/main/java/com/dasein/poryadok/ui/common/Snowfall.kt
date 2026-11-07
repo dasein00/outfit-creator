@@ -44,10 +44,12 @@ fun HolidayHost(content: @Composable () -> Unit) {
     // Одни часы на все украшения (~30 кадров в секунду) — и только пока есть что анимировать.
     val active = Holiday.active
     // Часы идут весь новогодний режим: по ним мигают гирлянда и лампочки на графиках, падает снег на фоне.
-    val animate = active
+    val spooky = com.dasein.poryadok.ui.theme.Halloween.active
+    val animate = active || spooky
     // Картинки снега и сосулек — в фоне, один раз.
     val appCtx = LocalContext.current.applicationContext
     LaunchedEffect(active) { if (active) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { HolidayAssets.load(appCtx) } }
+    LaunchedEffect(spooky) { if (spooky) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { HalloweenAssets.load(appCtx) } }
     LaunchedEffect(animate) {
         if (!animate) return@LaunchedEffect
         val start = withFrameMillis { it } - (Holiday.clock.floatValue * 1000).toLong()
@@ -60,6 +62,7 @@ fun HolidayHost(content: @Composable () -> Unit) {
         content()
         HolidayGarland()
         Snowfall()
+        HalloweenFall()
     }
 }
 
@@ -86,6 +89,7 @@ private val BACK_FLAKES = Random(2026).let { rnd ->
  */
 @Composable
 fun HolidayBackdrop() {
+    if (com.dasein.poryadok.ui.theme.Halloween.active) { HalloweenBackdrop(); return }
     if (!Holiday.active) { DeepBackdrop(); return }
     val tint = snowTint()
     val dark = LocalExtra.current.dark
@@ -119,7 +123,7 @@ fun HolidayBackdrop() {
 
 /** Под экраном рисуется свой слой фона: новогодний бархат или градиент/стиль фона из «Оформления». */
 @Composable
-fun hasBackdrop(): Boolean = Holiday.active ||
+fun hasBackdrop(): Boolean = Holiday.active || com.dasein.poryadok.ui.theme.Halloween.active ||
     com.dasein.poryadok.ui.theme.Look.gradient(com.dasein.poryadok.ui.theme.LocalLook.current, androidx.compose.material3.MaterialTheme.colorScheme.background) != null
 
 /** Фон обычной темы в выбранном стиле (бархат, диагональ, аврора, меш, прожектор, зерно, боке). */

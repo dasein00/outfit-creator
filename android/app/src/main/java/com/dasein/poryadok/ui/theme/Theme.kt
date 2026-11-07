@@ -174,9 +174,12 @@ fun PoryadokTheme(theme: String, accent: Int, content: @Composable () -> Unit) {
     // Новогодний режим: фон глубокого клюквенно-красного цвета (тёмная тема) или нежно-розовый (светлая).
     // Тёмный и приглушённый, чтобы красные детали иконок и текст оставались на нём хорошо различимы.
     val holiday = Holiday.active && !look.contrast
+    // Хэллоуин: ночной фиолетовый (или выбранный в его настройках) фон и полупрозрачные дымчатые плашки.
+    val halloween = Halloween.active && !look.contrast
     // Праздничный бархатно-красный — даже если в «Оформлении» выбран свой фон (после праздников он вернётся).
     val bg = when {
         holiday -> Holiday.bg().let { if (dark) it.dark[1] else it.light[1] }
+        halloween -> Halloween.bg().let { if (dark) it.dark[1] else it.light[1] }
         look.bgRgb != 0 -> Look.color(look.bgRgb)
         else -> base.background
     }
@@ -188,8 +191,8 @@ fun PoryadokTheme(theme: String, accent: Int, content: @Composable () -> Unit) {
     }
     val text1 = Look.readable(text0, bg, 4.5f)
     // Свой цвет плашек (может быть полупрозрачным): текст проверяется на том, как плашка ляжет на фон.
-    val cardOver = if (holiday) null else Look.cardColor(look, dark)
-    val custom = look.bgRgb != 0 || look.textRgb != 0 || look.contrast || holiday || cardOver != null
+    val cardOver = if (holiday || halloween) null else Look.cardColor(look, dark)
+    val custom = look.bgRgb != 0 || look.textRgb != 0 || look.contrast || holiday || halloween || cardOver != null
     val scheme0 = if (!custom) base else {
         val card = cardOver?.let { Look.mix(bg, it.copy(alpha = 1f), it.alpha) }
             ?: Look.mix(bg, text1, if (dark) .07f else .03f).let { if (!dark && look.bgRgb != 0) Look.mix(bg, Color.White, .6f) else it }
@@ -226,6 +229,7 @@ fun PoryadokTheme(theme: String, accent: Int, content: @Composable () -> Unit) {
     // Плашки полупрозрачные (холодное «матовое стекло»): сквозь них видно красный фон и снег.
     val extra = when {
         holiday -> extra0.copy(card = Holiday.card().let { if (dark) it.dark else it.light })
+        halloween -> extra0.copy(card = Halloween.card().let { if (dark) it.dark else it.light })
         cardOver != null -> extra0.copy(card = cardOver)
         else -> extra0
     }

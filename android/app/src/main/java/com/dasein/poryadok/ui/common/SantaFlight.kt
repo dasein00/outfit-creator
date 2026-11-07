@@ -78,11 +78,16 @@ object SantaCorridor {
  */
 @Composable
 fun SantaFlight(modifier: Modifier) {
-    if (!Holiday.active || !Holiday.santa.value) return
+    // В Хэллоуин вместо саней летит привидение со спутниками.
+    val ghost = com.dasein.poryadok.ui.theme.Halloween.active && com.dasein.poryadok.ui.theme.Halloween.ghost.value
+    if (!ghost && (!Holiday.active || !Holiday.santa.value)) return
     val ctx = LocalContext.current
     val assets = HolidayAssets
-    LaunchedEffect(Unit) { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { assets.load(ctx.applicationContext) } }
-    if (!assets.ready.value || assets.sleigh.size < 2 || assets.deer.size < 3 || assets.deerRed.size < 3) return
+    LaunchedEffect(ghost) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { if (ghost) HalloweenAssets.load(ctx.applicationContext) else assets.load(ctx.applicationContext) }
+    }
+    if (ghost) { if (!HalloweenAssets.ready.value) return }
+    else if (!assets.ready.value || assets.sleigh.size < 2 || assets.deer.size < 3 || assets.deerRed.size < 3) return
     val progress = remember { mutableFloatStateOf(-1f) }
     var toLeft by remember { mutableStateOf(Flights.toLeft) }
     val now = Holiday.santaNow.intValue
@@ -124,7 +129,8 @@ fun SantaFlight(modifier: Modifier) {
         // Ширина полёта — весь экран (слой во всю ширину), высота — полоса кнопок.
         clipRect(0f, clipTop, size.width, clipBottom) {
             translate(0f, top) {
-                if (toLeft) scale(-1f, 1f, Offset(size.width / 2f, h / 2f)) { team(p, elapsed, size.width, h) } else team(p, elapsed, size.width, h)
+                val draw: DrawScope.() -> Unit = { if (ghost) ghostTeam(p, elapsed, size.width, h) else team(p, elapsed, size.width, h) }
+                if (toLeft) scale(-1f, 1f, Offset(size.width / 2f, h / 2f)) { draw() } else draw()
             }
         }
     }

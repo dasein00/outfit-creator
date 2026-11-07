@@ -234,6 +234,7 @@ object BackupFiles {
             com.dasein.poryadok.data.ExercisePrefs.reload()
             com.dasein.poryadok.ui.common.TabAnim.reload()
             com.dasein.poryadok.ui.theme.Holiday.reload(ctx)
+            com.dasein.poryadok.ui.theme.Halloween.reload(ctx)
             ReaderStore.reload(ctx)
             files
         }

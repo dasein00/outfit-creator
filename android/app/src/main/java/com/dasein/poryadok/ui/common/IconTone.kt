@@ -211,6 +211,11 @@ fun iconTone(onPlate: Boolean, gold: Boolean = false): IconTone {
         val dark0 = LocalExtra.current.dark
         return remember(dark0, onPlate, gold) { IconTone(0f, 1f, light = !dark0 && !onPlate, festive = true, gold = gold) }
     }
+    // Хэллоуин: сочетание «тыквенные огоньки + лаймовый свет + лиловые формы» для всех иконок (кроме контрастных).
+    if (com.dasein.poryadok.ui.theme.Halloween.active && !look0.contrast && look0.icons != 1) {
+        val dark1 = LocalExtra.current.dark
+        return remember(dark1, onPlate, gold) { IconTone(0f, 1f, light = !dark1 && !onPlate, gold = gold, palette = com.dasein.poryadok.ui.theme.Halloween.ICONS) }
+    }
     val p = MaterialTheme.colorScheme.primary.toArgb() and 0xFFFFFF
     val dark = LocalExtra.current.dark
     val look = com.dasein.poryadok.ui.theme.LocalLook.current

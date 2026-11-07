@@ -126,7 +126,7 @@ object Holiday {
     /** Включили тестовый режим — сразу и снег, чтобы было видно, как выглядит вход. */
     fun setPreview(ctx: Context, v: Boolean) {
         preview.value = v; sp(ctx).edit().putBoolean(KEY_PREVIEW, v).apply()
-        if (v) letItSnow()
+        if (v) { if (Halloween.preview.value) Halloween.setPreview(ctx, false); letItSnow() }
     }
 
     fun setBackdrop(ctx: Context, v: Boolean) { backdrop.value = v; sp(ctx).edit().putBoolean(KEY_BACKDROP, v).apply() }
@@ -144,7 +144,7 @@ object Holiday {
     fun letItSnow() { entry.intValue++ }
 
     /** Новогодние цвета сейчас включены. */
-    val active: Boolean get() = HolidaySeason.themeActive(auto.value, today.value, preview.value)
+    val active: Boolean get() = HolidaySeason.themeActive(auto.value, today.value, preview.value) && !Halloween.preview.value
 
     /** Снегопад при входе сейчас разрешён. */
     val snowNow: Boolean get() = HolidaySeason.snowAllowed(auto.value, snow.value, today.value, preview.value)

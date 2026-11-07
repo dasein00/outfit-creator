@@ -496,6 +496,8 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
                 com.dasein.poryadok.ui.reader.ReaderBookScreen(nav, it.arguments?.getLong("id") ?: 0L)
             }
             composable(com.dasein.poryadok.ui.more.APPEARANCE_ROUTE) { com.dasein.poryadok.ui.more.AppearanceScreen(nav, settings) }
+            composable(com.dasein.poryadok.ui.more.HOLIDAY_ROUTE) { com.dasein.poryadok.ui.more.HolidaySettingsScreen(nav) }
+            composable(com.dasein.poryadok.ui.more.HALLOWEEN_ROUTE) { com.dasein.poryadok.ui.more.HalloweenSettingsScreen(nav) }
             composable(com.dasein.poryadok.ui.more.UI_TEXTS_ROUTE) { com.dasein.poryadok.ui.more.UiTextsScreen(nav) }
             // Инфографика вошла в «Обзор» финансов.
             composable(com.dasein.poryadok.ui.finance.FIN_INFO_ROUTE) { com.dasein.poryadok.ui.finance.FinanceScreen(nav, settings, 2) { nav.popBackStack() } }
@@ -506,9 +508,12 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             androidx.compose.runtime.CompositionLocalProvider(com.dasein.poryadok.ui.common.LocalIconEditable provides false) {
                 // Своя панель ниже стандартной (80 dp) — 54 dp: сразу над кнопками Android, без лишнего зазора сверху.
                 // В новогоднем режиме панель — глубокий бархатный красный: светлее сверху, к низу темнее.
-                val holiday = com.dasein.poryadok.ui.theme.Holiday.active
+                // В Хэллоуин — ночной фиолетовый бархат вместо красного.
+                val spooky = com.dasein.poryadok.ui.theme.Halloween.active
+                val holiday = com.dasein.poryadok.ui.theme.Holiday.active || spooky
                 val velvet = androidx.compose.ui.graphics.Brush.verticalGradient(
-                    listOf(androidx.compose.ui.graphics.Color(0xFF9A1E31), androidx.compose.ui.graphics.Color(0xFF6A1020), androidx.compose.ui.graphics.Color(0xFF3A0711)),
+                    if (spooky) listOf(androidx.compose.ui.graphics.Color(0xFF4A2A6E), androidx.compose.ui.graphics.Color(0xFF2A1838), androidx.compose.ui.graphics.Color(0xFF140B1E))
+                    else listOf(androidx.compose.ui.graphics.Color(0xFF9A1E31), androidx.compose.ui.graphics.Color(0xFF6A1020), androidx.compose.ui.graphics.Color(0xFF3A0711)),
                 )
                 Column(
                     Modifier.fillMaxWidth().let { if (holiday) it.background(velvet) else it.background(MaterialTheme.colorScheme.background) },
@@ -522,7 +527,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
                     }.padding(horizontal = 4.dp).height(54.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    com.dasein.poryadok.ui.theme.OnBackground(if (holiday) androidx.compose.ui.graphics.Color(0xFF6A1020) else androidx.compose.ui.graphics.Color.Unspecified) {
+                    com.dasein.poryadok.ui.theme.OnBackground(if (spooky) androidx.compose.ui.graphics.Color(0xFF2A1838) else if (holiday) androidx.compose.ui.graphics.Color(0xFF6A1020) else androidx.compose.ui.graphics.Color.Unspecified) {
                         barTabs.forEachIndexed { i, t ->
                             TabButton(t, current == t.base, { nav.openTab(t.route) }) { editTab = i to t }
                         }
@@ -587,9 +592,10 @@ private fun EditorModeStrip() {
 @Composable
 private fun RowScope.TabButton(t: Tab, selected: Boolean, onClick: () -> Unit, onLongClick: () -> Unit) {
     val look = com.dasein.poryadok.ui.common.rememberSection(t.route, t.label, t.icon)
-    val holiday = com.dasein.poryadok.ui.theme.Holiday.active
+    val spooky = com.dasein.poryadok.ui.theme.Halloween.active
+    val holiday = com.dasein.poryadok.ui.theme.Holiday.active || spooky
     // На красной бархатной панели — золото выбранной вкладки и светлые подписи остальных.
-    val primary = if (holiday) Color(0xFFF2C760) else MaterialTheme.colorScheme.primary
+    val primary = if (spooky) Color(0xFFC9F05A) else if (holiday) Color(0xFFF2C760) else MaterialTheme.colorScheme.primary
     Column(
         Modifier.weight(1f).height(52.dp).clip(RoundedCornerShape(14.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick, onLongClickLabel = "Изменить раздел"),
