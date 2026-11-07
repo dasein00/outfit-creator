@@ -548,6 +548,20 @@ private fun HolidaySettings() {
             }
         }
     }
+    Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(btnLabel("Сани Санты"), fontWeight = FontWeight.SemiBold, color = if (canSnow) Color.Unspecified else extra.dim)
+            Text(
+                "Санта на санях с тремя оленями (впереди — красноносый) время от времени пролетает на главной по полосе кнопок — " +
+                    "то слева направо, то обратно — и улетает за край экрана. Нажимать кнопки не мешает.",
+                fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp,
+            )
+        }
+        Switch(h.santa.value, { h.setSanta(ctx, it) }, enabled = canSnow)
+    }
+    if (h.active && h.santa.value) TextButton(onClick = { h.santaNow.intValue++; android.widget.Toast.makeText(ctx, "Сани вылетели — откройте главную", android.widget.Toast.LENGTH_SHORT).show() }) {
+        Text(btnLabel("Запустить сани сейчас"))
+    }
     HolidayLookPicker()
     Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {

@@ -429,6 +429,8 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
 private fun HomeButtons(nav: NavHostController, onAdd: () -> Unit) {
     val extra = LocalExtra.current
     val editor = com.dasein.poryadok.data.UiTexts.editorMode.value
+    // Коридор кнопок — по нему в новогодний режим пролетают сани Санты (слой поверх, нажатия проходят сквозь).
+    androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth()) {
     Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = { nav.navigate(Routes.TASKS) }) { Icon(Icons.Default.Add, "Новая задача", tint = MaterialTheme.colorScheme.primary) }
         IconButton(onClick = { com.dasein.poryadok.data.UiTexts.setEditorMode(!editor) }) {
@@ -437,6 +439,8 @@ private fun HomeButtons(nav: NavHostController, onAdd: () -> Unit) {
         IconAction("ui:sliders", "Настроить главное") { nav.navigate(HOME_EDIT) }
         IconAction(Ic.search, "Поиск") { nav.navigate(Routes.SEARCH) }
         IconAction(Ic.settings, "Настройки") { nav.navigate(Routes.SETTINGS) }
+    }
+    com.dasein.poryadok.ui.common.SantaFlight(Modifier.matchParentSize())
     }
 }
 

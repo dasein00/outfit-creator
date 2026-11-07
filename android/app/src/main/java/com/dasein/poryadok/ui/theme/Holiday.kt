@@ -20,6 +20,7 @@ object Holiday {
     private const val KEY_BACKDROP = "holiday_backdrop"
     private const val KEY_BG_STYLE = "holiday_bg_style"
     private const val KEY_CARD_STYLE = "holiday_card_style"
+    private const val KEY_SANTA = "holiday_santa"
 
     /** Фон новогоднего режима: бархатный градиент — центр, середина, края (тёмная тема и светлая). */
     class BgStyle(val name: String, val dark: List<androidx.compose.ui.graphics.Color>, val light: List<androidx.compose.ui.graphics.Color>)
@@ -73,6 +74,14 @@ object Holiday {
     /** Режим огоньков — номер в [LIGHT_MODES] (удержание переключает). */
     val lightsMode = androidx.compose.runtime.mutableIntStateOf(0)
 
+    /** Сани Санты пролетают по главной между карточками (по умолчанию включены). */
+    val santa = mutableStateOf(true)
+
+    /** Запустить сани сейчас (кнопка в настройках): растёт — сани вылетают без ожидания. */
+    val santaNow = mutableIntStateOf(0)
+
+    fun setSanta(ctx: Context, v: Boolean) { santa.value = v; sp(ctx).edit().putBoolean(KEY_SANTA, v).apply() }
+
     /** Полупрозрачный снег на фоне под карточками (по умолчанию включён). */
     val backdrop = mutableStateOf(true)
 
@@ -101,6 +110,7 @@ object Holiday {
         preview.value = p.getBoolean(KEY_PREVIEW, false)
         lights.value = p.getBoolean(KEY_LIGHTS, true)
         backdrop.value = p.getBoolean(KEY_BACKDROP, true)
+        santa.value = p.getBoolean(KEY_SANTA, true)
         bgStyle.intValue = p.getInt(KEY_BG_STYLE, 0).coerceIn(0, BG_STYLES.lastIndex)
         cardStyle.intValue = p.getInt(KEY_CARD_STYLE, 0).coerceIn(0, CARD_STYLES.lastIndex)
         lightsMode.intValue = p.getInt(KEY_LIGHTS_MODE, 0).coerceIn(0, LIGHT_MODES.lastIndex)

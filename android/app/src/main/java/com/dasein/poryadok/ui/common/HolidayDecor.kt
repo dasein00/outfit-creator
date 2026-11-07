@@ -57,6 +57,10 @@ object HolidayAssets {
     /** Хвойная кайма фона: остролист, пуансеттии, ветки — сверху и снизу экрана. */
     var borderTop: androidx.compose.ui.graphics.ImageBitmap? = null; private set
     var borderBottom: androidx.compose.ui.graphics.ImageBitmap? = null; private set
+    /** Сани Санты: Санта машет и держит вожжи; олени — три кадра галопа, у вожака — красный нос. */
+    var sleigh: List<androidx.compose.ui.graphics.ImageBitmap> = emptyList(); private set
+    var deer: List<androidx.compose.ui.graphics.ImageBitmap> = emptyList(); private set
+    var deerRed: List<androidx.compose.ui.graphics.ImageBitmap> = emptyList(); private set
 
     fun load(ctx: android.content.Context) {
         if (ready.value) return
@@ -67,6 +71,10 @@ object HolidayAssets {
         }.getOrDefault(emptyList())
         snow = group("snow_"); ice = group("ice_"); pairs = group("pair_")
         borderTop = group("border_top").firstOrNull(); borderBottom = group("border_bottom").firstOrNull()
+        fun one(name: String) = runCatching { ctx.assets.open("holiday/$name.webp").use { android.graphics.BitmapFactory.decodeStream(it) }?.asImageBitmap() }.getOrNull()
+        sleigh = listOfNotNull(one("sleigh_reins"), one("sleigh_wave"))
+        deer = listOfNotNull(one("deer_a"), one("deer_b"), one("deer_c"))
+        deerRed = listOfNotNull(one("deer_a_red"), one("deer_b_red"), one("deer_c_red"))
         ready.value = snow.isNotEmpty() && ice.isNotEmpty()
     }
 }
