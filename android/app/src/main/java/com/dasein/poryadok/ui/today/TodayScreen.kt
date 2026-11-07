@@ -155,7 +155,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
         val homeRows = HomeLayout.rows(layout)
         LazyColumn(
             // Отступ от строки состояния уже в pad — второй не нужен (иначе сверху пустая полоса).
-            Modifier.fillMaxSize().padding(pad).cardViewport(),
+            Modifier.fillMaxSize().padding(pad).cardViewport().then(com.dasein.poryadok.ui.common.SantaCorridor.viewport()),
             contentPadding = PaddingValues(top = 4.dp, bottom = 8.dp),
         ) {
             // Системные кнопки стоят на месте блока «Кнопки» (по умолчанию — между весом и погодой); если блок скрыт — сверху.
@@ -420,6 +420,8 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
             }
         }
     }
+    // Сани Санты — отдельным слоем во всю ширину экрана: вылетают из-за края и уходят за край (не обрезаются полями списка).
+    com.dasein.poryadok.ui.common.SantaFlight(Modifier.fillMaxSize())
     }
     if (quickAdd) QuickAddSheet(onDismiss = { quickAdd = false }, defaultDay = today)
 }
@@ -430,7 +432,7 @@ private fun HomeButtons(nav: NavHostController, onAdd: () -> Unit) {
     val extra = LocalExtra.current
     val editor = com.dasein.poryadok.data.UiTexts.editorMode.value
     // Коридор кнопок — по нему в новогодний режим пролетают сани Санты (слой поверх, нажатия проходят сквозь).
-    androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth()) {
+    androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().then(com.dasein.poryadok.ui.common.SantaCorridor.lane())) {
     Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = { nav.navigate(Routes.TASKS) }) { Icon(Icons.Default.Add, "Новая задача", tint = MaterialTheme.colorScheme.primary) }
         IconButton(onClick = { com.dasein.poryadok.data.UiTexts.setEditorMode(!editor) }) {
@@ -440,7 +442,6 @@ private fun HomeButtons(nav: NavHostController, onAdd: () -> Unit) {
         IconAction(Ic.search, "Поиск") { nav.navigate(Routes.SEARCH) }
         IconAction(Ic.settings, "Настройки") { nav.navigate(Routes.SETTINGS) }
     }
-    com.dasein.poryadok.ui.common.SantaFlight(Modifier.matchParentSize())
     }
 }
 

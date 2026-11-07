@@ -22,6 +22,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.layout
+import kotlin.math.roundToInt
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -252,6 +256,29 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
             }
         }
     }
+    // Нижняя панель прячется при прокрутке вниз и возвращается при прокрутке вверх (как в YouTube).
+    // Полоса над кнопками Android остаётся — содержимое не заходит под системные кнопки.
+    var barHidden by remember { mutableStateOf(false) }
+    LaunchedEffect(current) { barHidden = false }
+    val barScroll = remember {
+        object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+            var acc = 0f
+            override fun onPostScroll(
+                consumed: androidx.compose.ui.geometry.Offset, available: androidx.compose.ui.geometry.Offset,
+                source: androidx.compose.ui.input.nestedscroll.NestedScrollSource,
+            ): androidx.compose.ui.geometry.Offset {
+                val d = consumed.y
+                // Дошли до верха и тянем дальше — панель возвращается.
+                if (available.y > 0f) { barHidden = false; acc = 0f; return androidx.compose.ui.geometry.Offset.Zero }
+                if (d == 0f) return androidx.compose.ui.geometry.Offset.Zero
+                acc = if ((acc < 0f) == (d < 0f)) acc + d else d
+                if (acc < -24f) barHidden = true
+                if (acc > 24f) barHidden = false
+                return androidx.compose.ui.geometry.Offset.Zero
+            }
+        }
+    }
+    val barShift by androidx.compose.animation.core.animateFloatAsState(if (barHidden && showBar) 1f else 0f, androidx.compose.animation.core.tween(220), label = "bar")
     Column(Modifier.fillMaxSize().onSizeChanged { rootH = it.height }.editorModeHold()) {
         // Полоса режима редактора — сверху, подальше от системных кнопок Android внизу.
         if (com.dasein.poryadok.data.UiTexts.editorMode.value) EditorModeStrip()
@@ -259,7 +286,7 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
         // иначе над панелью остаётся пустая полоса.
         NavHost(
             nav, startDestination = Routes.TODAY,
-            modifier = Modifier.weight(1f).onSizeChanged { navH = it.height }.then(
+            modifier = Modifier.weight(1f).onSizeChanged { navH = it.height }.nestedScroll(barScroll).then(
                 if (showBar) Modifier.consumeWindowInsets(androidx.compose.foundation.layout.WindowInsets.navigationBars) else Modifier,
             ),
         ) {
@@ -482,10 +509,16 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
                 val velvet = androidx.compose.ui.graphics.Brush.verticalGradient(
                     listOf(androidx.compose.ui.graphics.Color(0xFF9A1E31), androidx.compose.ui.graphics.Color(0xFF6A1020), androidx.compose.ui.graphics.Color(0xFF3A0711)),
                 )
+                Column(
+                    Modifier.fillMaxWidth().let { if (holiday) it.background(velvet) else it.background(MaterialTheme.colorScheme.background) },
+                ) {
                 Row(
-                    Modifier.fillMaxWidth().let { if (holiday) it.background(velvet) else it.background(MaterialTheme.colorScheme.background) }
-                        .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.navigationBars)
-                        .padding(horizontal = 4.dp).height(54.dp),
+                    // При прокрутке вниз ряд вкладок уезжает вниз и сжимается до нуля; при прокрутке вверх — возвращается.
+                    Modifier.fillMaxWidth().clipToBounds().layout { m, c ->
+                        val pl = m.measure(c)
+                        val h = (pl.height * (1f - barShift)).roundToInt()
+                        layout(pl.width, h) { pl.place(0, 0) }
+                    }.padding(horizontal = 4.dp).height(54.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     com.dasein.poryadok.ui.theme.OnBackground(if (holiday) androidx.compose.ui.graphics.Color(0xFF6A1020) else androidx.compose.ui.graphics.Color.Unspecified) {
@@ -493,6 +526,8 @@ fun AppRoot(settings: Settings, deepLink: MutableState<String?>) {
                             TabButton(t, current == t.base, { nav.openTab(t.route) }) { editTab = i to t }
                         }
                     }
+                }
+                androidx.compose.foundation.layout.Spacer(Modifier.fillMaxWidth().windowInsetsBottomHeight(androidx.compose.foundation.layout.WindowInsets.navigationBars))
                 }
             }
             editTab?.let { (i, t) -> TabMenu(nav, i, t) { editTab = null } }

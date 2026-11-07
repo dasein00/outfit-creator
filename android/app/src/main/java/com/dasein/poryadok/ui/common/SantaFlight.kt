@@ -20,6 +20,11 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -38,6 +43,32 @@ private object Flights {
     var lastAt = 0L
     var toLeft = false
     var shownFor = 0
+}
+
+/**
+ * Где летят сани: «коридор» (полоса кнопок на главной) и видимая часть списка — в координатах окна.
+ * Полоса прокручивается вместе со списком, сани летят по ней; за краем списка (под шапкой) не рисуются.
+ */
+object SantaCorridor {
+    internal val lane = mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
+    internal val view = mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
+
+    /** Отметить полосу, по которой летают сани. */
+    @Composable
+    fun lane(): Modifier {
+        androidx.compose.runtime.DisposableEffect(Unit) { onDispose { lane.value = null } }
+        return Modifier.onGloballyPositioned { c ->
+            val p = c.positionInWindow()
+            lane.value = androidx.compose.ui.geometry.Rect(p.x, p.y, p.x + c.size.width, p.y + c.size.height)
+        }
+    }
+
+    /** Отметить видимую область списка: сани не залетают на шапку и нижнюю панель. */
+    @Composable
+    fun viewport(): Modifier {
+        androidx.compose.runtime.DisposableEffect(Unit) { onDispose { view.value = null } }
+        return Modifier.onGloballyPositioned { view.value = it.boundsInWindow() }
+    }
 }
 
 /**
@@ -81,9 +112,21 @@ fun SantaFlight(modifier: Modifier) {
     }
     val p = progress.floatValue
     if (p < 0f) return
-    Canvas(modifier) {
+    val lane = SantaCorridor.lane.value ?: return
+    val view = SantaCorridor.view.value
+    var origin by remember { mutableStateOf(Offset.Zero) }
+    Canvas(modifier.onGloballyPositioned { origin = it.positionInWindow() }) {
         val elapsed = p * FLIGHT_MS / 1000f
-        if (toLeft) scale(-1f, 1f) { team(p, elapsed) } else team(p, elapsed)
+        val top = lane.top - origin.y
+        val h = lane.height
+        val clipTop = (view?.top ?: origin.y) - origin.y
+        val clipBottom = (view?.bottom ?: (origin.y + size.height)) - origin.y
+        // Ширина полёта — весь экран (слой во всю ширину), высота — полоса кнопок.
+        clipRect(0f, clipTop, size.width, clipBottom) {
+            translate(0f, top) {
+                if (toLeft) scale(-1f, 1f, Offset(size.width / 2f, h / 2f)) { team(p, elapsed, size.width, h) } else team(p, elapsed, size.width, h)
+            }
+        }
     }
 }
 
@@ -92,41 +135,41 @@ private fun DrawScope.sprite(img: ImageBitmap, x: Float, y: Float, w: Float, h: 
 )
 
 /** Упряжка летит слева направо: [p] — доля пути (0 — за левым краем, 1 — за правым), [t] — секунды полёта. */
-private fun DrawScope.team(p: Float, t: Float) {
+private fun DrawScope.team(p: Float, t: Float, cw: Float, ch: Float) {
     val a = HolidayAssets
-    val deerH = size.height * .92f
+    val deerH = ch * .92f
     val deerW = deerH * a.deer[0].width / a.deer[0].height
-    val sleighH = size.height * 1.12f
+    val sleighH = ch * 1.12f
     val sleighW = sleighH * a.sleigh[0].width / a.sleigh[0].height
     val step = deerW * .78f
     val gap = deerW * .25f
     val teamW = deerW + step * 2 + gap + sleighW
     // Нос вожака проходит от-за левого края (с запасом на поля экрана) до правого плюс длина упряжки.
-    val front = -size.width * .15f + p * (size.width * 1.3f + teamW)
+    val front = -cw * .03f + p * (cw * 1.06f + teamW)
     // Лёгкая дуга по высоте коридора и покачивание в такт.
-    val arc = -sin(p * PI.toFloat()) * size.height * .12f
-    val wave = sin(p * PI.toFloat() * 3f) * size.height * .05f
-    val baseY = (size.height - deerH) / 2f + arc + wave
+    val arc = -sin(p * PI.toFloat()) * ch * .12f
+    val wave = sin(p * PI.toFloat() * 3f) * ch * .05f
+    val baseY = (ch - deerH) / 2f + arc + wave
     // Галоп: кадры A → C → B → C, у каждого оленя со сдвигом, ~9 кадров в секунду.
     val cycle = intArrayOf(0, 2, 1, 2)
     val frame = (t * 9f).toInt()
     data class Deer(val x: Float, val y: Float, val img: ImageBitmap)
     val deers = (0 until 3).map { i ->
         val x = front - deerW - i * step
-        val bob = sin(t * 2f * PI.toFloat() * 2.2f + i * 1.3f) * size.height * .04f
+        val bob = sin(t * 2f * PI.toFloat() * 2.2f + i * 1.3f) * ch * .04f
         val f = cycle[(frame + i) % cycle.size]
         Deer(x, baseY + bob, if (i == 0) a.deerRed[f] else a.deer[f])
     }
     val sleighX = front - deerW - step * 2 - gap - sleighW
-    val sleighY = baseY + deerH - sleighH * .92f + sin(t * 2f * PI.toFloat() * 1.1f) * size.height * .03f
+    val sleighY = baseY + deerH - sleighH * .92f + sin(t * 2f * PI.toFloat() * 1.1f) * ch * .03f
     // Санта машет, когда сани посередине экрана; остальное время держит вожжи.
-    val mid = (sleighX + sleighW / 2f) / size.width
+    val mid = (sleighX + sleighW / 2f) / cw
     val sleighImg = if (mid in 0.25f..0.75f) a.sleigh[1] else a.sleigh[0]
 
     // Золотой шлейф искр за санями: искры отстают и гаснут.
     val gold = Color(0xFFF2C760)
     for (k in 1..22) {
-        val back = k * size.width * .022f
+        val back = k * cw * .022f
         val sx = sleighX + sleighW * .12f - back
         val sy = sleighY + sleighH * (.82f + .08f * sin(k * 1.7f + t * 3f))
         val alpha = (1f - k / 23f) * (.55f + .45f * sin(t * 9f + k * 2.1f).let { it * it })
@@ -144,7 +187,7 @@ private fun DrawScope.team(p: Float, t: Float) {
     for (d in deers.reversed()) {
         val cx = d.x + deerW * .67f
         val cy = d.y + deerH * .56f
-        path.quadraticTo((px + cx) / 2f, maxOf(py, cy) + size.height * .06f, cx, cy)
+        path.quadraticTo((px + cx) / 2f, maxOf(py, cy) + ch * .06f, cx, cy)
         px = cx; py = cy
     }
     drawPath(path, rein, style = Stroke(width = 1.6f * density, cap = StrokeCap.Round))
