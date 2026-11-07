@@ -49,6 +49,9 @@ object Halloween {
     val ghost = mutableStateOf(true)
     val spiders = mutableStateOf(true)
     val leaves = mutableStateOf(true)
+    val crows = mutableStateOf(true)
+    val webs = mutableStateOf(true)
+    val witch = mutableStateOf(true)
     val bgStyle = mutableIntStateOf(0)
     val cardStyle = mutableIntStateOf(0)
 
@@ -60,7 +63,7 @@ object Halloween {
 
     private var loaded = false
     private fun sp(ctx: Context) = ctx.getSharedPreferences("ui_state", Context.MODE_PRIVATE)
-    private val flags get() = listOf("auto" to auto, "fog" to fog, "bats" to bats, "eyes" to eyes, "hand" to hand, "ghost" to ghost, "spiders" to spiders, "leaves" to leaves)
+    private val flags get() = listOf("auto" to auto, "fog" to fog, "bats" to bats, "eyes" to eyes, "hand" to hand, "ghost" to ghost, "spiders" to spiders, "leaves" to leaves, "crows" to crows, "webs" to webs, "witch" to witch)
 
     fun load(ctx: Context) {
         if (loaded) return

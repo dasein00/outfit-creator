@@ -73,6 +73,16 @@ object HalloweenAssets {
     var spiderSide: List<ImageBitmap> = emptyList(); private set
     var spiderTop: List<ImageBitmap> = emptyList(); private set
     var spiderPeek: List<ImageBitmap> = emptyList(); private set
+    /** Злые глаза: [вид][открыты, прикрыты, почти закрыты, закрыты]. */
+    var evil: List<List<ImageBitmap>> = emptyList(); private set
+    /** Ворон: сидит, каркает, летит, взлетает, садится (смотрит вправо, лапы — внизу по центру кадра). */
+    var crowIdle: List<ImageBitmap> = emptyList(); private set
+    var crowCaw: List<ImageBitmap> = emptyList(); private set
+    var crowFly: List<ImageBitmap> = emptyList(); private set
+    var crowUp: List<ImageBitmap> = emptyList(); private set
+    var crowLand: List<ImageBitmap> = emptyList(); private set
+    /** Ведьма на метле: 0–3 полёт, 4–5 машет, 6–7 с котом. */
+    var witch: List<ImageBitmap> = emptyList(); private set
 
     fun load(ctx: android.content.Context) {
         if (ready.value) return
@@ -84,7 +94,11 @@ object HalloweenAssets {
         hand = many("hand", 6); ghost = many("ghost", 6); ghostling = many("ghostling", 4)
         leaves = many("fall_leaf", 6); fallBats = many("fall_bat", 3); stars = many("fall_star", 3)
         caps = many("cap", 8); spiderSide = many("spider_side", 4); spiderTop = many("spider_top", 4); spiderPeek = many("spider_peek", 3)
-        ready.value = near != null && batHang.size == 4 && batFly.size == 4 && eyes.isNotEmpty() && hand.size == 6 && ghost.size == 6
+        evil = (0 until 5).map { k -> (0 until 4).mapNotNull { one("evil_${k}_$it") } }.filter { it.size == 4 }
+        crowIdle = many("crow_idle", 4); crowCaw = many("crow_caw", 4); crowFly = many("crow_fly", 4); crowUp = many("crow_up", 4); crowLand = many("crow_land", 4)
+        witch = many("witch", 8)
+        ready.value = near != null && batHang.size == 4 && batFly.size == 4 && evil.isNotEmpty() && hand.size == 6 && ghost.size == 6 &&
+            spiderTop.size == 4 && spiderSide.size == 4 && spiderPeek.size == 3 && crowFly.size == 4 && crowIdle.size == 4 && crowUp.size == 4 && crowLand.size == 4 && crowCaw.size == 4 && witch.size == 8
     }
 }
 
@@ -109,9 +123,13 @@ private fun DrawScope.fogBand(tex: ImageBitmap?, y: Float, bandH: Float, speed: 
 private class Firefly(val x: Float, val y: Float, val sp: Float, val ph: Float, val gold: Boolean)
 private val FIREFLIES = Random(3110).let { r -> List(14) { Firefly(r.nextFloat(), .25f + r.nextFloat() * .65f, .3f + r.nextFloat() * .5f, r.nextFloat() * 6.28f, it % 4 == 0) } }
 
-/** Где на кайме кусты (глаза снизу) и кроны (глаза сверху), в долях картинки каймы. */
-private val BUSH_EYES = listOf(.155f to .70f, .40f to .80f, .74f to .74f, .965f to .69f)
-private val CROWN_EYES = listOf(.13f to .16f, .89f to .13f)
+/** Где на нижней кайме злые глаза: дупла деревьев, куст справа (центр, доли картинки каймы) и ширина глаз (доли экрана). */
+private val TREE_EYES = listOf(Triple(.089f, .225f, .026f), Triple(.061f, .435f, .032f), Triple(.903f, .267f, .026f), Triple(.935f, .487f, .032f))
+private val BUSH_EYES = listOf(Triple(.952f, .739f, .042f), Triple(.955f, .859f, .042f))
+/** Норы в земле нижней каймы: сюда спускаются пауки, внутри потом горят глаза. */
+private val BURROWS = listOf(.074f to .915f, .381f to .915f, .6875f to .892f)
+/** Ветки деревьев нижней каймы, на которых сидят вороны (верх ветки). */
+private val CROW_PERCHES = listOf(.18f to .214f, .24f to .173f, .27f to .329f, .77f to .338f, .83f to .179f, .86f to .342f)
 
 /** Куда на ветках верхней каймы садятся летучие мыши (низ ветки), в долях картинки. */
 private val PERCHES = listOf(.23f to .14f, .315f to .135f, .215f to .34f, .30f to .32f, .57f to .215f, .645f to .225f, .78f to .315f, .86f to .317f)
@@ -167,6 +185,7 @@ fun DrawScope.halloweenScene(t: Float, dark: Boolean) {
     }
     val as0 = HalloweenAssets
     if (!as0.ready.value) return
+    if (Halloween.witch.value) witchFlight(t, w, h, mc, mr)
     val fogOn = Halloween.fog.value
     val lav = Color(0xFFD8C6F0)
     // Лёгкий туман под плашками посередине экрана.
@@ -175,11 +194,11 @@ fun DrawScope.halloweenScene(t: Float, dark: Boolean) {
     val bh = w / 3f; val by = h - bh
     as0.far?.let { img(it, 0f, by, w, bh, alpha = .95f) }
     if (fogOn) {
-        fogBand(as0.fog1, by + bh * .38f, bh * .5f, 9f, t, lav.copy(alpha = if (dark) .55f else .6f))
-        fogBand(as0.fog2, by + bh * .55f, bh * .35f, 16f, t, LIME.copy(alpha = .22f))
+        fogBand(as0.fog1, by + bh * .4f, bh * .45f, 9f, t, lav.copy(alpha = if (dark) .5f else .55f))
+        fogBand(as0.fog2, by + bh * .55f, bh * .35f, 16f, t, LIME.copy(alpha = .2f))
     }
     as0.near?.let { img(it, 0f, by, w, bh) }
-    // Рука вырывается из земли у могилы, машет и уходит обратно.
+    // Рука вырывается из земли у креста справа, машет и уходит обратно.
     if (Halloween.hand.value) {
         val local = (t + 8f) % 26f
         val f = when {
@@ -189,37 +208,192 @@ fun DrawScope.halloweenScene(t: Float, dark: Boolean) {
             else -> 0
         }
         val hb = as0.hand[f]
-        val hh = bh * .34f; val hw = hh * hb.width / hb.height
-        img(hb, w * .2f - hw / 2f, by + bh * .955f - hh, hw, hh)
+        val hh = bh * .3f; val hw = hh * hb.width / hb.height
+        img(hb, w * .8f - hw / 2f, by + bh * .99f - hh, hw, hh)
     }
-    if (fogOn) fogBand(as0.fog1, by + bh * .78f, bh * .3f, 22f, t, lav.copy(alpha = .22f))
-    // Моргающие красные глаза: в кустах кладбища и в кронах деревьев.
+    // Злые глаза в дуплах и в кусте: каждая пара моргает в своём ритме, иногда гаснет и загорается снова.
     if (Halloween.eyes.value) {
-        BUSH_EYES.forEachIndexed { i, (fx, fy) -> eyesAt(i, t, w * fx, by + bh * fy, w * .085f) }
+        TREE_EYES.forEachIndexed { i, (fx, fy, ew) -> evilEyes(i, t, w * fx, by + bh * fy, w * ew, roam = true) }
+        BUSH_EYES.forEachIndexed { i, (fx, fy, ew) -> evilEyes(i + 4, t, w * fx, by + bh * fy, w * ew, roam = true) }
     }
+    if (Halloween.crows.value) crows(t, w, by, bh)
+    if (fogOn) fogBand(as0.fog1, by + bh * .8f, bh * .3f, 22f, t, lav.copy(alpha = .2f))
     // Ветки сверху, на них летучие мыши.
     val th = w / 3f
     as0.top?.let { img(it, 0f, 0f, w, th) }
-    if (Halloween.eyes.value) CROWN_EYES.forEachIndexed { i, (fx, fy) -> eyesAt(i + 4, t, w * fx, th * fy + w * .03f, w * .07f) }
     if (Halloween.bats.value) bats(t, w, th)
+    // Пауки спускаются с веток на паутине по краю экрана в норы внизу.
+    if (Halloween.webs.value) webSpider(t, w, th, by, bh)
 }
 
-private fun DrawScope.eyesAt(i: Int, t: Float, cx: Float, bottom: Float, ew: Float) {
-    val set = HalloweenAssets.eyes.getOrNull(i % HalloweenAssets.eyes.size) ?: return
-    val vis = ((sin(t * .21f + i * 2.3f) + .35f) / .4f).coerceIn(0f, 1f)
-    if (vis <= 0f) return
-    val p = 3.4f + i * .9f
+/** Пара злых глаз с центром в ([cx], [cy]): моргает (иногда дважды), при [roam] — то гаснет, то загорается. */
+private fun DrawScope.evilEyes(i: Int, t: Float, cx: Float, cy: Float, ew: Float, roam: Boolean, alpha: Float = 1f) {
+    val all = HalloweenAssets.evil
+    if (all.isEmpty()) return
+    val set = all[i % all.size]
+    val vis = alpha * if (roam) ((sin(t * .19f + i * 2.3f) + .3f) / .35f).coerceIn(0f, 1f) else 1f
+    if (vis <= .01f) return
+    val p = 2.6f + (i * 1.37f) % 3.1f
     val ph = (t + i * 1.7f) % p
+    val dbl = (((t + i * 1.7f) / p).toInt() + i) % 3 == 0
+    fun blink(x: Float) = when { x < .06f -> 1; x < .12f -> 2; x < .2f -> 3; x < .26f -> 2; x < .32f -> 1; else -> 0 }
     val frame = when {
-        ph > p - .12f -> 1
-        ph > p - .24f -> 2
-        ph > p - .36f -> 1
+        ph < .32f -> blink(ph)
+        dbl && ph in .45f..0.77f -> blink(ph - .45f)
         else -> 0
     }
     val b = set[frame]
     val eh = ew * b.height / b.width
-    if (frame != 2) glow(EYE_RED, Offset(cx, bottom - eh * .5f), ew * .55f, .32f * vis)
-    img(b, cx - ew / 2f, bottom - eh, ew, eh, alpha = vis)
+    if (frame < 3) glow(EYE_RED, Offset(cx, cy), ew * .6f, .3f * vis * (1f - frame * .25f))
+    img(b, cx - ew / 2f, cy - eh / 2f, ew, eh, alpha = vis)
+}
+
+/** Ворона в стайке: где сидит, куда летит, когда взлетела. */
+private object Crows {
+    const val DUR = 3.2f
+    val at = intArrayOf(0, 3, 5)
+    val to = intArrayOf(-1, -1, -1)
+    val start = FloatArray(3)
+    val next = floatArrayOf(9f, 19f, 29f)
+    val rnd = Random(777)
+    fun step(t: Float) {
+        for (i in at.indices) {
+            if (to[i] >= 0 && (t < start[i] || t - start[i] >= DUR)) { at[i] = to[i]; to[i] = -1; next[i] = t + 9f + rnd.nextFloat() * 14f }
+            if (to[i] < 0 && t >= next[i]) {
+                val busy = at.toSet() + to.filter { it >= 0 }
+                val free = CROW_PERCHES.indices.filter { it !in busy }
+                if (free.isNotEmpty()) { to[i] = free[rnd.nextInt(free.size)]; start[i] = t }
+            }
+            if (t + 80f < next[i]) next[i] = t + 6f
+        }
+    }
+}
+
+/** Вороны на ветках деревьев нижней каймы: сидят, чистят перья, каркают; иногда перелетают на другую ветку или дерево. */
+private fun DrawScope.crows(t: Float, w: Float, by: Float, bh: Float) {
+    val a = HalloweenAssets
+    Crows.step(t)
+    val cw = w * .085f
+    fun perch(i: Int) = Offset(CROW_PERCHES[i].first * w, by + CROW_PERCHES[i].second * bh)
+    fun drawCrow(f: ImageBitmap, feet: Offset, faceLeft: Boolean) {
+        val x = feet.x - cw * .473f; val y = feet.y - cw * .925f
+        if (faceLeft) scale(-1f, 1f, Offset(feet.x, feet.y)) { img(f, x, y, cw, cw) } else img(f, x, y, cw, cw)
+    }
+    for (i in Crows.at.indices) {
+        val from = perch(Crows.at[i])
+        val dest = Crows.to[i]
+        if (dest < 0) {
+            // На левом дереве смотрит вправо, на правом — влево (к центру экрана).
+            val faceLeft = from.x > w / 2f
+            val local = (t + i * 4.3f) % 11f
+            val f = when {
+                local < 1.4f -> a.crowCaw[intArrayOf(0, 1, 2, 1, 2, 0)[(local / .24f).toInt().coerceIn(0, 5)]]
+                local in 5f..6.2f -> a.crowIdle[2]
+                local in 8f..8.8f -> a.crowIdle[1]
+                local in 9.6f..10f -> a.crowCaw[3]
+                else -> a.crowIdle[0]
+            }
+            drawCrow(f, from, faceLeft)
+            continue
+        }
+        val to = perch(dest)
+        val u = ((t - Crows.start[i]) / Crows.DUR).coerceIn(0f, 1f)
+        val left = to.x < from.x
+        when {
+            u < .14f -> drawCrow(a.crowUp[(u / .14f * 4).toInt().coerceIn(0, 3)], from, left)
+            u > .84f -> drawCrow(a.crowLand[((u - .84f) / .16f * 4).toInt().coerceIn(0, 3)], to, left)
+            else -> {
+                val s = ((u - .14f) / .7f).let { it * it * (3 - 2 * it) }
+                val c = Offset((from.x + to.x) / 2f, minOf(from.y, to.y) - bh * .35f)
+                val pos = Offset(
+                    (1 - s) * (1 - s) * from.x + 2 * (1 - s) * s * c.x + s * s * to.x,
+                    (1 - s) * (1 - s) * from.y + 2 * (1 - s) * s * c.y + s * s * to.y,
+                )
+                drawCrow(a.crowFly[(t * 9f).toInt() % 4], pos, left)
+            }
+        }
+    }
+}
+
+/**
+ * Паук на паутине: появляется на ветке верхней каймы (то слева, то справа), спускается по краю экрана до земли,
+ * ползёт в нору; в норе загораются красные глаза; потом паук выбирается и уползает за край экрана. Повторяется.
+ */
+private fun DrawScope.webSpider(t: Float, w: Float, th: Float, by: Float, bh: Float) {
+    val a = HalloweenAssets
+    val cycle = 40f
+    val n = ((t + 6f) / cycle).toInt()
+    val lt = (t + 6f) % cycle
+    val leftSide = n % 2 == 0
+    val rnd = Random(n * 31 + 7)
+    val bi = if (leftSide) (if (rnd.nextBoolean()) 0 else 1) else (if (rnd.nextBoolean()) 2 else 1)
+    val burrow = Offset(BURROWS[bi].first * w, by + BURROWS[bi].second * bh)
+    val sx = (if (leftSide) .06f else .95f) * w
+    val startY = th * .29f
+    val groundY = burrow.y - bh * .02f
+    val speed = w * .11f
+    val tw = 18.dp.toPx(); val tH = tw * a.spiderTop[0].height / a.spiderTop[0].width
+    val sw = 20.dp.toPx(); val sH = sw * a.spiderSide[0].height / a.spiderSide[0].width
+    val pw = 20.dp.toPx(); val pH = pw * a.spiderPeek[0].height / a.spiderPeek[0].width
+    val frame = (t * 9f).toInt() % 4
+    val tAppear = .8f; val tDesc = 10f
+    val walk1 = (kotlin.math.abs(burrow.x - sx) / speed).coerceAtLeast(.6f)
+    val tIn = .7f; val tStay = 7f; val tOut = .7f
+    val edgeX = if (burrow.x < w / 2f) -w * .06f else w * 1.06f
+    val walk2 = kotlin.math.abs(edgeX - burrow.x) / speed
+    var k = lt
+    fun side(x: Float, y: Float, toLeft: Boolean) {
+        val f = a.spiderSide[frame]
+        if (toLeft) scale(-1f, 1f, Offset(x, y)) { img(f, x - sw / 2f, y - sH, sw, sH) } else img(f, x - sw / 2f, y - sH, sw, sH)
+    }
+    fun peek(u: Float) { val f = a.spiderPeek[(u * 3).toInt().coerceIn(0, 2)]; img(f, burrow.x - pw / 2f, burrow.y + pH * .25f - pH, pw, pH) }
+    // Спуск по паутине (голова вниз).
+    if (k < tAppear + tDesc) {
+        val sway = sin(t * 1.3f) * 3f * density
+        val y = if (k < tAppear) startY else startY + (groundY - startY - tH / 2f) * ((k - tAppear) / tDesc).let { it * it * (3 - 2 * it) }
+        val x = sx + sway * ((y - startY) / (groundY - startY)).coerceIn(0f, 1f)
+        drawLine(LILAC.copy(alpha = .55f), Offset(sx, startY - 2f), Offset(x, y), 1f * density)
+        val sc = if (k < tAppear) k / tAppear else 1f
+        val f = a.spiderTop[if (k < tAppear) 0 else frame]
+        scale(sc, sc, Offset(x, y)) { rotate(180f, Offset(x, y + tH / 2f)) { img(f, x - tw / 2f, y, tw, tH) } }
+        return
+    }
+    k -= tAppear + tDesc
+    // Ползёт по земле к норе.
+    if (k < walk1) { side(sx + (burrow.x - sx) * (k / walk1), groundY, burrow.x < sx); return }
+    k -= walk1
+    if (k < tIn) { peek(1f - k / tIn); return }
+    k -= tIn
+    // В норе — горящие глаза.
+    if (k < tStay) { evilEyes(bi + 7, t, burrow.x, burrow.y - bh * .015f, w * .04f, roam = false, alpha = (k / .5f).coerceAtMost(1f)); return }
+    k -= tStay
+    if (k < tOut) { peek(k / tOut); return }
+    k -= tOut
+    // Уползает за край экрана.
+    if (k < walk2) side(burrow.x + (edgeX - burrow.x) * (k / walk2), groundY, edgeX < burrow.x)
+}
+
+/** Ведьма на метле медленно пролетает мимо луны под плашками — раз в ~75 с, то вправо, то влево. */
+private fun DrawScope.witchFlight(t: Float, w: Float, h: Float, moon: Offset, mr: Float) {
+    val a = HalloweenAssets
+    if (a.witch.size < 8) return
+    val period = 75f; val dur = 11f
+    val n = ((t + 25f) / period).toInt()
+    val local = (t + 25f) % period
+    if (local > dur) return
+    val ww = w * .3f; val wh = ww * a.witch[0].height / a.witch[0].width
+    val u = local / dur
+    val toRight = n % 2 == 0
+    val xc = if (toRight) -ww + u * (w + 2 * ww) else w + ww - u * (w + 2 * ww)
+    val yc = moon.y + mr * .15f - sin(u * PI.toFloat()) * mr * .5f + sin(t * 2f) * mr * .06f
+    val nearMoon = kotlin.math.abs(xc - moon.x) < mr * 1.6f
+    val f = when {
+        nearMoon -> a.witch[4 + ((t * 3f).toInt() % 2)]
+        n % 3 == 1 -> a.witch[6 + ((t * 2f).toInt() % 2)]
+        else -> a.witch[(t * 8f).toInt() % 4]
+    }
+    val x = xc - ww / 2f; val y = yc - wh / 2f
+    if (toRight) img(f, x, y, ww, wh) else scale(-1f, 1f, Offset(xc, yc)) { img(f, x, y, ww, wh) }
 }
 
 private fun DrawScope.bats(t: Float, w: Float, th: Float) {
