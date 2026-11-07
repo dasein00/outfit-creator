@@ -124,7 +124,7 @@ fun AppearanceScreen(nav: NavHostController, settings: Settings) {
             // Праздничные темы — отдельными подразделами.
             SectionTitle("Праздничные темы")
             SeasonRow("Новогодний режим", "15 декабря — 15 января: гирлянда, снег, сосульки, сани Санты", com.dasein.poryadok.ui.theme.Holiday.active) { nav.navigate(HOLIDAY_ROUTE) }
-            SeasonRow("Хэллоуин", "24 октября — 1 ноября: кладбище в тумане, глаза, летучие мыши, пауки, привидение", com.dasein.poryadok.ui.theme.Halloween.active) { nav.navigate(HALLOWEEN_ROUTE) }
+            SeasonRow("Хэллоуин", "15 октября — 2 ноября: кладбище в тумане, глаза, летучие мыши, пауки, привидение", com.dasein.poryadok.ui.theme.Halloween.active) { nav.navigate(HALLOWEEN_ROUTE) }
 
             SectionTitle("Цвет акцента", action = if (look.accentRgb != 0 || settings.accent != 0) "Как в теме" else null, onAction = {
                 set { it.copy(accentRgb = 0) }; io { Graph.prefs.update { s -> s.copy(accent = 0) } }

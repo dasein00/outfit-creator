@@ -291,9 +291,10 @@ fun Modifier.halloweenCap(seed: Int, force: Boolean = false): Modifier = drawWit
     }
     val rnd = Random(seed)
     val w = size.width
-    val capH = 20.dp.toPx()
+    val capH = 22.dp.toPx()
     val pieceW = capH * a.caps[0].width / a.caps[0].height
-    val top = capH * .45f - capH           // холмик на ~45 % своей высоты лежит на плашке, остальное — над краем
+    // Самые глубокие ложбинки холмика (~80 % высоты картинки) приходятся на верхний край плашки — рамки не видно.
+    val top = -capH * .8f
     var k = seed.mod(8)
     var x = -rnd.nextFloat() * pieceW * .25f
     val holes = ArrayList<Offset>()
@@ -303,7 +304,8 @@ fun Modifier.halloweenCap(seed: Int, force: Boolean = false): Modifier = drawWit
             val p = Offset(x + hx * pieceW, top + hy * capH)
             if (p.x > 10.dp.toPx() && p.x < w - 10.dp.toPx()) holes += p
         }
-        x += pieceW - 1f
+        // Концы полос сужаются к низу — следующая полоса заходит на конец предыдущей, без просветов.
+        x += pieceW * .86f
         k = (k + 3) % 8
     }
     if ((!Halloween.spiders.value && !force) || holes.isEmpty()) return@drawWithContent

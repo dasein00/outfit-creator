@@ -125,6 +125,8 @@ fun Tile(
     color: Color = LocalExtra.current.card,
     padding: Dp = Space.card,
     onLongClick: (() -> Unit)? = null,
+    /** Праздничные шапки (снег, холмик с норами) — у маленьких плашек можно выключить. */
+    decor: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     // Карточка-кнопка без своего удержания: удержание открывает правку её надписи и иконки.
@@ -137,7 +139,7 @@ fun Tile(
     val decor = if (plain) currentCardDecor(color) else null
     Surface(
         // В новогоднем режиме — снежная шапка по верхнему краю (только рисунок, размеры не меняются).
-        modifier = modifier.fillMaxWidth().halloweenCap(snowSeed).clip(RoundedCornerShape(round)).snowCap(snowSeed).let {
+        modifier = modifier.fillMaxWidth().let { if (decor) it.halloweenCap(snowSeed) else it }.clip(RoundedCornerShape(round)).let { if (decor) it.snowCap(snowSeed) else it }.let {
             when {
                 onLongClick != null -> it.combinedClickable(onClick = onClick ?: {}, onLongClick = onLongClick)
                 onClick != null -> (if (holder != null && LocalIconEditable.current) it.labelLongPress(holder) else it).clickable(onClick = onClick)

@@ -157,6 +157,8 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
             // Отступ от строки состояния уже в pad — второй не нужен (иначе сверху пустая полоса).
             Modifier.fillMaxSize().padding(pad).cardViewport().then(com.dasein.poryadok.ui.common.SantaCorridor.viewport()),
             contentPadding = PaddingValues(top = 4.dp, bottom = 8.dp),
+            // В Хэллоуин над плашками торчат холмики с травой и грибами — между плашками больше места.
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(if (com.dasein.poryadok.ui.theme.Halloween.active) 16.dp else 0.dp),
         ) {
             // Системные кнопки стоят на месте блока «Кнопки» (по умолчанию — между весом и погодой); если блок скрыт — сверху.
             if (homeRows.none { layout[it.first()].id == "greeting" }) item(key = "buttons") { HomeButtons(nav) { quickAdd = true } }
@@ -173,7 +175,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                             val stepsGoalNow = profile?.stepsGoal ?: 8000
                             val burned = Energy.burned(stepsNow, weightKg, workoutsAll.filter { it.day == today }.sumOf { it.kcal }, energyAll.firstOrNull { it.day == today }?.activeKcal, profile?.heightCm, settings.walkPace)
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.STEPS) }, padding = 12.dp) {
+                                Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.STEPS) }, padding = 12.dp, decor = false) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         ProgressRing(stepsNow / stepsGoalNow.coerceAtLeast(1).toFloat(), extra.ok, size = 54.dp, stroke = 6.dp) { Glyph("sport/19", 24.dp, badge = false) }
                                         Column(Modifier.padding(start = 10.dp)) {
@@ -182,7 +184,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                                         }
                                     }
                                 }
-                                Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.training(4)) }, padding = 12.dp) {
+                                Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.training(4)) }, padding = 12.dp, decor = false) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         ProgressRing(burned.total / 600f, Palette.item(0), size = 54.dp, stroke = 6.dp) { Glyph("sport/22", 24.dp, badge = false) }
                                         Column(Modifier.padding(start = 10.dp)) {

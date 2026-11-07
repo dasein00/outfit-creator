@@ -10,11 +10,11 @@ class HalloweenSeasonTest {
     private fun d(y: Int, m: Int, day: Int) = LocalDate.of(y, m, day)
 
     @Test fun seasonBoundaries() {
-        assertFalse("23 октября — обычное оформление", HalloweenSeason.inSeason(d(2026, 10, 23)))
-        assertTrue("24 октября — включается", HalloweenSeason.inSeason(d(2026, 10, 24)))
+        assertFalse("14 октября — обычное оформление", HalloweenSeason.inSeason(d(2026, 10, 14)))
+        assertTrue("15 октября — включается", HalloweenSeason.inSeason(d(2026, 10, 15)))
         assertTrue("31 октября", HalloweenSeason.inSeason(d(2026, 10, 31)))
-        assertTrue("1 ноября включительно", HalloweenSeason.inSeason(d(2026, 11, 1)))
-        assertFalse("2 ноября — снова обычное", HalloweenSeason.inSeason(d(2026, 11, 2)))
+        assertTrue("2 ноября включительно", HalloweenSeason.inSeason(d(2026, 11, 2)))
+        assertFalse("3 ноября — снова обычное", HalloweenSeason.inSeason(d(2026, 11, 3)))
         assertFalse("новогодний сезон — не Хэллоуин", HalloweenSeason.inSeason(d(2026, 12, 31)))
     }
 
@@ -25,9 +25,9 @@ class HalloweenSeasonTest {
     }
 
     @Test fun labels() {
-        assertEquals(d(2026, 10, 24), HalloweenSeason.nextStart(d(2026, 7, 1)))
-        assertEquals(d(2027, 10, 24), HalloweenSeason.nextStart(d(2026, 11, 7)))
-        assertEquals(d(2026, 11, 1), HalloweenSeason.seasonEnd(d(2026, 10, 28)))
-        assertEquals(d(2027, 11, 1), HalloweenSeason.seasonEnd(d(2026, 11, 7)))
+        assertEquals(d(2026, 10, 15), HalloweenSeason.nextStart(d(2026, 7, 1)))
+        assertEquals(d(2027, 10, 15), HalloweenSeason.nextStart(d(2026, 11, 7)))
+        assertEquals(d(2026, 11, 2), HalloweenSeason.seasonEnd(d(2026, 10, 28)))
+        assertEquals(d(2027, 11, 2), HalloweenSeason.seasonEnd(d(2026, 11, 7)))
     }
 }
