@@ -83,6 +83,10 @@ object HalloweenAssets {
     var crowLand: List<ImageBitmap> = emptyList(); private set
     /** Ведьма на метле: 0–3 полёт, 4–5 машет, 6–7 с котом. */
     var witch: List<ImageBitmap> = emptyList(); private set
+    /** Крыса: walk, peek, snarl, scared, run, climb, dive — по 4 кадра, смотрит вправо, низ на одной линии. */
+    var rat: Map<String, List<ImageBitmap>> = emptyMap(); private set
+    /** Паук для встреч: snarl, scared, run, climb, dive — по 4 кадра. */
+    var spi: Map<String, List<ImageBitmap>> = emptyMap(); private set
 
     fun load(ctx: android.content.Context) {
         if (ready.value) return
@@ -97,6 +101,8 @@ object HalloweenAssets {
         evil = (0 until 5).map { k -> (0 until 4).mapNotNull { one("evil_${k}_$it") } }.filter { it.size == 4 }
         crowIdle = many("crow_idle", 4); crowCaw = many("crow_caw", 4); crowFly = many("crow_fly", 4); crowUp = many("crow_up", 4); crowLand = many("crow_land", 4)
         witch = many("witch", 8)
+        rat = listOf("walk", "peek", "snarl", "scared", "run", "climb", "dive").associateWith { many("rat_$it", 4) }.filterValues { it.size == 4 }
+        spi = listOf("snarl", "scared", "run", "climb", "dive").associateWith { many("spi_$it", 4) }.filterValues { it.size == 4 }
         ready.value = near != null && batHang.size == 4 && batFly.size == 4 && evil.isNotEmpty() && hand.size == 6 && ghost.size == 6 &&
             spiderTop.size == 4 && spiderSide.size == 4 && spiderPeek.size == 3 && crowFly.size == 4 && crowIdle.size == 4 && crowUp.size == 4 && crowLand.size == 4 && crowCaw.size == 4 && witch.size == 8
     }
@@ -124,9 +130,9 @@ private class Firefly(val x: Float, val y: Float, val sp: Float, val ph: Float, 
 private val FIREFLIES = Random(3110).let { r -> List(14) { Firefly(r.nextFloat(), .25f + r.nextFloat() * .65f, .3f + r.nextFloat() * .5f, r.nextFloat() * 6.28f, it % 4 == 0) } }
 
 /** Где на нижней кайме злые глаза: дупла деревьев, куст справа (центр, доли картинки каймы) и ширина глаз (доли экрана). */
-private val TREE_EYES = listOf(Triple(.089f, .225f, .026f), Triple(.061f, .435f, .032f), Triple(.903f, .267f, .026f), Triple(.935f, .487f, .032f))
+private val TREE_EYES = listOf(Triple(.0859f, .2374f, .7f), Triple(.0635f, .4306f, .9f), Triple(.9047f, .2666f, .7f), Triple(.9366f, .5006f, .9f))
 /** Норы в земле нижней каймы: сюда спускаются пауки, внутри потом горят глаза. */
-private val BURROWS = listOf(.074f to .915f, .381f to .915f, .6875f to .892f)
+private val BURROWS = listOf(.071f to .905f, .367f to .912f, .6907f to .8995f)
 /** Ветки деревьев нижней каймы, на которых сидят вороны (верх ветки). */
 private val CROW_PERCHES = listOf(.18f to .214f, .24f to .173f, .27f to .329f, .77f to .338f, .83f to .179f, .86f to .342f)
 
@@ -212,7 +218,7 @@ fun DrawScope.halloweenScene(t: Float, dark: Boolean) {
     }
     // Злые глаза в дуплах и в кусте: каждая пара моргает в своём ритме, иногда гаснет и загорается снова.
     if (Halloween.eyes.value) {
-        TREE_EYES.forEachIndexed { i, (fx, fy, _) -> evilEyes(i, t, w * fx, by + bh * fy, .9f * density, roam = true) }
+        TREE_EYES.forEachIndexed { i, (fx, fy, r) -> evilEyes(i, t, w * fx, by + bh * fy, r * density, roam = true) }
     }
     if (Halloween.crows.value) crows(t, w, by, bh)
     if (fogOn) fogBand(as0.fog1, by + bh * .8f, bh * .3f, 22f, t, lav.copy(alpha = .2f))
@@ -317,63 +323,176 @@ private fun DrawScope.crows(t: Float, w: Float, by: Float, bh: Float) {
     }
 }
 
+/** Кадр крысы/паука по имени анимации; null — если картинки не загрузились. */
+private fun ratF(anim: String, i: Int) = HalloweenAssets.rat[anim]?.get(i.coerceIn(0, 3))
+private fun spiF(anim: String, i: Int) = HalloweenAssets.spi[anim]?.get(i.coerceIn(0, 3))
+
+/** Номер кадра 0..3 для доли [u] проигрывания и зацикленный кадр по времени. */
+private fun seq(u: Float) = (u * 4f).toInt().coerceIn(0, 3)
+private fun loop(t: Float, fps: Float = 10f) = (t * fps).toInt().mod(4)
+
 /**
- * Паук на паутине: появляется на ветке верхней каймы (то слева, то справа), спускается по краю экрана до земли,
- * ползёт в нору; в норе загораются красные глаза; потом паук выбирается и уползает за край экрана. Повторяется.
+ * Рисует кадр зверька: низ кадра (лапы или край норы) — на линии [base], по центру [x]. Кадры смотрят вправо,
+ * [faceLeft] отражает. [fw] — ширина кадра, [baseline] — где в кадре низ рисунка (доля высоты).
+ */
+private fun DrawScope.critter(b: ImageBitmap?, x: Float, base: Float, fw: Float, baseline: Float, faceLeft: Boolean = false) {
+    b ?: return
+    val fh = fw * b.height / b.width
+    val l = x - fw / 2f; val tp = base - fh * baseline
+    if (faceLeft) scale(-1f, 1f, Offset(x, base)) { img(b, l, tp, fw, fh) } else img(b, l, tp, fw, fh)
+}
+private const val RAT_BASE = .959f
+private const val SPI_BASE = .97f
+private const val OLD_SIDE_BASE = .955f
+
+/**
+ * Нижняя кайма: пауки спускаются с веток на паутине, в норах живёт крыса. Цикл ~46 с, по очереди:
+ *  - паук идёт в нору с крысой → крыса скалится, паук пугается и бежит в ближайшую свободную нору;
+ *  - паук сидит в норе (горят глаза), крыса идёт к нему → паук скалится, крыса бежит в ближайшую свободную;
+ *  - просто паук: нора, глаза, уходит за край. Крыса иногда выглядывает из своей норы.
  */
 private fun DrawScope.webSpider(t: Float, w: Float, th: Float, by: Float, bh: Float) {
     val a = HalloweenAssets
-    val cycle = 40f
-    val n = ((t + 6f) / cycle).toInt()
+    val cycle = 46f
+    val n = ((t + 6f) / cycle).toInt().coerceAtLeast(0)
     val lt = (t + 6f) % cycle
+    val pos = BURROWS.map { Offset(it.first * w, by + it.second * bh) }
+    val rim = pos.map { it + Offset(0f, bh * .03f) }   // край норы: здесь обрезаются кадры «выглядывает/ныряет»
+    fun nearest(from: Offset, except: Set<Int>) = pos.indices.filter { it !in except }.minBy { kotlin.math.abs(pos[it].x - from.x) }
+    val ratsOn = a.rat.size == 7 && a.spi.size == 5
+    val stopGap = 18.dp.toPx()
+    /** Куда убегает напуганная крыса: в ближайшую к ней свободную нору (кроме норы паука). */
+    fun fleeHome(hm: Int, tg: Int): Int {
+        val stopX = pos[tg].x + if (pos[hm].x < pos[tg].x) -stopGap else stopGap
+        return nearest(Offset(stopX, 0f), setOf(tg))
+    }
+    // Где живёт крыса в начале каждого цикла (считается от начала, чтобы переходы совпадали).
+    var home = 1
+    var type = 0
+    var target = 0
+    for (c in 0..n) {
+        val left = c % 2 == 0
+        type = if (ratsOn) c % 3 else 2
+        val sideBurrows = if (left) listOf(0, 1) else listOf(2, 1)
+        target = when (type) { 0 -> home; else -> sideBurrows.first { it != home || !ratsOn } }
+        if (c < n && type == 1) home = fleeHome(home, target)
+    }
     val leftSide = n % 2 == 0
-    val rnd = Random(n * 31 + 7)
-    val bi = if (leftSide) (if (rnd.nextBoolean()) 0 else 1) else (if (rnd.nextBoolean()) 2 else 1)
-    val burrow = Offset(BURROWS[bi].first * w, by + BURROWS[bi].second * bh)
     val sx = (if (leftSide) .06f else .95f) * w
     val startY = th * .29f
-    val groundY = burrow.y + bh * .035f   // лапки на земле у норы, а не над ней
+    val ground = rim[target].y
     val speed = w * .11f
     val tw = 18.dp.toPx(); val tH = tw * a.spiderTop[0].height / a.spiderTop[0].width
-    val sw = 20.dp.toPx(); val sH = sw * a.spiderSide[0].height / a.spiderSide[0].width
-    val pw = 20.dp.toPx(); val pH = pw * a.spiderPeek[0].height / a.spiderPeek[0].width
-    val frame = (t * 9f).toInt() % 4
+    val sideW = 20.dp.toPx(); val spiW = 25.dp.toPx(); val ratW = 28.dp.toPx()
     val tAppear = .8f; val tDesc = 10f
-    val walk1 = (kotlin.math.abs(burrow.x - sx) / speed).coerceAtLeast(.6f)
-    val tIn = .7f; val tStay = 7f; val tOut = .7f
-    val edgeX = if (burrow.x < w / 2f) -w * .06f else w * 1.06f
-    val walk2 = kotlin.math.abs(edgeX - burrow.x) / speed
-    var k = lt
-    fun side(x: Float, y: Float, toLeft: Boolean) {
-        val f = a.spiderSide[frame]
-        if (toLeft) scale(-1f, 1f, Offset(x, y)) { img(f, x - sw / 2f, y - sH, sw, sH) } else img(f, x - sw / 2f, y - sH, sw, sH)
+    fun spiderWalk(x: Float, toLeft: Boolean, y: Float = ground) = critter(a.spiderSide[loop(t, 9f)], x, y, sideW, OLD_SIDE_BASE, toLeft)
+    fun ratIdle(hm: Int) {
+        // Крыса выглядывает из своей норы раз в ~11 с.
+        val q = (t + hm * 3.7f) % 11f
+        if (q < 2.4f) critter(ratF("peek", if (q < 1.2f) seq(q / 1.2f) else seq((2.4f - q) / 1.2f)), pos[hm].x, rim[hm].y, ratW, RAT_BASE)
     }
-    fun peek(u: Float) { val f = a.spiderPeek[(u * 3).toInt().coerceIn(0, 2)]; img(f, burrow.x - pw / 2f, burrow.y + pH * .25f - pH, pw, pH) }
-    // Спуск по паутине (голова вниз).
+    var k = lt
+    // 1. Спуск по паутине (голова вниз).
     if (k < tAppear + tDesc) {
+        if (ratsOn) ratIdle(home)
         val sway = sin(t * 1.3f) * 3f * density
-        val y = if (k < tAppear) startY else startY + (groundY - startY - tH / 2f) * ((k - tAppear) / tDesc).let { it * it * (3 - 2 * it) }
-        val x = sx + sway * ((y - startY) / (groundY - startY)).coerceIn(0f, 1f)
+        val y = if (k < tAppear) startY else startY + (ground - startY - tH) * ((k - tAppear) / tDesc).let { it * it * (3 - 2 * it) }
+        val x = sx + sway * ((y - startY) / (ground - startY)).coerceIn(0f, 1f)
         drawLine(LILAC.copy(alpha = .55f), Offset(sx, startY - 2f), Offset(x, y), 1f * density)
         val sc = if (k < tAppear) k / tAppear else 1f
-        val f = a.spiderTop[if (k < tAppear) 0 else frame]
+        val f = a.spiderTop[if (k < tAppear) 0 else loop(t, 9f)]
         scale(sc, sc, Offset(x, y)) { rotate(180f, Offset(x, y + tH / 2f)) { img(f, x - tw / 2f, y, tw, tH) } }
         return
     }
     k -= tAppear + tDesc
-    // Ползёт по земле к норе.
-    if (k < walk1) { side(sx + (burrow.x - sx) * (k / walk1), groundY, burrow.x < sx); return }
+    val tgt = pos[target]
+    val fromLeft = sx < tgt.x
+    if (type == 0) {
+        // 2a. Паук идёт к норе, где сидит крыса.
+        val stopX = tgt.x + if (fromLeft) -stopGap else stopGap
+        val walk1 = (kotlin.math.abs(stopX - sx) / speed).coerceAtLeast(.4f)
+        if (k < walk1) { ratIdle(home); spiderWalk(sx + (stopX - sx) * (k / walk1), !fromLeft); return }
+        k -= walk1
+        val scare = 1.4f
+        if (k < scare) {
+            val u = k / scare
+            critter(ratF("snarl", seq(u)), tgt.x, rim[target].y, ratW, RAT_BASE, faceLeft = fromLeft)
+            critter(spiF("scared", seq(u)), stopX, ground, spiW, SPI_BASE, faceLeft = !fromLeft)
+            return
+        }
+        k -= scare
+        val free = nearest(Offset(stopX, ground), setOf(target))
+        val fx = pos[free].x
+        val run = (kotlin.math.abs(fx - stopX) / (speed * 2.2f)).coerceAtLeast(.3f)
+        if (k < run) {
+            critter(ratF("dive", seq(k / run)), tgt.x, rim[target].y, ratW, RAT_BASE)
+            critter(spiF("run", loop(t, 14f)), stopX + (fx - stopX) * (k / run), ground, spiW, SPI_BASE, faceLeft = fx < stopX)
+            return
+        }
+        k -= run
+        if (k < .6f) { critter(spiF("dive", seq(k / .6f)), fx, rim[free].y, spiW, SPI_BASE, faceLeft = fx < stopX); return }
+        k -= .6f
+        if (k < 6f) { evilEyes(free + 7, t, pos[free].x, pos[free].y, .9f * density, roam = false, alpha = (k / .5f).coerceAtMost(1f)); ratIdle(home); return }
+        k -= 6f
+        val edgeX = if (fx < w / 2f) -w * .06f else w * 1.06f
+        if (k < .7f) { critter(spiF("climb", seq(k / .7f)), fx, rim[free].y, spiW, SPI_BASE, faceLeft = edgeX < fx); return }
+        k -= .7f
+        val walk2 = kotlin.math.abs(edgeX - fx) / speed
+        if (k < walk2) spiderWalk(fx + (edgeX - fx) * (k / walk2), edgeX < fx, rim[free].y)
+        ratIdle(home)
+        return
+    }
+    // 2b. Паук идёт в свободную нору.
+    val walk1 = (kotlin.math.abs(tgt.x - sx) / speed).coerceAtLeast(.6f)
+    if (k < walk1) { if (ratsOn) ratIdle(home); spiderWalk(sx + (tgt.x - sx) * (k / walk1), !fromLeft); return }
     k -= walk1
-    if (k < tIn) { peek(1f - k / tIn); return }
-    k -= tIn
-    // В норе — горящие глаза.
-    if (k < tStay) { evilEyes(bi + 7, t, burrow.x, burrow.y - bh * .015f, .9f * density, roam = false, alpha = (k / .5f).coerceAtMost(1f)); return }
-    k -= tStay
-    if (k < tOut) { peek(k / tOut); return }
-    k -= tOut
-    // Уползает за край экрана.
-    if (k < walk2) side(burrow.x + (edgeX - burrow.x) * (k / walk2), groundY, edgeX < burrow.x)
+    if (k < .6f) { if (ratsOn) ratIdle(home); critter(spiF("dive", seq(k / .6f)), tgt.x, rim[target].y, spiW, SPI_BASE, faceLeft = !fromLeft); return }
+    k -= .6f
+    val stay = if (type == 1) 9f else 7f
+    if (k < stay) {
+        if (type == 1) {
+            // Крыса идёт к норе паука: паук скалится, крыса пугается и бежит в ближайшую свободную нору.
+            val h = pos[home]
+            val ratLeft = h.x < tgt.x
+            val stopX = tgt.x + if (ratLeft) -stopGap else stopGap
+            val newHome = fleeHome(home, target)
+            var q = k - 1f
+            if (q < 0f) { evilEyes(target + 7, t, tgt.x, tgt.y, .9f * density, roam = false, alpha = (k / .5f).coerceAtMost(1f)); return }
+            if (q < .6f) { critter(ratF("climb", seq(q / .6f)), h.x, rim[home].y, ratW, RAT_BASE, faceLeft = !ratLeft); eyesIn(target, t, tgt); return }
+            q -= .6f
+            val walk = (kotlin.math.abs(stopX - h.x) / speed).coerceAtLeast(.4f)
+            if (q < walk) { critter(ratF("walk", loop(t, 9f)), h.x + (stopX - h.x) * (q / walk), rim[home].y, ratW, RAT_BASE, faceLeft = !ratLeft); eyesIn(target, t, tgt); return }
+            q -= walk
+            if (q < 1.4f) {
+                val u = q / 1.4f
+                critter(spiF("snarl", seq(u)), tgt.x, rim[target].y, spiW, SPI_BASE, faceLeft = ratLeft)
+                critter(ratF("scared", seq(u)), stopX, rim[target].y, ratW, RAT_BASE, faceLeft = !ratLeft)
+                return
+            }
+            q -= 1.4f
+            val nx = pos[newHome].x
+            val run = (kotlin.math.abs(nx - stopX) / (speed * 2.2f)).coerceAtLeast(.3f)
+            if (q < run) { critter(ratF("run", loop(t, 14f)), stopX + (nx - stopX) * (q / run), rim[target].y, ratW, RAT_BASE, faceLeft = nx < stopX); eyesIn(target, t, tgt); return }
+            q -= run
+            if (q < .6f) { critter(ratF("dive", seq(q / .6f)), nx, rim[newHome].y, ratW, RAT_BASE, faceLeft = nx < stopX); eyesIn(target, t, tgt); return }
+            eyesIn(target, t, tgt)
+            return
+        }
+        if (ratsOn) ratIdle(home)
+        evilEyes(target + 7, t, tgt.x, tgt.y, .9f * density, roam = false, alpha = (k / .5f).coerceAtMost(1f))
+        return
+    }
+    k -= stay
+    val edgeX = if (tgt.x < w / 2f) -w * .06f else w * 1.06f
+    val newHome = if (type == 1) fleeHome(home, target) else home
+    if (ratsOn) ratIdle(newHome)
+    if (k < .7f) { critter(spiF("climb", seq(k / .7f)), tgt.x, rim[target].y, spiW, SPI_BASE, faceLeft = edgeX < tgt.x); return }
+    k -= .7f
+    val walk2 = kotlin.math.abs(edgeX - tgt.x) / speed
+    if (k < walk2) spiderWalk(tgt.x + (edgeX - tgt.x) * (k / walk2), edgeX < tgt.x, rim[target].y)
 }
+
+private fun DrawScope.eyesIn(i: Int, t: Float, at: Offset) = evilEyes(i + 7, t, at.x, at.y, .9f * density, roam = false)
 
 /** Ведьма на метле медленно пролетает мимо луны под плашками — раз в ~75 с, то вправо, то влево. */
 private fun DrawScope.witchFlight(t: Float, w: Float, h: Float, moon: Offset, mr: Float) {
@@ -488,52 +607,131 @@ fun Modifier.halloweenCap(seed: Int, force: Boolean = false): Modifier = drawWit
         k = (k + 3) % 8
     }
     if ((!Halloween.spiders.value && !force) || holes.isEmpty()) return@drawWithContent
-    val t = Holiday.clock.floatValue
-    val period = 15f + seed.mod(5)
+    capLife(seed, holes, capH, Holiday.clock.floatValue)
+}
+
+/**
+ * Жизнь на шапке: паучки и крысы. Кто живёт на плашке, решает её номер:
+ *  - одна нора — паучок (гуляет по плашке петлёй) или крыса (выбегает, осматривается и возвращается);
+ *  - две и больше — паучок или крыса перебегают в соседнюю нору, а на части плашек они встречаются:
+ *    кто подошёл к занятой норе, пугается хозяина (тот выглядывает и скалится) и убегает в ближайшую свободную нору.
+ */
+private fun DrawScope.capLife(seed: Int, holes: List<Offset>, capH: Float, t: Float) {
+    val a = HalloweenAssets
+    val ratsOn = a.rat.size == 7 && a.spi.size == 5
+    val period = 16f + seed.mod(5)
+    val n = ((t + seed.mod(97)) / period).toInt()
     val local = (t + seed.mod(97)) % period
-    val walk = 6f
-    if (local > walk) return@drawWithContent
-    val peekT = .7f
-    val sideW = 18.dp.toPx(); val sideH = sideW * a.spiderSide[0].height / a.spiderSide[0].width
+    val rimDy = capH * .08f                 // край норы — чуть ниже центра тёмного проёма
+    val feetDy = -capH * .06f               // по холмику лапы идут чуть выше норы
+    val ratW = 26.dp.toPx(); val spiW = 23.dp.toPx(); val sideW = 18.dp.toPx()
     val peekW = 18.dp.toPx(); val peekH = peekW * a.spiderPeek[0].height / a.spiderPeek[0].width
-    val first = holes[seed.mod(holes.size).let { if (holes.size >= 2 && it == holes.lastIndex) it - 1 else it }]
-    fun peek(at: Offset, u: Float) {
-        val f = a.spiderPeek[(u * 3).toInt().coerceIn(0, 2)]
-        img(f, at.x - peekW / 2f, at.y + capH * .08f - peekH, peekW, peekH)
-    }
-    val frame = (t * 10f).toInt() % 4
-    if (holes.size >= 2) {
-        val b = holes[holes.indexOf(first) + 1]
-        when {
-            local < peekT -> peek(first, local / peekT)
-            local > walk - peekT -> peek(b, (walk - local) / peekT)
-            else -> {
-                val u = ((local - peekT) / (walk - 2 * peekT)).let { it * it * (3 - 2 * it) }
-                val px = first.x + (b.x - first.x) * u
-                val py = first.y - capH * .32f + sin(u * PI.toFloat() * 5f) * .8f * density
-                val left = b.x < first.x
-                val f = a.spiderSide[frame]
-                if (left) scale(-1f, 1f, Offset(px, py)) { img(f, px - sideW / 2f, py - sideH / 2f, sideW, sideH) }
-                else img(f, px - sideW / 2f, py - sideH / 2f, sideW, sideH)
+    val speed = 34.dp.toPx()                // в секунду
+    fun oldPeek(at: Offset, u: Float) = img(a.spiderPeek[(u * 3).toInt().coerceIn(0, 2)], at.x - peekW / 2f, at.y + rimDy - peekH, peekW, peekH)
+    fun spiderSide(x: Float, y: Float, toLeft: Boolean) = critter(a.spiderSide[loop(t, 10f)], x, y, sideW, OLD_SIDE_BASE, toLeft)
+    val i0 = seed.mod(holes.size).let { if (holes.size >= 2 && it == holes.lastIndex) it - 1 else it }
+    val first = holes[i0]
+    val kind = seed.mod(3)                  // 0 — паучок, 1 — крыса, 2 — встреча (если нор хватает)
+    if (holes.size == 1 || !ratsOn || kind != 2) {
+        val rat = ratsOn && kind == 1
+        if (local > 6f) return
+        if (holes.size >= 2) {
+            // Перебежка в соседнюю нору.
+            val b = holes[i0 + 1]
+            val left = b.x < first.x
+            when {
+                local < .7f -> if (rat) critter(ratF("peek", seq(local / .7f)), first.x, first.y + rimDy, ratW, RAT_BASE, left) else oldPeek(first, local / .7f)
+                local > 5.3f -> if (rat) critter(ratF("dive", seq((local - 5.3f) / .7f)), b.x, b.y + rimDy, ratW, RAT_BASE, left) else oldPeek(b, (6f - local) / .7f)
+                else -> {
+                    val u = ((local - .7f) / 4.6f).let { it * it * (3 - 2 * it) }
+                    val x = first.x + (b.x - first.x) * u
+                    val y = first.y + feetDy + sin(u * PI.toFloat() * 5f) * .6f * density
+                    if (rat) critter(ratF("walk", loop(t, 9f)), x, y, ratW, RAT_BASE, left) else spiderSide(x, y, left)
+                }
             }
+            return
         }
-    } else {
+        if (rat) {
+            // Одна нора: крыса выглядывает, выбегает, осматривается и возвращается в ту же нору.
+            val out = 22.dp.toPx() * if ((seed and 2) == 0) 1f else -1f
+            val left = out < 0
+            when {
+                local < .7f -> critter(ratF("peek", seq(local / .7f)), first.x, first.y + rimDy, ratW, RAT_BASE, left)
+                local < 1.3f -> critter(ratF("climb", seq((local - .7f) / .6f)), first.x, first.y + rimDy, ratW, RAT_BASE, left)
+                local < 2.6f -> critter(ratF("walk", loop(t, 9f)), first.x + out * ((local - 1.3f) / 1.3f), first.y + feetDy, ratW, RAT_BASE, left)
+                local < 3.6f -> critter(ratF("peek", 3), first.x + out, first.y + feetDy, ratW, RAT_BASE, left)
+                local < 4.9f -> critter(ratF("walk", loop(t, 9f)), first.x + out * (1f - (local - 3.6f) / 1.3f), first.y + feetDy, ratW, RAT_BASE, !left)
+                else -> critter(ratF("dive", seq((local - 4.9f) / 1.1f)), first.x, first.y + rimDy, ratW, RAT_BASE, !left)
+            }
+            return
+        }
+        // Одна нора, паучок: гуляет по плашке петлёй и возвращается.
         when {
-            local < peekT -> peek(first, local / peekT)
-            local > walk - peekT -> peek(first, (walk - local) / peekT)
+            local < .7f -> oldPeek(first, local / .7f)
+            local > 5.3f -> oldPeek(first, (6f - local) / .7f)
             else -> {
-                // Прогулка по плашке: вниз от норы, петлёй, и обратно к норе.
-                val u = (local - peekT) / (walk - 2 * peekT)
+                val u = (local - .7f) / 4.6f
                 val ang = u * 2f * PI.toFloat()
                 val r = 26.dp.toPx()
                 val pos = Offset(first.x + r * 1.5f * sin(ang), first.y + r * (1 - cos(ang)))
                 val d = Offset(r * 1.5f * cos(ang), r * sin(ang))
                 val heading = atan2(d.y, d.x) * 180f / PI.toFloat() + 90f
-                val f = a.spiderTop[frame]
+                val f = a.spiderTop[loop(t, 10f)]
                 val tw = 16.dp.toPx(); val th = tw * f.height / f.width
                 rotate(heading, pos) { img(f, pos.x - tw / 2f, pos.y - th / 2f, tw, th) }
             }
         }
+        return
+    }
+    // Встреча. Хозяин сидит в норе A, гость выходит из норы B и идёт к A.
+    val ratVisits = n % 2 == 0
+    val home = holes[i0]; val from = holes[i0 + 1]
+    val gLeft = home.x < from.x                         // гость идёт влево?
+    val stopX = home.x + if (gLeft) 16.dp.toPx() else -16.dp.toPx()
+    val walkT = (kotlin.math.abs(stopX - from.x) / speed).coerceIn(.6f, 4f)
+    var k = local
+    fun guestOut(u: Float) = if (ratVisits) critter(ratF("climb", seq(u)), from.x, from.y + rimDy, ratW, RAT_BASE, gLeft)
+        else critter(spiF("climb", seq(u)), from.x, from.y + rimDy, spiW, SPI_BASE, gLeft)
+    if (k < .8f) { guestOut(k / .8f); return }
+    k -= .8f
+    if (k < walkT) {
+        val x = from.x + (stopX - from.x) * (k / walkT)
+        if (ratVisits) critter(ratF("walk", loop(t, 9f)), x, from.y + feetDy, ratW, RAT_BASE, gLeft) else spiderSide(x, from.y + feetDy, gLeft)
+        return
+    }
+    k -= walkT
+    val scare = 1.4f
+    if (k < scare) {
+        val u = k / scare
+        if (ratVisits) {
+            critter(spiF("snarl", seq(u)), home.x, home.y + rimDy, spiW, SPI_BASE, !gLeft)
+            critter(ratF("scared", seq(u)), stopX, from.y + feetDy, ratW, RAT_BASE, gLeft)
+        } else {
+            critter(ratF("snarl", seq(u)), home.x, home.y + rimDy, ratW, RAT_BASE, !gLeft)
+            critter(spiF("scared", seq(u)), stopX, from.y + feetDy, spiW, SPI_BASE, gLeft)
+        }
+        return
+    }
+    k -= scare
+    // Бежит в ближайшую к нему свободную нору (кроме занятой хозяином).
+    val free = holes.filter { it != home }.minBy { kotlin.math.abs(it.x - stopX) }
+    val runT = (kotlin.math.abs(free.x - stopX) / (speed * 2.4f)).coerceIn(.3f, 2f)
+    val runLeft = free.x < stopX
+    if (k < runT) {
+        val x = stopX + (free.x - stopX) * (k / runT)
+        if (ratVisits) {
+            critter(spiF("dive", seq(k / runT)), home.x, home.y + rimDy, spiW, SPI_BASE, !gLeft)
+            critter(ratF("run", loop(t, 14f)), x, from.y + feetDy, ratW, RAT_BASE, runLeft)
+        } else {
+            critter(ratF("dive", seq(k / runT)), home.x, home.y + rimDy, ratW, RAT_BASE, !gLeft)
+            critter(spiF("run", loop(t, 14f)), x, from.y + feetDy, spiW, SPI_BASE, runLeft)
+        }
+        return
+    }
+    k -= runT
+    if (k < .6f) {
+        if (ratVisits) critter(ratF("dive", seq(k / .6f)), free.x, free.y + rimDy, ratW, RAT_BASE, runLeft)
+        else critter(spiF("dive", seq(k / .6f)), free.x, free.y + rimDy, spiW, SPI_BASE, runLeft)
     }
 }
 
@@ -648,7 +846,7 @@ fun HalloweenFall() {
         List(34) {
             val kind = when { it % 5 == 0 -> 1; it % 7 == 0 -> 2; else -> 0 }
             val speed = .14f + r.nextFloat() * .08f
-            Fall(kind, r.nextInt(6), r.nextFloat(), -.06f - speed * r.nextFloat() * 5f, speed, if (kind == 2) 14f else 24f + r.nextFloat() * 12f,
+            Fall(kind, r.nextInt(6), r.nextFloat(), -.06f - speed * r.nextFloat() * 5f, speed, when (kind) { 2 -> 10f; 1 -> 22f; else -> 14f + r.nextFloat() * 8f },
                 .01f + r.nextFloat() * .03f, .2f + r.nextFloat() * .3f, r.nextFloat() * 6.28f, (r.nextFloat() - .5f) * 140f)
         }
     }
