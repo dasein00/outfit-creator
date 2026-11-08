@@ -212,7 +212,7 @@ fun DrawScope.halloweenScene(t: Float, dark: Boolean) {
     }
     // Злые глаза в дуплах и в кусте: каждая пара моргает в своём ритме, иногда гаснет и загорается снова.
     if (Halloween.eyes.value) {
-        TREE_EYES.forEachIndexed { i, (fx, fy, _) -> evilEyes(i, t, w * fx, by + bh * fy, 2.2f * density, roam = true) }
+        TREE_EYES.forEachIndexed { i, (fx, fy, _) -> evilEyes(i, t, w * fx, by + bh * fy, .9f * density, roam = true) }
     }
     if (Halloween.crows.value) crows(t, w, by, bh)
     if (fogOn) fogBand(as0.fog1, by + bh * .8f, bh * .3f, 22f, t, lav.copy(alpha = .2f))
