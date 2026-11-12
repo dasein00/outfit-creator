@@ -225,7 +225,11 @@ fun MediaView(path: String, modifier: Modifier = Modifier, crop: Boolean = false
  * Скорость 0,5×–2× — кнопкой слева вверху (звук без «мультяшного» голоса); на весь экран переходит та же скорость.
  */
 @Composable
-fun VideoPlayer(path: String, modifier: Modifier = Modifier, maxHeight: androidx.compose.ui.unit.Dp = 520.dp) = androidx.compose.runtime.key(path) {
+fun VideoPlayer(
+    path: String, modifier: Modifier = Modifier, maxHeight: androidx.compose.ui.unit.Dp = 520.dp,
+    /** Превью-обложка с этими пропорциями (ширина/высота): кадр обрезан сверху и снизу, нажатие — во весь экран. */
+    cover: Float? = null,
+) = androidx.compose.runtime.key(path) {
     // key(path): при удалении или замене ролика проигрыватель создаётся заново, а не показывает прежний файл.
     var full by remember { mutableStateOf(false) }
     var mini by remember { mutableStateOf<VideoView?>(null) }
@@ -252,6 +256,20 @@ fun VideoPlayer(path: String, modifier: Modifier = Modifier, maxHeight: androidx
         lifecycle.addObserver(obs)
         onDispose { lifecycle.removeObserver(obs); mini?.visibility = android.view.View.INVISIBLE }
     }
+    if (cover != null) {
+        // Обложка: кадр на всю ширину, лишнее сверху и снизу обрезано; по нажатию ролик открывается целиком.
+        val frame = rememberVideoFrame(path)
+        Box(
+            modifier.fillMaxWidth().aspectRatio(cover).clip(RoundedCornerShape(12.dp)).background(Color.Black)
+                .clickable { startAt = 0; full = true },
+            contentAlignment = Alignment.Center,
+        ) {
+            frame?.let { androidx.compose.foundation.Image(it, "Видео", Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop) }
+            Box(Modifier.size(58.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color.Black.copy(alpha = .45f)), contentAlignment = Alignment.Center) {
+                PlayerIcon(PlayerIcons.PLAY, 32.dp)
+            }
+        }
+    } else
     Box(modifier.clip(RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
         // Вертикальное видео уже экрана: по бокам — тот же кадр, обрезанный по ширине (не растянутый) и притушенный,
         // вместо пустых полос.
@@ -494,6 +512,16 @@ private fun takeAudioFocus(ctx: Context) = runCatching {
 /** Кадр видео во всю площадь (обрезан, не растянут) с затемнением — фон по бокам вертикального ролика. */
 @Composable
 private fun VideoBackdrop(path: String, modifier: Modifier) {
+    val frame = rememberVideoFrame(path)
+    Box(modifier.background(Color.Black)) {
+        frame?.let { androidx.compose.foundation.Image(it, null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop) }
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .45f)))
+    }
+}
+
+/** Кадр видео на 0,5 с (уменьшенный до 720 px) — для обложек и фона. */
+@Composable
+private fun rememberVideoFrame(path: String): androidx.compose.ui.graphics.ImageBitmap? {
     val frame by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, path) {
         value = withContext(Dispatchers.IO) {
             runCatching {
@@ -508,10 +536,7 @@ private fun VideoBackdrop(path: String, modifier: Modifier) {
             }.getOrNull()
         }
     }
-    Box(modifier.background(Color.Black)) {
-        frame?.let { androidx.compose.foundation.Image(it, null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop) }
-        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .45f)))
-    }
+    return frame
 }
 
 /** Кнопка «Монтаж» для уже добавленного видео: те же обрезка, куски и скорость, что при добавлении. Файл заменяется. */

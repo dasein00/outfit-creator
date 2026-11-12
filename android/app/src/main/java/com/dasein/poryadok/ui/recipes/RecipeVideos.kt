@@ -165,7 +165,7 @@ fun RecipeVideosEditor(
                     }) { Text(btnLabel("Смотреть")) }
                 }
             } else if (File(v).exists()) {
-                com.dasein.poryadok.ui.common.VideoPlayer(v, Modifier.fillMaxWidth(), maxHeight = 360.dp)
+                com.dasein.poryadok.ui.common.VideoPlayer(v, Modifier.fillMaxWidth(), maxHeight = 360.dp, cover = if (viewOnly) 4f / 3f else null)
             } else {
                 Text(btnLabel("Файл видео не найден"), color = extra.dim)
             }
