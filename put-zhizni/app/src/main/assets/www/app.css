@@ -565,3 +565,50 @@ details.lgrp summary { padding: 11px 0; font-weight: 600; cursor: pointer; }
 .sz-q { font-family: var(--serif); font-size: 15.5px; line-height: 1.5; margin: 4px 0 0; }
 .sz-item { border-top: 1px solid var(--line); padding: 8px 0 2px; }
 .sz-item .sz-q { margin: 0; }
+
+/* ---------- праздничные темы (Новый год, Хэллоуин) — js/holiday.js ---------- */
+.hol-cv { position: fixed; left: 0; top: 0; pointer-events: none; }
+.hol-back { z-index: 0; }
+.hol-mid { z-index: 2; }
+.hol-top { z-index: 45; }
+.hol-fall { z-index: 46; }
+html.hol body { background: var(--bg); }
+html.hol .app { position: relative; z-index: 1; }
+html.hol .main { position: relative; z-index: 1; }
+html.hol .topbar, html.hol .tabs { position: relative; z-index: 3; }
+html.hol .topbar { background: var(--hol-top); border-bottom-color: transparent; }
+html.hol-garland .topbar { padding-top: calc(max(8px, env(safe-area-inset-top)) + 18px); }
+html.hol .sheet, html.hol .rdr-panel, html.hol .tw-sug { background: var(--hol-sheet); }
+html.hol .card.tint { background: var(--accent2); }
+html.hol .seg { background: rgba(127, 127, 127, .14); }
+.hol-prev { display: block; width: 100%; height: 170px; border-radius: 14px; }
+.hol-sws { display: flex; flex-wrap: wrap; gap: 10px; }
+.hol-sw { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 66px; font-size: 11.5px; line-height: 1.2; text-align: center; color: var(--ink2); }
+.hol-sw i { display: block; width: 50px; height: 50px; border-radius: 14px; border: 2px solid var(--line); box-shadow: var(--shadow); }
+.hol-sw.on i { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent2); }
+.hol-sw.on { color: var(--ink); font-weight: 600; }
+/* Новый год: нижняя панель — красный бархат, иконки в золотых праздничных тонах. */
+html.hol-ny .tabs { background: radial-gradient(120% 140% at 50% 0%, #A3243A 0%, #7A1527 45%, #4E0B17 100%); border-top: 1px solid rgba(242, 199, 96, .35); }
+html.hol-ny .tab { color: rgba(255, 236, 214, .78); }
+html.hol-ny .tab.on { color: #F6D27A; }
+html.hol-ny .tab .ti .i { color: #F2C760; filter: drop-shadow(0 0 3px rgba(242, 199, 96, .45)); }
+html.hol-ny .tab.on .ti .i { color: #FFE08A; }
+html.hol-ny .card h3 .i, html.hol-ny .menu-grid .i, html.hol-ny .item > .ti .i, html.hol-ny .topbar .icon-btn .i { color: #D9A63A; }
+html.hol-ny[data-theme="dark"] .card h3 .i, html.hol-ny[data-theme="dark"] .menu-grid .i, html.hol-ny[data-theme="dark"] .item > .ti .i, html.hol-ny[data-theme="dark"] .topbar .icon-btn .i { color: #F2C760; }
+html.hol-ny .menu-grid a:nth-child(3n+2) .i { color: #D9443A; }
+html.hol-ny .menu-grid a:nth-child(3n) .i { color: #3E9A58; }
+html.hol-ny[data-theme="dark"] .menu-grid a:nth-child(3n+2) .i { color: #F07A6E; }
+html.hol-ny[data-theme="dark"] .menu-grid a:nth-child(3n) .i { color: #7BCB8C; }
+/* Хэллоуин: нижняя панель фиолетовая, иконки в тыквенно-лаймовых тонах. */
+html.hol-hw .tabs { background: radial-gradient(120% 140% at 50% 0%, #4E2A7A 0%, #321A52 50%, #1A0F2C 100%); border-top: 1px solid rgba(201, 240, 90, .3); }
+html.hol-hw .tab { color: rgba(226, 212, 245, .78); }
+html.hol-hw .tab.on { color: #C9F05A; }
+html.hol-hw .tab .ti .i { color: #F5A623; filter: drop-shadow(0 0 3px rgba(245, 166, 35, .4)); }
+html.hol-hw .tab.on .ti .i { color: #C9F05A; filter: drop-shadow(0 0 4px rgba(201, 240, 90, .55)); }
+html.hol-hw .card h3 .i, html.hol-hw .menu-grid .i, html.hol-hw .item > .ti .i, html.hol-hw .topbar .icon-btn .i { color: #D9821A; }
+html.hol-hw[data-theme="dark"] .card h3 .i, html.hol-hw[data-theme="dark"] .menu-grid .i, html.hol-hw[data-theme="dark"] .item > .ti .i, html.hol-hw[data-theme="dark"] .topbar .icon-btn .i { color: #F5A623; }
+html.hol-hw .menu-grid a:nth-child(3n+2) .i { color: #6E9A1E; }
+html.hol-hw .menu-grid a:nth-child(3n) .i { color: #8A5CB8; }
+html.hol-hw[data-theme="dark"] .menu-grid a:nth-child(3n+2) .i { color: #C9F05A; }
+html.hol-hw[data-theme="dark"] .menu-grid a:nth-child(3n) .i { color: #B996DC; }
+@media print { .hol-cv { display: none !important; } }

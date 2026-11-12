@@ -46,14 +46,15 @@
 
   const validBackup = (o) => o && typeof o === "object" && o.profile && o.days && Array.isArray(o.habits);
 
-  const SECTIONS = [["ai", "ИИ-помощник (бесплатно)"], ["crash", "Отчёт о сбоях"], ["profile", "Профиль и режим"], ["targets", "Цели по здоровью"], ["look", "Оформление"], ["cards", "Экран «Сегодня»"], ["notif", "Уведомления"], ["security", "Защита"], ["data", "Данные и экспорт"], ["about", "О приложении"]];
+  const SECTIONS = [["ai", "ИИ-помощник (бесплатно)"], ["crash", "Отчёт о сбоях"], ["profile", "Профиль и режим"], ["targets", "Цели по здоровью"], ["look", "Оформление"], ["holiday", "Праздничные темы"], ["cards", "Экран «Сегодня»"], ["notif", "Уведомления"], ["security", "Защита"], ["data", "Данные и экспорт"], ["about", "О приложении"]];
 
   A.view("settings", {
-    title: (r) => (r.args[0] ? (SECTIONS.find((s) => s[0] === r.args[0]) || [0, "Настройки"])[1] : "Настройки"), tab: "more",
+    title: (r) => (r.args[0] === "holiday" && r.args[1] ? A.HOL_SUB[r.args[1]] || "Праздничные темы" : r.args[0] ? (SECTIONS.find((s) => s[0] === r.args[0]) || [0, "Настройки"])[1] : "Настройки"), tab: "more",
     render(el, r) {
       const p = A.db().profile, sec = r.args[0];
       if (!sec) return '<div class="card"><div class="list">' + SECTIONS.map((s) => '<a class="item" style="text-decoration:none;color:inherit" href="#/settings/' + s[0] + '"><div class="tx"><b>' + s[1] + '</b></div><span class="muted">›</span></a>').join("") + "</div></div>";
       if (sec === "ai") return A.aiSettingsHtml();
+      if (sec === "holiday") return A.holidaySettingsHtml(r.args[1]);
       if (sec === "crash") {
         const nat = A.native && A.native.crashLog ? A.native.crashLog() : "", js = A.errLog();
         return '<div class="card"><p class="small">Если приложение вылетело или зависло, здесь появится запись. Нажмите «Поделиться» и отправьте отчёт — по нему видно, где сбой.</p><div class="btns"><button class="btn primary" data-a="crShare">{{i:send}} Поделиться</button><button class="btn ghost" data-a="crClear">Очистить</button></div></div>' +
@@ -80,7 +81,8 @@
       if (sec === "look") {
         const acc = [["lavender", "#8E7CC3", "Лаванда"], ["sage", "#6F9A76", "Шалфей"], ["peach", "#E08F68", "Персик"], ["rose", "#D27A8E", "Роза"], ["sky", "#5E97C4", "Небо"], ["gold", "#B8913F", "Золото"]];
         return '<div class="card"><h3>Тема</h3>' + A.seg([["system", "Как в системе"], ["light", "Светлая"], ["dark", "Тёмная"]], p.theme, "theme") + '<h3>Акцентный цвет</h3><div class="chips">' + acc.map(([k, c, n]) => '<button class="chip' + (p.accent === k ? " on" : "") + '" data-a="accent" data-v="' + k + '"><span class="dot" style="background:' + c + ';margin-right:6px"></span>' + n + "</button>").join("") + "</div></div>" +
-          '<div class="card"><label class="switch"><input type="checkbox" data-c="pb" data-k="points"' + (p.points ? " checked" : "") + '><span></span>Баллы и награды за привычки</label><label class="switch"><input type="checkbox" data-c="pb" data-k="tarotRev"' + (p.tarotRev ? " checked" : "") + "><span></span>Перевёрнутые карты в раскладах Таро</label></div>";
+          '<div class="card"><label class="switch"><input type="checkbox" data-c="pb" data-k="points"' + (p.points ? " checked" : "") + '><span></span>Баллы и награды за привычки</label><label class="switch"><input type="checkbox" data-c="pb" data-k="tarotRev"' + (p.tarotRev ? " checked" : "") + "><span></span>Перевёрнутые карты в раскладах Таро</label></div>" +
+          '<a class="card row" style="text-decoration:none;color:inherit" href="#/settings/holiday"><span class="ti" style="font-size:22px">{{i:sparkles}}</span><div class="grow"><b>Праздничные темы</b><div class="small muted">Новый год и Хэллоуин: фон, украшения, тестовый режим</div></div><span class="muted">›</span></a>';
       }
       if (sec === "cards") {
         return '<div class="card"><p class="small muted">Порядок и видимость карточек на экране «Сегодня».</p><div class="list">' + p.cards.map((k, i) => '<div class="item"><label class="switch grow"><input type="checkbox" data-c="cardOn" data-k="' + k + '"' + (p.hidden.includes(k) ? "" : " checked") + "><span></span>" + esc(A.CARD_NAMES[k] || k) + '</label><button class="icon-btn" data-a="up" data-i="' + i + '" aria-label="Выше">↑</button><button class="icon-btn" data-a="down" data-i="' + i + '" aria-label="Ниже">↓</button></div>').join("") + "</div></div>";
@@ -119,6 +121,7 @@
     bind(el, r) {
       const p = A.db().profile;
       if (r.args[0] === "ai") { A.aiSettingsBind(el); return; }
+      if (r.args[0] === "holiday") { A.holidaySettingsBind(el, r.args[1]); return; }
       if (r.args[0] === "crash") {
         const lt = el.querySelector("#crLite");
         if (lt) lt.addEventListener("change", () => { if (A.native && A.native.setLiteMode) A.native.setLiteMode(lt.checked); A.lite = lt.checked; document.documentElement.classList.toggle("lite", lt.checked); A.toast(lt.checked ? "Облегчённая графика включена" : "Обычная графика"); });

@@ -11,6 +11,7 @@
     const bg = dark ? "#1C1A22" : "#FBF7F2";
     document.querySelector('meta[name="theme-color"]').content = bg;
     if (A.native) try { A.native.setBars(bg, !dark); } catch (e) {}
+    if (A.holApply) A.holApply(true);
   };
   if (window.matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => A.applyTheme());
 
@@ -79,12 +80,13 @@
     if (!/^#\/(recipes|food)/.test(location.hash)) A.dropNeed("js/content-dasein-recipes.js", "DASEIN_RECIPES");
     if (!/^#\/spreads/.test(location.hash)) A.dropNeed("js/content-lenormand-sole.js", "LENORMAND_SOLE");
   };
-  window.__onPause = () => { hiddenAt = Date.now(); A.saveNow(true); };
+  window.__onPause = () => { hiddenAt = Date.now(); A.saveNow(true); if (A.holPause) A.holPause(); };
   window.__onResume = () => {
     if (hiddenAt && Date.now() - hiddenAt > 60000) A.lock();
     hiddenAt = 0;
     daily();
     A.bgRefresh();
+    if (A.holResume) A.holResume();
   };
   document.addEventListener("visibilitychange", () => { if (!A.native) { if (document.hidden) hiddenAt = Date.now(); else window.__onResume(); } });
 

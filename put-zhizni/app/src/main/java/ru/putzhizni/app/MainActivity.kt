@@ -250,6 +250,17 @@ class MainActivity : Activity() {
         } catch (_: Exception) {}
     }
 
+    fun setBars2(top: String, topLight: Boolean, bottom: String, bottomLight: Boolean) = ui {
+        try {
+            window.statusBarColor = Color.parseColor(top)
+            window.navigationBarColor = Color.parseColor(bottom)
+            var flags = window.decorView.systemUiVisibility
+            flags = if (topLight) flags or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR else flags and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
+            flags = if (bottomLight) flags or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR else flags and View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
+            window.decorView.systemUiVisibility = flags
+        } catch (_: Exception) {}
+    }
+
     fun askPermission(perm: String, code: Int): Boolean {
         if (checkSelfPermission(perm) == PackageManager.PERMISSION_GRANTED) return true
         requestPermissions(arrayOf(perm), code)

@@ -338,6 +338,14 @@ class Bridge(private val act: MainActivity) {
 
     @JavascriptInterface fun setBars(hex: String, light: Boolean) = act.setBars(hex, light)
 
+    /** Разные цвета строки состояния и панели навигации (праздничные темы). */
+    @JavascriptInterface fun setBars2(top: String, topLight: Boolean, bottom: String, bottomLight: Boolean) = act.setBars2(top, topLight, bottom, bottomLight)
+
+    /** Включено энергосбережение — праздничные анимации останавливаются. */
+    @JavascriptInterface fun powerSave(): Boolean = try {
+        (act.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager).isPowerSaveMode
+    } catch (_: Exception) { false }
+
     @JavascriptInterface fun vibrate(ms: Int) {
         try {
             val v = act.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator

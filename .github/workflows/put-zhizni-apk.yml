@@ -24,6 +24,9 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Тесты праздничных сезонов
+        run: node --test put-zhizni/tests/*.test.js
+
       - name: Лицензии Android SDK
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
 
