@@ -83,6 +83,9 @@ object HalloweenAssets {
     var crowLand: List<ImageBitmap> = emptyList(); private set
     /** Ведьма на метле: 0–3 полёт, 4–5 машет, 6–7 с котом. */
     var witch: List<ImageBitmap> = emptyList(); private set
+    /** Сцена «Замок»: дальний план (замок на холме) и средний (кладбище с дорожкой). */
+    var castleFar: ImageBitmap? = null; private set
+    var castleMid: ImageBitmap? = null; private set
     /** Крыса: walk, peek, snarl, scared, run, climb, dive — по 4 кадра, смотрит вправо, низ на одной линии. */
     var rat: Map<String, List<ImageBitmap>> = emptyMap(); private set
     /** Паук для встреч: snarl, scared, run, climb, dive — по 4 кадра. */
@@ -101,6 +104,7 @@ object HalloweenAssets {
         evil = (0 until 5).map { k -> (0 until 4).mapNotNull { one("evil_${k}_$it") } }.filter { it.size == 4 }
         crowIdle = many("crow_idle", 4); crowCaw = many("crow_caw", 4); crowFly = many("crow_fly", 4); crowUp = many("crow_up", 4); crowLand = many("crow_land", 4)
         witch = many("witch", 8)
+        castleFar = one("castle_far"); castleMid = one("castle_mid")
         rat = listOf("walk", "peek", "snarl", "scared", "run", "climb", "dive").associateWith { many("rat_$it", 4) }.filterValues { it.size == 4 }
         spi = listOf("snarl", "scared", "run", "climb", "dive").associateWith { many("spi_$it", 4) }.filterValues { it.size == 4 }
         ready.value = near != null && batHang.size == 4 && batFly.size == 4 && evil.isNotEmpty() && hand.size == 6 && ghost.size == 6 &&
@@ -161,17 +165,121 @@ private object Flock {
     }
 }
 
+/** Звёзды неба сцены «Замок» (доли экрана, фаза мерцания). */
+private val STARS = Random(77).let { r -> List(70) { Triple(r.nextFloat(), r.nextFloat() * .55f, r.nextFloat() * 6.28f) } }
+
+/** Летучая мышь сцены «Замок»: траектория из волн с целым числом повторов за цикл — полёт всегда разный, но закольцован. */
+private class CastleBat(
+    val hx: List<Triple<Int, Float, Float>>, val hy: List<Triple<Int, Float, Float>>, val hz: List<Triple<Int, Float, Float>>,
+    val ax: Float, val ay: Float, val oy: Float, val flap: Int, val s: Float, val dir: Int, val ph: Float, val circle: Boolean,
+)
+
+private const val BAT_LOOP = 24f
+
+private val CASTLE_BATS: List<CastleBat> = Random(11).let { r ->
+    fun u(a: Float, b: Float) = a + r.nextFloat() * (b - a)
+    fun h(ks: List<Int>, lo: Float) = ks.map { k -> Triple(k, u(lo, 1f) / Math.pow(k.toDouble(), .8).toFloat(), u(0f, 6.28f)) }
+    val around = List(22) {
+        CastleBat(h(listOf(1, 2, 3, 5), .25f), h(listOf(1, 2, 3, 4), .2f), listOf(1, 2).map { k -> Triple(k, u(.5f, 1f), u(0f, 6.28f)) },
+            u(.12f, .38f), u(.06f, .16f), u(.10f, .36f), 36 + r.nextInt(24), u(4.5f, 7.5f), if (r.nextBoolean()) 1 else -1, u(0f, 6.28f), false)
+    }
+    // Кружат над шпилями: почти круги, 2–3 оборота за цикл.
+    val above = List(10) {
+        val k = if (r.nextBoolean()) 2 else 3
+        CastleBat(listOf(Triple(k, 1f, u(0f, 6.28f)), Triple(k * 2, u(.05f, .18f), u(0f, 6.28f))),
+            listOf(Triple(k, 1f, 0f), Triple(k * 3, u(.05f, .2f), u(0f, 6.28f))), emptyList(),
+            u(.05f, .13f), u(.02f, .05f), u(-.02f, .10f), 40 + r.nextInt(24), u(3.8f, 5.8f), if (r.nextBoolean()) 1 else -1, u(0f, 6.28f), true)
+    }
+    around + above
+}
+
+/** Положение мыши: x, y (в долях ширины/высоты сцены) и глубина z (меньше нуля — за замком). */
+private fun batPos(b: CastleBat, t: Float): Triple<Float, Float, Float> {
+    val u = 2f * PI.toFloat() * t / BAT_LOOP * b.dir
+    fun sum(hs: List<Triple<Int, Float, Float>>, f: (Float) -> Float) = hs.sumOf { (k, a, p) -> (a * f(k * u + p)).toDouble() }.toFloat()
+    if (b.circle) {
+        val (k, _, p) = b.hx[0]
+        val x = .53f + b.ax * (cos(k * u + p) + b.hx[1].second * cos(b.hx[1].first * u + b.hx[1].third))
+        val z = sin(k * u + p)
+        val y = b.oy + b.ay * z + b.ay * .3f * sin(b.hy[1].first * u + b.hy[1].third)
+        return Triple(x, y, z)
+    }
+    val x = .535f + b.ax * sum(b.hx) { cos(it) } / b.hx.sumOf { it.second.toDouble() }.toFloat()
+    val y = b.oy + b.ay * sum(b.hy) { sin(it) } / b.hy.sumOf { it.second.toDouble() }.toFloat()
+    val z = sum(b.hz) { sin(it) }
+    return Triple(x, y, z)
+}
+
+/** Силуэт летучей мыши: тело, уши и крылья с фестонами; [flap] от -1 до 1 — взмах. */
+private fun DrawScope.batShape(x: Float, y: Float, s: Float, flap: Float, color: Color, face: Float) {
+    val up = -flap * s; val wing = s * 1.7f
+    for (sign in listOf(-1f, 1f)) {
+        val pts = listOf(
+            sign * s * .15f to -s * .05f, sign * wing * .45f to up * .55f - s * .25f, sign * wing to up,
+            sign * wing * .85f to up * .5f + s * .2f, sign * wing * .68f to up * .35f + s * .05f, sign * wing * .55f to up * .25f + s * .28f,
+            sign * wing * .38f to up * .12f + s * .12f, sign * wing * .25f to s * .32f, sign * s * .15f to s * .25f,
+        )
+        val p = Path()
+        pts.forEachIndexed { i, (dx, dy) -> if (i == 0) p.moveTo(x + dx, y + dy) else p.lineTo(x + dx, y + dy) }
+        p.close()
+        drawPath(p, color)
+    }
+    drawOval(color, Offset(x - s * .22f, y - s * .2f), Size(s * .44f, s * .6f))
+    val hx = x + face * s * .08f
+    drawOval(color, Offset(hx - s * .17f, y - s * .38f), Size(s * .34f, s * .32f))
+    for (e in listOf(-1f, 1f)) {
+        val p = Path().apply { moveTo(hx + e * s * .15f, y - s * .28f); lineTo(hx + e * s * .1f, y - s * .55f); lineTo(hx + e * s * .02f, y - s * .3f); close() }
+        drawPath(p, color)
+    }
+}
+
+/**
+ * Летучие мыши вокруг, над и за замком. [behind] — рисовать только тех, кто сейчас за замком (их закроют башни),
+ * иначе — тех, кто перед ним, и две стайки в небе. [top]/[sh] — где лежит картинка замка.
+ */
+private fun DrawScope.castleBats(t: Float, w: Float, top: Float, sh: Float, behind: Boolean) {
+    val u = 2f * PI.toFloat() * t / BAT_LOOP
+    val k = w / 975f   // размер мышей — как в примере, относительно ширины сцены
+    CASTLE_BATS.forEach { b ->
+        val (fx, fy, z) = batPos(b, t)
+        if ((z < 0f) != behind) return@forEach
+        val (nx, _, _) = batPos(b, t + .05f)
+        val glide = maxOf(0f, sin(3f * u + b.ph)).let { it * it * it }
+        val flap = sin(b.flap * u + b.ph) * (1f - glide * .85f)
+        val s = b.s * (1f + .3f * z) * k
+        batShape(fx * w, top + fy * sh, s, flap, if (behind) Color(0xFF4E3480) else Color(0xFF1E0F37), if (nx > fx) 1f else -1f)
+    }
+    if (behind) return
+    for ((fl, n) in listOf(0 to 8, 1 to 6)) {
+        val q = ((t / BAT_LOOP) + fl * .5f) % 1f
+        repeat(n) { j ->
+            val x = (-.15f + 1.3f * q) * w - j * 13f * k - (j % 2) * 7f * k
+            val y = top + sh * (if (fl == 0) .07f else .16f) + (j % 3) * 5f * k + sin(u * 24f + j) * 3f * k
+            batShape(x, y, 3f * k, sin(u * 96f + j), Color(0xE6281646), 1f)
+        }
+    }
+}
+
 /**
  * Хэллоуинская сцена во весь экран: ночной градиент, луна, светлячки, туман между дальним и ближним планом
  * кладбища, рука из могилы, моргающие красные глаза в кустах и кронах, ветки с летучими мышами.
  */
 fun DrawScope.halloweenScene(t: Float, dark: Boolean) {
     val w = size.width; val h = size.height
+    val mc = Offset(w * .8f, h * .15f); val mr = w * .1f
+    val castle = Halloween.scene.intValue == 1
+    if (castle) {
+        // Сцена «Замок»: ночное небо без луны — от тёмно-фиолетового к лавандовому, мерцающие звёзды.
+        drawRect(Brush.verticalGradient(listOf(Color(0xFF29124F), Color(0xFF5B3A9E), Color(0xFF8C66D9))))
+        STARS.forEach { (x, y, ph) ->
+            val a = .5f + .5f * sin(t * .9f + ph)
+            if (a > .3f) drawCircle(Color.White.copy(alpha = a * .8f), 1.1f * density, Offset(x * w, y * h))
+        }
+    } else {
     val st = Halloween.bg()
     val v = if (dark) st.dark else st.light
     drawRect(Brush.radialGradient(v, Offset(w * .5f, h * .3f), maxOf(w, h) * .95f))
     // Луна с мягким пульсирующим свечением.
-    val mc = Offset(w * .8f, h * .15f); val mr = w * .1f
     val pulse = .85f + .15f * sin(t * .8f)
     glow(LIME, mc, mr * 3.2f, (if (dark) .26f else .18f) * pulse)
     drawCircle(LIME.copy(alpha = if (dark) .92f else .7f), mr, mc)
@@ -188,19 +296,39 @@ fun DrawScope.halloweenScene(t: Float, dark: Boolean) {
         glow(c, p, 9f * density, .5f * a)
         drawCircle(c.copy(alpha = a), 1.8f * density, p)
     }
+    }
     val as0 = HalloweenAssets
     if (!as0.ready.value) return
     if (Halloween.witch.value) witchFlight(t, w, h, mc, mr)
     val fogOn = Halloween.fog.value
     val lav = Color(0xFFD8C6F0)
+    val bh = w / 3f; val by = h - bh
+    val cFar = as0.castleFar; val cMid = as0.castleMid
+    if (castle && cFar != null && cMid != null) {
+        // Замок на холме → туман (гуще вдали) → кладбище с дорожкой → туман у земли; ближний план — как прежде.
+        val sh = w / 2f
+        val top = by + bh * .62f - sh
+        if (Halloween.bats.value) castleBats(t, w, top, sh, behind = true)
+        img(cFar, 0f, top, w, sh)
+        if (fogOn) {
+            fogBand(as0.fog1, top + sh * .18f, sh * .4f, 1.2f, t, lav.copy(alpha = .45f))
+            fogBand(as0.fog2, top + sh * .5f, sh * .24f, 1.8f, t, lav.copy(alpha = .65f))
+        }
+        if (Halloween.bats.value) castleBats(t, w, top, sh, behind = false)
+        img(cMid, 0f, top, w, sh)
+        if (fogOn) {
+            fogBand(as0.fog2, top + sh * .72f, sh * .16f, 2.4f, t, lav.copy(alpha = .38f))
+            fogBand(as0.fog1, top + sh * .9f, sh * .14f, 3f, t, lav.copy(alpha = .22f))
+        }
+    } else {
     // Лёгкий туман под плашками посередине экрана.
     if (fogOn) fogBand(as0.fog2, h * .38f, h * .3f, 5f, t, lav.copy(alpha = if (dark) .09f else .16f))
     // Кладбище внизу: дальний план → туман → ближний план.
-    val bh = w / 3f; val by = h - bh
     as0.far?.let { img(it, 0f, by, w, bh, alpha = .95f) }
     if (fogOn) {
         fogBand(as0.fog1, by + bh * .4f, bh * .45f, 9f, t, lav.copy(alpha = if (dark) .5f else .55f))
         fogBand(as0.fog2, by + bh * .55f, bh * .35f, 16f, t, LIME.copy(alpha = .2f))
+    }
     }
     as0.near?.let { img(it, 0f, by, w, bh) }
     // Рука вырывается из земли у креста справа, машет и уходит обратно.

@@ -168,6 +168,14 @@ fun HalloweenSettingsScreen(nav: NavHostController) {
                 OutlinedButton(onClick = { Holiday.letItSnow() }, enabled = h.leaves.value, modifier = Modifier.weight(1f)) { Text(btnLabel("Листопад")) }
             }
 
+            SectionTitle("Сцена")
+            com.dasein.poryadok.ui.common.Segments(listOf(1 to "Замок", 0 to "Кладбище (прежний)"), h.scene.intValue, { h.setScene(ctx, it) })
+            Text(
+                "«Замок» — замок на холме за кладбищем, туман гуще вдали, летучие мыши кружат вокруг, над и за замком. " +
+                    "«Кладбище» — прежний фон. Передний план с деревьями, воронами, норами и шапки одинаковые в обоих.",
+                fontSize = 12.sp, color = extra.dim, lineHeight = 16.sp, modifier = Modifier.padding(top = 4.dp),
+            )
+
             SectionTitle("Фон")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 h.BG_STYLES.forEachIndexed { i, st ->

@@ -53,6 +53,8 @@ object Halloween {
     val webs = mutableStateOf(true)
     val witch = mutableStateOf(true)
     val bgStyle = mutableIntStateOf(0)
+    /** Сцена фона: 1 — замок на холме с летучими мышами (новая), 0 — прежнее кладбище. */
+    val scene = mutableIntStateOf(1)
     val cardStyle = mutableIntStateOf(0)
 
     fun bg(): BgStyle = BG_STYLES.getOrElse(bgStyle.intValue) { BG_STYLES[0] }
@@ -71,6 +73,7 @@ object Halloween {
         flags.forEach { (k, s) -> s.value = p.getBoolean(P + k, true) }
         preview.value = p.getBoolean(P + "preview", false)
         bgStyle.intValue = p.getInt(P + "bg_style", 0).coerceIn(0, BG_STYLES.lastIndex)
+        scene.intValue = p.getInt(P + "scene", 1).coerceIn(0, 1)
         cardStyle.intValue = p.getInt(P + "card_style", 0).coerceIn(0, CARD_STYLES.lastIndex)
         loaded = true
     }
@@ -89,6 +92,7 @@ object Halloween {
         if (v) { if (Holiday.preview.value) Holiday.setPreview(ctx, false); Holiday.letItSnow() }
     }
 
+    fun setScene(ctx: Context, i: Int) { scene.intValue = i; sp(ctx).edit().putInt(P + "scene", i).apply() }
     fun setBgStyle(ctx: Context, i: Int) { bgStyle.intValue = i; sp(ctx).edit().putInt(P + "bg_style", i).apply() }
     fun setCardStyle(ctx: Context, i: Int) { cardStyle.intValue = i; sp(ctx).edit().putInt(P + "card_style", i).apply() }
 }
