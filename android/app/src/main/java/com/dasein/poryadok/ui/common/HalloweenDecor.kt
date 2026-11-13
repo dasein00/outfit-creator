@@ -307,7 +307,7 @@ fun DrawScope.halloweenScene(t: Float, dark: Boolean) {
     if (castle && cFar != null && cMid != null) {
         // Замок на холме → туман (гуще вдали) → кладбище с дорожкой → туман у земли; ближний план — как прежде.
         val sh = w / 2f
-        val top = by + bh * .62f - sh
+        val top = by + bh * .62f - sh * .68f  // опущено: верх замка ниже плашек
         if (Halloween.bats.value) castleBats(t, w, top, sh, behind = true)
         img(cFar, 0f, top, w, sh)
         if (fogOn) {
