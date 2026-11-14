@@ -53,9 +53,14 @@ object SantaCorridor {
     internal val lane = mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
     internal val view = mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
 
+    /** Положение полосы нужно только когда кто-то летает (сани или привидение) — в обычные дни при прокрутке ничего не считаем. */
+    private fun tracking() = (Holiday.active && Holiday.santa.value) ||
+        (com.dasein.poryadok.ui.theme.Halloween.active && com.dasein.poryadok.ui.theme.Halloween.ghost.value)
+
     /** Отметить полосу, по которой летают сани. */
     @Composable
     fun lane(): Modifier {
+        if (!tracking()) return Modifier
         androidx.compose.runtime.DisposableEffect(Unit) { onDispose { lane.value = null } }
         return Modifier.onGloballyPositioned { c ->
             val p = c.positionInWindow()
@@ -66,6 +71,7 @@ object SantaCorridor {
     /** Отметить видимую область списка: сани не залетают на шапку и нижнюю панель. */
     @Composable
     fun viewport(): Modifier {
+        if (!tracking()) return Modifier
         androidx.compose.runtime.DisposableEffect(Unit) { onDispose { view.value = null } }
         return Modifier.onGloballyPositioned { view.value = it.boundsInWindow() }
     }

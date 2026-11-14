@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -153,7 +152,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
     ) { pad ->
         val layout = HomeLayout.state.value
         val homeRows = HomeLayout.rows(layout)
-        LazyColumn(
+        HomeList(
             // Отступ от строки состояния уже в pad — второй не нужен (иначе сверху пустая полоса).
             Modifier.fillMaxSize().padding(pad).cardViewport().then(com.dasein.poryadok.ui.common.SantaCorridor.viewport()),
             contentPadding = PaddingValues(top = 4.dp, bottom = 8.dp),
@@ -234,15 +233,15 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                     "pressure" -> item(key = "pressure") { Gap(10.dp); HomePressureCard(nav, e.size) }
                     "tasks" -> {
                         val taskN = when (e.size) { 0 -> 3; 2 -> 15; else -> 8 }
-                        item { SectionTitle("Задачи на сегодня", action = "Все") { nav.goTab(Routes.plan(1)) } }
-                        if (todayTasks.isEmpty()) item {
+                        item(key = "tasks_h") { SectionTitle("Задачи на сегодня", action = "Все") { nav.goTab(Routes.plan(1)) } }
+                        if (todayTasks.isEmpty()) item(key = "tasks_empty") {
                             Tile {
                                 Text(
                                     if (doneToday.isNotEmpty()) "Все задачи на сегодня выполнены" else "На сегодня задач нет. Нажмите «+» вверху, чтобы добавить.",
                                     color = extra.dim,
                                 )
                             }
-                        } else item {
+                        } else item(key = "tasks") {
                             Tile(padding = 6.dp) {
                                 todayTasks.take(taskN).forEach { t ->
                                     val subs = subtasks.filter { it.taskId == t.id }
@@ -259,8 +258,8 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                     }
                     "habits" -> {
                         if (habitsToday.isNotEmpty()) {
-                            item { SectionTitle("Привычки", action = "Все") { nav.navigate(Routes.HABITS) } }
-                            item {
+                            item(key = "habits_h") { SectionTitle("Привычки", action = "Все") { nav.navigate(Routes.HABITS) } }
+                            item(key = "habits") {
                                 LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     items(habitsToday, key = { it.id }) { h ->
                                         val v = logToday[h.id]?.value ?: 0
@@ -289,8 +288,8 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
                     }
                     "calendar" -> {
                         if (todayEvents.isNotEmpty() || todayReminders.isNotEmpty()) {
-                            item { SectionTitle("В календаре", action = "Открыть") { nav.goTab(Routes.plan(0)) } }
-                            item {
+                            item(key = "cal_h") { SectionTitle("В календаре", action = "Открыть") { nav.goTab(Routes.plan(0)) } }
+                            item(key = "cal") {
                                 Tile {
                                     todayEvents.forEach { e ->
                                         Row(
@@ -320,8 +319,8 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
 
                     }
                     "wellbeing" -> {
-                        item { SectionTitle("Самочувствие") }
-                        item {
+                        item(key = "well_h") { SectionTitle("Самочувствие") }
+                        item(key = "well") {
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Tile(Modifier.weight(1f), onClick = { nav.navigate(Routes.wellbeing(2)) }) {
                                     Row(verticalAlignment = Alignment.CenterVertically) { Glyph(Glyphs.WATER, 18.dp, badge = false); Text(btnLabel("  Вода"), fontSize = 13.sp, color = extra.dim) }
@@ -351,7 +350,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
 
                     }
                     "menu" -> {
-                        item {
+                        item(key = "menu") {
                             val todayPlan = plan.filter { it.day == today && it.status != PlanStatus.SKIPPED }
                             val next = todayPlan.filter { it.status == PlanStatus.PLANNED }.minByOrNull { MealType.order.indexOf(it.meal) }
                             Gap(10.dp)
@@ -377,14 +376,14 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
 
                     }
                     "money" -> {
-                        item { SectionTitle("Деньги", action = "Финансы") { nav.navigate(Routes.FINANCE) } }
-                        item { com.dasein.poryadok.ui.finance.HomeMoneyCard(nav, settings.currency) }
+                        item(key = "money_h") { SectionTitle("Деньги", action = "Финансы") { nav.navigate(Routes.FINANCE) } }
+                        item(key = "money") { com.dasein.poryadok.ui.finance.HomeMoneyCard(nav, settings.currency) }
                     }
                     "goals" -> {
                         val goalN = when (e.size) { 0 -> 1; 2 -> 6; else -> 3 }
                         val activeGoals = goals.filter { !it.done }.take(goalN)
                         if (activeGoals.isNotEmpty()) {
-                            item { SectionTitle("Цели", action = "Все") { nav.navigate(Routes.GOALS) } }
+                            item(key = "goals_h") { SectionTitle("Цели", action = "Все") { nav.navigate(Routes.GOALS) } }
                             items(activeGoals, key = { "g" + it.id }) { g ->
                                 val goalTasks = tasks.filter { it.goalId == g.id }
                                 val pr = goalProgress(g, goalTasks.count { it.done }, goalTasks.size)
@@ -403,7 +402,7 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
 
                     }
                     "talk" -> {
-                        item {
+                        item(key = "talk") {
                             Gap(18.dp)
                             com.dasein.poryadok.ui.talk.TalkFactCard { nav.navigate(Routes.SMALL_TALK) }
                         }

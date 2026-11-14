@@ -63,3 +63,18 @@ object ImageMemory {
     fun put(k: String, v: ImageBitmap) { cache.put(k, v) }
     fun clear() = cache.evictAll()
 }
+
+/**
+ * Уменьшенная картинка из файла для строки списка: декодируется в фоне и остаётся в памяти —
+ * список при прокрутке не ждёт диск и не декодирует одно и то же заново.
+ */
+@Composable
+fun rememberThumb(file: File, sample: Int = 8): ImageBitmap? {
+    val key = androidx.compose.runtime.remember(file, sample) { "thumb|${file.absolutePath}|$sample|${file.lastModified()}" }
+    return produceState(ImageMemory.get(key), key) {
+        value = ImageMemory.get(key) ?: withContext(Dispatchers.IO) {
+            runCatching { BitmapFactory.decodeFile(file.absolutePath, BitmapFactory.Options().apply { inSampleSize = sample }) }.getOrNull()
+                ?.asImageBitmap()?.also { ImageMemory.put(key, it) }
+        }
+    }.value
+}

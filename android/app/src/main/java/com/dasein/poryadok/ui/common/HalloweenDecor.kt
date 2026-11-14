@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
@@ -91,6 +92,8 @@ object HalloweenAssets {
     /** Паук для встреч: snarl, scared, run, climb, dive — по 4 кадра. */
     var spi: Map<String, List<ImageBitmap>> = emptyMap(); private set
 
+    /** Вызывается из нескольких мест сразу — под замком, чтобы картинки не декодировались дважды. */
+    @Synchronized
     fun load(ctx: android.content.Context) {
         if (ready.value) return
         fun one(n: String) = runCatching { ctx.assets.open("halloween/$n.webp").use { android.graphics.BitmapFactory.decodeStream(it) }?.asImageBitmap() }.getOrNull()
@@ -120,12 +123,15 @@ private fun DrawScope.img(b: ImageBitmap, x: Float, y: Float, w: Float, h: Float
 private fun DrawScope.glow(c: Color, center: Offset, r: Float, a: Float) =
     drawCircle(Brush.radialGradient(listOf(c.copy(alpha = a), c.copy(alpha = 0f)), center, r), r, center)
 
+/** Готовые цветовые фильтры тумана (цветов всего несколько) — не создаются заново каждый кадр. */
+private val fogTints = HashMap<ULong, ColorFilter>()
+
 /** Полоса тумана: текстура плывёт по горизонтали и повторяется без шва. */
 private fun DrawScope.fogBand(tex: ImageBitmap?, y: Float, bandH: Float, speed: Float, t: Float, color: Color) {
     tex ?: return
     val tw = size.width * 1.3f
     var x = -((t * speed * density) % tw)
-    val f = ColorFilter.tint(color)
+    val f = fogTints.getOrPut(color.value) { ColorFilter.tint(color) }
     while (x < size.width) { img(tex, x, y, tw, bandH, filter = f); x += tw }
 }
 
@@ -193,45 +199,68 @@ private val CASTLE_BATS: List<CastleBat> = Random(11).let { r ->
     around + above
 }
 
-/** Положение мыши: x, y (в долях ширины/высоты сцены) и глубина z (меньше нуля — за замком). */
-private fun batPos(b: CastleBat, t: Float): Triple<Float, Float, Float> {
-    val u = 2f * PI.toFloat() * t / BAT_LOOP * b.dir
-    fun sum(hs: List<Triple<Int, Float, Float>>, f: (Float) -> Float) = hs.sumOf { (k, a, p) -> (a * f(k * u + p)).toDouble() }.toFloat()
-    if (b.circle) {
-        val (k, _, p) = b.hx[0]
-        val x = .53f + b.ax * (cos(k * u + p) + b.hx[1].second * cos(b.hx[1].first * u + b.hx[1].third))
-        val z = sin(k * u + p)
-        val y = b.oy + b.ay * z + b.ay * .3f * sin(b.hy[1].first * u + b.hy[1].third)
-        return Triple(x, y, z)
-    }
-    val x = .535f + b.ax * sum(b.hx) { cos(it) } / b.hx.sumOf { it.second.toDouble() }.toFloat()
-    val y = b.oy + b.ay * sum(b.hy) { sin(it) } / b.hy.sumOf { it.second.toDouble() }.toFloat()
-    val z = sum(b.hz) { sin(it) }
-    return Triple(x, y, z)
+/** Сумма волн траектории; без временных объектов — вызывается десятки раз за кадр. */
+private fun waves(hs: List<Triple<Int, Float, Float>>, u: Float, cosine: Boolean): Float {
+    var s = 0f
+    for (i in hs.indices) { val h = hs[i]; val a = h.first * u + h.third; s += h.second * (if (cosine) cos(a) else sin(a)) }
+    return s
 }
+private fun amp(hs: List<Triple<Int, Float, Float>>): Float { var s = 0f; for (i in hs.indices) s += hs[i].second; return s }
+
+/** Положение мыши пишется в [out]: x, y (в долях ширины/высоты сцены) и глубина z (меньше нуля — за замком). */
+private fun batPos(b: CastleBat, t: Float, out: FloatArray) {
+    val u = 2f * PI.toFloat() * t / BAT_LOOP * b.dir
+    if (b.circle) {
+        val h0 = b.hx[0]; val h1 = b.hx[1]; val v1 = b.hy[1]
+        val z = sin(h0.first * u + h0.third)
+        out[0] = .53f + b.ax * (cos(h0.first * u + h0.third) + h1.second * cos(h1.first * u + h1.third))
+        out[1] = b.oy + b.ay * z + b.ay * .3f * sin(v1.first * u + v1.third)
+        out[2] = z
+        return
+    }
+    out[0] = .535f + b.ax * waves(b.hx, u, true) / amp(b.hx)
+    out[1] = b.oy + b.ay * waves(b.hy, u, false) / amp(b.hy)
+    out[2] = waves(b.hz, u, false)
+}
+
+/** Один контур на все силуэты и две точки-черновика: рисование идёт в одном потоке, новые объекты каждый кадр не нужны. */
+private val batPath = Path()
+private val batA = FloatArray(3)
+private val batB = FloatArray(3)
 
 /** Силуэт летучей мыши: тело, уши и крылья с фестонами; [flap] от -1 до 1 — взмах. */
 private fun DrawScope.batShape(x: Float, y: Float, s: Float, flap: Float, color: Color, face: Float) {
     val up = -flap * s; val wing = s * 1.7f
-    for (sign in listOf(-1f, 1f)) {
-        val pts = listOf(
-            sign * s * .15f to -s * .05f, sign * wing * .45f to up * .55f - s * .25f, sign * wing to up,
-            sign * wing * .85f to up * .5f + s * .2f, sign * wing * .68f to up * .35f + s * .05f, sign * wing * .55f to up * .25f + s * .28f,
-            sign * wing * .38f to up * .12f + s * .12f, sign * wing * .25f to s * .32f, sign * s * .15f to s * .25f,
-        )
-        val p = Path()
-        pts.forEachIndexed { i, (dx, dy) -> if (i == 0) p.moveTo(x + dx, y + dy) else p.lineTo(x + dx, y + dy) }
+    val p = batPath
+    p.rewind()
+    var sign = -1f
+    repeat(2) {
+        p.moveTo(x + sign * s * .15f, y - s * .05f)
+        p.lineTo(x + sign * wing * .45f, y + up * .55f - s * .25f)
+        p.lineTo(x + sign * wing, y + up)
+        p.lineTo(x + sign * wing * .85f, y + up * .5f + s * .2f)
+        p.lineTo(x + sign * wing * .68f, y + up * .35f + s * .05f)
+        p.lineTo(x + sign * wing * .55f, y + up * .25f + s * .28f)
+        p.lineTo(x + sign * wing * .38f, y + up * .12f + s * .12f)
+        p.lineTo(x + sign * wing * .25f, y + s * .32f)
+        p.lineTo(x + sign * s * .15f, y + s * .25f)
         p.close()
-        drawPath(p, color)
+        sign = 1f
     }
-    drawOval(color, Offset(x - s * .22f, y - s * .2f), Size(s * .44f, s * .6f))
     val hx = x + face * s * .08f
-    drawOval(color, Offset(hx - s * .17f, y - s * .38f), Size(s * .34f, s * .32f))
-    for (e in listOf(-1f, 1f)) {
-        val p = Path().apply { moveTo(hx + e * s * .15f, y - s * .28f); lineTo(hx + e * s * .1f, y - s * .55f); lineTo(hx + e * s * .02f, y - s * .3f); close() }
-        drawPath(p, color)
+    var e = -1f
+    repeat(2) {
+        p.moveTo(hx + e * s * .15f, y - s * .28f); p.lineTo(hx + e * s * .1f, y - s * .55f); p.lineTo(hx + e * s * .02f, y - s * .3f); p.close()
+        e = 1f
     }
+    drawPath(p, color)
+    drawOval(color, Offset(x - s * .22f, y - s * .2f), Size(s * .44f, s * .6f))
+    drawOval(color, Offset(hx - s * .17f, y - s * .38f), Size(s * .34f, s * .32f))
 }
+
+private val BAT_BEHIND = Color(0xFF4E3480)
+private val BAT_FRONT = Color(0xFF1E0F37)
+private val BAT_FLOCK = Color(0xE6281646)
 
 /**
  * Летучие мыши вокруг, над и за замком. [behind] — рисовать только тех, кто сейчас за замком (их закроют башни),
@@ -240,22 +269,25 @@ private fun DrawScope.batShape(x: Float, y: Float, s: Float, flap: Float, color:
 private fun DrawScope.castleBats(t: Float, w: Float, top: Float, sh: Float, behind: Boolean) {
     val u = 2f * PI.toFloat() * t / BAT_LOOP
     val k = w / 975f   // размер мышей — как в примере, относительно ширины сцены
-    CASTLE_BATS.forEach { b ->
-        val (fx, fy, z) = batPos(b, t)
-        if ((z < 0f) != behind) return@forEach
-        val (nx, _, _) = batPos(b, t + .05f)
+    for (i in CASTLE_BATS.indices) {
+        val b = CASTLE_BATS[i]
+        batPos(b, t, batA)
+        val z = batA[2]
+        if ((z < 0f) != behind) continue
+        batPos(b, t + .05f, batB)
         val glide = maxOf(0f, sin(3f * u + b.ph)).let { it * it * it }
         val flap = sin(b.flap * u + b.ph) * (1f - glide * .85f)
         val s = b.s * (1f + .3f * z) * k
-        batShape(fx * w, top + fy * sh, s, flap, if (behind) Color(0xFF4E3480) else Color(0xFF1E0F37), if (nx > fx) 1f else -1f)
+        batShape(batA[0] * w, top + batA[1] * sh, s, flap, if (behind) BAT_BEHIND else BAT_FRONT, if (batB[0] > batA[0]) 1f else -1f)
     }
     if (behind) return
-    for ((fl, n) in listOf(0 to 8, 1 to 6)) {
+    for (fl in 0..1) {
+        val n = if (fl == 0) 8 else 6
         val q = ((t / BAT_LOOP) + fl * .5f) % 1f
-        repeat(n) { j ->
+        for (j in 0 until n) {
             val x = (-.15f + 1.3f * q) * w - j * 13f * k - (j % 2) * 7f * k
             val y = top + sh * (if (fl == 0) .07f else .16f) + (j % 3) * 5f * k + sin(u * 24f + j) * 3f * k
-            batShape(x, y, 3f * k, sin(u * 96f + j), Color(0xE6281646), 1f)
+            batShape(x, y, 3f * k, sin(u * 96f + j), BAT_FLOCK, 1f)
         }
     }
 }
@@ -689,7 +721,8 @@ fun HalloweenBackdrop(modifier: Modifier = Modifier.fillMaxSize()) {
     LaunchedEffect(Unit) { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { HalloweenAssets.load(ctx.applicationContext) } }
     val dark = LocalExtra.current.dark
     HalloweenAssets.ready.value
-    Canvas(modifier) { halloweenScene(Holiday.clock.floatValue, dark) }
+    // Свой слой: такт анимации перерисовывает только фон, а прокрутка карточек не перерисовывает фон.
+    Canvas(modifier.graphicsLayer()) { halloweenScene(Holiday.clock.floatValue, dark) }
 }
 
 /** Где норы на картинках шапок: центр (доли ширины и высоты картинки). */

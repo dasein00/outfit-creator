@@ -62,6 +62,8 @@ object HolidayAssets {
     var deer: List<androidx.compose.ui.graphics.ImageBitmap> = emptyList(); private set
     var deerRed: List<androidx.compose.ui.graphics.ImageBitmap> = emptyList(); private set
 
+    /** Вызывается из нескольких мест сразу — под замком, чтобы картинки не декодировались дважды. */
+    @Synchronized
     fun load(ctx: android.content.Context) {
         if (ready.value) return
         fun group(prefix: String) = runCatching {

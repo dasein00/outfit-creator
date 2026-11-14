@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import com.dasein.poryadok.logic.HolidaySeason
@@ -53,9 +54,12 @@ fun HolidayHost(content: @Composable () -> Unit) {
     LaunchedEffect(animate) {
         if (!animate) return@LaunchedEffect
         val start = withFrameMillis { it } - (Holiday.clock.floatValue * 1000).toLong()
+        var last = 0L
         while (true) {
-            Holiday.clock.floatValue = (withFrameMillis { it } - start) / 1000f
-            kotlinx.coroutines.delay(33)
+            // Такт привязан к кадрам экрана: каждый второй кадр при 60 Гц (каждый четвёртый при 120 Гц) — ровные ~30 кадров
+            // в секунду без «дрожания», которое давала пауза по таймеру между кадрами.
+            val now = withFrameMillis { it }
+            if (now - last >= 30) { last = now; Holiday.clock.floatValue = (now - start) / 1000f }
         }
     }
     Box(Modifier.fillMaxSize()) {
@@ -95,7 +99,7 @@ fun HolidayBackdrop() {
     val dark = LocalExtra.current.dark
     val strength = if (dark) .16f else .3f
     val flakes = Holiday.backdrop.value
-    Canvas(Modifier.fillMaxSize()) {
+    Canvas(Modifier.fillMaxSize().graphicsLayer()) {
         // Бархат выбранного цвета: светлее и насыщеннее сверху по центру, к краям глубже — как ткань под светом.
         val st = Holiday.bg()
         val velvet = if (dark) st.dark else st.light
@@ -134,7 +138,7 @@ private fun DeepBackdrop() {
     val dark = LocalExtra.current.dark
     val pal = com.dasein.poryadok.ui.theme.currentPalette()
     val fx = com.dasein.poryadok.ui.theme.Look.fx(look)
-    Canvas(Modifier.fillMaxSize()) { fancyBackground(v, fx, pal, dark) }
+    Canvas(Modifier.fillMaxSize().graphicsLayer()) { fancyBackground(v, fx, pal, dark) }
 }
 
 /** Снежинка входного снегопада. Всё в долях экрана; [ground] — на какой высоте от низа она осядет. */

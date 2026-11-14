@@ -135,8 +135,8 @@ fun PbnHomeContent(nav: NavHostController) {
         list.forEach { p ->
             Tile(Modifier.padding(bottom = 8.dp), onClick = { nav.navigate(Routes.pbn(p.id)) }, onLongClick = { toDelete = p }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    val thumb = remember(p.id) { runCatching { BitmapFactory.decodeFile(PbnStore.photo(ctx, p.id).absolutePath, BitmapFactory.Options().apply { inSampleSize = 8 }) }.getOrNull() }
-                    if (thumb != null) Image(thumb.asImageBitmap(), null, Modifier.size(56.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop)
+                    val thumb = com.dasein.poryadok.ui.common.rememberThumb(PbnStore.photo(ctx, p.id))
+                    if (thumb != null) Image(thumb, null, Modifier.size(56.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop)
                     Column(Modifier.weight(1f).padding(start = 12.dp)) {
                         Text(p.name, fontWeight = FontWeight.SemiBold)
                         Text(

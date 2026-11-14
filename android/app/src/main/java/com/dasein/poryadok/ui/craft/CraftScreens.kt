@@ -201,8 +201,8 @@ fun CraftHomeScreen(nav: NavHostController) {
                     projects.forEach { p ->
                         Tile(Modifier.padding(bottom = 8.dp), onClick = { nav.navigate(Routes.craft(p.id)) }, onLongClick = { toDelete = p }) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                val thumb = remember(p.id) { runCatching { BitmapFactory.decodeFile(CraftStore.photo(ctx, p.id).absolutePath, BitmapFactory.Options().apply { inSampleSize = 8 }) }.getOrNull() }
-                                thumb?.let { Image(it.asImageBitmap(), null, Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop) }
+                                val thumb = com.dasein.poryadok.ui.common.rememberThumb(CraftStore.photo(ctx, p.id))
+                                thumb?.let { Image(it, null, Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop) }
                                 Column(Modifier.weight(1f).padding(start = 12.dp)) {
                                     Text(p.name, fontWeight = FontWeight.SemiBold)
                                     Text("${p.width} клеток в ширину · до ${p.colors} цветов", fontSize = 12.sp, color = extra.dim)

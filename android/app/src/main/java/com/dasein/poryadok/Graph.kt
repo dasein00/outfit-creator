@@ -62,14 +62,22 @@ object CrashLog {
         val app = ctx.applicationContext
         val prev = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { t, e ->
-            runCatching {
-                val f = file(app)
-                val old = if (f.exists()) f.readText().split("\n=====\n").takeLast(4) else emptyList()
-                val now = java.text.SimpleDateFormat("dd.MM.yyyy HH:mm:ss", java.util.Locale("ru")).format(java.util.Date())
-                val ver = runCatching { app.packageManager.getPackageInfo(app.packageName, 0).versionName }.getOrNull()
-                f.writeText((old + "$now · версия $ver · поток ${t.name}\n${Log.getStackTraceString(e).take(6000)}").joinToString("\n=====\n"))
-            }
+            write(app, t.name, e)
             prev?.uncaughtException(t, e)
+        }
+    }
+
+    /** Записать ошибку в журнал, не роняя приложение (сбой фоновой записи в базу и т. п.). */
+    fun note(ctx: android.content.Context, where: String, e: Throwable) = write(ctx.applicationContext, where, e)
+
+    @Synchronized
+    private fun write(app: android.content.Context, where: String, e: Throwable) {
+        runCatching {
+            val f = file(app)
+            val old = if (f.exists()) f.readText().split("\n=====\n").takeLast(4) else emptyList()
+            val now = java.text.SimpleDateFormat("dd.MM.yyyy HH:mm:ss", java.util.Locale("ru")).format(java.util.Date())
+            val ver = runCatching { app.packageManager.getPackageInfo(app.packageName, 0).versionName }.getOrNull()
+            f.writeText((old + "$now · версия $ver · поток $where\n${Log.getStackTraceString(e).take(6000)}").joinToString("\n=====\n"))
         }
     }
 
@@ -92,7 +100,11 @@ object Graph {
     val pages: com.dasein.poryadok.data.PageDao get() = extraDb.pages()
     val training: com.dasein.poryadok.data.TrainingDao get() = extraDb.training()
     val days: com.dasein.poryadok.data.DaysDao get() = extraDb.days()
-    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    // Ошибка в фоновой задаче (запись в базу, синхронизация) не закрывает приложение: она попадает в журнал сбоев.
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + kotlinx.coroutines.CoroutineExceptionHandler { _, e ->
+        Log.e("DASEIN", "background task failed", e)
+        runCatching { CrashLog.note(app, "фон", e) }
+    })
     private var ready = false
 
     @OptIn(FlowPreview::class)
