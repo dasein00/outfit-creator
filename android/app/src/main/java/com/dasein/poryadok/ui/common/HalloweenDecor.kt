@@ -471,9 +471,33 @@ private object Crows {
     val start = FloatArray(3)
     val next = floatArrayOf(9f, 19f, 29f)
     val rnd = Random(777)
-    fun step(t: Float) {
+    /** Когда каждая ворона села; когда паучок из дупла правого дерева начал пугать и кого (-1 — уже улетела). */
+    val landed = FloatArray(3)
+    var scare = -13f
+    var scared = -1
+    /** Ветки правого дерева рядом с верхним дуплом. */
+    val NEAR_HOLLOW = intArrayOf(4, 5)
+    const val SCARE_DUR = 1.7f
+    fun step(t: Float, canScare: Boolean) {
+        if (t < scare) { scare = t - 25f; scared = -1 }
+        for (i in at.indices) if (landed[i] > t) landed[i] = t
+        // Ворона посидела рядом с дуплом — паучок высовывается и скалится, ворона пугается и улетает на другое дерево.
+        if (canScare && scared < 0 && t - scare > 25f) {
+            val i = at.indices.firstOrNull { to[it] < 0 && at[it] in NEAR_HOLLOW && t - landed[it] > 3f }
+            if (i != null) { scare = t; scared = i }
+        }
+        if (scared >= 0 && t - scare >= .7f) {
+            val i = scared
+            scared = -1
+            if (to[i] < 0) {
+                val busy = at.toSet() + to.filter { it >= 0 }
+                val free = CROW_PERCHES.indices.filter { it !in busy }
+                val away = free.filter { it < 3 }.ifEmpty { free.filter { it !in NEAR_HOLLOW } }
+                if (away.isNotEmpty()) { to[i] = away[rnd.nextInt(away.size)]; start[i] = t }
+            }
+        }
         for (i in at.indices) {
-            if (to[i] >= 0 && (t < start[i] || t - start[i] >= DUR)) { at[i] = to[i]; to[i] = -1; next[i] = t + 9f + rnd.nextFloat() * 14f }
+            if (to[i] >= 0 && (t < start[i] || t - start[i] >= DUR)) { at[i] = to[i]; to[i] = -1; landed[i] = t; next[i] = t + 9f + rnd.nextFloat() * 14f }
             if (to[i] < 0 && t >= next[i]) {
                 val busy = at.toSet() + to.filter { it >= 0 }
                 val free = CROW_PERCHES.indices.filter { it !in busy }
@@ -487,8 +511,19 @@ private object Crows {
 /** Вороны на ветках деревьев нижней каймы: сидят, чистят перья, каркают; иногда перелетают на другую ветку или дерево. */
 private fun DrawScope.crows(t: Float, w: Float, by: Float, bh: Float) {
     val a = HalloweenAssets
-    Crows.step(t)
+    val canScare = Halloween.webs.value && a.spi["snarl"]?.size == 4
+    Crows.step(t, canScare)
     val cw = w * .065f
+    // Паучок высовывается из верхнего дупла правого дерева и скалится на ворону.
+    val sq = t - Crows.scare
+    if (canScare && sq in 0f..Crows.SCARE_DUR) {
+        val (hx, hy, _) = TREE_EYES[2]
+        val sw = 22.dp.toPx()
+        val pop = minOf(sq / .25f, (Crows.SCARE_DUR - sq) / .3f).coerceIn(0f, 1f)
+        val c = Offset(w * hx, by + bh * hy)
+        val shake = if (sq in .25f..1.2f) sin(t * 40f) * 1.2f * density else 0f
+        scale(pop, pop, c) { critter(spiF("snarl", ((sq - .2f) / .9f * 4f).toInt()), c.x - sw * .15f + shake, c.y + sw * .3f, sw, SPI_BASE, faceLeft = true) }
+    }
     fun perch(i: Int) = Offset(CROW_PERCHES[i].first * w, by + CROW_PERCHES[i].second * bh)
     fun drawCrow(f: ImageBitmap, feet: Offset, faceLeft: Boolean) {
         val x = feet.x - cw * .473f; val y = feet.y - cw * .925f
@@ -502,6 +537,8 @@ private fun DrawScope.crows(t: Float, w: Float, by: Float, bh: Float) {
             val faceLeft = from.x > w / 2f
             val local = (t + i * 4.3f) % 11f
             val f = when {
+                // Испугалась паучка: вскрикивает перед тем, как улететь.
+                i == Crows.scared -> a.crowCaw[if ((t * 10f).toInt() % 2 == 0) 1 else 2]
                 local < 1.4f -> a.crowCaw[intArrayOf(0, 1, 2, 1, 2, 0)[(local / .24f).toInt().coerceIn(0, 5)]]
                 local in 5f..6.2f -> a.crowIdle[2]
                 local in 8f..8.8f -> a.crowIdle[1]
