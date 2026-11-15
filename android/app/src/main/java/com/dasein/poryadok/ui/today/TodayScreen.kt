@@ -156,8 +156,8 @@ fun TodayScreen(nav: NavHostController, settings: Settings) {
             // Отступ от строки состояния уже в pad — второй не нужен (иначе сверху пустая полоса).
             Modifier.fillMaxSize().padding(pad).cardViewport().then(com.dasein.poryadok.ui.common.SantaCorridor.viewport()),
             contentPadding = PaddingValues(top = 4.dp, bottom = 8.dp),
-            // В Хэллоуин над плашками торчат холмики с травой и грибами — между плашками больше места.
-            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(if (com.dasein.poryadok.ui.theme.Halloween.active) 16.dp else 0.dp),
+            // В Хэллоуин над плашками торчат холмики — место под них добавляет сама плашка, здесь небольшой запас.
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(if (com.dasein.poryadok.ui.theme.Halloween.active) 6.dp else 0.dp),
         ) {
             // Системные кнопки стоят на месте блока «Кнопки» (по умолчанию — между весом и погодой); если блок скрыт — сверху.
             if (homeRows.none { layout[it.first()].id == "greeting" }) item(key = "buttons") { HomeButtons(nav) { quickAdd = true } }

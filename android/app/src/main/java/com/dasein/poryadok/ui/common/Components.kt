@@ -135,11 +135,13 @@ fun Tile(
     // У каждой карточки свои сосульки; номер сохраняется — при прокрутке туда-обратно шапка не меняется.
     val snowSeed = androidx.compose.runtime.saveable.rememberSaveable { kotlin.random.Random.nextInt() }
     // Стиль плашек из «Оформления» (стекло, градиент, контур…) — только у обычной карточки, цветные плашки как есть.
+    // В Хэллоуин над плашкой — холмик с травой и грибами: сверху добавляется место, чтобы он не налезал на соседей.
+    val spooky = com.dasein.poryadok.ui.theme.Halloween.active
     val plain = color == LocalExtra.current.card
     val decor = if (plain) currentCardDecor(color) else null
     Surface(
         // В новогоднем режиме — снежная шапка по верхнему краю (только рисунок, размеры не меняются).
-        modifier = modifier.fillMaxWidth().let { if (caps) it.halloweenCap(snowSeed) else it }.clip(RoundedCornerShape(round)).let { if (caps) it.snowCap(snowSeed) else it }.let {
+        modifier = modifier.fillMaxWidth().let { if (caps && spooky) it.padding(top = 10.dp).halloweenCap(snowSeed) else it }.clip(RoundedCornerShape(round)).let { if (caps) it.snowCap(snowSeed) else it }.let {
             when {
                 onLongClick != null -> it.combinedClickable(onClick = onClick ?: {}, onLongClick = onLongClick)
                 onClick != null -> (if (holder != null && LocalIconEditable.current) it.labelLongPress(holder) else it).clickable(onClick = onClick)
